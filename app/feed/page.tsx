@@ -333,13 +333,13 @@ const FeedPage: React.FC = () => {
     <div className="min-h-screen max-w-full 4xl:max-w-screen-2xl mx-auto ">
 
       <FeedLayout>
-        <div className="w-full space-y-3 ">
+        <div className="w-full ">
           {/* <div className="overflow-hidden rounded-2xl border border-gray-200 bg-gradient-to-r from-orange-100 to-green-100"> */}
             <Advertisement type="banner" placement="feed-top" className="rounded-2xl" />
           {/* </div> */}
 
 
-          <section>
+          <section className="my-3">
             {!user ? (
               <div className="rounded-xl border border-dashed border-border bg-surface-secondary sm:px-4 sm:py-6 px-2 py-3 text-center text-sm text-content-secondary">
                 Sign in to share your thoughts with the community.
@@ -372,7 +372,7 @@ const FeedPage: React.FC = () => {
           <StoriesBar />
 
 
-          <section className="rounded-2xl shadow-card bg-surface p-4">
+          <section className="rounded-2xl shadow-card bg-surface p-4 my-3">
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-sm font-semibold text-content">Browse by category</h2>
               <button
