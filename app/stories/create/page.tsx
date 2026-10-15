@@ -325,7 +325,7 @@ export default function CreateStoryPage() {
                     onChange={(e) => setCaption(e.target.value)}
                     placeholder="Write something..."
                     maxLength={MAX_CAPTION_LENGTH}
-                    className="w-full h-16 sm:h-20  border border-border rounded-lg sm:rounded-xl px-3 py-2 sm:py-2.5 text-sm text-content placeholder:text-content-tertiary focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none"
+                    className="w-full h-16 sm:h-20  border border-border rounded-lg sm:rounded-xl px-3 py-2 sm:py-2.5 text-sm text-content placeholder:text-content-tertiary focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent resize-none"
                   />
                   <p className="text-[10px] sm:text-xs text-content-tertiary mt-1 text-right">{caption.length}/{MAX_CAPTION_LENGTH}</p>
                 </div>

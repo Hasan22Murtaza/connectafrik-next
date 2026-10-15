@@ -332,7 +332,8 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
     <div className="fixed inset-0 z-[9999] bg-black flex items-center justify-center">
       <button
         onClick={onClose}
-        className="absolute top-4 right-4 z-50 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors"
+        aria-label="Close story"
+        className="hidden md:flex absolute top-4 right-4 z-50 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 items-center justify-center text-white transition-colors"
       >
         <X className="w-6 h-6" />
       </button>
@@ -473,19 +474,27 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
                     )}
                   </div>
                 )}
+
+                <button
+                  onClick={(e) => { stopPropagation(e); onClose() }}
+                  aria-label="Close story"
+                  className="w-7 h-7 md:hidden rounded-full bg-white/20 flex items-center justify-center text-white hover:bg-white/30 transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
               </div>
             </div>
 
             {currentStory.caption && !isTextStory && (
-              <div className="absolute bottom-28 md:bottom-32 left-2 md:left-3 right-2 md:right-3 z-20">
-                <p className="text-white text-xs md:text-sm drop-shadow-lg bg-black/30 backdrop-blur-sm rounded-lg px-2.5 md:px-3 py-1.5 md:py-2">
+             <div className="absolute bottom-15 left-2 md:left-3 right-2 md:right-3 z-20 bg-black/30 backdrop-blur-sm rounded-lg px-2.5 md:px-3 py-1.5 md:py-2">
+                <p className="text-white text-xs md:text-sm px-2.5 md:px-3 line-clamp-3">
                   {currentStory.caption}
                 </p>
               </div>
             )}
 
             {currentStory.music_url && (
-              <div className="absolute bottom-20 md:bottom-24 left-2 md:left-3 right-2 md:right-3 z-20">
+              <div className="absolute bottom-15 left-2 md:left-3 right-2 md:right-3 z-20">
                 <div className="flex items-center gap-2 bg-black/30 backdrop-blur-sm rounded-full px-2.5 md:px-3 py-1.5 md:py-2">
                   <div className="w-5 h-5 md:w-6 md:h-6 rounded-full bg-white/20 flex items-center justify-center animate-spin-slow">
                     <Music className="w-2.5 h-2.5 md:w-3 md:h-3 text-white" />
