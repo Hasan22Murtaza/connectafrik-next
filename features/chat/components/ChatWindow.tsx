@@ -2913,7 +2913,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           </div>
           <div className="flex shrink-0 items-center gap-0.5 sm:gap-1">
 
-            <div className="group relative flex items-center">
+            <div className="group relative lg:flex items-center hidden ">
               {/* Search icon */}
               <Search
                 className=" pointer-events-none  absolute left-3 z-10 h-5 w-5 text-content-tertiary "

@@ -248,6 +248,13 @@ export async function POST(request: NextRequest) {
     // Prefer media presence: leave may not clear invitee from every sibling
     // participants[] row that was stamped on join.
     const sourceMeta = mergeSessionMetadata(liveSessions[0]?.metadata, {})
+    const sourceE2eeKey =
+      liveSessions
+        .map((row) => {
+          const meta = mergeSessionMetadata(row.metadata, {})
+          return typeof meta.e2eeKey === 'string' ? meta.e2eeKey.trim() : ''
+        })
+        .find((key) => key.length >= 16 && key.length <= 128) || ''
     const sourceProvider =
       provider ||
       (typeof sourceMeta.provider === 'string' ? sourceMeta.provider.trim() : '') ||
@@ -305,6 +312,7 @@ export async function POST(request: NextRequest) {
       lastInvitedAt: now,
       reinvited: true,
       ...(provider ? { provider } : {}),
+      ...(sourceE2eeKey ? { e2eeKey: sourceE2eeKey } : {}),
     })
 
     const { data: existingInviteRows } = await serviceClient

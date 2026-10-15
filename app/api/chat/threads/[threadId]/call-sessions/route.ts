@@ -561,6 +561,8 @@ export async function POST(request: NextRequest, context: RouteContext) {
     // what a later token request resolves to, producing a callee who connects
     // successfully but to an empty room on the other provider.
     const provider = body.provider === 'livekit' || body.provider === 'videosdk' ? body.provider : undefined
+    const e2eeKeyRaw = typeof body.e2ee_key === 'string' ? body.e2ee_key.trim() : ''
+    const e2eeKey = e2eeKeyRaw.length >= 16 && e2eeKeyRaw.length <= 128 ? e2eeKeyRaw : ''
     const caller_name = typeof body.caller_name === 'string' ? body.caller_name : user.email || 'Someone'
     let caller_avatar_url = typeof body.caller_avatar_url === 'string' ? body.caller_avatar_url.trim() : ''
     if (!caller_avatar_url) {
@@ -625,6 +627,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       timestamp: new Date().toISOString(),
       last_signal: 'ringing',
       ...(provider ? { provider } : {}),
+      ...(e2eeKey ? { e2eeKey } : {}),
     })
 
     const now = new Date().toISOString()

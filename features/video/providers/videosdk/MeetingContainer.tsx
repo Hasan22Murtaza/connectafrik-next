@@ -100,6 +100,7 @@ export interface MeetingContainerProps {
   refreshToken?: () => Promise<{ token: string; wsUrl?: string }>;
   /** LiveKit only: server URL to pass to `room.connect()` on rejoin. */
   livekitServerUrl?: string;
+  endToEndEncrypted?: boolean;
 }
 
 // ---------------------------------------------------------------------------
