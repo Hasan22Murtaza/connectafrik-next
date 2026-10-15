@@ -1,6 +1,6 @@
 # Bunny.net Storage & CDN
 
-ConnectAfrik stores all user-uploaded media (images, videos, audio, chat
+CribsTalk stores all user-uploaded media (images, videos, audio, chat
 attachments) in a **Bunny.net Storage Zone** and serves it back through a
 **Bunny.net Pull Zone (CDN)**. This replaces the previous Backblaze B2 setup.
 
@@ -56,7 +56,7 @@ Key files:
 
 ### Step 1 — Create a Storage Zone
 1. Bunny dashboard → **Storage** → **Add Storage Zone**.
-2. Name it (e.g. `connectafrik-media`). → `BUNNY_STORAGE_ZONE_NAME`.
+2. Name it (e.g. `CribsTalk-media`). → `BUNNY_STORAGE_ZONE_NAME`.
 3. **Enable S3 Compatibility.** Direct browser uploads use Bunny's S3 API
    (presigned URLs). This must be turned on when the zone is created; it cannot
    be added to an existing zone yet.
@@ -69,9 +69,9 @@ Key files:
 ### Step 2 — Create a Pull Zone (CDN)
 1. Bunny dashboard → **CDN** → **Add Pull Zone**.
 2. **Origin type:** `Storage Zone` → select the zone from Step 1.
-3. Bunny assigns a hostname like `connectafrik-media.b-cdn.net`. Optionally
+3. Bunny assigns a hostname like `CribsTalk-media.b-cdn.net`. Optionally
    attach a custom domain (e.g. `media.cribstalk.com`).
-4. The full base URL (`https://connectafrik-media.b-cdn.net` or your custom
+4. The full base URL (`https://CribsTalk-media.b-cdn.net` or your custom
    domain) → `NEXT_PUBLIC_BUNNY_CDN_URL`.
 
 ### Region code → storage hostname

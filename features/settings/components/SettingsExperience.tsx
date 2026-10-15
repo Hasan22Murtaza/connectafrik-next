@@ -14,7 +14,7 @@ import { SettingsSignInPrompt } from './SettingsPrimitives'
 const PANEL_COPY: Record<SettingsTab, { title: string; description: string }> = {
   profile: {
     title: 'Profile',
-    description: 'Update how you appear to other people on ConnectAfrik.',
+    description: 'Update how you appear to other people on CribsTalk.',
   },
   privacy: {
     title: 'Privacy',

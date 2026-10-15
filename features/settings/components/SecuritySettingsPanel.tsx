@@ -300,7 +300,7 @@ export function SecuritySettingsPanel() {
     <>
       <div className="space-y-4">
         <SettingsCard>
-          <SettingsSectionHeader title="Account" description="Sign-in details for this ConnectAfrik account." />
+          <SettingsSectionHeader title="Account" description="Sign-in details for this CribsTalk account." />
           <SettingsActionRow
             icon={Mail}
             title="Email address"
@@ -455,7 +455,7 @@ export function SecuritySettingsPanel() {
         </SettingsCard>
 
         <SettingsCard>
-          <SettingsSectionHeader title="Your data" description="Download a copy of your ConnectAfrik information." />
+          <SettingsSectionHeader title="Your data" description="Download a copy of your CribsTalk information." />
           <SettingsActionRow
             icon={Download}
             title="Download my data"

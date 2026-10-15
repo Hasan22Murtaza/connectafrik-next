@@ -50,7 +50,7 @@ export const deepLinkConfig = {
     }
   })(),
 
-  /** Custom URL scheme fallback (e.g. connectafrik://post/123). */
+  /** Custom URL scheme fallback (e.g. CribsTalk://post/123). */
   scheme: process.env.NEXT_PUBLIC_DEEPLINK_SCHEME || 'cribsTalk',
 
   ios: {

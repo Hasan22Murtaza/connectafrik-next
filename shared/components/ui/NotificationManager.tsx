@@ -144,7 +144,7 @@ export const NotificationManager: React.FC<NotificationManagerProps> = ({ onClos
                 <div className="flex items-center space-x-3">
                   <Settings className="w-5 h-5 text-content-secondary" />
                   <div>
-                    <p className="font-medium text-content">ConnectAfrik Notifications</p>
+                    <p className="font-medium text-content">CribsTalk Notifications</p>
                     <p className="text-sm text-content-secondary">
                       {isSubscribed ? 'Enabled' : 'Disabled'}
                     </p>
@@ -272,7 +272,7 @@ export const NotificationManager: React.FC<NotificationManagerProps> = ({ onClos
               <div className="flex items-center space-x-3">
                 <Settings className="w-5 h-5 text-content-secondary" />
                 <div>
-                  <p className="font-medium text-content">ConnectAfrik Notifications</p>
+                  <p className="font-medium text-content">CribsTalk Notifications</p>
                   <p className="text-sm text-content-secondary">
                     {isSubscribed ? 'Enabled' : 'Disabled'}
                   </p>

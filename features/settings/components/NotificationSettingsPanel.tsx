@@ -99,7 +99,7 @@ export function NotificationSettingsPanel() {
           <div>
             <div className="text-[15px] font-medium text-content">Device permission</div>
             <p className="mt-0.5 text-sm text-content-secondary">
-              Allow ConnectAfrik to send notifications on this device.
+              Allow CribsTalk to send notifications on this device.
             </p>
           </div>
           <button

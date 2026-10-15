@@ -82,7 +82,7 @@ export function buildUniversalLink(target: string): string {
  * Build the custom-scheme URL used as a fallback when Universal/App Links
  * don't fire (e.g. some in-app browsers).
  *
- * @example buildSchemeLink('/post/123') -> connectafrik://post/123
+ * @example buildSchemeLink('/post/123') -> CribsTalk://post/123
  */
 export function buildSchemeLink(target: string): string {
   const normalized = normalizeTarget(target) ?? '/feed'
