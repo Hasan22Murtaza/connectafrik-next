@@ -181,7 +181,6 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
   const [showReportConfirm, setShowReportConfirm] = useState(false);
   const [commentsCount, setCommentsCount] = useState(post.comments_count || 0);
   const closeTimeout = useRef<NodeJS.Timeout | null>(null);
-
   useEffect(() => {
     setPostSaved(post.is_saved ?? false);
   }, [post.id, post.is_saved]);
@@ -849,6 +848,7 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
                 {post.author.full_name.charAt(0).toUpperCase()}
               </span>
             </div>
+            
             <div className="min-w-0 flex-1">
               {showLocationCheckIn && parsedLocation ? (
                 <>
@@ -1281,17 +1281,25 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
             >
               {post.reposted_post.author ? (
                 <div className="flex items-center gap-2 mb-2 min-w-0">
-                  {post.reposted_post.author.avatar_url ? (
-                    <img
-                      src={post.reposted_post.author.avatar_url}
-                      alt=""
-                      className="h-8 w-8 rounded-full object-cover shrink-0"
-                    />
-                  ) : (
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-surface-tertiary text-xs font-medium text-content-secondary">
-                      {post.reposted_post.author.full_name.charAt(0).toUpperCase()}
-                    </div>
-                  )}
+                      <img
+                        src={post.reposted_post?.author?.avatar_url || ""}
+                        alt={post.reposted_post?.author?.full_name || "User"}
+                        onError={(e) => {
+                          e.currentTarget.style.display = "none";
+                          e.currentTarget.nextElementSibling?.classList.remove("hidden");
+                        }}
+                        className={`h-8 w-8 rounded-full object-cover ${
+                          post.reposted_post?.author?.avatar_url ? "" : "hidden"
+                        }`}
+                      />
+
+                      <div
+                        className={`flex h-8 w-8 items-center justify-center rounded-full bg-surface-tertiary text-xs font-medium text-content-secondary ${
+                          post.reposted_post?.author?.avatar_url ? "hidden" : ""
+                        }`}
+                      >
+                        {post.reposted_post?.author?.full_name?.charAt(0)?.toUpperCase() || "U"}
+                      </div>
                   <div className="min-w-0">
                     <p className="truncate text-sm font-semibold text-content">
                       {post.reposted_post.author.full_name}
