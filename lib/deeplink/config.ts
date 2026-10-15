@@ -51,7 +51,7 @@ export const deepLinkConfig = {
   })(),
 
   /** Custom URL scheme fallback (e.g. connectafrik://post/123). */
-  scheme: process.env.NEXT_PUBLIC_DEEPLINK_SCHEME || 'connectafrik',
+  scheme: process.env.NEXT_PUBLIC_DEEPLINK_SCHEME || 'cribsTalk',
 
   ios: {
     /** Bundle identifier of the iOS app. */
