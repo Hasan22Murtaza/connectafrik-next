@@ -27,6 +27,7 @@ import LiveKitMeetingContainer from '@/features/video/providers/livekit/MeetingC
 import { LiveKitRoom } from '@livekit/components-react';
 import type { Room } from 'livekit-client';
 import { parseCallMediaResponse, resolveLiveKitWsUrl } from '@/lib/call-media/bootstrap';
+import { readCallE2eeKey } from '@/lib/call-media/e2ee-key';
 import type { CallMediaProviderName } from '@/lib/call-media/types';
 import { resolveClientVideoProvider } from '@/features/video/core/config';
 import { useIncomingCallTerminalSignals } from '@/features/video/hooks/useIncomingCallTerminalSignals';
@@ -34,6 +35,7 @@ import {
   CALL_AUDIO_CAPTURE,
   connectLiveKitWithPreparedAudio,
 } from '@/features/video/providers/livekit/prepareCallAudio';
+import { apiClient } from '@/lib/api-client';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -71,6 +73,7 @@ const CallModal: React.FC<CallModalProps> = (props) => {
     callIdHint,
     mediaProviderHint,
     wsUrlHint,
+    e2eeKeyHint,
   } = props;
 
   // ── Display props (hydrated on `/call/...` from call-sessions + thread API) ─
@@ -114,6 +117,8 @@ const CallModal: React.FC<CallModalProps> = (props) => {
   const [isAcceptingCall, setIsAcceptingCall] = useState(false);
   const [livekitRoom, setLivekitRoom] = useState<Room | null>(null);
   const [livekitPrepError, setLivekitPrepError] = useState('');
+  const [resolvedE2ee, setResolvedE2ee] = useState(false);
+  const endToEndEncrypted = Boolean((e2eeKeyHint || '').trim()) || resolvedE2ee;
 
   const isMountedRef = useRef(true);
   const hasInitRef = useRef(false);
@@ -151,6 +156,7 @@ const CallModal: React.FC<CallModalProps> = (props) => {
       }
       setLivekitRoom(null);
       setLivekitPrepError('');
+      setResolvedE2ee(false);
     }
   }, [isOpen, mediaProviderHint, wsUrlHint, defaultMediaProvider]);
 
@@ -493,10 +499,27 @@ const CallModal: React.FC<CallModalProps> = (props) => {
 
     (async () => {
       try {
+        let encryptionKey = (e2eeKeyHint || '').trim() || undefined;
+        if (!encryptionKey && threadId && (callIdHint || '').trim()) {
+          try {
+            const res = await apiClient.get<{ session: Record<string, unknown> | null }>(
+              `/api/chat/threads/${threadId}/call-sessions`,
+              { call_id: callIdHint },
+            );
+            encryptionKey = readCallE2eeKey(res.session?.metadata);
+          } catch {
+            encryptionKey = undefined;
+          }
+        }
+        if (cancelled || gen !== livekitPrepGenRef.current || !isMountedRef.current) return;
+
+        if (encryptionKey) setResolvedE2ee(true);
+
         const { room } = await connectLiveKitWithPreparedAudio({
           serverUrl,
           token,
           video: callType === 'video',
+          encryptionKey,
         });
         if (cancelled || gen !== livekitPrepGenRef.current || !isMountedRef.current) {
           await room.disconnect().catch(() => undefined);
@@ -515,7 +538,7 @@ const CallModal: React.FC<CallModalProps> = (props) => {
     return () => {
       cancelled = true;
     };
-  }, [isOpen, token, mediaProvider, wsUrl, callType]);
+  }, [isOpen, token, mediaProvider, wsUrl, callType, e2eeKeyHint, threadId, callIdHint]);
 
   // ── Accept handler (incoming ring phase) — fetches token then shows meeting ─
   const handleAccept = useCallback(async () => {
@@ -607,6 +630,7 @@ const CallModal: React.FC<CallModalProps> = (props) => {
           decodedRecipientAvatarUrl={decodedRecipientAvatarUrl}
           isScreenSharing={false}
           remoteScreenShareStream={null}
+          endToEndEncrypted={endToEndEncrypted}
         />
         {!answered && (
           <IncomingCallControls
@@ -650,6 +674,7 @@ const CallModal: React.FC<CallModalProps> = (props) => {
             decodedRecipientAvatarUrl={decodedRecipientAvatarUrl}
             isScreenSharing={false}
             remoteScreenShareStream={null}
+            endToEndEncrypted={endToEndEncrypted}
           />
         )}
       </div>
@@ -679,6 +704,7 @@ const CallModal: React.FC<CallModalProps> = (props) => {
     decodedRecipientName,
     decodedCallerAvatarUrl,
     decodedRecipientAvatarUrl,
+    endToEndEncrypted,
   };
 
   if (mediaProvider === 'livekit') {
@@ -718,6 +744,7 @@ const CallModal: React.FC<CallModalProps> = (props) => {
             decodedRecipientAvatarUrl={decodedRecipientAvatarUrl}
             isScreenSharing={false}
             remoteScreenShareStream={null}
+            endToEndEncrypted={endToEndEncrypted}
           />
         </div>
       );

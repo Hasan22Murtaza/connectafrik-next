@@ -34,6 +34,7 @@ export interface CallModalProps {
   /** Staged from `/api/videosdk/room` when using LiveKit. */
   mediaProviderHint?: 'livekit' | 'videosdk';
   wsUrlHint?: string;
+  e2eeKeyHint?: string;
 }
 
 /** @deprecated Use `CallModalProps` */

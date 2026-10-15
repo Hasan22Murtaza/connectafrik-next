@@ -1,4 +1,5 @@
 import {
+  ExternalE2EEKeyProvider,
   Room,
   createLocalTracks,
   type AudioCaptureOptions,
@@ -22,8 +23,15 @@ export async function connectLiveKitWithPreparedAudio(options: {
   token: string;
   video: boolean;
   roomOptions?: RoomOptions;
+  encryptionKey?: string;
 }): Promise<PreparedLiveKitJoin> {
-  const { serverUrl, token, video, roomOptions } = options;
+  const { serverUrl, token, video, roomOptions, encryptionKey } = options;
+  const key = encryptionKey?.trim();
+
+  const keyProvider = key ? new ExternalE2EEKeyProvider() : undefined;
+  const worker = key
+    ? new Worker(new URL('livekit-client/e2ee-worker', import.meta.url))
+    : undefined;
 
   const room = new Room({
     ...roomOptions,
@@ -31,6 +39,14 @@ export async function connectLiveKitWithPreparedAudio(options: {
       ...CALL_AUDIO_CAPTURE,
       ...(roomOptions?.audioCaptureDefaults ?? {}),
     },
+    ...(keyProvider && worker
+      ? {
+          encryption: {
+            keyProvider,
+            worker,
+          },
+        }
+      : {}),
   });
 
   const tracks = await createLocalTracks({
@@ -39,6 +55,11 @@ export async function connectLiveKitWithPreparedAudio(options: {
   });
 
   try {
+    if (keyProvider && key) {
+      await keyProvider.setKey(key);
+      await room.setE2EEEnabled(true);
+    }
+
     await room.connect(serverUrl, token);
 
     await Promise.all(
@@ -57,6 +78,7 @@ export async function connectLiveKitWithPreparedAudio(options: {
       }
     });
     await room.disconnect().catch(() => undefined);
+    worker?.terminate();
     throw err;
   }
 }

@@ -6,6 +6,7 @@ import { useParams, useSearchParams, useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { apiClient } from '@/lib/api-client'
 import { readCallBootstrap } from '@/lib/call-media/bootstrap'
+import { readCallE2eeKey } from '@/lib/call-media/e2ee-key'
 import type { CallMediaProviderName } from '@/lib/call-media/types'
 import { parseProviderName } from '@/lib/call-media/resolve'
 
@@ -64,6 +65,7 @@ function readAndRemoveCallBootstrap(callId: string): {
   token?: string
   provider?: CallMediaProviderName
   wsUrl?: string
+  e2eeKey?: string
 } | undefined {
   const payload = readCallBootstrap(callId)
   if (!payload) return undefined
@@ -83,13 +85,14 @@ export default function CallWindowPage() {
     undefined,
   )
   const [wsUrlHint, setWsUrlHint] = useState<string | undefined>(undefined)
+  const [e2eeKeyHint, setE2eeKeyHint] = useState<string | undefined>(undefined)
   /** True once the same user answered this call on another device — close this ringing window. */
   const [answeredElsewhere, setAnsweredElsewhere] = useState(false)
   /** Guards against terminating when the call was accepted on THIS device. */
   const acceptedLocallyRef = useRef(false)
   const outgoingBootstrapCallIdRef = useRef<string | null>(null)
   const outgoingBootstrapPayloadRef = useRef<
-    { token?: string; provider?: CallMediaProviderName; wsUrl?: string } | undefined
+    { token?: string; provider?: CallMediaProviderName; wsUrl?: string; e2eeKey?: string } | undefined
   >(undefined)
 
   const roomId = params?.roomId as string
@@ -142,6 +145,7 @@ export default function CallWindowPage() {
     setJoinTokenHint(bootstrap?.token)
     setMediaProviderHint(bootstrap?.provider)
     setWsUrlHint(bootstrap?.wsUrl)
+    setE2eeKeyHint(bootstrap?.e2eeKey)
 
     if (!callId.trim()) {
       setCallDisplay({
@@ -179,6 +183,8 @@ export default function CallWindowPage() {
           if (cancelled) return
 
           const meta = parseSessionMetadata(row?.metadata)
+          const sessionKey = readCallE2eeKey(meta)
+          if (sessionKey) setE2eeKeyHint(sessionKey)
           // Pin to whichever provider the room was actually created on
           // (persisted server-side) so this callee's token request can't
           // silently resolve to a different provider than the caller's.
@@ -227,6 +233,8 @@ export default function CallWindowPage() {
         if (cancelled) return
 
         const meta = parseSessionMetadata(row?.metadata)
+        const sessionKey = readCallE2eeKey(meta)
+        if (sessionKey) setE2eeKeyHint(sessionKey)
         const targetUserId = typeof meta.targetUserId === 'string' ? meta.targetUserId.trim() : ''
         const isGroupFromMeta = meta.isGroupCall === true
 
@@ -447,6 +455,7 @@ export default function CallWindowPage() {
             callIdHint={callId}
             mediaProviderHint={mediaProviderHint}
             wsUrlHint={wsUrlHint}
+            e2eeKeyHint={e2eeKeyHint}
           />
         ) : (
           <div className="flex flex-col items-center justify-center h-full text-white gap-3 px-4 text-center">

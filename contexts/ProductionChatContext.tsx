@@ -22,6 +22,7 @@ import toast from 'react-hot-toast'
 import { usePresence } from '@/shared/hooks/usePresence'
 import { openCallWindow, buildCallUrl } from '@/shared/utils/callWindow'
 import { parseCallMediaResponse, writeCallBootstrap } from '@/lib/call-media/bootstrap'
+import { generateCallE2eeKey, readCallE2eeKey } from '@/lib/call-media/e2ee-key'
 import {
   FriendsRequiredForCallError,
   dispatchFriendsRequiredForCall,
@@ -917,11 +918,13 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
 
       if (typeof window !== 'undefined') {
         if (token && callId) {
+          const e2eeKey = readCallE2eeKey(meta)
           try {
             writeCallBootstrap(callId, {
               token,
               provider: media.provider,
               ...(media.wsUrl ? { wsUrl: media.wsUrl } : {}),
+              ...(e2eeKey ? { e2eeKey } : {}),
             })
           } catch { /* ignore */ }
         }
@@ -1124,6 +1127,8 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
         throw new Error('Failed to create call room. Please try again.')
       }
 
+      const draftedE2eeKey = media.provider === 'livekit' ? generateCallE2eeKey() : undefined
+
       // Persist call_sessions before opening the popup so end/missed/declined PATCH never hits 404.
       const persisted = await apiClient.post<{ session: Record<string, unknown> | null }>(
         `/api/chat/threads/${threadId}/call-sessions`,
@@ -1136,6 +1141,7 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
           caller_name: currentUser?.name || 'Unknown',
           caller_avatar_url: currentUser?.avatarUrl || '',
           provider: media.provider,
+          ...(draftedE2eeKey ? { e2ee_key: draftedE2eeKey } : {}),
         },
       )
 
@@ -1187,11 +1193,13 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
 
       if (typeof window !== 'undefined') {
         if (token && canonicalCallId) {
+          const e2eeKey = readCallE2eeKey(parseCallSessionMetadata(sessionRow?.metadata))
           try {
             writeCallBootstrap(canonicalCallId, {
               token,
               provider: media.provider,
               ...(media.wsUrl ? { wsUrl: media.wsUrl } : {}),
+              ...(e2eeKey ? { e2eeKey } : {}),
             })
           } catch {
             /* ignore quota or private mode */

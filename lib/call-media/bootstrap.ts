@@ -5,6 +5,7 @@ export interface CallBootstrapPayload {
   token: string;
   provider?: CallMediaProviderName;
   wsUrl?: string;
+  e2eeKey?: string;
 }
 
 const BOOTSTRAP_KEY_PREFIX = 'videosdk_call_bootstrap:';
