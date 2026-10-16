@@ -1355,13 +1355,18 @@ export default function ChatSidebar({
                       }`}
                   >
                     <div className="h-12 w-12 shrink-0">
-                      {avatarUrl ? (
-                        <img src={avatarUrl} alt="" className="h-12 w-12 rounded-full object-cover" />
-                      ) : (
-                        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-100 font-semibold text-orange-500">
-                          {displayName.charAt(0).toUpperCase()}
-                        </div>
-                      )}
+                      <div className="relative flex h-12 w-12 items-center justify-center rounded-full bg-primary-100 font-semibold text-orange-500">
+                        {displayName.charAt(0).toUpperCase()}
+
+                        {avatarUrl && (
+                          <img
+                            src={avatarUrl}
+                            alt=""
+                            onError={(e) => e.currentTarget.remove()}
+                            className="absolute inset-0 h-12 w-12 rounded-full object-cover"
+                          />
+                        )}
+                      </div>
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between gap-2">
