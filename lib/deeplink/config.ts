@@ -55,7 +55,7 @@ export const deepLinkConfig = {
 
   ios: {
     /** Bundle identifier of the iOS app. */
-    bundleId: process.env.NEXT_PUBLIC_IOS_BUNDLE_ID || 'com.senyoapp.connectAfrick',
+    bundleId: process.env.NEXT_PUBLIC_IOS_BUNDLE_ID || 'com.alora.cribsTalk ',
     /** Apple Developer Team ID (prefix for the AASA appID). */
     teamId: process.env.APPLE_TEAM_ID || '5P2C27ZV83',
     /** Numeric App Store id, used to build the App Store fallback URL. */
