@@ -24,7 +24,7 @@ const SECTIONS: Section[] = [
   { id: 'retention', title: '9. Data Retention', keywords: ['retention', 'backup', 'deletion'] },
   { id: 'choices-controls', title: '10. Your Choices & Controls', keywords: ['settings', 'opt out', 'permissions'] },
   { id: 'your-rights', title: '11. Your Rights', keywords: ['access', 'erasure', 'portability'] },
-  { id: 'children', title: "12. Children's Privacy", keywords: ['children', 'coppa', 'minors'] },
+  { id: 'children', title: '12. Privacy, Safety & Child Protection', keywords: ['children', 'coppa', 'minors', 'safety', 'grooming'] },
   { id: 'safety-automation', title: '13. Safety & Automated Decisions', keywords: ['moderation', 'appeals', 'profiling'] },
   { id: 'messaging-encryption', title: '14. Messaging, Calls & Encryption', keywords: ['dm', 'calls', 'encryption'] },
   { id: 'sensitive-data', title: '15. Sensitive Data', keywords: ['biometrics', 'precise location', 'consent'] },
@@ -563,7 +563,47 @@ const PrivacyPolicyPage = () => {
               </div>
             </SectionCard>
 
-            <SectionCard id="children" title="12) Children&apos;s Privacy">
+            <SectionCard id="children" title="12) Privacy, Safety &amp; Child Protection">
+              <p>
+                CribsTalk is committed to protecting user privacy, safety, and
+                well-being, with enhanced safeguards for children and young
+                people.
+              </p>
+              <div>
+                <h3 className="mb-2 text-base font-semibold text-slate-900 dark:text-slate-100">
+                  We are committed to
+                </h3>
+                <ul className="list-disc space-y-1.5 pl-5">
+                  <li>Providing age-appropriate experiences and protections.</li>
+                  <li>Limiting the collection of children&apos;s personal information.</li>
+                  <li>Preventing bullying, exploitation, grooming, and abuse.</li>
+                  <li>Restricting inappropriate content and unsafe interactions.</li>
+                  <li>Offering parental and guardian oversight tools where applicable.</li>
+                  <li>
+                    Using moderation, reporting, and safety technologies to protect
+                    users.
+                  </li>
+                  <li>Responding promptly to safety concerns and violations.</li>
+                </ul>
+              </div>
+              <div>
+                <h3 className="mb-2 text-base font-semibold text-slate-900 dark:text-slate-100">
+                  Child Safety Commitment
+                </h3>
+                <p>
+                  Child safety is a core priority at CribsTalk. We do not tolerate
+                  content or behavior that exploits, harms, or endangers children.
+                </p>
+                <p className="mt-3">Our platform may include:</p>
+                <ul className="mt-2 list-disc space-y-1.5 pl-5">
+                  <li>Age verification measures.</li>
+                  <li>Child safety controls.</li>
+                  <li>Content moderation systems.</li>
+                  <li>Reporting and escalation tools.</li>
+                  <li>Anti-bullying and anti-grooming protections.</li>
+                  <li>Restrictions on inappropriate contact with minors.</li>
+                </ul>
+              </div>
               <p>
                 CribsTalk is not directed to children under [13/16, depending
                 on jurisdiction]. We do not knowingly collect personal
@@ -573,6 +613,22 @@ const PrivacyPolicyPage = () => {
               <p>
                 If you believe a child has provided personal information, contact
                 us so we can delete it.
+              </p>
+              <div>
+                <h3 className="mb-2 text-base font-semibold text-slate-900 dark:text-slate-100">
+                  Compliance &amp; Security
+                </h3>
+                <p>
+                  CribsTalk continuously reviews and improves its privacy,
+                  security, and safety programs. We monitor regulatory
+                  requirements, conduct risk assessments, implement industry best
+                  practices, and enhance our security controls to provide a safe
+                  and trusted experience for users worldwide.
+                </p>
+              </div>
+              <p>
+                By using CribsTalk, you agree to our Terms of Service, Privacy
+                Policy, Community Standards, and Child Safety Policy.
               </p>
             </SectionCard>
 
