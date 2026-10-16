@@ -43,6 +43,11 @@ interface PostWithAuthor {
 
 type TabId = 'posts' | 'about' | 'photos' | 'friends' | 'reels'
 type FriendStatus = 'none' | 'pending_sent' | 'pending_received' | 'friends'
+type UserProfileResponse = Omit<UserProfileWithVisibility, 'followers_count'> & {
+  followers_count?: number | null
+  follower_count?: number | null
+  profile_restricted?: boolean
+}
 
 /** Profile routes are keyed by the user's profile `id` (UUID). */
 const PROFILE_ROUTE_UUID_RE =
@@ -438,10 +443,13 @@ const UserProfilePage: React.FC = () => {
   const fetchUserProfile = async () => {
     try {
       setLoading(true)
-      const profileRes = await apiClient.get<{ data: any }>(`/api/users/${identifierApiPath}`)
+      const profileRes = await apiClient.get<{ data: UserProfileResponse }>(`/api/users/${identifierApiPath}`)
       const profileData = profileRes.data
       if (!profileData) throw new Error('Not found')
-      setProfile(profileData)
+      setProfile({
+        ...profileData,
+        followers_count: profileData.followers_count ?? profileData.follower_count ?? 0,
+      })
 
       if (profileData.profile_restricted) {
         setLoading(false)
@@ -736,8 +744,11 @@ const UserProfilePage: React.FC = () => {
                     <span className="text-content-secondary text-sm sm:text-base">@{profile.username}</span>
                   </div>
                 </div>
+
+                
+
                 {user && user.id !== profile.id && visibleFields.followersList && mutualFriendsCount > 0 && (
-                  <div className="flex items-center justify-center sm:justify-start mt-1.5 gap-2">
+                  <div className="flex items-center justify-center sm:justify-start py-2.5 gap-2">
                     <div className="flex -space-x-1.5">
                       {mutualFriends.slice(0, 3).map((f) => (
                         <div key={f.user_id} className="w-6 h-6 sm:w-7 sm:h-7 rounded-full border-2 border-white overflow-hidden">
@@ -748,14 +759,20 @@ const UserProfilePage: React.FC = () => {
                         </div>
                       ))}
                     </div>
-                    <span className="text-[12px] sm:text-[13px] text-content-secondary">{mutualFriendsCount} mutual {mutualFriendsCount === 1 ? 'friend' : 'friends'}</span>
+                    <span className="font-medium text-content text-sm">{mutualFriendsCount} mutual {mutualFriendsCount === 1 ? 'friend' : 'friends'}</span>
+
                   </div>
                 )}
-                <p className="mt-0.5 text-[14px] sm:text-[15px] text-content-secondary">
-                  <span className="font-medioum text-content">{fmt(profile.following_count)}</span> tapping in
-                </p>
+                 <div className="flex items-center justify-center sm:justify-start gap-2 ">
+                <div className="text-xs text-orange-500  bg-primary-50 border border-orange-500 rounded-full inline-block px-2 py-1">
+                  <span className="font-medium ">{fmt(profile.following_count)}</span> tapping in
+                </div>
+                <div className="text-xs text-green-500  bg-green-50 border border-green-500 rounded-full inline-block px-2 py-1 ">
+                  <span className="font-medium ">{fmt(profile.followers_count)}</span> tapped in
+                </div>
+                </div>
 
-                {profile.bio && <p className="mt-1 text-[14px] sm:text-[15px] text-content leading-snug line-clamp-1 sm:line-clamp-2 max-w-xl">{profile.bio}</p>}
+                {/* {profile.bio && <p className="mt-2 text-[14px] sm:text-[15px] text-content leading-snug line-clamp-1 sm:line-clamp-3 max-w-xl">{profile.bio}</p>} */}
 
 
               </div>
