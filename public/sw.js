@@ -22,6 +22,12 @@ self.addEventListener('push', (event) => {
   const notificationData = data.data || data.notification || data;
 
   const title = notificationData.title || 'CribsTalk';
+  if (String(notificationData.e2ee || '') === '1') {
+    notificationData.body = '🔒 New message';
+    delete notificationData.content;
+    delete notificationData.ciphertext;
+    delete notificationData.message;
+  }
   const body = notificationData.body || '';
   const typeNorm = String(
     notificationData.type || notificationData.status || notificationData.call_status || ''

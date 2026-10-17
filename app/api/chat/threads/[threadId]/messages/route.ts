@@ -17,6 +17,7 @@ import {
   viewOnceThreadPreview,
 } from '@/lib/chat/chatViewOnce'
 import { isEncodedMessage } from '@/lib/chat/messageCodec'
+import { isMessageE2eeEnabledForUser } from '@/lib/message-e2ee/flag'
 
 const MESSAGE_SELECT = `
   *,
@@ -261,6 +262,22 @@ export async function POST(request: NextRequest, context: RouteContext) {
     if (messageDenied) return messageDenied
 
     let safeContent = typeof content === 'string' ? content : ''
+    const wantsMegolm = body.e2ee_version === 2 || body.e2ee_version === '2'
+    let megolmCiphertext = ''
+    let megolmSessionId = ''
+    let megolmDeviceId = ''
+    if (wantsMegolm) {
+      if (!isMessageE2eeEnabledForUser(user.id)) {
+        return errorResponse('End-to-end encryption is not enabled for this account', 403)
+      }
+      megolmCiphertext = typeof body.ciphertext === 'string' ? body.ciphertext : ''
+      megolmSessionId = typeof body.megolm_session_id === 'string' ? body.megolm_session_id : ''
+      megolmDeviceId = typeof body.sender_device_id === 'string' ? body.sender_device_id : ''
+      if (!megolmCiphertext || !megolmSessionId || !megolmDeviceId || megolmCiphertext.length > 200_000) {
+        return errorResponse('Encrypted message is missing its ciphertext', 400)
+      }
+      safeContent = ''
+    }
     const hasAttachments = Boolean(attachments && attachments.length > 0)
     if (wantsViewOnce) {
       if (!hasAttachments || !attachmentsAreViewOnceEligible(attachments || [])) {
@@ -278,6 +295,11 @@ export async function POST(request: NextRequest, context: RouteContext) {
           view_once_kind: viewOnceKind,
         }
       : (metadata as Record<string, unknown> | null) || null
+    if (storedMetadata) {
+      delete storedMetadata.sealed
+      delete storedMetadata.e2eeKey
+      delete storedMetadata.attachmentKey
+    }
     let preview = wantsViewOnce && viewOnceKind
       ? viewOnceThreadPreview(viewOnceKind, false)
       : isEncodedMessage(safeContent)
@@ -285,6 +307,9 @@ export async function POST(request: NextRequest, context: RouteContext) {
         : safeContent.length > 100
           ? safeContent.slice(0, 97) + '...'
           : (safeContent || (hasAttachments ? 'Shared an attachment' : ''))
+    if (wantsMegolm && !(wantsViewOnce && viewOnceKind)) {
+      preview = '🔒 Encrypted message'
+    }
     const now = new Date().toISOString()
     const normalizedMessageType = message_type || 'text'
     const incomingIdentity = extractCallIdentity(metadata)
@@ -395,7 +420,16 @@ export async function POST(request: NextRequest, context: RouteContext) {
         reply_to_id: reply_to_id || null,
         ...(typeof is_forward === 'boolean' ? { is_forward } : {}),
         ...(wantsViewOnce ? { view_once: true } : {}),
-        ...(isEncodedMessage(safeContent) ? { e2ee_version: 1 } : {}),
+        ...(wantsMegolm
+          ? {
+              ciphertext: megolmCiphertext,
+              megolm_session_id: megolmSessionId,
+              sender_device_id: megolmDeviceId,
+              e2ee_version: 2,
+            }
+          : isEncodedMessage(safeContent)
+            ? { e2ee_version: 1 }
+            : {}),
       })
       .select(MESSAGE_SELECT)
       .single()

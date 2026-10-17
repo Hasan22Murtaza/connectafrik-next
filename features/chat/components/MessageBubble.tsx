@@ -583,12 +583,21 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
       const items: ChatMediaViewerItem[] = [];
       for (const att of claimed.attachments) {
         if (att.type !== "image" && att.type !== "video") continue;
-        const blob = await supabaseMessagingService.fetchViewOnceMedia(
+        let blob = await supabaseMessagingService.fetchViewOnceMedia(
           threadId,
           message.id,
           att.id,
           claimed.token
         );
+        const sealed = message.attachments?.[items.length]?.sealed;
+        if (message.e2ee_version === 2) {
+          if (!sealed?.key || !sealed.sha256) {
+            throw new Error("This message can't be read on this device");
+          }
+          const { openCla1 } = await import("@/lib/message-e2ee/cla1");
+          const opened = await openCla1(new Uint8Array(await blob.arrayBuffer()), sealed.key, sealed.sha256);
+          blob = opened.type ? opened : new Blob([await opened.arrayBuffer()], { type: sealed.plainMime || att.mimeType });
+        }
         const objectUrl = URL.createObjectURL(blob);
         viewOnceBlobUrlsRef.current.push(objectUrl);
         items.push({
@@ -1517,6 +1526,11 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                     expanded={Boolean(isExpanded) || !shouldTruncate}
                     onToggleExpand={() => toggleExpanded(message.id)}
                   />
+                ) : null}
+                {message.e2ee_locked ? (
+                  <a href="/settings?tab=security" className="mt-1 block text-[12px] underline">
+                    Link a device
+                  </a>
                 ) : null}
 
                 {canTranslate &&

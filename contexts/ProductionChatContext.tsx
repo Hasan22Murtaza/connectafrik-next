@@ -52,6 +52,14 @@ function mergeChatMessageRealtime(prev: ChatMessage, incoming: ChatMessage): Cha
     attachments: incomingEmptyAttachments ? prev.attachments : incoming.attachments,
     reactions: incomingEmptyReactions ? prev.reactions : incoming.reactions,
     sender: senderLooksStub ? prev.sender : incoming.sender,
+    content:
+      prev.e2ee_version === 2 && !prev.e2ee_locked && incoming.e2ee_locked
+        ? prev.content
+        : incoming.content,
+    e2ee_locked:
+      prev.e2ee_version === 2 && !prev.e2ee_locked && incoming.e2ee_locked
+        ? false
+        : incoming.e2ee_locked,
     view_once: Boolean(incoming.view_once || prev.view_once),
     view_once_opened: Boolean(incoming.view_once_opened || prev.view_once_opened),
     view_once_opened_at:
@@ -1739,6 +1747,43 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
       unsubscribeCallbacks.forEach(unsubscribe => unsubscribe())
     }
   }, [currentUser, openThreads, clearCallRequest, isThreadUnlocked, unlockedThreadKey, threads])
+
+  useEffect(() => {
+    if (!currentUser?.id) return
+    let cancelled = false
+    let stop = () => {}
+    void (async () => {
+      const { messageE2eeActive } = await import('@/lib/message-e2ee/status')
+      if (cancelled || !(await messageE2eeActive())) return
+      const { decryptStoredMessage, onMessageKeys } = await import('@/lib/message-e2ee/engine')
+      if (cancelled) return
+      stop = onMessageKeys(() => {
+        const locked = Object.values(messagesRef.current)
+          .flat()
+          .filter((message) => message.e2ee_locked && message.ciphertext)
+        if (locked.length === 0) return
+        void (async () => {
+          const updates = new Map<string, ChatMessage>()
+          for (const message of locked) {
+            const next = await decryptStoredMessage(message)
+            if (!next.e2ee_locked) updates.set(message.id, next)
+          }
+          if (updates.size === 0) return
+          setMessages((prev) => {
+            const copy = { ...prev }
+            for (const [threadId, list] of Object.entries(copy)) {
+              copy[threadId] = list.map((message) => updates.get(message.id) ?? message)
+            }
+            return copy
+          })
+        })()
+      })
+    })()
+    return () => {
+      cancelled = true
+      stop()
+    }
+  }, [currentUser?.id])
 
   useEffect(() => {
     if (!userId) return

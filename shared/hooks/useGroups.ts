@@ -254,6 +254,11 @@ export const useGroups = () => {
 
       if (typeof window !== 'undefined' && data.thread_id) {
         window.dispatchEvent(new CustomEvent('groupChatLeft', { detail: { threadId: data.thread_id } }))
+        if (user?.id) {
+          void import('@/lib/message-e2ee/engine')
+            .then((engine) => engine.rotateThreadSession(data.thread_id as string, user.id))
+            .catch(() => undefined)
+        }
       }
 
       toast.success('Left group successfully!')

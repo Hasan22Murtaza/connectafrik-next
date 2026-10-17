@@ -2489,7 +2489,14 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           );
         }
       }
-      toast.success("Left group");
+        void import("@/lib/message-e2ee/engine")
+          .then((engine) =>
+            currentUser?.id
+              ? engine.rotateThreadSession(threadId, currentUser.id)
+              : undefined
+          )
+          .catch(() => undefined);
+        toast.success("Left group");
       setShowParticipantsList(false);
       if (variant === "page") router.push("/chat");
     } catch (error: any) {
@@ -2505,6 +2512,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     variant,
     router,
     confirm,
+    currentUser?.id,
   ]);
 
   const isCurrentUserGroupAdmin = useMemo(() => {
@@ -2544,6 +2552,13 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           delete next[member.id];
           return next;
         });
+        void import("@/lib/message-e2ee/engine")
+          .then((engine) =>
+            currentUser?.id
+              ? engine.rotateThreadSession(threadId, currentUser.id)
+              : undefined
+          )
+          .catch(() => undefined);
         toast.success(`${member.name} removed`);
       } catch (error: any) {
         toast.error(error?.message || "Failed to remove member");
