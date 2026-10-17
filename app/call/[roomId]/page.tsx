@@ -66,6 +66,7 @@ function readAndRemoveCallBootstrap(callId: string): {
   provider?: CallMediaProviderName
   wsUrl?: string
   e2eeKey?: string
+  e2eeSealed?: boolean
 } | undefined {
   const payload = readCallBootstrap(callId)
   if (!payload) return undefined
@@ -86,13 +87,14 @@ export default function CallWindowPage() {
   )
   const [wsUrlHint, setWsUrlHint] = useState<string | undefined>(undefined)
   const [e2eeKeyHint, setE2eeKeyHint] = useState<string | undefined>(undefined)
+  const [e2eeSealedHint, setE2eeSealedHint] = useState(false)
   /** True once the same user answered this call on another device — close this ringing window. */
   const [answeredElsewhere, setAnsweredElsewhere] = useState(false)
   /** Guards against terminating when the call was accepted on THIS device. */
   const acceptedLocallyRef = useRef(false)
   const outgoingBootstrapCallIdRef = useRef<string | null>(null)
   const outgoingBootstrapPayloadRef = useRef<
-    { token?: string; provider?: CallMediaProviderName; wsUrl?: string; e2eeKey?: string } | undefined
+    { token?: string; provider?: CallMediaProviderName; wsUrl?: string; e2eeKey?: string; e2eeSealed?: boolean } | undefined
   >(undefined)
 
   const roomId = params?.roomId as string
@@ -146,6 +148,7 @@ export default function CallWindowPage() {
     setMediaProviderHint(bootstrap?.provider)
     setWsUrlHint(bootstrap?.wsUrl)
     setE2eeKeyHint(bootstrap?.e2eeKey)
+    setE2eeSealedHint(bootstrap?.e2eeSealed === true)
 
     if (!callId.trim()) {
       setCallDisplay({
@@ -456,6 +459,7 @@ export default function CallWindowPage() {
             mediaProviderHint={mediaProviderHint}
             wsUrlHint={wsUrlHint}
             e2eeKeyHint={e2eeKeyHint}
+            e2eeSealedHint={e2eeSealedHint}
           />
         ) : (
           <div className="flex flex-col items-center justify-center h-full text-white gap-3 px-4 text-center">

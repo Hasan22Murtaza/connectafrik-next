@@ -22,6 +22,7 @@ import { getSessionIdFromAccessToken } from '@/shared/utils/sessionDeviceLabel';
 import { supabaseMessagingService } from '@/features/chat/services/supabaseMessagingService';
 import { patchCallSessionWithRetry, getLatestCallSession } from '@/features/chat/services/callSessionRealtime';
 import { apiClient } from '@/lib/api-client';
+import { sealExistingCallKeyForUser } from '@/lib/call-e2ee/client';
 import { friendRequestService } from '@/features/social/services/friendRequestService';
 import {
   stopAll as stopAllRingtones,
@@ -73,6 +74,8 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
   refreshToken,
   livekitServerUrl,
   endToEndEncrypted = false,
+  sealedCall = false,
+  callMediaKey,
 }) => {
   const { session, user } = useAuth();
   const room = useRoomContext();
@@ -819,6 +822,20 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
       }
       setInvitingUserId(targetUser.id);
       try {
+        const sealPayload =
+          sealedCall && callMediaKey
+            ? await sealExistingCallKeyForUser({
+                callId: callIdRef.current || callIdHint || '',
+                mediaKeyB64: callMediaKey,
+                targetUserId: targetUser.id,
+              })
+            : sealedCall
+              ? null
+              : undefined;
+        if (sealPayload === null) {
+          toast.error('Unable to establish encrypted call.\nPlease leave and rejoin the call.');
+          return;
+        }
         await apiClient.post('/api/chat/calls/invite', {
           call_id: callIdRef.current || callIdHint || '',
           call_type: effectiveCallType,
@@ -826,6 +843,7 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
           target_user_id: targetUser.id,
           caller_name: resolvedCallerName,
           provider: 'livekit',
+          ...(sealPayload ?? {}),
         });
         setShowAddPeople(false);
         setAddPeopleSearch('');
@@ -845,6 +863,8 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
       roomIdHint,
       meetingId,
       resolvedCallerName,
+      sealedCall,
+      callMediaKey,
     ],
   );
 

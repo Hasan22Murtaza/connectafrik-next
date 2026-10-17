@@ -100,6 +100,9 @@ export interface MeetingContainerProps {
   refreshToken?: () => Promise<{ token: string; wsUrl?: string }>;
   /** LiveKit only: server URL to pass to `room.connect()` on rejoin. */
   livekitServerUrl?: string;
+  /** Set when this call's media key is sealed per device. Invites must seal that same key. */
+  sealedCall?: boolean;
+  callMediaKey?: string;
   endToEndEncrypted?: boolean;
 }
 

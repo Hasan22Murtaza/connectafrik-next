@@ -6,6 +6,8 @@ export interface CallBootstrapPayload {
   provider?: CallMediaProviderName;
   wsUrl?: string;
   e2eeKey?: string;
+  /** True when e2eeKey was sealed to this device and must not be read from the server. */
+  e2eeSealed?: boolean;
 }
 
 const BOOTSTRAP_KEY_PREFIX = 'videosdk_call_bootstrap:';

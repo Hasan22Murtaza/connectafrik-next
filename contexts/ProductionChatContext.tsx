@@ -24,6 +24,12 @@ import { openCallWindow, buildCallUrl } from '@/shared/utils/callWindow'
 import { parseCallMediaResponse, writeCallBootstrap } from '@/lib/call-media/bootstrap'
 import { generateCallE2eeKey, readCallE2eeKey } from '@/lib/call-media/e2ee-key'
 import {
+  callTokenDeviceFields,
+  ensureCallDeviceRegistered,
+  openOwnSealedCallKey,
+  prepareSealedCall,
+} from '@/lib/call-e2ee/client'
+import {
   FriendsRequiredForCallError,
   dispatchFriendsRequiredForCall,
   isFriendsRequiredForCallError,
@@ -271,6 +277,17 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
   useEffect(() => {
     callRequestsRef.current = callRequests
   }, [callRequests])
+
+  useEffect(() => {
+    if (!currentUser?.id) return
+    let cancelled = false
+    void ensureCallDeviceRegistered().catch(() => {
+      if (cancelled) return
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [currentUser?.id])
 
   useEffect(() => {
     messagesRef.current = messages
@@ -878,6 +895,9 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
       // re-resolve independently.
       const sessionProvider =
         meta.provider === 'livekit' || meta.provider === 'videosdk' ? meta.provider : undefined
+      const sealed = meta.e2ee === true || session.e2ee === true
+      const e2eeKey = sealed ? await openOwnSealedCallKey(callId) : readCallE2eeKey(meta)
+      const deviceFields = await callTokenDeviceFields()
       // Identity is derived server-side from the bearer token; do not send userId.
       const tokenRes = await fetch('/api/videosdk/token', {
         method: 'POST',
@@ -888,10 +908,12 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
         body: JSON.stringify({
           roomId,
           ...(sessionProvider ? { provider: sessionProvider } : {}),
+          ...deviceFields,
         }),
       })
       if (!tokenRes.ok) {
-        throw new Error('Failed to get call token.')
+        const payload = (await tokenRes.json().catch(() => ({}))) as { error?: string }
+        throw new Error(payload.error || 'Failed to get call token.')
       }
       const tokenData = await tokenRes.json()
       const media = parseCallMediaResponse(tokenData as Record<string, unknown>)
@@ -918,13 +940,13 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
 
       if (typeof window !== 'undefined') {
         if (token && callId) {
-          const e2eeKey = readCallE2eeKey(meta)
           try {
             writeCallBootstrap(callId, {
               token,
               provider: media.provider,
               ...(media.wsUrl ? { wsUrl: media.wsUrl } : {}),
               ...(e2eeKey ? { e2eeKey } : {}),
+              ...(sealed ? { e2eeSealed: true } : {}),
             })
           } catch { /* ignore */ }
         }
@@ -1082,6 +1104,29 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
         }
       }
 
+      const e2eeStatus = await apiClient.get<{ enabled: boolean }>('/api/call-e2ee/status')
+      let sealedCallPayload:
+        | {
+            sender_device_id: string
+            sealed_keys: Array<{
+              recipient_user_id: string
+              recipient_device_id: string
+              sealed_key: string
+            }>
+          }
+        | undefined
+      let draftedE2eeKey: string | undefined
+      let e2eeSealed = false
+      if (e2eeStatus.enabled) {
+        const prepared = await prepareSealedCall(threadId, callId)
+        draftedE2eeKey = prepared.mediaKeyB64
+        sealedCallPayload = {
+          sender_device_id: prepared.senderDeviceId,
+          sealed_keys: prepared.sealedKeys,
+        }
+        e2eeSealed = true
+      }
+
       const { data: { session } } = await supabase.auth.getSession()
       const roomPayload = {
         ...(resolvedTargetUserId && !isGroupCall
@@ -1127,7 +1172,12 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
         throw new Error('Failed to create call room. Please try again.')
       }
 
-      const draftedE2eeKey = media.provider === 'livekit' ? generateCallE2eeKey() : undefined
+      if (e2eeSealed && media.provider !== 'livekit') {
+        throw new Error('Encrypted calls require LiveKit.')
+      }
+      if (!e2eeSealed && media.provider === 'livekit') {
+        draftedE2eeKey = generateCallE2eeKey()
+      }
 
       // Persist call_sessions before opening the popup so end/missed/declined PATCH never hits 404.
       const persisted = await apiClient.post<{ session: Record<string, unknown> | null }>(
@@ -1141,7 +1191,11 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
           caller_name: currentUser?.name || 'Unknown',
           caller_avatar_url: currentUser?.avatarUrl || '',
           provider: media.provider,
-          ...(draftedE2eeKey ? { e2ee_key: draftedE2eeKey } : {}),
+          ...(e2eeSealed && sealedCallPayload
+            ? { e2ee: true, ...sealedCallPayload }
+            : draftedE2eeKey
+              ? { e2ee_key: draftedE2eeKey }
+              : {}),
         },
       )
 
@@ -1155,7 +1209,18 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
           ? sessionRow.call_id.trim()
           : callId
 
-      if (roomId !== createdRoomId) {
+      if (e2eeSealed && canonicalCallId !== callId) {
+        const returnedMeta = parseCallSessionMetadata(sessionRow?.metadata)
+        if (sessionRow?.e2ee === true || returnedMeta.e2ee === true) {
+          draftedE2eeKey = await openOwnSealedCallKey(canonicalCallId)
+        } else {
+          draftedE2eeKey = readCallE2eeKey(returnedMeta)
+          e2eeSealed = false
+        }
+      }
+
+      if (e2eeSealed || roomId !== createdRoomId) {
+        const deviceFields = await callTokenDeviceFields()
         const tokenRes = await fetch('/api/videosdk/token', {
           method: 'POST',
           headers: {
@@ -1165,12 +1230,20 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
           body: JSON.stringify({
             roomId,
             provider: media.provider,
+            ...deviceFields,
           }),
         })
-        if (tokenRes.ok) {
-          const tokenData = (await tokenRes.json()) as Record<string, unknown>
-          const reminted = parseCallMediaResponse(tokenData)
+        const tokenPayload = (await tokenRes.json().catch(() => ({}))) as { error?: string; token?: string }
+        if (!tokenRes.ok) {
+          if (e2eeSealed) {
+            throw new Error(tokenPayload.error || 'Unable to establish encrypted call.\nPlease leave and rejoin the call.')
+          }
+        } else {
+          const reminted = parseCallMediaResponse(tokenPayload as Record<string, unknown>)
           if (reminted.token) token = reminted.token
+          else if (e2eeSealed) {
+            throw new Error('Unable to establish encrypted call.\nPlease leave and rejoin the call.')
+          }
         }
       }
 
@@ -1193,13 +1266,16 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
 
       if (typeof window !== 'undefined') {
         if (token && canonicalCallId) {
-          const e2eeKey = readCallE2eeKey(parseCallSessionMetadata(sessionRow?.metadata))
+          const e2eeKey = e2eeSealed
+            ? draftedE2eeKey
+            : readCallE2eeKey(parseCallSessionMetadata(sessionRow?.metadata)) || draftedE2eeKey
           try {
             writeCallBootstrap(canonicalCallId, {
               token,
               provider: media.provider,
               ...(media.wsUrl ? { wsUrl: media.wsUrl } : {}),
               ...(e2eeKey ? { e2eeKey } : {}),
+              ...(e2eeSealed ? { e2eeSealed: true } : {}),
             })
           } catch {
             /* ignore quota or private mode */
