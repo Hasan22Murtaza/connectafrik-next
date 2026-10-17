@@ -395,7 +395,6 @@ export async function POST(request: NextRequest, context: RouteContext) {
         reply_to_id: reply_to_id || null,
         ...(typeof is_forward === 'boolean' ? { is_forward } : {}),
         ...(wantsViewOnce ? { view_once: true } : {}),
-        ...(isEncodedMessage(safeContent) ? { e2ee_version: 1 } : {}),
       })
       .select(MESSAGE_SELECT)
       .single()

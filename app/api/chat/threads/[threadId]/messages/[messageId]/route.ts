@@ -116,7 +116,6 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       content: safeContent,
       updated_at: now,
       is_edited: true,
-      ...(isEncodedMessage(safeContent) ? { e2ee_version: 1 } : {}),
     }
     if (typeof isForwardFlag === 'boolean') {
       updateRow.is_forward = isForwardFlag
