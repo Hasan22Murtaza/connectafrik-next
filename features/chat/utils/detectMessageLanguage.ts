@@ -1,4 +1,7 @@
-import type { MessageTranslationTargetCode } from '@/features/chat/constants/messageTranslationLanguages'
+import {
+  MESSAGE_TRANSLATION_TARGET_LANGUAGES,
+  type MessageTranslationTargetCode,
+} from '@/features/chat/constants/messageTranslationLanguages'
 import { stripMarkdown } from '@/features/chat/richtext/markdown'
 
 /** Very short / ambiguous Latin chat tokens we treat as English. */
@@ -68,6 +71,9 @@ const SWAHILI_MARKERS =
   /\b(habari|asante|karibu|jambo|sawa|tafadhali|ndiyo|hapana|nina|naomba|rafiki|leo|kesho|asubuhi|usiku)\b/i
 
 const ARABIC_SCRIPT = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF]/
+const CJK_SCRIPT = /[\u4E00-\u9FFF]/
+const DEVANAGARI_SCRIPT = /[\u0900-\u097F]/
+const ETHIOPIC_SCRIPT = /[\u1200-\u137F]/
 const LATIN_LETTERS = /[A-Za-z\u00C0-\u024F]/
 
 function normalizeForDetection(raw: string): string {
@@ -96,22 +102,16 @@ export function detectChatMessageLanguage(
   const text = normalizeForDetection(raw)
   if (!text) return null
 
-  if (ARABIC_SCRIPT.test(text) && !LATIN_LETTERS.test(text.replace(ARABIC_SCRIPT, ''))) {
-    return 'ar'
-  }
+  if (CJK_SCRIPT.test(text)) return 'zh'
+  if (DEVANAGARI_SCRIPT.test(text)) return 'hi'
+  if (ETHIOPIC_SCRIPT.test(text)) return 'am'
   if (ARABIC_SCRIPT.test(text)) return 'ar'
 
   if (!LATIN_LETTERS.test(text)) return null
 
-  const scores: Record<MessageTranslationTargetCode, number> = {
-    en: 0,
-    fr: 0,
-    es: 0,
-    pt: 0,
-    de: 0,
-    ar: 0,
-    sw: 0,
-  }
+  const scores = Object.fromEntries(
+    MESSAGE_TRANSLATION_TARGET_LANGUAGES.map((language) => [language.code, 0])
+  ) as Record<MessageTranslationTargetCode, number>
 
   if (FRENCH_MARKERS.test(text)) scores.fr += 3
   if (SPANISH_MARKERS.test(text)) scores.es += 3

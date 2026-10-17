@@ -68,6 +68,7 @@ import {
 } from '@/shared/icons';
 import { usePathname, useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
+import { createPortal } from "react-dom";
 import React, {
   Fragment,
   useCallback,
@@ -110,6 +111,7 @@ import {
 } from "@/features/chat/utils/threadHelpers";
 import { useActiveCallSession } from "@/features/chat/hooks/useActiveCallSession";
 import { useMessageTranslations } from "@/features/chat/hooks/useMessageTranslations";
+import { messageTranslationLanguageLabel } from "@/features/chat/constants/messageTranslationLanguages";
 
 interface ChatWindowProps {
   threadId: string;
@@ -401,6 +403,24 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     overrides,
     defaultOneClickLanguage,
   } = useMessageTranslations(threadId, displayMessages, currentUser?.id);
+
+  const [translateHintLanguage, setTranslateHintLanguage] = useState<string | null>(null);
+  const translateHintTimerRef = useRef<number | null>(null);
+
+  const showTranslateHint = useCallback((label: string) => {
+    setTranslateHintLanguage(label);
+    if (translateHintTimerRef.current) window.clearTimeout(translateHintTimerRef.current);
+    translateHintTimerRef.current = window.setTimeout(() => {
+      setTranslateHintLanguage(null);
+      translateHintTimerRef.current = null;
+    }, 6500);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (translateHintTimerRef.current) window.clearTimeout(translateHintTimerRef.current);
+    };
+  }, []);
 
   const forwardCandidateThreads = useMemo(() => {
     return threads
@@ -2984,7 +3004,21 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
             <ChatTranslationMenu
               value={receiveLanguage}
-              onChange={(language) => void setReceiveLanguage(language)}
+              onChange={(language) => {
+                void (async () => {
+                  const saved = await setReceiveLanguage(language);
+                  if (!saved) return;
+                  if (language === "off") {
+                    setTranslateHintLanguage(null);
+                    if (translateHintTimerRef.current) {
+                      window.clearTimeout(translateHintTimerRef.current);
+                      translateHintTimerRef.current = null;
+                    }
+                    return;
+                  }
+                  showTranslateHint(messageTranslationLanguageLabel(language));
+                })();
+              }}
             />
 
             <div className="relative">
@@ -3267,6 +3301,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                       activeTranslationLanguage={getMessageLanguage(message.id, isOwn)}
                       showOriginalOverride={overrides[message.id]?.showOriginal ?? false}
                       defaultTranslateLanguage={defaultOneClickLanguage}
+                      perMessageTranslateEnabled={receiveLanguage !== "off"}
                       onTranslateMessage={(language) =>
                         void translateOneMessage(message.id, language)
                       }
@@ -3288,6 +3323,22 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
             <div aria-hidden="true" />
           </div>
 
+          {translateHintLanguage && typeof document !== "undefined"
+            ? createPortal(
+                <div
+                  role="status"
+                  className="pointer-events-none fixed bottom-4 right-4 z-[260] w-[min(340px,calc(100vw-2rem))] rounded-2xl bg-white px-4 py-3.5 text-left shadow-[0_8px_28px_rgba(15,23,42,0.16)] ring-1 ring-black/[0.06] animate-[chatFadeIn_160ms_ease-out] dark:bg-surface dark:ring-border"
+                >
+                  <p className="text-[15px] font-semibold leading-snug text-[#111827] dark:text-content">
+                    Translate button → {translateHintLanguage}
+                  </p>
+                  <p className="mt-1 text-[14px] leading-snug text-[#1f2937] dark:text-content-secondary">
+                    Tap “Translate” under any message to translate just that message.
+                  </p>
+                </div>,
+                document.body
+              )
+            : null}
           {showScrollToBottom ? (
             <button
               type="button"

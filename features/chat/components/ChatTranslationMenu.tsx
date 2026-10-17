@@ -48,7 +48,7 @@ export default function ChatTranslationMenu({
         } disabled:cursor-not-allowed disabled:opacity-40`}
         aria-expanded={open}
         aria-haspopup="menu"
-        aria-label="Receive messages in another language"
+        aria-label="Translate into another language"
         title="Translate messages"
       >
         <Globe className="h-5 w-5" />
@@ -57,11 +57,11 @@ export default function ChatTranslationMenu({
       {open ? (
         <div
           role="menu"
-          className="absolute right-0 top-full z-50 mt-1 p-1 max-h-72 min-w-[220px] overflow-y-auto rounded-xl border border-border bg-surface py-2 shadow-xl animate-[chatFadeIn_140ms_ease-out]"
+          className="absolute right-0 top-full z-50 mt-1 max-h-72 w-56 overflow-y-auto rounded-xl border border-border bg-surface py-1 shadow-xl animate-[chatFadeIn_140ms_ease-out]"
         >
-          <div className="px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-wide text-content-tertiary">
-            Receive messages in...
-          </div>
+          <p className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-content-tertiary">
+            Translate into…
+          </p>
           {MESSAGE_TRANSLATION_LANGUAGES.map((language) => {
             const selected = value === language.code
             return (
@@ -74,7 +74,7 @@ export default function ChatTranslationMenu({
                   onChange(language.code)
                   setOpen(false)
                 }}
-                className={`flex w-full items-center px-3 rounded-md py-2 text-left text-[13px] transition hover:bg-surface-hover ${
+                className={`w-full px-3 py-1.5 text-left text-sm transition hover:bg-surface-hover ${
                   selected ? 'font-medium text-primary-600' : 'text-content'
                 }`}
               >

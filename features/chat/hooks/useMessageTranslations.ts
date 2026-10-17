@@ -1,19 +1,13 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { apiClient } from '@/lib/api-client'
 import { useProfile } from '@/shared/hooks/useProfile'
+import { type ChatMessage } from '@/features/chat/services/supabaseMessagingService'
 import {
-  chatUserIdsEqual,
-  getChatMessageAuthorId,
-  type ChatMessage,
-} from '@/features/chat/services/supabaseMessagingService'
-import {
-  messageTranslationLanguageLabel,
   type MessageTranslationLanguageCode,
   type MessageTranslationTargetCode,
 } from '@/features/chat/constants/messageTranslationLanguages'
-import { shouldOfferMessageTranslate } from '@/features/chat/utils/detectMessageLanguage'
 import { toast } from 'react-hot-toast'
 
 type TranslationEntry = {
@@ -46,8 +40,8 @@ function translationKey(messageId: string, language: MessageTranslationTargetCod
 
 export function useMessageTranslations(
   threadId: string,
-  messages: ChatMessage[],
-  currentUserId?: string | null
+  _messages: ChatMessage[],
+  _currentUserId?: string | null
 ) {
   const { profile, updateProfile } = useProfile()
   const receiveLanguage: MessageTranslationLanguageCode =
@@ -64,22 +58,19 @@ export function useMessageTranslations(
 
   const setReceiveLanguage = useCallback(
     async (language: MessageTranslationLanguageCode) => {
+      if (language === receiveLanguage) return true
       const { error } = await updateProfile({ message_translation_language: language })
       if (error) {
         toast.error('Could not save translation preference')
-        return
+        return false
       }
       settledRef.current.clear()
       inFlightRef.current.clear()
       setTranslations({})
       setOverrides({})
-      toast.success(
-        language === 'off'
-          ? 'Showing original messages'
-          : `Receiving messages in ${messageTranslationLanguageLabel(language)}`
-      )
+      return true
     },
-    [updateProfile]
+    [receiveLanguage, updateProfile]
   )
 
   useEffect(() => {
@@ -168,47 +159,6 @@ export function useMessageTranslations(
     [threadId]
   )
 
-  const incomingMessages = useMemo(() => {
-    return messages.filter((message) => {
-      if (!isTextMessage(message)) return false
-      if (!currentUserId) return true
-      return !chatUserIdsEqual(getChatMessageAuthorId(message), currentUserId)
-    })
-  }, [messages, currentUserId])
-
-  const autoTranslateSignature = useMemo(() => {
-    if (receiveLanguage === 'off') return ''
-    return incomingMessages
-      .map((m) => m.id)
-      .sort()
-      .join(',')
-  }, [incomingMessages, receiveLanguage])
-
-  useEffect(() => {
-    if (receiveLanguage === 'off') return
-    if (!autoTranslateSignature) return
-
-    const missing = incomingMessages
-      .filter((message) => {
-        const key = translationKey(message.id, receiveLanguage)
-        if (settledRef.current.has(key) || inFlightRef.current.has(key)) return false
-        if (translationsRef.current[message.id]?.language === receiveLanguage) {
-          settledRef.current.add(key)
-          return false
-        }
-        // Already in target language — no API call
-        if (!shouldOfferMessageTranslate(message.content || '', receiveLanguage)) {
-          settledRef.current.add(key)
-          return false
-        }
-        return true
-      })
-      .map((m) => m.id)
-
-    if (missing.length === 0) return
-    void requestTranslations(missing, receiveLanguage)
-  }, [receiveLanguage, autoTranslateSignature, incomingMessages, requestTranslations])
-
   const translateOneMessage = useCallback(
     async (messageId: string, targetLanguage: MessageTranslationTargetCode) => {
       setOverrides((prev) => ({
@@ -247,13 +197,10 @@ export function useMessageTranslations(
   )
 
   const getMessageLanguage = useCallback(
-    (messageId: string, isOwnMessage: boolean): MessageTranslationTargetCode | null => {
-      const override = overrides[messageId]
-      if (override) return override.language
-      if (!isOwnMessage && receiveLanguage !== 'off') return receiveLanguage
-      return null
+    (messageId: string, _isOwnMessage: boolean): MessageTranslationTargetCode | null => {
+      return overrides[messageId]?.language ?? null
     },
-    [overrides, receiveLanguage]
+    [overrides]
   )
 
   const getDisplayContent = useCallback(

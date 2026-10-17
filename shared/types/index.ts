@@ -1,3 +1,5 @@
+import type { MessageTranslationLanguageCode } from '@/features/chat/constants/messageTranslationLanguages'
+
 export interface User {
   id: string
   email: string
@@ -72,8 +74,8 @@ export interface Profile {
   two_factor_enabled?: boolean
   login_alerts?: boolean
   data_download_requested?: boolean
-  /** Incoming chat messages auto-translate target; `off` shows originals. */
-  message_translation_language?: 'off' | 'en' | 'fr' | 'es' | 'pt' | 'de' | 'ar' | 'sw'
+  /** Chat translate target. `off` is “My language (default)” and leaves messages as written. */
+  message_translation_language?: MessageTranslationLanguageCode
 }
 
 export interface UserProfile {

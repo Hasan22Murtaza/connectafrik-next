@@ -54,11 +54,7 @@ import { TbMoodPlus } from "react-icons/tb";
 import { useRouter } from "next/navigation";
 import { apiClient } from "@/lib/api-client";
 import ReactionsModal, { type ReactionsModalGroup } from "@/shared/components/ReactionsModal";
-import {
-  messageTranslationLanguageLabel,
-  type MessageTranslationTargetCode,
-} from "@/features/chat/constants/messageTranslationLanguages";
-import { shouldOfferMessageTranslate } from "@/features/chat/utils/detectMessageLanguage";
+import { type MessageTranslationTargetCode } from "@/features/chat/constants/messageTranslationLanguages";
 import MessageAttachments from "./MessageAttachments";
 import ViewOncePlaceholder from "./ViewOncePlaceholder";
 import ChatMediaViewer, { type ChatMediaViewerItem } from "./ChatMediaViewer";
@@ -237,6 +233,8 @@ interface MessageBubbleProps {
   activeTranslationLanguage?: MessageTranslationTargetCode | null;
   showOriginalOverride?: boolean;
   defaultTranslateLanguage?: MessageTranslationTargetCode;
+  /** When a receive language is chosen, each message can be translated on its own. */
+  perMessageTranslateEnabled?: boolean;
   onTranslateMessage?: (language: MessageTranslationTargetCode) => void;
   onToggleShowOriginal?: () => void;
   isUploading?: boolean;
@@ -278,6 +276,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   activeTranslationLanguage = null,
   showOriginalOverride = false,
   defaultTranslateLanguage = "en",
+  perMessageTranslateEnabled = false,
   onTranslateMessage,
   onToggleShowOriginal,
   isUploading = false,
@@ -480,13 +479,14 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
     senderName.length > 28 ? `Message ${senderName.slice(0, 26)}...` : `Message ${senderName}`;
   const canTranslate =
     Boolean(onTranslateMessage) &&
-    !isOwnMessage &&
+    perMessageTranslateEnabled &&
     !isDeleted &&
     (message.message_type || "text") === "text" &&
     Boolean((message.content || "").trim());
-  const offerTranslateLink =
-    canTranslate &&
-    shouldOfferMessageTranslate(message.content || "", defaultTranslateLanguage);
+  const offerTranslateLink = canTranslate;
+  const translateActionClass = `inline-flex items-center gap-1 text-[11px] font-medium hover:underline ${
+    isOwnMessage ? "text-white" : "text-primary-600"
+  }`;
   const showOverflowMenu =
     canEditMessage ||
     canDeleteForMe ||
@@ -1530,11 +1530,12 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                       !translationDisplay?.isTranslated &&
                       !showOriginalOverride)) ? (
                   <div className="mt-1 flex items-center gap-1.5">
-                    {isTranslating ||
-                      (activeTranslationLanguage &&
-                        !translationDisplay?.isTranslated &&
-                        !showOriginalOverride) ? (
-                      <span className="inline-flex items-center gap-1 text-[11px] text-content-tertiary">
+                    {isTranslating ? (
+                      <span
+                        className={`inline-flex items-center gap-1 text-[11px] ${
+                          isOwnMessage ? "text-white/85" : "text-content-tertiary"
+                        }`}
+                      >
                         <Loader2 className="h-3 w-3 animate-spin" />
                         Translating…
                       </span>
@@ -1545,7 +1546,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                           e.stopPropagation();
                           onToggleShowOriginal?.();
                         }}
-                        className="inline-flex items-center gap-1 text-[11px] font-medium text-primary-600 hover:underline"
+                        className={translateActionClass}
                       >
                         <Languages className="h-3 w-3" />
                         Show original
@@ -1557,7 +1558,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                           e.stopPropagation();
                           onToggleShowOriginal?.();
                         }}
-                        className="inline-flex items-center gap-1 text-[11px] font-medium text-primary-600 hover:underline"
+                        className={translateActionClass}
                       >
                         <Languages className="h-3 w-3" />
                         Show translation
@@ -1569,11 +1570,10 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                           e.stopPropagation();
                           onTranslateMessage?.(defaultTranslateLanguage);
                         }}
-                        className="inline-flex items-center gap-1 text-[11px] font-medium text-primary-600 hover:underline"
+                        className={translateActionClass}
                       >
                         <Languages className="h-3 w-3" />
-                        Translate to{" "}
-                        {messageTranslationLanguageLabel(defaultTranslateLanguage)}
+                        Translate
                       </button>
                     ) : null}
                   </div>
