@@ -1,11 +1,12 @@
 'use client'
 
-import React, { useEffect, useRef, useState } from 'react'
-import { Check, Copy, Loader2, Lock, Phone, X } from '@/shared/icons'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
+import { Check, Copy, Loader2, Lock, Phone, RefreshCw, X } from '@/shared/icons'
 import Portal from '@/shared/components/ui/Portal'
 import { useAuth } from '@/contexts/AuthContext'
 import { messageE2eeActive } from '@/lib/message-e2ee/status'
 import { formatSafetyNumber, friendlySafetyError } from '@/lib/message-e2ee/safety'
+import { linkQrDataUrl } from '@/lib/message-e2ee/qr'
 
 type DeviceStatus = { deviceId: string; ownsIdentity: boolean; payload: string }
 
@@ -23,6 +24,17 @@ type MessageEncryptionModalProps = {
   showSafetyLookup?: boolean
 }
 
+type LinkPhase =
+  | 'starting'
+  | 'ready'
+  | 'waiting'
+  | 'success'
+  | 'failed'
+  | 'expired'
+  | 'qr-error'
+
+const QR_TTL_MS = 5 * 60 * 1000
+
 export function MessageEncryptionModal({
   open,
   onClose,
@@ -35,6 +47,7 @@ export function MessageEncryptionModal({
   const [enabled, setEnabled] = useState<boolean | null>(null)
   const [status, setStatus] = useState<DeviceStatus | null>(null)
   const [qrUrl, setQrUrl] = useState('')
+  const [qrError, setQrError] = useState('')
   const [paste, setPaste] = useState('')
   const [manualUserId, setManualUserId] = useState('')
   const [safetyGroups, setSafetyGroups] = useState<string[] | null>(null)
@@ -45,25 +58,130 @@ export function MessageEncryptionModal({
   const [notice, setNotice] = useState('')
   const [copied, setCopied] = useState(false)
   const [showDevices, setShowDevices] = useState(purpose === 'link')
+  const [linkPhase, setLinkPhase] = useState<LinkPhase>('starting')
+  const [keysReady, setKeysReady] = useState(false)
+  const [expiresAt, setExpiresAt] = useState(0)
+  const [remainingSec, setRemainingSec] = useState(0)
   const wasOwner = useRef<boolean | null>(null)
   const payloadRef = useRef('')
   const onCloseRef = useRef(onClose)
+  const sessionGen = useRef(0)
   onCloseRef.current = onClose
 
   const peerId = otherUserId?.trim() || ''
   const peerLabel = otherName?.trim() || 'the other person'
 
+  const resetTransient = useCallback(() => {
+    setPaste('')
+    setError('')
+    setNotice('')
+    setCopied(false)
+    setSafetyError('')
+    setSafetyGroups(null)
+    setQrUrl('')
+    setQrError('')
+    setStatus(null)
+    setKeysReady(false)
+    setLinkPhase('starting')
+    setExpiresAt(0)
+    setRemainingSec(0)
+    setShowDevices(purpose === 'link')
+    wasOwner.current = null
+    payloadRef.current = ''
+  }, [purpose])
+
+  const renderQr = useCallback(async (payload: string, gen: number) => {
+    try {
+      const url = await linkQrDataUrl(payload)
+      if (gen !== sessionGen.current) return
+      payloadRef.current = payload
+      setQrUrl(url)
+      setQrError('')
+      setExpiresAt(Date.now() + QR_TTL_MS)
+      setRemainingSec(Math.floor(QR_TTL_MS / 1000))
+      setLinkPhase((prev) => (prev === 'success' ? prev : 'ready'))
+    } catch {
+      if (gen !== sessionGen.current) return
+      setQrUrl('')
+      setQrError('Unable to generate QR code. Please try again.')
+      setLinkPhase('qr-error')
+    }
+  }, [])
+
+  const prepareLinkSession = useCallback(
+    async (opts?: { forceQr?: boolean }) => {
+      if (!user?.id) return
+      const gen = ++sessionGen.current
+      setError('')
+      setQrError('')
+      setNotice('')
+      setKeysReady(false)
+      setLinkPhase((prev) => (prev === 'success' ? prev : 'starting'))
+
+      let renderedPayload = ''
+      try {
+        const engine = await import('@/lib/message-e2ee/engine')
+        const local = engine.localLinkDeviceInfo(user.id)
+        if (gen !== sessionGen.current) return
+        setStatus(local)
+        wasOwner.current = local.ownsIdentity
+
+        if (opts?.forceQr || payloadRef.current !== local.payload) {
+          await renderQr(local.payload, gen)
+          if (payloadRef.current === local.payload) renderedPayload = local.payload
+        } else {
+          renderedPayload = local.payload
+          setExpiresAt(Date.now() + QR_TTL_MS)
+          setRemainingSec(Math.floor(QR_TTL_MS / 1000))
+          setLinkPhase((prev) => (prev === 'success' || prev === 'qr-error' ? prev : 'ready'))
+        }
+
+        const next = await engine.encryptionDeviceStatus(user.id)
+        if (gen !== sessionGen.current) return
+        if (wasOwner.current === false && next.ownsIdentity) {
+          setNotice('Device linked successfully')
+          setLinkPhase('success')
+        } else {
+          setLinkPhase((prev) => {
+            if (prev === 'success' || prev === 'qr-error' || prev === 'expired') return prev
+            return next.ownsIdentity ? 'ready' : 'waiting'
+          })
+        }
+        wasOwner.current = next.ownsIdentity
+        setStatus(next)
+        setKeysReady(true)
+        if (payloadRef.current !== next.payload) {
+          await renderQr(next.payload, gen)
+        }
+      } catch (err) {
+        if (gen !== sessionGen.current) return
+        const message = err instanceof Error ? err.message : ''
+        setKeysReady(false)
+        // Local QR can still be shown while crypto bootstrap retries.
+        if (renderedPayload || payloadRef.current) {
+          setLinkPhase((prev) => (prev === 'qr-error' ? prev : 'waiting'))
+          setError(
+            message && !/^off$/i.test(message)
+              ? `${message} Keep this window open and try again if linking fails.`
+              : 'Still preparing encryption on this browser. Keep this window open.',
+          )
+          return
+        }
+        setLinkPhase('failed')
+        setError(
+          message && !/^off$/i.test(message)
+            ? message
+            : 'Device linking failed. Your encryption keys were not changed.',
+        )
+      }
+    },
+    [user?.id, renderQr],
+  )
+
   useEffect(() => {
     if (!open) {
-      setPaste('')
-      setError('')
-      setNotice('')
-      setCopied(false)
-      setSafetyError('')
-      setSafetyGroups(null)
-      setShowDevices(purpose === 'link')
-      wasOwner.current = null
-      payloadRef.current = ''
+      sessionGen.current += 1
+      resetTransient()
       return
     }
 
@@ -75,32 +193,30 @@ export function MessageEncryptionModal({
       if (cancelled) return
       setEnabled(on)
       if (!on || !user?.id) return
+
       try {
         const engine = await import('@/lib/message-e2ee/engine')
-        const applyStatus = async () => {
-          const next = await engine.encryptionDeviceStatus(user.id)
-          if (cancelled) return
-          if (wasOwner.current === false && next.ownsIdentity) {
-            setNotice('This browser is linked. New messages can be read here.')
-          }
-          wasOwner.current = next.ownsIdentity
-          setStatus(next)
-          if (payloadRef.current !== next.payload) {
-            const QRCode = (await import('qrcode')).default
-            const url = await QRCode.toDataURL(next.payload, {
-              margin: 1,
-              width: 280,
-              color: { dark: '#111111', light: '#ffffff' },
-            })
-            if (cancelled) return
-            payloadRef.current = next.payload
-            setQrUrl(url)
-          }
-        }
-        await applyStatus()
+        await prepareLinkSession({ forceQr: true })
+        if (cancelled) return
+
         stopKeys = engine.onMessageKeys(() => {
-          void applyStatus()
+          void (async () => {
+            try {
+              const next = await engine.encryptionDeviceStatus(user.id)
+              if (cancelled) return
+              if (wasOwner.current === false && next.ownsIdentity) {
+                setNotice('Device linked successfully')
+                setLinkPhase('success')
+              }
+              wasOwner.current = next.ownsIdentity
+              setStatus(next)
+              setKeysReady(true)
+            } catch {
+              // Keep the existing QR; pairing can still be retried.
+            }
+          })()
         })
+
         if (peerId && purpose === 'encryption') {
           setSafetyBusy(true)
           try {
@@ -118,6 +234,7 @@ export function MessageEncryptionModal({
       } catch (err) {
         if (!cancelled) {
           const message = err instanceof Error ? err.message : ''
+          setLinkPhase('failed')
           setError(
             message && !/^off$/i.test(message)
               ? message
@@ -134,23 +251,39 @@ export function MessageEncryptionModal({
 
     return () => {
       cancelled = true
+      sessionGen.current += 1
       stopKeys()
       window.removeEventListener('keydown', onKey)
     }
-  }, [open, user?.id, peerId, purpose])
+  }, [open, user?.id, peerId, purpose, prepareLinkSession, resetTransient])
+
+  useEffect(() => {
+    if (!open || !expiresAt || linkPhase === 'success' || linkPhase === 'qr-error') return
+    const tick = () => {
+      const left = Math.max(0, Math.ceil((expiresAt - Date.now()) / 1000))
+      setRemainingSec(left)
+      if (left <= 0) setLinkPhase('expired')
+    }
+    tick()
+    const id = window.setInterval(tick, 1000)
+    return () => window.clearInterval(id)
+  }, [open, expiresAt, linkPhase])
 
   const link = async (payload: string) => {
     if (!user?.id) return
     setBusy('link')
     setError('')
     setNotice('')
+    setLinkPhase('waiting')
     try {
       const engine = await import('@/lib/message-e2ee/engine')
       await engine.linkDeviceFromPayload(user.id, payload.trim())
       setPaste('')
-      setNotice('Device linked. It can read messages sent after this.')
+      setNotice('Device linked successfully')
+      setLinkPhase('success')
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not link that device')
+      setLinkPhase('failed')
+      setError(err instanceof Error ? err.message : 'Device linking failed. Your encryption keys were not changed.')
     } finally {
       setBusy('')
     }
@@ -186,6 +319,10 @@ export function MessageEncryptionModal({
     }
   }
 
+  const retryQr = () => {
+    void prepareLinkSession({ forceQr: true })
+  }
+
   if (!open) return null
 
   const title = purpose === 'link' ? 'Link a device' : 'End-to-end encrypted'
@@ -198,11 +335,34 @@ export function MessageEncryptionModal({
         ? `Messages with ${peerLabel} are encrypted on your devices. Not even CribsTalk can read them.`
         : 'New messages and files are encrypted on your devices. Not even CribsTalk can read them.'
 
+  const phaseHint = (() => {
+    switch (linkPhase) {
+      case 'starting':
+        return 'Preparing secure device linking…'
+      case 'waiting':
+        return keysReady
+          ? 'Waiting for your phone…'
+          : 'Establishing secure connection…'
+      case 'success':
+        return 'Device linked successfully'
+      case 'failed':
+        return 'Device linking failed. Your encryption keys were not changed.'
+      case 'expired':
+        return 'This QR code has expired.'
+      case 'qr-error':
+        return 'Unable to generate QR code'
+      default:
+        return status?.ownsIdentity
+          ? 'Scan this QR code using CribsTalk on your phone.'
+          : 'Scan this QR code with CribsTalk Mobile, or share the device id with a trusted browser.'
+    }
+  })()
+
   const deviceIdRow = (
     <div className="flex items-center justify-center gap-1.5 text-sm text-content">
       <span>
-        This device:{' '}
-        <span className="font-medium tracking-wide">{status?.deviceId || 'Starting…'}</span>
+        Device ID:{' '}
+        <span className="font-medium tracking-wide">{status?.deviceId || 'Preparing…'}</span>
       </span>
       {status?.deviceId ? (
         <button
@@ -218,36 +378,92 @@ export function MessageEncryptionModal({
     </div>
   )
 
+  const qrVisual = (() => {
+    if (linkPhase === 'qr-error' || qrError) {
+      return (
+        <div className="flex h-[200px] w-[200px] flex-col items-center justify-center gap-3 rounded-xl bg-surface-secondary px-3 text-center">
+          <p className="text-sm font-medium text-content">Unable to generate QR code</p>
+          <p className="text-xs text-content-secondary">Please try again.</p>
+          <button type="button" onClick={retryQr} className="btn-secondary min-h-9 rounded-[12px] px-3 text-sm">
+            Retry
+          </button>
+        </div>
+      )
+    }
+    if (linkPhase === 'expired') {
+      return (
+        <div className="flex h-[200px] w-[200px] flex-col items-center justify-center gap-3 rounded-xl bg-surface-secondary px-3 text-center">
+          <p className="text-sm font-medium text-content">QR expired</p>
+          <button
+            type="button"
+            onClick={retryQr}
+            className="btn-secondary inline-flex min-h-9 items-center gap-1.5 rounded-[12px] px-3 text-sm"
+          >
+            <RefreshCw className="h-3.5 w-3.5" />
+            Generate new QR
+          </button>
+        </div>
+      )
+    }
+    if (qrUrl) {
+      return (
+        <img
+          src={qrUrl}
+          alt="Device linking code"
+          className="h-[200px] w-[200px] rounded-xl bg-white p-2"
+        />
+      )
+    }
+    return (
+      <div className="flex h-[200px] w-[200px] flex-col items-center justify-center gap-2 rounded-xl bg-surface-secondary">
+        <Loader2 className="h-6 w-6 animate-spin text-content-tertiary" />
+        <p className="px-3 text-center text-xs text-content-secondary">Preparing secure device linking…</p>
+      </div>
+    )
+  })()
+
   const qrBlock = (
     <div className="space-y-3">
-      <div className="flex flex-col items-center gap-2">
-        {qrUrl ? (
-          <img
-            src={qrUrl}
-            alt="Device linking code"
-            className="h-[200px] w-[200px] rounded-xl bg-white p-2"
-          />
-        ) : (
-          <div className="flex h-[200px] w-[200px] items-center justify-center rounded-xl bg-surface-secondary">
-            <Loader2 className="h-6 w-6 animate-spin text-content-tertiary" />
-          </div>
-        )}
-        {deviceIdRow}
+      <div className="space-y-2">
+        <div className="flex flex-col items-center gap-2">
+          {qrVisual}
+          {linkPhase === 'ready' || linkPhase === 'waiting' ? (
+            <p className="text-xs text-content-tertiary">
+              {remainingSec > 0 ? `Code refreshes in ${Math.floor(remainingSec / 60)}:${String(remainingSec % 60).padStart(2, '0')}` : null}
+            </p>
+          ) : null}
+          {/* {(linkPhase === 'ready' || linkPhase === 'waiting' || linkPhase === 'failed') && qrUrl ? (
+            <button
+              type="button"
+              onClick={retryQr}
+              className="inline-flex items-center gap-1.5 text-sm text-content-secondary underline-offset-2 hover:underline"
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+              Generate new QR
+            </button>
+          ) : null} */}
+          {linkPhase === 'failed' ? (
+            <button type="button" onClick={retryQr} className="btn-secondary min-h-10 rounded-[12px] px-4 text-sm">
+              Try again
+            </button>
+          ) : null}
+        </div>
       </div>
 
       <div className="space-y-2 rounded-2xl bg-surface-secondary/70 px-3 py-3">
-        <p className="text-sm font-medium text-content">Web browser</p>
+        <p className="text-sm font-medium text-content">Or link another browser</p>
         <p className="text-sm leading-5 text-content-secondary">
           {status?.ownsIdentity
-            ? 'Paste the other browser’s device id below. No phone scan needed.'
+            ? 'Paste the other browser’s device id below. Device id alone is not authentication — this browser must already hold your encryption keys.'
             : 'On a browser that already works, open Link a device and paste this device id.'}
         </p>
+        {deviceIdRow}
         {status?.ownsIdentity ? (
           <>
             <input
               value={paste}
               onChange={(event) => setPaste(event.target.value)}
-              placeholder="Paste other device id"
+              placeholder="Paste another device ID"
               className="min-h-11 w-full rounded-[14px] border border-line bg-surface px-3 text-sm text-content"
             />
             <button
@@ -267,7 +483,8 @@ export function MessageEncryptionModal({
         <Phone className="mt-0.5 h-4 w-4 shrink-0 text-content" aria-hidden />
         <p>
           <span className="font-medium text-content">Phone: </span>
-          Scan the QR with CribsTalk on a phone that already uses this account.
+          Scan the QR with CribsTalk on a phone that already uses this account. Your messages remain
+          end-to-end encrypted.
         </p>
       </div>
     </div>
@@ -404,8 +621,9 @@ export function MessageEncryptionModal({
                   </div>
                 </>
               )}
-              {notice ? <p className="text-sm text-content">{notice}</p> : null}
+              {notice && linkPhase === 'success' ? <p className="text-sm text-content">{notice}</p> : null}
               {error ? <p className="text-sm text-danger">{error}</p> : null}
+             
             </div>
           )}
         </div>

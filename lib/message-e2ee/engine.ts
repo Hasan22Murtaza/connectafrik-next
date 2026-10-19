@@ -650,6 +650,28 @@ export function onMessageKeys(listener: () => void): () => void {
   return () => keyListeners.delete(listener)
 }
 
+/**
+ * Immediate link info from local storage (no WASM / network).
+ * Use this to render the QR as soon as the modal opens; call
+ * `encryptionDeviceStatus` in parallel so keys are published for pairing.
+ */
+export function localLinkDeviceInfo(userId: string): {
+  deviceId: string
+  ownsIdentity: boolean
+  payload: string
+} {
+  if (typeof window === 'undefined') {
+    throw new Error('Device linking requires a browser')
+  }
+  const { deviceId } = deviceCredentials(userId)
+  const stored = localStorage.getItem(storageKey(userId, 'owns-identity'))
+  return {
+    deviceId,
+    ownsIdentity: activeUserId === userId ? ownsIdentity : stored === 'yes',
+    payload: linkPayload(userId, deviceId),
+  }
+}
+
 export async function encryptionDeviceStatus(userId: string): Promise<{ deviceId: string; ownsIdentity: boolean; payload: string }> {
   if (!(await messageE2eeActive())) throw new Error('off')
   return withMachine(userId, async ({ deviceId }) => ({

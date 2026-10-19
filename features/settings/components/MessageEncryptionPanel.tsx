@@ -35,7 +35,7 @@ export function MessageEncryptionPanel() {
     <SettingsCard>
       <SettingsSectionHeader
         title="Message encryption"
-        description="Keys for this browser stay on this device. Show the code in a window so the CribsTalk app on your phone can scan it and link this browser. A linked device can read new messages. It does not receive older ones."
+        description="Keys for this browser stay on this device. Open Link a device to show a QR code the CribsTalk phone app can scan. A linked device can read new messages. It does not receive older ones."
       />
       <div className="px-4 py-4 sm:px-5">
         <button type="button" onClick={() => setOpen(true)} className="btn-secondary min-h-11 rounded-[14px] px-4">
