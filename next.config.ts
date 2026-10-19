@@ -46,6 +46,14 @@ const nextConfig: NextConfig = {
         source: '/.well-known/assetlinks.json',
         headers: [{ key: 'Content-Type', value: 'application/json' }],
       },
+      // Matrix E2EE WASM must be application/wasm for instantiateStreaming.
+      {
+        source: '/matrix_sdk_crypto_wasm_bg.wasm',
+        headers: [
+          { key: 'Content-Type', value: 'application/wasm' },
+          { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
+        ],
+      },
     ]
   },
 }

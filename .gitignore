@@ -24,6 +24,9 @@
 .DS_Store
 *.pem
 
+# Copied by scripts/copy-message-e2ee-wasm.mjs (postinstall / prebuild)
+/public/matrix_sdk_crypto_wasm_bg.wasm
+
 # debug
 npm-debug.log*
 yarn-debug.log*

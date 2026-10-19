@@ -115,8 +115,15 @@ export function MessageEncryptionModal({
             if (!cancelled) setSafetyBusy(false)
           }
         }
-      } catch {
-        if (!cancelled) setError('This browser could not start encryption.')
+      } catch (err) {
+        if (!cancelled) {
+          const message = err instanceof Error ? err.message : ''
+          setError(
+            message && !/^off$/i.test(message)
+              ? message
+              : 'This browser could not start encryption. Use HTTPS, then refresh and try again.',
+          )
+        }
       }
     })()
 

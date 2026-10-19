@@ -43,11 +43,54 @@ let pollTimer: number | null = null
 const keyListeners = new Set<() => void>()
 const decryptCache = new Map<string, ChatMessage>()
 
+/** Public URL so Turbopack/webpack do not need special .wasm asset rules. */
+const PUBLIC_WASM_PATH = '/matrix_sdk_crypto_wasm_bg.wasm'
+
+/**
+ * Resolve a URL that WebAssembly.instantiateStreaming will accept.
+ * Some reverse proxies serve .wasm as octet-stream; re-wrap as a blob when needed.
+ */
+async function resolveWasmUrl(): Promise<string | URL> {
+  const res = await fetch(PUBLIC_WASM_PATH)
+  if (!res.ok) {
+    throw new Error(
+      `Encryption module missing (${res.status}). Redeploy after npm install so public/matrix_sdk_crypto_wasm_bg.wasm exists.`,
+    )
+  }
+  const type = (res.headers.get('content-type') || '').toLowerCase()
+  if (type.includes('application/wasm') || type.includes('application/octet-stream')) {
+    if (type.includes('application/wasm')) return PUBLIC_WASM_PATH
+    const buffer = await res.arrayBuffer()
+    return URL.createObjectURL(new Blob([buffer], { type: 'application/wasm' }))
+  }
+  // HTML error pages / wrong MIME — blob wrap still lets instantiateStreaming run.
+  const buffer = await res.arrayBuffer()
+  if (buffer.byteLength < 1000) {
+    throw new Error('Encryption module failed to download. Check that the site is served over HTTPS.')
+  }
+  return URL.createObjectURL(new Blob([buffer], { type: 'application/wasm' }))
+}
+
 async function loadWasm(): Promise<Wasm> {
   if (!wasmPromise) {
-    wasmPromise = import('@matrix-org/matrix-sdk-crypto-wasm').then(async (mod) => {
-      await mod.initAsync()
+    wasmPromise = (async () => {
+      if (typeof window !== 'undefined' && !window.isSecureContext) {
+        throw new Error(
+          'End-to-end encryption needs a secure context (HTTPS or localhost). Open this site over HTTPS.',
+        )
+      }
+      const mod = await import('@matrix-org/matrix-sdk-crypto-wasm')
+      const url = await resolveWasmUrl()
+      try {
+        await mod.initAsync(url)
+      } finally {
+        // Blob URLs are only used when the proxy MIME type is wrong.
+        if (typeof url === 'string' && url.startsWith('blob:')) URL.revokeObjectURL(url)
+      }
       return mod
+    })().catch((error) => {
+      wasmPromise = null
+      throw error
     })
   }
   return wasmPromise

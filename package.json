@@ -4,7 +4,9 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "prebuild": "node scripts/copy-message-e2ee-wasm.mjs",
     "build": "next build",
+    "postinstall": "node scripts/copy-message-e2ee-wasm.mjs",
     "start": "next start",
     "lint": "eslint",
     "dev-start": "next start -p 5005",
