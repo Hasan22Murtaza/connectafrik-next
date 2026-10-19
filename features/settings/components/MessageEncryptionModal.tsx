@@ -5,7 +5,7 @@ import { Check, Copy, Loader2, Lock, Phone, RefreshCw, X } from '@/shared/icons'
 import Portal from '@/shared/components/ui/Portal'
 import { useAuth } from '@/contexts/AuthContext'
 import { localLinkDeviceInfo } from '@/lib/message-e2ee/device-local'
-import { messageE2eeActive } from '@/lib/message-e2ee/status'
+import { messageE2eeStatus } from '@/lib/message-e2ee/status'
 import { linkQrDataUrl } from '@/lib/message-e2ee/qr'
 
 type DeviceStatus = { deviceId: string; ownsIdentity: boolean; payload: string }
@@ -34,6 +34,7 @@ const QR_TTL_MS = 5 * 60 * 1000
 export function MessageEncryptionModal({ open, onClose }: MessageEncryptionModalProps) {
   const { user } = useAuth()
   const [enabled, setEnabled] = useState<boolean | null>(null)
+  const [backendReady, setBackendReady] = useState(true)
   const [status, setStatus] = useState<DeviceStatus | null>(null)
   const [qrUrl, setQrUrl] = useState('')
   const [qrError, setQrError] = useState('')
@@ -66,6 +67,8 @@ export function MessageEncryptionModal({ open, onClose }: MessageEncryptionModal
     setLinkPhase('starting')
     setExpiresAt(0)
     setRemainingSec(0)
+    setEnabled(null)
+    setBackendReady(true)
     wasOwner.current = null
     payloadRef.current = ''
   }, [])
@@ -80,8 +83,11 @@ export function MessageEncryptionModal({ open, onClose }: MessageEncryptionModal
       setExpiresAt(Date.now() + QR_TTL_MS)
       setRemainingSec(Math.floor(QR_TTL_MS / 1000))
       setLinkPhase((prev) => (prev === 'success' ? prev : 'ready'))
-    } catch {
+    } catch (err) {
       if (gen !== sessionGen.current) return
+      console.warn('[MessageEncryptionModal] QR render failed', {
+        reason: err instanceof Error ? err.message : 'unknown',
+      })
       setQrUrl('')
       setQrError('Unable to generate QR code. Please try again.')
       setLinkPhase('qr-error')
@@ -209,10 +215,21 @@ export function MessageEncryptionModal({ open, onClose }: MessageEncryptionModal
     }
 
     void (async () => {
-      const on = await messageE2eeActive()
+      const flag = await messageE2eeStatus()
       if (cancelled) return
-      setEnabled(on)
-      if (!on || !userId) return
+      setEnabled(flag.enabled)
+      setBackendReady(flag.ready)
+      // Keep local QR even when the rollout flag is off or storage is not ready.
+      if (!userId) return
+      if (!flag.enabled) return
+
+      if (!flag.ready) {
+        setError(
+          'Encryption storage is not ready on this server yet. You can still share this device id or QR; key sync will work after migrations are applied.',
+        )
+        setLinkPhase((prev) => (prev === 'qr-error' || prev === 'expired' ? prev : 'waiting'))
+        return
+      }
 
       if (gen === sessionGen.current) {
         await bootstrapCrypto(userId, gen)
@@ -282,7 +299,8 @@ export function MessageEncryptionModal({ open, onClose }: MessageEncryptionModal
 
     return () => {
       cancelled = true
-      sessionGen.current += 1
+      // Do not bump sessionGen here — that discarded in-flight QR when deps refreshed.
+      // sessionGen advances only on explicit close/retry/new open session.
       stopKeys()
       window.removeEventListener('keydown', onKey)
     }
@@ -379,7 +397,7 @@ export function MessageEncryptionModal({ open, onClose }: MessageEncryptionModal
         />
       )
     }
-    if (linkPhase === 'failed') {
+    if (linkPhase === 'failed' && !status) {
       return (
         <div className="flex h-[200px] w-[200px] flex-col items-center justify-center gap-3 rounded-xl bg-surface-secondary px-3 text-center">
           <p className="text-sm font-medium text-content">Could not prepare linking</p>
@@ -438,13 +456,20 @@ export function MessageEncryptionModal({ open, onClose }: MessageEncryptionModal
             <p className="text-sm leading-5 text-content-secondary">
               End-to-end encryption is off for this account.
             </p>
-          ) : enabled === null && !status ? (
+          ) : enabled === null && !status && !qrUrl ? (
             <div className="flex justify-center py-8">
               <Loader2 className="h-5 w-5 animate-spin text-content-tertiary" />
             </div>
           ) : (
             <div className="space-y-3">
               <p className="text-sm leading-5 text-content-secondary">{intro}</p>
+
+              {!backendReady ? (
+                <p className="text-sm leading-5 text-content-secondary">
+                  Server encryption storage is still catching up. The QR below is valid for scanning once
+                  this environment finishes setup.
+                </p>
+              ) : null}
 
               <div className="flex flex-col items-center gap-2">
                 {qrVisual}

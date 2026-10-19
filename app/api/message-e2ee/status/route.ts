@@ -4,14 +4,21 @@ import { getAuthenticatedUser, createServiceClient } from '@/lib/supabase-server
 import { isMessageE2eeEnabledForUser } from '@/lib/message-e2ee/flag'
 import { messageCryptoReady } from '@/lib/message-e2ee/broker'
 
+/**
+ * `enabled` = rollout flag (MESSAGE_E2EE) for this user.
+ * `ready` = crypto tables reachable (migrations applied).
+ * Clients must not treat `ready: false` as "feature off" — local QR / device id
+ * should still render; key publish fails soft until the backend is ready.
+ */
 export async function GET(request: NextRequest) {
   try {
     const { user } = await getAuthenticatedUser(request)
-    if (!isMessageE2eeEnabledForUser(user.id)) {
-      return jsonResponse({ enabled: false })
+    const enabled = isMessageE2eeEnabledForUser(user.id)
+    if (!enabled) {
+      return jsonResponse({ enabled: false, ready: false })
     }
     const ready = await messageCryptoReady(createServiceClient())
-    return jsonResponse({ enabled: ready })
+    return jsonResponse({ enabled: true, ready })
   } catch (error: any) {
     if (error?.message === 'Unauthorized' || error?.message === 'Missing Authorization header') {
       return unauthorizedResponse()

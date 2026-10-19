@@ -35,8 +35,12 @@ const nextConfig: NextConfig = {
   },
 
   // libsignal is Node-oriented; polyfill Node built-ins for the client only.
+  // Force qrcode's browser entry — Turbopack does not always honor package.json "browser".
   turbopack: {
-    resolveAlias: browserNodePolyfillAliases,
+    resolveAlias: {
+      ...browserNodePolyfillAliases,
+      qrcode: './node_modules/qrcode/lib/browser.js',
+    },
   },
 
   webpack: (config, { isServer, webpack }) => {
@@ -51,6 +55,11 @@ const nextConfig: NextConfig = {
         fs: false,
         path: false,
         os: false,
+      }
+      // Force browser QR entry — Node server/canvas build breaks client QR render.
+      config.resolve.alias = {
+        ...config.resolve.alias,
+        qrcode: require.resolve('qrcode/lib/browser.js'),
       }
       config.plugins.push(
         new webpack.ProvidePlugin({

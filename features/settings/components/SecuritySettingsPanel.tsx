@@ -22,7 +22,7 @@ import {
 } from '@/shared/utils/sessionDeviceLabel'
 import toast from 'react-hot-toast'
 import { useConfirmDialog } from '@/shared/components/ui/ConfirmDialog'
-import { messageE2eeActive } from '@/lib/message-e2ee/status'
+import { messageE2eeFlagOn } from '@/lib/message-e2ee/status'
 import { ChangePasswordModal } from './ChangePasswordModal'
 import { MessageEncryptionModal } from './MessageEncryptionModal'
 import { TwoFactorSetupModal } from './TwoFactorSetupModal'
@@ -112,7 +112,7 @@ export function SecuritySettingsPanel() {
 
   useEffect(() => {
     let cancelled = false
-    void messageE2eeActive().then((on) => {
+    void messageE2eeFlagOn().then((on) => {
       if (!cancelled) setMessageE2eeEnabled(on)
     })
     return () => {
