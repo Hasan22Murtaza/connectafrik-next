@@ -13,13 +13,6 @@ const bunnyCdnHost = (() => {
 const nextConfig: NextConfig = {
   reactStrictMode: false,
   serverExternalPackages: ['@matrix-org/matrix-sdk-crypto-wasm'],
-  webpack: (config) => {
-    config.module.rules.push({
-      test: /matrix_sdk_crypto_wasm_bg\.wasm$/,
-      type: 'asset/resource',
-    })
-    return config
-  },
 
   images: {
     remotePatterns: [
