@@ -10,12 +10,16 @@ const bunnyCdnHost = (() => {
   }
 })()
 
-const nodePolyfillAliases = {
-  crypto: 'crypto-browserify',
-  stream: 'stream-browserify',
-  assert: 'assert',
-  buffer: 'buffer',
-  process: 'process/browser',
+// Browser-only aliases — never apply these on the server (breaks Node crypto).
+const browserNodePolyfillAliases = {
+  crypto: { browser: 'crypto-browserify' },
+  stream: { browser: 'stream-browserify' },
+  assert: { browser: 'assert' },
+  buffer: { browser: 'buffer' },
+  process: { browser: 'process/browser' },
+  fs: { browser: './lib/empty-module.js' },
+  path: { browser: './lib/empty-module.js' },
+  os: { browser: './lib/empty-module.js' },
 }
 
 const nextConfig: NextConfig = {
@@ -30,9 +34,9 @@ const nextConfig: NextConfig = {
     ],
   },
 
-  // libsignal is Node-oriented; alias Node built-ins for the browser bundle.
+  // libsignal is Node-oriented; polyfill Node built-ins for the client only.
   turbopack: {
-    resolveAlias: nodePolyfillAliases,
+    resolveAlias: browserNodePolyfillAliases,
   },
 
   webpack: (config, { isServer, webpack }) => {
