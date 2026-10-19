@@ -35,6 +35,8 @@ export interface CallModalProps {
   mediaProviderHint?: 'livekit' | 'videosdk';
   wsUrlHint?: string;
   e2eeKeyHint?: string;
+  /** Outgoing sealed calls keep the media key in this tab. Incoming calls open their own seal. */
+  e2eeSealedHint?: boolean;
 }
 
 /** @deprecated Use `CallModalProps` */

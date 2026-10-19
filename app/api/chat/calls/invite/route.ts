@@ -2,6 +2,8 @@ import { NextRequest } from 'next/server'
 import { getAuthenticatedUser, createServiceClient } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
 import { listLiveKitParticipantIdentities } from '@/lib/call-media/livekit'
+import { isE2eeSessionRecord } from '@/lib/call-e2ee/protocol'
+import { parseSealedKeyInputs, storeInviteeCallKeys } from '@/lib/call-e2ee/persist'
 import { getBusyMapForUserIds } from '@/lib/call-media/session-busy'
 import { canMessage } from '@/lib/privacy/access'
 import { privacyDecisionResponse } from '@/lib/privacy/http'
@@ -31,7 +33,9 @@ function mergeSessionMetadata(existing: unknown, patch: CallSessionMeta): CallSe
 
 function sanitizeCallSession<T extends Record<string, unknown> | null>(row: T): T {
   if (!row) return row
-  return { ...row, metadata: mergeSessionMetadata(row.metadata, {}) }
+  const metadata = mergeSessionMetadata(row.metadata, {})
+  if (metadata.e2ee === true) delete metadata.e2eeKey
+  return { ...row, metadata }
 }
 
 function idsEqual(a: unknown, b: string): boolean {
@@ -248,13 +252,21 @@ export async function POST(request: NextRequest) {
     // Prefer media presence: leave may not clear invitee from every sibling
     // participants[] row that was stamped on join.
     const sourceMeta = mergeSessionMetadata(liveSessions[0]?.metadata, {})
-    const sourceE2eeKey =
-      liveSessions
-        .map((row) => {
-          const meta = mergeSessionMetadata(row.metadata, {})
-          return typeof meta.e2eeKey === 'string' ? meta.e2eeKey.trim() : ''
-        })
-        .find((key) => key.length >= 16 && key.length <= 128) || ''
+    const sourceIsE2ee = liveSessions.some((row) => isE2eeSessionRecord(row))
+    const sourceE2eeKey = sourceIsE2ee
+      ? ''
+      : liveSessions
+          .map((row) => {
+            const meta = mergeSessionMetadata(row.metadata, {})
+            return typeof meta.e2eeKey === 'string' ? meta.e2eeKey.trim() : ''
+          })
+          .find((key) => key.length >= 16 && key.length <= 128) || ''
+    const senderDeviceId =
+      typeof body.sender_device_id === 'string' ? body.sender_device_id.trim().toLowerCase() : ''
+    const sealedKeys = sourceIsE2ee ? parseSealedKeyInputs(body.sealed_keys) : null
+    if (sourceIsE2ee && (!senderDeviceId || !sealedKeys)) {
+      return errorResponse('Encrypted call key was not sealed for the new participant.', 400)
+    }
     const sourceProvider =
       provider ||
       (typeof sourceMeta.provider === 'string' ? sourceMeta.provider.trim() : '') ||
@@ -312,7 +324,7 @@ export async function POST(request: NextRequest) {
       lastInvitedAt: now,
       reinvited: true,
       ...(provider ? { provider } : {}),
-      ...(sourceE2eeKey ? { e2eeKey: sourceE2eeKey } : {}),
+      ...(sourceIsE2ee ? { e2ee: true } : sourceE2eeKey ? { e2eeKey: sourceE2eeKey } : {}),
     })
 
     const { data: existingInviteRows } = await serviceClient
@@ -349,6 +361,7 @@ export async function POST(request: NextRequest) {
           ended_at: null,
           duration_seconds: null,
           last_heartbeat_at: null,
+          ...(sourceIsE2ee ? { e2ee: true } : {}),
           metadata: mergeSessionMetadata(priorMeta, {
             ...inviteMetadata,
             declinedUserIds: declined,
@@ -385,6 +398,7 @@ export async function POST(request: NextRequest) {
           room_id,
           call_id,
           metadata: inviteMetadata,
+          ...(sourceIsE2ee ? { e2ee: true } : {}),
           created_at: now,
           updated_at: now,
         })
@@ -395,6 +409,21 @@ export async function POST(request: NextRequest) {
         return errorResponse(insertError?.message || 'Failed to create invite session', 400)
       }
       session = inserted
+    }
+
+    if (sourceIsE2ee && sealedKeys) {
+      try {
+        await storeInviteeCallKeys(serviceClient, {
+          callId: call_id,
+          senderUserId: user.id,
+          senderDeviceId,
+          targetUserId: target_user_id,
+          seals: sealedKeys,
+        })
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Could not seal the call key'
+        return errorResponse(message, 400)
+      }
     }
 
     await syncInviteAcrossCallId(serviceClient, call_id, target_user_id)

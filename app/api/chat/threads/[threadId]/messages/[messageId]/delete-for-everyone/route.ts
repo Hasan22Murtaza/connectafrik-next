@@ -37,6 +37,10 @@ export async function POST(request: NextRequest, context: RouteContext) {
         is_deleted: true,
         deleted_at: now,
         updated_at: now,
+        content: '',
+        ciphertext: null,
+        megolm_session_id: null,
+        sender_device_id: null,
       })
       .eq('id', messageId)
       .eq('thread_id', threadId)

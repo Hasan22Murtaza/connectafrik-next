@@ -323,8 +323,9 @@ const PrivacyPolicyPage = () => {
                 </div>
               </div>
               <p>
-                <strong>Messaging Encryption:</strong> We offer end-to-end
-                encryption for 1:1 chats/calls when enabled. See Section 14.
+                <strong>Messaging Encryption:</strong> Messages and calls are
+                encrypted in transit. End-to-end encryption is available only
+                for accounts included in the server rollout. See Section 14.
               </p>
             </SectionCard>
 
@@ -654,15 +655,31 @@ const PrivacyPolicyPage = () => {
                   communications and prevent abuse.
                 </li>
                 <li>
-                  <strong>Encryption:</strong> End-to-end encryption may be
-                  enabled for 1:1 chats/calls when both parties opt in. Group
-                  chats are encrypted in transit and may support end-to-end
-                  encryption where available.
+                  <strong>Encryption:</strong> Messages, attachments, and calls
+                  are encrypted in transit. End-to-end encryption is not on for
+                  every account. It runs only when that account is included in
+                  the server rollout. Until then, this page does not describe
+                  those messages as end-to-end encrypted.
                 </li>
                 <li>
-                  <strong>Reporting:</strong> If content is reported, we may
-                  process relevant messages and, if necessary, decrypt content
-                  where technically possible and lawful to investigate violations.
+                  <strong>When end-to-end encryption is on:</strong> Message
+                  text and attachment keys are encrypted on the device before
+                  they are sent. The server stores ciphertext. A newly linked
+                  device can read new messages and does not receive older ones.
+                  Web encryption keys are stored in the browser, so a script
+                  that runs on the page can read them. Push notifications for
+                  these messages say “New message” and do not include the
+                  message text.
+                </li>
+                <li>
+                  <strong>Calls:</strong> A sealed call encrypts media frames
+                  in the browser. The server does not receive the media key. A
+                  modified client that already has a call token can turn frame
+                  encryption off on that device.
+                </li>
+                <li>
+                  <strong>Reporting and translation:</strong> Those tools do
+                  not receive the text of an end-to-end encrypted message.
                 </li>
               </ul>
             </SectionCard>

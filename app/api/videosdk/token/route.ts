@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { recipientHasSealedKey } from '@/lib/call-e2ee/persist';
+import { CALL_E2EE_JOIN_ERROR, isE2eeSessionRecord } from '@/lib/call-e2ee/protocol';
 import { issueCallToken } from '@/lib/call-media/provider';
 import { parseProviderName } from '@/lib/call-media/resolve';
 import { userInvolvedInSession } from '@/lib/call-media/session-busy';
@@ -26,6 +28,7 @@ type CallSessionRow = {
   participants: unknown;
   metadata: unknown;
   status?: string | null;
+  call_id?: string | null;
 };
 
 /**
@@ -40,7 +43,7 @@ async function findCallSessionsForRoom(
   service: ReturnType<typeof createServiceClient>,
   roomId: string,
 ): Promise<CallSessionRow[]> {
-  const select = 'thread_id, created_by, participants, metadata, status'
+  const select = 'thread_id, created_by, participants, metadata, status, call_id'
   const seen = new Set<string>()
   const out: CallSessionRow[] = []
 
@@ -85,13 +88,15 @@ async function findCallSessionsForRoom(
 async function authorizeForRoom(
   request: NextRequest,
   roomId: string,
-): Promise<{ userId: string; displayName?: string; avatarUrl?: string }> {
+): Promise<{ userId: string; displayName?: string; avatarUrl?: string; e2eeCallId?: string }> {
   const { user } = await getAuthenticatedUser(request)
 
   const service = createServiceClient()
   const rows = await findCallSessionsForRoom(service, roomId)
 
   if (rows.length === 0) throw new Error('CallNotFound')
+
+  const e2eeCallId = rows.find((candidate) => isE2eeSessionRecord(candidate) && candidate.call_id)?.call_id || undefined
 
   let row: CallSessionRow | null = null
   for (const candidate of rows) {
@@ -141,6 +146,7 @@ async function authorizeForRoom(
     userId: user.id.trim().toLowerCase(),
     ...(displayName ? { displayName } : {}),
     ...(avatarUrl ? { avatarUrl } : {}),
+    ...(e2eeCallId ? { e2eeCallId } : {}),
   }
 }
 
@@ -155,6 +161,9 @@ function authErrorResponse(err: unknown): NextResponse | null {
   if (msg === 'Forbidden' || msg === PRIVACY_ERRORS.blocked || msg === PRIVACY_ERRORS.call) {
     return NextResponse.json({ error: msg === 'Forbidden' ? 'Forbidden' : msg }, { status: 403, headers: corsHeaders });
   }
+  if (msg === CALL_E2EE_JOIN_ERROR) {
+    return NextResponse.json({ error: CALL_E2EE_JOIN_ERROR }, { status: 403, headers: corsHeaders });
+  }
   return null;
 }
 
@@ -162,8 +171,20 @@ async function handleTokenRequest(
   request: NextRequest,
   roomId: string,
   provider?: string | null,
+  deviceId?: string | null,
 ) {
-  const { userId, displayName, avatarUrl } = await authorizeForRoom(request, roomId);
+  const { userId, displayName, avatarUrl, e2eeCallId } = await authorizeForRoom(request, roomId);
+  if (e2eeCallId) {
+    const registeredDevice = (deviceId || '').trim().toLowerCase()
+    const sealed = registeredDevice
+      ? await recipientHasSealedKey(createServiceClient(), {
+          userId,
+          callId: e2eeCallId,
+          deviceId: registeredDevice,
+        })
+      : false
+    if (!sealed) throw new Error(CALL_E2EE_JOIN_ERROR)
+  }
 
   const credentials = await issueCallToken({
     roomId,
@@ -198,7 +219,12 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    return await handleTokenRequest(request, roomId, searchParams.get('provider'));
+    return await handleTokenRequest(
+      request,
+      roomId,
+      searchParams.get('provider'),
+      searchParams.get('device_id'),
+    );
   } catch (err) {
     const authRes = authErrorResponse(err);
     if (authRes) return authRes;
@@ -217,6 +243,7 @@ export async function POST(request: NextRequest) {
     const roomId =
       typeof body?.roomId === 'string' ? body.roomId.trim() : '';
     const provider = typeof body?.provider === 'string' ? body.provider : null;
+    const deviceId = typeof body?.device_id === 'string' ? body.device_id : null;
 
     if (!roomId) {
       return NextResponse.json(
@@ -225,7 +252,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    return await handleTokenRequest(request, roomId, provider);
+    return await handleTokenRequest(request, roomId, provider, deviceId);
   } catch (err) {
     const authRes = authErrorResponse(err);
     if (authRes) return authRes;

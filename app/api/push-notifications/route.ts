@@ -427,6 +427,25 @@ export async function POST(request: NextRequest) {
         : ''
     if (messageId) rawPushData.message_id = messageId
 
+    let sealedPush = String(rawPushData.e2ee || '') === '1'
+    if (!sealedPush && messageId) {
+      const { data: sealedRow } = await supabase
+        .from('chat_messages')
+        .select('e2ee_version')
+        .eq('id', messageId)
+        .maybeSingle()
+      sealedPush = sealedRow?.e2ee_version === 2
+    }
+    if (sealedPush) {
+      notificationBody = '🔒 New message'
+      body.body = notificationBody
+      rawPushData.e2ee = '1'
+      rawPushData.body = notificationBody
+      delete rawPushData.content
+      delete rawPushData.ciphertext
+      delete rawPushData.message
+    }
+
     const deviceSessionId =
       typeof body.device_session_id === 'string' && body.device_session_id.trim()
         ? body.device_session_id.trim()

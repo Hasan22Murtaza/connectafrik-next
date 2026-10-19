@@ -77,7 +77,26 @@ export const fileUploadService = {
         continue
       }
 
-      const uploadFile = result.file
+      let uploadFile = result.file
+      let sealed = result.sealed
+      let uploadedSize = result.size
+      if (options?.threadId) {
+        const { messageE2eeActive } = await import('@/lib/message-e2ee/status')
+        if (await messageE2eeActive()) {
+          const { sealCla1 } = await import('@/lib/message-e2ee/cla1')
+          const sealedFile = await sealCla1(result.file)
+          const sealedBytes = sealedFile.bytes
+          const sealedBuffer = sealedBytes.buffer.slice(
+            sealedBytes.byteOffset,
+            sealedBytes.byteOffset + sealedBytes.byteLength,
+          ) as ArrayBuffer
+          uploadFile = new File([sealedBuffer], `${result.file.name}.cla1`, {
+            type: 'application/octet-stream',
+          })
+          sealed = sealedFile.meta
+          uploadedSize = sealedFile.bytes.byteLength
+        }
+      }
 
       const { publicUrl } = await uploadFileToBunny(uploadFile, {
         folder: 'chat-media',
@@ -90,7 +109,8 @@ export const fileUploadService = {
       uploaded.push({
         ...result,
         url: publicUrl,
-        size: result.size,
+        size: uploadedSize,
+        sealed,
         file: undefined,
       })
     }

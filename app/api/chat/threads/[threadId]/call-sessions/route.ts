@@ -4,6 +4,8 @@ import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-uti
 import { requireChatThreadAccess } from '@/lib/chat/chatThreadAccess'
 import { persistAcceptedOnAnotherDeviceChatMessage } from '@/lib/chat/persistAcceptedOnAnotherDeviceMessage'
 import { deleteLiveKitRoom, listLiveKitParticipantIdentities } from '@/lib/call-media/livekit'
+import { isCallE2eeEnabledForUser } from '@/lib/call-e2ee/flag'
+import { parseSealedKeyInputs, storeInitialCallKeys } from '@/lib/call-e2ee/persist'
 import { loadFriendMaps } from '@/lib/privacy/queries'
 
 /** Forward the caller's session JWT so /api/push-notifications can authz the actor. */
@@ -144,7 +146,9 @@ function mergeSessionMetadata(existing: unknown, patch: CallSessionMeta): CallSe
 
 function sanitizeCallSession<T extends Record<string, unknown> | null>(row: T): T {
   if (!row) return row
-  return { ...row, metadata: mergeSessionMetadata(row.metadata, {}) }
+  const metadata = mergeSessionMetadata(row.metadata, {})
+  if (metadata.e2ee === true) delete metadata.e2eeKey
+  return { ...row, metadata }
 }
 
 function sessionProvider(row: { metadata?: unknown }): string {
@@ -563,6 +567,18 @@ export async function POST(request: NextRequest, context: RouteContext) {
     const provider = body.provider === 'livekit' || body.provider === 'videosdk' ? body.provider : undefined
     const e2eeKeyRaw = typeof body.e2ee_key === 'string' ? body.e2ee_key.trim() : ''
     const e2eeKey = e2eeKeyRaw.length >= 16 && e2eeKeyRaw.length <= 128 ? e2eeKeyRaw : ''
+    const e2eeEnabled = isCallE2eeEnabledForUser(user.id)
+    const senderDeviceId =
+      typeof body.sender_device_id === 'string' ? body.sender_device_id.trim().toLowerCase() : ''
+    const sealedKeys = e2eeEnabled ? parseSealedKeyInputs(body.sealed_keys) : null
+    if (e2eeEnabled) {
+      if (provider && provider !== 'livekit') {
+        return errorResponse('Encrypted calls require LiveKit.', 400)
+      }
+      if (!senderDeviceId || !sealedKeys) {
+        return errorResponse('Encrypted call keys are missing. Update the app and try again.', 400)
+      }
+    }
     const caller_name = typeof body.caller_name === 'string' ? body.caller_name : user.email || 'Someone'
     let caller_avatar_url = typeof body.caller_avatar_url === 'string' ? body.caller_avatar_url.trim() : ''
     if (!caller_avatar_url) {
@@ -627,7 +643,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       timestamp: new Date().toISOString(),
       last_signal: 'ringing',
       ...(provider ? { provider } : {}),
-      ...(e2eeKey ? { e2eeKey } : {}),
+      ...(e2eeEnabled ? { e2ee: true } : e2eeKey ? { e2eeKey } : {}),
     })
 
     const now = new Date().toISOString()
@@ -643,6 +659,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
         room_id,
         call_id,
         metadata,
+        ...(e2eeEnabled ? { e2ee: true } : {}),
         created_at: now,
         updated_at: now,
       })
@@ -650,7 +667,11 @@ export async function POST(request: NextRequest, context: RouteContext) {
       .single()
 
     if (insertError || !session) {
-      return errorResponse(insertError?.message || 'Failed to create call session', 400)
+      const message = insertError?.message || 'Failed to create call session'
+      if (e2eeEnabled && /e2ee/i.test(message) && /column/i.test(message)) {
+        return errorResponse('Encrypted calling is not available until the database migration is applied.', 500)
+      }
+      return errorResponse(message, 400)
     }
 
     const afterInsert = await listLiveSessionsForThread(serviceClient, threadId)
@@ -658,6 +679,23 @@ export async function POST(request: NextRequest, context: RouteContext) {
     if (winner && winner.id !== session.id) {
       await markSessionEnded(serviceClient, session, 'duplicate_insert')
       return jsonResponse({ session: sanitizeCallSession(winner) })
+    }
+
+    if (e2eeEnabled && sealedKeys) {
+      try {
+        await storeInitialCallKeys(serviceClient, {
+          threadId,
+          callSessionId: String(session.id),
+          callId: call_id,
+          senderUserId: user.id,
+          senderDeviceId,
+          seals: sealedKeys,
+        })
+      } catch (err) {
+        await markSessionEnded(serviceClient, session, 'e2ee_key_failed')
+        const message = err instanceof Error ? err.message : 'Could not store encrypted call keys'
+        return errorResponse(message, 400)
+      }
     }
 
     await touchThreadPreview(

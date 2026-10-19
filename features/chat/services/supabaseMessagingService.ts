@@ -32,6 +32,15 @@ export interface ChatAttachment {
   type: 'image' | 'video' | 'file'
   size: number
   mimeType: string
+  previewUrl?: string
+  /** Present only in memory, and only until the message is sealed. Never send this to the server. */
+  sealed?: {
+    key: string
+    sha256: string
+    plainSize: number
+    plainName: string
+    plainMime: string
+  }
 }
 
 export interface MessageReactionSummary {
@@ -67,6 +76,7 @@ export interface ChatMessage {
   megolm_session_id?: string | null
   sender_device_id?: string | null
   e2ee_version?: number | null
+  e2ee_locked?: boolean
 }
 
 export function getChatMessageAuthorId(message: Pick<ChatMessage, 'sender_id' | 'sender'>): string {
@@ -238,7 +248,10 @@ const notifyMessageSubscribers = async (message: ChatMessage, options?: { skipPu
         const viewOnceVideo = (message.attachments || []).some(
           (a) => a.type === 'video' || (a.mimeType || '').startsWith('video/')
         )
-        const messagePreview = isViewOnce
+        const encrypted = message.e2ee_version === 2
+        const messagePreview = encrypted
+          ? '🔒 New message'
+          : isViewOnce
           ? (viewOnceVideo ? 'New video' : 'New photo')
           : (message.content ||
             (message.attachments && message.attachments.length > 0
@@ -261,6 +274,7 @@ const notifyMessageSubscribers = async (message: ChatMessage, options?: { skipPu
                 sender_id: message.sender_id,
                 sender_name: senderName,
                 sender_image: senderImage || undefined,
+                ...(encrypted ? { e2ee: '1' } : {}),
               },
             })
           } catch (notificationError) {
@@ -953,9 +967,31 @@ async function contentForStorage(
 
 async function showStoredMessage(message: any): Promise<ChatMessage> {
   const mapped = mapApiMessageToChatMessage(message)
+  if (mapped.e2ee_version === 2 && mapped.ciphertext) {
+    try {
+      const { decryptStoredMessage } = await import('@/lib/message-e2ee/engine')
+      return await decryptStoredMessage(mapped)
+    } catch (error) {
+      console.warn('[message-e2ee] decrypt failed', {
+        messageId: mapped.id,
+        reason: error instanceof Error ? error.name : 'error',
+      })
+      return {
+        ...mapped,
+        content: "🔒 This message can't be read on this device",
+        e2ee_locked: true,
+        attachments: [],
+      }
+    }
+  }
   if (!mapped.thread_id || !mapped.content) return mapped
   const content = await decodeMessageContent(mapped.thread_id, mapped.content)
   return content === mapped.content ? mapped : { ...mapped, content }
+}
+
+function attachmentsForApi(attachments: ChatAttachment[] | undefined): ChatAttachment[] | undefined {
+  if (!attachments) return undefined
+  return attachments.map(({ sealed: _sealed, previewUrl: _preview, ...attachment }) => attachment)
 }
 
 async function presentRealtimeMessage(
@@ -1453,19 +1489,63 @@ export const supabaseMessagingService = {
   async sendMessage(threadId: string, payload: SendMessageOptions, currentUser: ChatParticipant): Promise<ChatMessage> {
     try {
       const messageType = payload.message_type ?? 'text'
-      const storedContent = await contentForStorage(threadId, messageType, payload.content ?? '')
+      let storedContent = payload.content ?? ''
+      let megolm: {
+        ciphertext: string
+        megolm_session_id: string
+        sender_device_id: string
+        e2ee_version: 2
+      } | null = null
+      if (!SKIP_GENERIC_CHAT_PUSH_MESSAGE_TYPES.has(messageType)) {
+        const { messageE2eeActive } = await import('@/lib/message-e2ee/status')
+        if (await messageE2eeActive()) {
+          const { tryEncryptOutgoing } = await import('@/lib/message-e2ee/engine')
+          const encrypted = await tryEncryptOutgoing({
+            userId: currentUser.id,
+            threadId,
+            messageType,
+            content: storedContent,
+            attachments: payload.attachments,
+          })
+          if (encrypted.mode === 'megolm') {
+            storedContent = ''
+            megolm = {
+              ciphertext: encrypted.ciphertext,
+              megolm_session_id: encrypted.sessionId,
+              sender_device_id: encrypted.senderDeviceId,
+              e2ee_version: 2,
+            }
+          } else {
+            storedContent = await contentForStorage(threadId, messageType, payload.content ?? '')
+          }
+        } else {
+          storedContent = await contentForStorage(threadId, messageType, payload.content ?? '')
+        }
+      }
       const res = await apiClient.post<{ data: any }>(`/api/chat/threads/${threadId}/messages`, {
         content: storedContent,
         message_type: messageType,
         metadata: payload.metadata,
-        attachments: payload.attachments,
+        attachments: attachmentsForApi(payload.attachments),
         reply_to_id: payload.reply_to_id,
         ...(payload.is_forward === true ? { is_forward: true } : {}),
         ...(payload.view_once === true ? { view_once: true } : {}),
+        ...(megolm ?? {}),
       })
       const rawMessage = (res as any)?.data
       if (!rawMessage) throw new Error('No message returned')
-      const formattedMessage = await showStoredMessage(rawMessage)
+      let formattedMessage = await showStoredMessage(rawMessage)
+      if (formattedMessage.e2ee_locked) {
+        formattedMessage = {
+          ...formattedMessage,
+          content: payload.content || formattedMessage.content,
+          e2ee_locked: false,
+          attachments: (payload.attachments || []).map(({ sealed: _sealed, ...attachment }) => ({
+            ...attachment,
+            url: attachment.previewUrl || attachment.url,
+          })),
+        }
+      }
 
       // Send call signaling notifications.
       // For reject/missed signals we await delivery to avoid window-close races in call popup flows.
@@ -1689,7 +1769,11 @@ export const supabaseMessagingService = {
         .from('chat_messages')
         .update({
           is_deleted: true,
-          deleted_at: new Date().toISOString()
+          deleted_at: new Date().toISOString(),
+          content: '',
+          ciphertext: null,
+          megolm_session_id: null,
+          sender_device_id: null,
         })
         .eq('id', messageId)
 
@@ -1755,9 +1839,33 @@ export const supabaseMessagingService = {
     }
 
     try {
+      const { data: authData } = await supabase.auth.getUser()
+      const editorId = authData.user?.id || ''
+      let patchBody: Record<string, unknown> = { content: await encodeMessageContent(threadId, trimmed) }
+      if (editorId) {
+        const { messageE2eeActive } = await import('@/lib/message-e2ee/status')
+        if (await messageE2eeActive()) {
+          const { tryEncryptOutgoing } = await import('@/lib/message-e2ee/engine')
+          const encrypted = await tryEncryptOutgoing({
+            userId: editorId,
+            threadId,
+            messageType: 'text',
+            content: trimmed,
+          })
+          if (encrypted.mode === 'megolm') {
+            patchBody = {
+              content: '',
+              ciphertext: encrypted.ciphertext,
+              megolm_session_id: encrypted.sessionId,
+              sender_device_id: encrypted.senderDeviceId,
+              e2ee_version: 2,
+            }
+          }
+        }
+      }
       const res = await apiClient.patch<{ data: Record<string, unknown> }>(
         `/api/chat/threads/${threadId}/messages/${messageId}`,
-        { content: await encodeMessageContent(threadId, trimmed) }
+        patchBody
       )
       const rawMessage = res.data
       if (!rawMessage || typeof rawMessage !== 'object') throw new Error('No message returned')

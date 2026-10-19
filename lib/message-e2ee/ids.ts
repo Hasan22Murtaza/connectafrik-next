@@ -1,0 +1,49 @@
+const SERVER = 'cribstalk'
+
+export function matrixUserId(userId: string): string {
+  return `@${userId.trim().toLowerCase()}:${SERVER}`
+}
+
+export function matrixRoomId(threadId: string): string {
+  return `!${threadId.replace(/-/g, '').toLowerCase()}:${SERVER}`
+}
+
+export function userIdFromMatrix(matrixId: string): string | null {
+  const match = /^@([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}):cribstalk$/i.exec(
+    matrixId.trim(),
+  )
+  return match ? match[1].toLowerCase() : null
+}
+
+export function parseLinkPayload(payload: string): { userId: string; deviceId: string } | null {
+  const match = /^cribstalk-link:1:(@[^:\s]+:cribstalk):([A-Za-z0-9]{8,64})$/.exec(payload.trim())
+  if (!match) return null
+  const userId = userIdFromMatrix(match[1])
+  if (!userId) return null
+  return { userId, deviceId: match[2] }
+}
+
+/**
+ * Accept a full QR payload, or a bare device id from another browser of the same account
+ * (web ↔ web paste of "This device: …").
+ */
+export function normalizeLinkInput(
+  raw: string,
+  accountUserId: string,
+): { userId: string; deviceId: string } | null {
+  const trimmed = raw.trim()
+  const parsed = parseLinkPayload(trimmed.replace(/\s+/g, ''))
+  if (parsed) return parsed
+
+  const deviceOnly =
+    /^([A-Za-z0-9]{8,64})$/.exec(trimmed)?.[1] ||
+    /^This\s*device:\s*([A-Za-z0-9]{8,64})$/i.exec(trimmed)?.[1]
+  if (!deviceOnly) return null
+  const userId = accountUserId.trim().toLowerCase()
+  if (!userId) return null
+  return { userId, deviceId: deviceOnly }
+}
+
+export function linkPayload(userId: string, deviceId: string): string {
+  return `cribstalk-link:1:${matrixUserId(userId)}:${deviceId}`
+}

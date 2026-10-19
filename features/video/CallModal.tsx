@@ -27,7 +27,8 @@ import LiveKitMeetingContainer from '@/features/video/providers/livekit/MeetingC
 import { LiveKitRoom } from '@livekit/components-react';
 import type { Room } from 'livekit-client';
 import { parseCallMediaResponse, resolveLiveKitWsUrl } from '@/lib/call-media/bootstrap';
-import { readCallE2eeKey } from '@/lib/call-media/e2ee-key';
+import { callTokenDeviceFields, resolveCallMediaKey } from '@/lib/call-e2ee/client';
+import { CALL_E2EE_JOIN_ERROR } from '@/lib/call-e2ee/protocol';
 import type { CallMediaProviderName } from '@/lib/call-media/types';
 import { resolveClientVideoProvider } from '@/features/video/core/config';
 import { useIncomingCallTerminalSignals } from '@/features/video/hooks/useIncomingCallTerminalSignals';
@@ -35,7 +36,6 @@ import {
   CALL_AUDIO_CAPTURE,
   connectLiveKitWithPreparedAudio,
 } from '@/features/video/providers/livekit/prepareCallAudio';
-import { apiClient } from '@/lib/api-client';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -74,6 +74,7 @@ const CallModal: React.FC<CallModalProps> = (props) => {
     mediaProviderHint,
     wsUrlHint,
     e2eeKeyHint,
+    e2eeSealedHint = false,
   } = props;
 
   // ── Display props (hydrated on `/call/...` from call-sessions + thread API) ─
@@ -118,6 +119,8 @@ const CallModal: React.FC<CallModalProps> = (props) => {
   const [livekitRoom, setLivekitRoom] = useState<Room | null>(null);
   const [livekitPrepError, setLivekitPrepError] = useState('');
   const [resolvedE2ee, setResolvedE2ee] = useState(false);
+  const [callMediaKey, setCallMediaKey] = useState<string | undefined>();
+  const [sealedCall, setSealedCall] = useState(false);
   const endToEndEncrypted = Boolean((e2eeKeyHint || '').trim()) || resolvedE2ee;
 
   const isMountedRef = useRef(true);
@@ -203,6 +206,7 @@ const CallModal: React.FC<CallModalProps> = (props) => {
         body: JSON.stringify({
           roomId: rid,
           ...(mediaProviderHint ? { provider: mediaProviderHint } : {}),
+          ...(await callTokenDeviceFields()),
         }),
       });
 
@@ -499,20 +503,20 @@ const CallModal: React.FC<CallModalProps> = (props) => {
 
     (async () => {
       try {
-        let encryptionKey = (e2eeKeyHint || '').trim() || undefined;
-        if (!encryptionKey && threadId && (callIdHint || '').trim()) {
-          try {
-            const res = await apiClient.get<{ session: Record<string, unknown> | null }>(
-              `/api/chat/threads/${threadId}/call-sessions`,
-              { call_id: callIdHint },
-            );
-            encryptionKey = readCallE2eeKey(res.session?.metadata);
-          } catch {
-            encryptionKey = undefined;
-          }
-        }
+        let encryptionKey: string | undefined;
+        const resolved = await resolveCallMediaKey({
+          hintedKey: e2eeKeyHint,
+          sealedHint: e2eeSealedHint,
+          threadId,
+          callId: callIdHint,
+        });
         if (cancelled || gen !== livekitPrepGenRef.current || !isMountedRef.current) return;
-
+        if (resolved.sealed && !resolved.mediaKey) {
+          throw new Error(CALL_E2EE_JOIN_ERROR);
+        }
+        encryptionKey = resolved.mediaKey;
+        setCallMediaKey(resolved.sealed ? resolved.mediaKey : undefined);
+        setSealedCall(resolved.sealed);
         if (encryptionKey) setResolvedE2ee(true);
 
         const { room } = await connectLiveKitWithPreparedAudio({
@@ -538,7 +542,7 @@ const CallModal: React.FC<CallModalProps> = (props) => {
     return () => {
       cancelled = true;
     };
-  }, [isOpen, token, mediaProvider, wsUrl, callType, e2eeKeyHint, threadId, callIdHint]);
+  }, [isOpen, token, mediaProvider, wsUrl, callType, e2eeKeyHint, e2eeSealedHint, threadId, callIdHint]);
 
   // ── Accept handler (incoming ring phase) — fetches token then shows meeting ─
   const handleAccept = useCallback(async () => {
@@ -705,6 +709,8 @@ const CallModal: React.FC<CallModalProps> = (props) => {
     decodedCallerAvatarUrl,
     decodedRecipientAvatarUrl,
     endToEndEncrypted,
+    sealedCall,
+    callMediaKey,
   };
 
   if (mediaProvider === 'livekit') {

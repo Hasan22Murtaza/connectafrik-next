@@ -5,6 +5,7 @@ import { requireChatThreadAccess } from '@/lib/chat/chatThreadAccess'
 import { requireUnlockedLockedThread } from '@/lib/chat/chatLock'
 import { sanitizeViewOnceMessage } from '@/lib/chat/chatViewOnce'
 import { isEncodedMessage } from '@/lib/chat/messageCodec'
+import { isMessageE2eeEnabledForUser } from '@/lib/message-e2ee/flag'
 
 const MESSAGE_SELECT = `
   *,
@@ -82,7 +83,19 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     if (typeof content !== 'string') {
       return errorResponse('content must be a string', 400)
     }
-    const safeContent = content.trim()
+    const wantsMegolm = body.e2ee_version === 2 || body.e2ee_version === '2'
+    const megolmCiphertext = typeof body.ciphertext === 'string' ? body.ciphertext : ''
+    const megolmSessionId = typeof body.megolm_session_id === 'string' ? body.megolm_session_id : ''
+    const megolmDeviceId = typeof body.sender_device_id === 'string' ? body.sender_device_id : ''
+    if (wantsMegolm) {
+      if (!isMessageE2eeEnabledForUser(user.id)) {
+        return errorResponse('End-to-end encryption is not enabled for this account', 403)
+      }
+      if (!megolmCiphertext || !megolmSessionId || !megolmDeviceId || megolmCiphertext.length > 200_000) {
+        return errorResponse('Encrypted message is missing its ciphertext', 400)
+      }
+    }
+    const safeContent = wantsMegolm ? '' : content.trim()
 
     const { data: existing, error: fetchError } = await serviceClient
       .from('chat_messages')
@@ -107,7 +120,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       return errorResponse('View Once messages cannot be edited', 400)
     }
 
-    if (!safeContent) {
+    if (!safeContent && !wantsMegolm) {
       return errorResponse('content cannot be empty', 400)
     }
 
@@ -116,7 +129,16 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       content: safeContent,
       updated_at: now,
       is_edited: true,
-      ...(isEncodedMessage(safeContent) ? { e2ee_version: 1 } : {}),
+      ...(wantsMegolm
+        ? {
+            ciphertext: megolmCiphertext,
+            megolm_session_id: megolmSessionId,
+            sender_device_id: megolmDeviceId,
+            e2ee_version: 2,
+          }
+        : isEncodedMessage(safeContent)
+          ? { e2ee_version: 1 }
+          : {}),
     }
     if (typeof isForwardFlag === 'boolean') {
       updateRow.is_forward = isForwardFlag
@@ -142,7 +164,9 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       .maybeSingle()
 
     if (latest?.id === messageId) {
-      const preview = isEncodedMessage(safeContent)
+      const preview = wantsMegolm
+        ? '🔒 Encrypted message'
+        : isEncodedMessage(safeContent)
         ? safeContent
         : safeContent.length > 100
           ? safeContent.slice(0, 97) + '...'
@@ -194,6 +218,10 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
       .update({
         is_deleted: true,
         deleted_at: new Date().toISOString(),
+        content: '',
+        ciphertext: null,
+        megolm_session_id: null,
+        sender_device_id: null,
       })
       .eq('id', messageId)
       .eq('thread_id', threadId)

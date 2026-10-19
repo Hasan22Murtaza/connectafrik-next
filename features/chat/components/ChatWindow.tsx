@@ -63,6 +63,7 @@ import {
   X,
   XCircle,
   ChevronDown,
+  ChevronRight,
   Shield,
   ShieldOff,
 } from '@/shared/icons';
@@ -112,6 +113,7 @@ import {
 import { useActiveCallSession } from "@/features/chat/hooks/useActiveCallSession";
 import { useMessageTranslations } from "@/features/chat/hooks/useMessageTranslations";
 import { messageTranslationLanguageLabel } from "@/features/chat/constants/messageTranslationLanguages";
+import { MessageEncryptionModal } from "@/features/settings/components/MessageEncryptionModal";
 
 interface ChatWindowProps {
   threadId: string;
@@ -669,6 +671,8 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const draftBeforeComposerEditRef = useRef("");
   const composerEditorRef = useRef<ChatRichTextEditorHandle>(null);
   const [showOptionsMenu, setShowOptionsMenu] = useState(false);
+  const [encryptionOpen, setEncryptionOpen] = useState(false);
+  const [encryptionPurpose, setEncryptionPurpose] = useState<"link" | "encryption">("encryption");
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedMessageIds, setSelectedMessageIds] = useState<string[]>([]);
   const [showMediaGallery, setShowMediaGallery] = useState(false);
@@ -2489,7 +2493,14 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           );
         }
       }
-      toast.success("Left group");
+        void import("@/lib/message-e2ee/engine")
+          .then((engine) =>
+            currentUser?.id
+              ? engine.rotateThreadSession(threadId, currentUser.id)
+              : undefined
+          )
+          .catch(() => undefined);
+        toast.success("Left group");
       setShowParticipantsList(false);
       if (variant === "page") router.push("/chat");
     } catch (error: any) {
@@ -2505,6 +2516,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     variant,
     router,
     confirm,
+    currentUser?.id,
   ]);
 
   const isCurrentUserGroupAdmin = useMemo(() => {
@@ -2544,6 +2556,13 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           delete next[member.id];
           return next;
         });
+        void import("@/lib/message-e2ee/engine")
+          .then((engine) =>
+            currentUser?.id
+              ? engine.rotateThreadSession(threadId, currentUser.id)
+              : undefined
+          )
+          .catch(() => undefined);
         toast.success(`${member.name} removed`);
       } catch (error: any) {
         toast.error(error?.message || "Failed to remove member");
@@ -2713,6 +2732,17 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         : []),
 
 
+      {
+        id: "encryption",
+        label: "Encryption",
+        Icon: Shield,
+        trailing: <ChevronRight className="h-4 w-4 opacity-70" />,
+        onClick: () => {
+          setShowOptionsMenu(false);
+          setEncryptionPurpose("encryption");
+          setEncryptionOpen(true);
+        },
+      },
       {
         id: "close",
         label: "Close chat",
@@ -3315,6 +3345,10 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                           ? () => cancelMessageUpload(message.id)
                           : undefined
                       }
+                      onLinkDevice={() => {
+                        setEncryptionPurpose("link");
+                        setEncryptionOpen(true);
+                      }}
                     />
                   </Fragment>
                 );
@@ -4027,6 +4061,13 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       ) : null}
 
       {dialog}
+      <MessageEncryptionModal
+        open={encryptionOpen}
+        onClose={() => setEncryptionOpen(false)}
+        purpose={encryptionPurpose}
+        otherUserId={!isGroupThread && !isSelfChat ? primaryParticipant?.id : null}
+        otherName={!isGroupThread && !isSelfChat ? primaryParticipant?.name || displayThreadName : null}
+      />
     </div>
   );
 };

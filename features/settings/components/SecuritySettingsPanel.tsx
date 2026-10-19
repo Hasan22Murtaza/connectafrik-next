@@ -23,6 +23,7 @@ import {
 import toast from 'react-hot-toast'
 import { useConfirmDialog } from '@/shared/components/ui/ConfirmDialog'
 import { ChangePasswordModal } from './ChangePasswordModal'
+import { MessageEncryptionPanel } from './MessageEncryptionPanel'
 import { TwoFactorSetupModal } from './TwoFactorSetupModal'
 import {
   Divider,
@@ -453,6 +454,8 @@ export function SecuritySettingsPanel() {
             </button>
           </div>
         </SettingsCard>
+
+        <MessageEncryptionPanel />
 
         <SettingsCard>
           <SettingsSectionHeader title="Your data" description="Download a copy of your CribsTalk information." />

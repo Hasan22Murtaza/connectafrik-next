@@ -244,6 +244,8 @@ interface MessageBubbleProps {
   // showTail?: boolean;
   /** Last bubble in a consecutive same-sender cluster */
   isClusterEnd?: boolean;
+  /** Opens the device-link code so another device can scan it. */
+  onLinkDevice?: () => void;
 }
 
 export const MessageBubble: React.FC<MessageBubbleProps> = ({
@@ -284,6 +286,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   onCancelUpload,
   // showTail = true,
   isClusterEnd = true,
+  onLinkDevice,
 }) => {
   const [showMenu, setShowMenu] = useState(false);
   const [showReactionPicker, setShowReactionPicker] = useState(false);
@@ -583,12 +586,21 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
       const items: ChatMediaViewerItem[] = [];
       for (const att of claimed.attachments) {
         if (att.type !== "image" && att.type !== "video") continue;
-        const blob = await supabaseMessagingService.fetchViewOnceMedia(
+        let blob = await supabaseMessagingService.fetchViewOnceMedia(
           threadId,
           message.id,
           att.id,
           claimed.token
         );
+        const sealed = message.attachments?.[items.length]?.sealed;
+        if (message.e2ee_version === 2) {
+          if (!sealed?.key || !sealed.sha256) {
+            throw new Error("This message can't be read on this device");
+          }
+          const { openCla1 } = await import("@/lib/message-e2ee/cla1");
+          const opened = await openCla1(new Uint8Array(await blob.arrayBuffer()), sealed.key, sealed.sha256);
+          blob = opened.type ? opened : new Blob([await opened.arrayBuffer()], { type: sealed.plainMime || att.mimeType });
+        }
         const objectUrl = URL.createObjectURL(blob);
         viewOnceBlobUrlsRef.current.push(objectUrl);
         items.push({
@@ -1517,6 +1529,19 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                     expanded={Boolean(isExpanded) || !shouldTruncate}
                     onToggleExpand={() => toggleExpanded(message.id)}
                   />
+                ) : null}
+                {message.e2ee_locked ? (
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      if (onLinkDevice) onLinkDevice();
+                      else window.location.assign("/settings?tab=security");
+                    }}
+                    className={`mt-1 block text-left text-[12px] underline ${isOwnMessage ? "text-white" : "text-content"}`}
+                  >
+                    Link a device
+                  </button>
                 ) : null}
 
                 {canTranslate &&
