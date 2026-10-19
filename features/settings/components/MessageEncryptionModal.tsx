@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { Check, Copy, Loader2, Lock, Phone, RefreshCw, X } from '@/shared/icons'
 import Portal from '@/shared/components/ui/Portal'
 import { useAuth } from '@/contexts/AuthContext'
+import { localLinkDeviceInfo } from '@/lib/message-e2ee/device-local'
 import { messageE2eeActive } from '@/lib/message-e2ee/status'
 import { linkQrDataUrl } from '@/lib/message-e2ee/qr'
 
@@ -27,7 +28,8 @@ const QR_TTL_MS = 5 * 60 * 1000
 
 /**
  * Single encryption modal: Link a device (QR + paste).
- * Used from settings, chat Encryption menu, and locked-message CTA.
+ * QR is rendered from local storage immediately (no WASM).
+ * OlmMachine / key publish runs in the background afterward.
  */
 export function MessageEncryptionModal({ open, onClose }: MessageEncryptionModalProps) {
   const { user } = useAuth()
@@ -82,34 +84,24 @@ export function MessageEncryptionModal({ open, onClose }: MessageEncryptionModal
     }
   }, [])
 
-  const prepareLinkSession = useCallback(
-    async (opts?: { forceQr?: boolean }) => {
-      if (!user?.id) return
-      const gen = ++sessionGen.current
-      setError('')
-      setQrError('')
-      setNotice('')
-      setLinkPhase((prev) => (prev === 'success' ? prev : 'starting'))
+  const showLocalQr = useCallback(
+    async (userId: string, gen: number) => {
+      const local = localLinkDeviceInfo(userId)
+      if (gen !== sessionGen.current) return local
+      setStatus(local)
+      wasOwner.current = local.ownsIdentity
+      await renderQr(local.payload, gen)
+      return local
+    },
+    [renderQr],
+  )
 
-      let renderedPayload = ''
+  const bootstrapCrypto = useCallback(
+    async (userId: string, gen: number) => {
       try {
         const engine = await import('@/lib/message-e2ee/engine')
-        const local = engine.localLinkDeviceInfo(user.id)
         if (gen !== sessionGen.current) return
-        setStatus(local)
-        wasOwner.current = local.ownsIdentity
-
-        if (opts?.forceQr || payloadRef.current !== local.payload) {
-          await renderQr(local.payload, gen)
-          if (payloadRef.current === local.payload) renderedPayload = local.payload
-        } else {
-          renderedPayload = local.payload
-          setExpiresAt(Date.now() + QR_TTL_MS)
-          setRemainingSec(Math.floor(QR_TTL_MS / 1000))
-          setLinkPhase((prev) => (prev === 'success' || prev === 'qr-error' ? prev : 'ready'))
-        }
-
-        const next = await engine.encryptionDeviceStatus(user.id)
+        const next = await engine.encryptionDeviceStatus(userId)
         if (gen !== sessionGen.current) return
         if (wasOwner.current === false && next.ownsIdentity) {
           setNotice('Device linked successfully')
@@ -128,24 +120,44 @@ export function MessageEncryptionModal({ open, onClose }: MessageEncryptionModal
       } catch (err) {
         if (gen !== sessionGen.current) return
         const message = err instanceof Error ? err.message : ''
-        if (renderedPayload || payloadRef.current) {
-          setLinkPhase((prev) => (prev === 'qr-error' ? prev : 'waiting'))
-          setError(
-            message && !/^off$/i.test(message)
-              ? `${message} Keep this window open and try again if linking fails.`
-              : 'Still preparing encryption on this browser. Keep this window open.',
-          )
-          return
-        }
-        setLinkPhase('failed')
+        // QR already visible — keep it. Surface a soft warning so pairing can still be retried.
+        setLinkPhase((prev) => (prev === 'qr-error' || prev === 'ready' || prev === 'waiting' ? prev : 'waiting'))
         setError(
           message && !/^off$/i.test(message)
-            ? message
-            : 'Device linking failed. Your encryption keys were not changed.',
+            ? `${message} The QR is still valid — keep this window open and try again if linking fails.`
+            : 'Still preparing encryption on this browser. Keep this window open — the QR remains usable.',
         )
       }
     },
-    [user?.id, renderQr],
+    [renderQr],
+  )
+
+  const prepareLinkSession = useCallback(
+    async () => {
+      if (!user?.id) return
+      const gen = ++sessionGen.current
+      setError('')
+      setQrError('')
+      setNotice('')
+      setLinkPhase((prev) => (prev === 'success' ? prev : 'starting'))
+
+      try {
+        await showLocalQr(user.id, gen)
+      } catch (err) {
+        if (gen !== sessionGen.current) return
+        setLinkPhase('failed')
+        setError(
+          err instanceof Error && err.message
+            ? err.message
+            : 'Device linking failed. Your encryption keys were not changed.',
+        )
+        return
+      }
+
+      if (gen !== sessionGen.current) return
+      await bootstrapCrypto(user.id, gen)
+    },
+    [user?.id, showLocalQr, bootstrapCrypto],
   )
 
   useEffect(() => {
@@ -165,10 +177,11 @@ export function MessageEncryptionModal({ open, onClose }: MessageEncryptionModal
       if (!on || !user?.id) return
 
       try {
-        const engine = await import('@/lib/message-e2ee/engine')
-        await prepareLinkSession({ forceQr: true })
+        await prepareLinkSession()
         if (cancelled) return
 
+        const engine = await import('@/lib/message-e2ee/engine')
+        if (cancelled) return
         stopKeys = engine.onMessageKeys(() => {
           void (async () => {
             try {
@@ -188,12 +201,15 @@ export function MessageEncryptionModal({ open, onClose }: MessageEncryptionModal
       } catch (err) {
         if (!cancelled) {
           const message = err instanceof Error ? err.message : ''
-          setLinkPhase('failed')
-          setError(
-            message && !/^off$/i.test(message)
-              ? message
-              : 'This browser could not start encryption. Use HTTPS, then refresh and try again.',
-          )
+          // Only hard-fail if we never got a QR.
+          if (!payloadRef.current) {
+            setLinkPhase('failed')
+            setError(
+              message && !/^off$/i.test(message)
+                ? message
+                : 'This browser could not start encryption. Use HTTPS, then refresh and try again.',
+            )
+          }
         }
       }
     })()
@@ -256,7 +272,7 @@ export function MessageEncryptionModal({ open, onClose }: MessageEncryptionModal
   }
 
   const retryQr = () => {
-    void prepareLinkSession({ forceQr: true })
+    void prepareLinkSession()
   }
 
   if (!open) return null
@@ -299,6 +315,16 @@ export function MessageEncryptionModal({ open, onClose }: MessageEncryptionModal
           alt="Device linking code"
           className="h-[200px] w-[200px] rounded-xl bg-white p-2"
         />
+      )
+    }
+    if (linkPhase === 'failed') {
+      return (
+        <div className="flex h-[200px] w-[200px] flex-col items-center justify-center gap-3 rounded-xl bg-surface-secondary px-3 text-center">
+          <p className="text-sm font-medium text-content">Could not prepare linking</p>
+          <button type="button" onClick={retryQr} className="btn-secondary min-h-9 rounded-[12px] px-3 text-sm">
+            Try again
+          </button>
+        </div>
       )
     }
     return (
@@ -366,7 +392,7 @@ export function MessageEncryptionModal({ open, onClose }: MessageEncryptionModal
                       : null}
                   </p>
                 ) : null}
-                {linkPhase === 'failed' ? (
+                {linkPhase === 'failed' && qrUrl ? (
                   <button
                     type="button"
                     onClick={retryQr}

@@ -24,7 +24,8 @@
 .DS_Store
 *.pem
 
-# Copied by scripts/copy-message-e2ee-wasm.mjs (postinstall / prebuild)
+# Copied by scripts/copy-message-e2ee-wasm.mjs (postinstall / prebuild).
+# Deploy must run npm install / npm run build so this file exists on the server.
 /public/matrix_sdk_crypto_wasm_bg.wasm
 
 # debug

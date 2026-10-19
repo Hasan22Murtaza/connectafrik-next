@@ -3,9 +3,16 @@
 import { apiClient } from '@/lib/api-client'
 import type { ChatAttachment, ChatMessage } from '@/features/chat/services/supabaseMessagingService'
 import { openCla1 } from '@/lib/message-e2ee/cla1'
+import {
+  deviceCredentials,
+  localLinkDeviceInfo as readLocalLinkDeviceInfo,
+  storageKey,
+} from '@/lib/message-e2ee/device-local'
 import { linkPayload, matrixRoomId, matrixUserId, normalizeLinkInput } from '@/lib/message-e2ee/ids'
 import { messageE2eeActive } from '@/lib/message-e2ee/status'
 import { safetyNumberDigits } from '@/lib/message-e2ee/safety'
+
+export { localLinkDeviceInfo } from '@/lib/message-e2ee/device-local'
 
 type Wasm = typeof import('@matrix-org/matrix-sdk-crypto-wasm')
 type Machine = import('@matrix-org/matrix-sdk-crypto-wasm').OlmMachine
@@ -85,7 +92,9 @@ async function loadWasm(): Promise<Wasm> {
         await mod.initAsync(url)
       } finally {
         // Blob URLs are only used when the proxy MIME type is wrong.
-        if (typeof url === 'string' && url.startsWith('blob:')) URL.revokeObjectURL(url)
+        if (typeof url === 'string' && url.startsWith('blob:')) {
+          URL.revokeObjectURL(url)
+        }
       }
       return mod
     })().catch((error) => {
@@ -103,37 +112,6 @@ function enqueue<T>(task: () => Promise<T>): Promise<T> {
     () => undefined,
   )
   return run
-}
-
-function storageKey(userId: string, name: string) {
-  return `cribstalk.message-e2ee.${userId}.${name}`
-}
-
-function randomDeviceId(): string {
-  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
-  const bytes = crypto.getRandomValues(new Uint8Array(10))
-  return Array.from(bytes, (byte) => alphabet[byte % alphabet.length]).join('')
-}
-
-function randomPassphrase(): string {
-  const bytes = crypto.getRandomValues(new Uint8Array(32))
-  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('')
-}
-
-function deviceCredentials(userId: string): { deviceId: string; passphrase: string } {
-  const deviceKey = storageKey(userId, 'device-id')
-  const passKey = storageKey(userId, 'store-passphrase')
-  let deviceId = localStorage.getItem(deviceKey) || ''
-  let passphrase = localStorage.getItem(passKey) || ''
-  if (!/^[A-Za-z0-9]{8,64}$/.test(deviceId)) {
-    deviceId = randomDeviceId()
-    localStorage.setItem(deviceKey, deviceId)
-  }
-  if (passphrase.length < 32) {
-    passphrase = randomPassphrase()
-    localStorage.setItem(passKey, passphrase)
-  }
-  return { deviceId, passphrase }
 }
 
 function memberKey(threadId: string) {
@@ -650,33 +628,13 @@ export function onMessageKeys(listener: () => void): () => void {
   return () => keyListeners.delete(listener)
 }
 
-/**
- * Immediate link info from local storage (no WASM / network).
- * Use this to render the QR as soon as the modal opens; call
- * `encryptionDeviceStatus` in parallel so keys are published for pairing.
- */
-export function localLinkDeviceInfo(userId: string): {
-  deviceId: string
-  ownsIdentity: boolean
-  payload: string
-} {
-  if (typeof window === 'undefined') {
-    throw new Error('Device linking requires a browser')
-  }
-  const { deviceId } = deviceCredentials(userId)
-  const stored = localStorage.getItem(storageKey(userId, 'owns-identity'))
-  return {
-    deviceId,
-    ownsIdentity: activeUserId === userId ? ownsIdentity : stored === 'yes',
-    payload: linkPayload(userId, deviceId),
-  }
-}
-
 export async function encryptionDeviceStatus(userId: string): Promise<{ deviceId: string; ownsIdentity: boolean; payload: string }> {
   if (!(await messageE2eeActive())) throw new Error('off')
+  // Prefer live machine identity once bootstrapped; fall back to localStorage flag.
+  const local = readLocalLinkDeviceInfo(userId)
   return withMachine(userId, async ({ deviceId }) => ({
     deviceId,
-    ownsIdentity,
+    ownsIdentity: activeUserId === userId ? ownsIdentity : local.ownsIdentity,
     payload: linkPayload(userId, deviceId),
   }))
 }

@@ -4,9 +4,11 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "prebuild": "node scripts/copy-message-e2ee-wasm.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "postinstall": "node scripts/copy-message-e2ee-wasm.mjs",
     "dev-start": "next start -p 5005",
     "vercel:ignore-build": "exit 1"
   },
