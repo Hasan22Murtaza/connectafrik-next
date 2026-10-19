@@ -371,7 +371,7 @@ const MessageAttachments: React.FC<MessageAttachmentsProps> = ({
             );
           }
           return (
-            <div key={att.id} className="relative max-w-full overflow-hidden rounded-xl">
+            <div key={att.id} className="relative min-w-28 inline-block max-w-full overflow-hidden rounded-xl">
               <button
                 type="button"
                 onClick={(e) => {
@@ -379,14 +379,14 @@ const MessageAttachments: React.FC<MessageAttachmentsProps> = ({
                   if (isUploading) return;
                   openMediaFor(att);
                 }}
-                className={`block max-w-full overflow-hidden ${
+                className={`inline-flex max-w-full flex-col overflow-hidden ${
                   gif ? "rounded-lg" : "rounded-xl"
                 } focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500`}
               >
                 <img
                   src={att.url}
                   alt={att.name}
-                  className={`max-h-56 w-auto max-w-full cursor-pointer object-contain transition-opacity hover:opacity-95 sm:max-h-80 ${
+                  className={`block max-h-56 w-auto max-w-full cursor-pointer object-contain transition-opacity hover:opacity-95 sm:max-h-80 ${
                     gif ? "rounded-lg" : "rounded-xl"
                   }`}
                   loading="lazy"
