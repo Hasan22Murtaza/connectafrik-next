@@ -23,6 +23,27 @@ export function parseLinkPayload(payload: string): { userId: string; deviceId: s
   return { userId, deviceId: match[2] }
 }
 
+/**
+ * Accept a full QR payload, or a bare device id from another browser of the same account
+ * (web ↔ web paste of "This device: …").
+ */
+export function normalizeLinkInput(
+  raw: string,
+  accountUserId: string,
+): { userId: string; deviceId: string } | null {
+  const trimmed = raw.trim()
+  const parsed = parseLinkPayload(trimmed.replace(/\s+/g, ''))
+  if (parsed) return parsed
+
+  const deviceOnly =
+    /^([A-Za-z0-9]{8,64})$/.exec(trimmed)?.[1] ||
+    /^This\s*device:\s*([A-Za-z0-9]{8,64})$/i.exec(trimmed)?.[1]
+  if (!deviceOnly) return null
+  const userId = accountUserId.trim().toLowerCase()
+  if (!userId) return null
+  return { userId, deviceId: deviceOnly }
+}
+
 export function linkPayload(userId: string, deviceId: string): string {
   return `cribstalk-link:1:${matrixUserId(userId)}:${deviceId}`
 }

@@ -3,7 +3,7 @@
 import { apiClient } from '@/lib/api-client'
 import type { ChatAttachment, ChatMessage } from '@/features/chat/services/supabaseMessagingService'
 import { openCla1 } from '@/lib/message-e2ee/cla1'
-import { linkPayload, matrixRoomId, matrixUserId, parseLinkPayload } from '@/lib/message-e2ee/ids'
+import { linkPayload, matrixRoomId, matrixUserId, normalizeLinkInput } from '@/lib/message-e2ee/ids'
 import { messageE2eeActive } from '@/lib/message-e2ee/status'
 import { safetyNumberDigits } from '@/lib/message-e2ee/safety'
 
@@ -161,23 +161,39 @@ async function pull(mod: Wasm, current: Machine, userId: string, deviceId: strin
   const lists = new mod.DeviceLists()
   const counts = new Map<string, number>([['signed_curve25519', sync?.oneTimeKeyCount ?? 0]])
   const unused = new Set(sync?.unusedFallback || [])
-  let processed: Array<{ rawEvent?: string; free?: () => void }> = []
+  let processed: Array<{ rawEvent?: string; type?: number; free?: () => void }> = []
   try {
     processed = (await current.receiveSyncChanges(
       JSON.stringify(events.map(({ type, sender, content }) => ({ type, sender, content }))),
       lists,
       counts,
       unused,
-    )) as Array<{ rawEvent?: string; free?: () => void }>
+    )) as Array<{ rawEvent?: string; type?: number; free?: () => void }>
   } finally {
     lists.free()
   }
-  const ackIds = events.map((event) => event.id).filter(Boolean)
+  // Never ack UnableToDecrypt to-device events — those are room keys / link
+  // bundles we still need. Deleting them left web clients permanently locked.
+  const ackIds: string[] = []
+  for (let i = 0; i < events.length; i++) {
+    const id = events[i]?.id
+    if (!id) continue
+    const result = processed[i]
+    if (!result || result.type === mod.ProcessedToDeviceEventType.UnableToDecrypt) {
+      if (result?.type === mod.ProcessedToDeviceEventType.UnableToDecrypt) {
+        console.warn('[message-e2ee] to-device event still locked; leaving queued', { id })
+      }
+      continue
+    }
+    ackIds.push(id)
+  }
   if (ackIds.length > 0) {
     await apiClient.post('/api/message-e2ee/sync/ack', { ids: ackIds }).catch(() => undefined)
   }
+  let gotKeys = false
   for (const event of processed) {
     try {
+      if (event.type === mod.ProcessedToDeviceEventType.UnableToDecrypt) continue
       if (!event.rawEvent) continue
       const raw = JSON.parse(event.rawEvent) as { type?: string; content?: { v?: number; bundle?: unknown } }
       if (raw.type === 'cribstalk.link' && raw.content?.bundle) {
@@ -185,16 +201,20 @@ async function pull(mod: Wasm, current: Machine, userId: string, deviceId: strin
         await current.importSecretsBundle(bundle)
         writeOwnsIdentity(userId, true)
         await signCurrentDevice(mod, current, deviceId)
+        gotKeys = true
+      }
+      if (raw.type === 'm.room_key' || raw.type === 'm.forwarded_room_key') {
+        gotKeys = true
       }
     } catch (error) {
       console.warn('[message-e2ee] to-device event failed', {
-        reason: error instanceof Error ? error.name : 'error',
+        reason: error instanceof Error ? error.message || error.name : 'error',
       })
     } finally {
       event.free?.()
     }
   }
-  if (processed.length > 0) {
+  if (gotKeys || processed.some((event) => event.type === mod.ProcessedToDeviceEventType.Decrypted)) {
     keyListeners.forEach((listener) => listener())
   }
 }
@@ -300,6 +320,13 @@ async function openMachine(userId: string): Promise<{ mod: Wasm; current: Machin
   machine = current
   activeUserId = userId
   activeDeviceId = deviceId
+  try {
+    current.registerRoomKeyUpdatedCallback(async () => {
+      keyListeners.forEach((listener) => listener())
+    })
+  } catch {
+    // Older wasm builds may omit the callback; poll + decrypt still run.
+  }
   await bootstrapIdentity(mod, current, userId, deviceId)
   if (pollTimer == null) {
     pollTimer = window.setInterval(() => {
@@ -371,7 +398,10 @@ async function shareSession(
     settings.historyVisibility = mod.HistoryVisibility.Joined
     settings.rotationPeriodMessages = BigInt(100)
     settings.rotationPeriod = ROTATION_MICROS
-    settings.sharingStrategy = mod.CollectStrategy.identityBasedStrategy()
+    // Share to every published device (web↔web and phone). Cross-signing is
+    // still used for safety numbers; requiring signed devices here left web
+    // recipients with locked messages when signatures lagged.
+    settings.sharingStrategy = mod.CollectStrategy.allDevices()
     const shareUsers = userIds.map((id) => new mod.UserId(matrixUserId(id)))
     try {
       const requests = await current.shareRoomKey(room, shareUsers, settings)
@@ -539,7 +569,7 @@ export async function decryptStoredMessage(message: ChatMessage): Promise<ChatMe
   } catch (error) {
     console.warn('[message-e2ee] decrypt failed', {
       messageId: message.id,
-      reason: error instanceof Error ? error.name : 'error',
+      reason: error instanceof Error ? error.message || error.name : 'error',
     })
     return { ...message, content: LOCKED, e2ee_locked: true, attachments: [] }
   }
@@ -586,52 +616,100 @@ export async function encryptionDeviceStatus(userId: string): Promise<{ deviceId
   }))
 }
 
+/** updateTrackedUsers / getMissingSessions / shareRoomKey take ownership of UserIds. */
+function releaseUserId(id: { free?: () => void } | null | undefined) {
+  try {
+    id?.free?.()
+  } catch {
+    // Already consumed by WASM.
+  }
+}
+
 export async function linkDeviceFromPayload(userId: string, payload: string): Promise<void> {
-  const parsed = parseLinkPayload(payload)
-  if (!parsed || parsed.userId !== userId) throw new Error('This QR code is for a different account')
+  const parsed = normalizeLinkInput(payload, userId)
+  if (!parsed) {
+    throw new Error('That is not a valid device code. Paste the full code or the other browser’s device id.')
+  }
+  if (parsed.userId !== userId) throw new Error('This QR code is for a different account')
   if (!ownsIdentity) throw new Error('This device does not hold the account encryption keys')
-  await withMachine(userId, async ({ mod, current, deviceId }) => {
-    if (parsed.deviceId === deviceId) return
-    await current.markAllTrackedUsersAsDirty()
-    await flush(mod, current, deviceId)
-    const owner = new mod.UserId(matrixUserId(userId))
-    const target = new mod.DeviceId(parsed.deviceId)
-    const device = await current.getDevice(owner, target, 0)
-    owner.free()
-    if (!device) {
-      target.free()
-      throw new Error('That device has not published its keys yet')
-    }
-    const missing = await current.getMissingSessions([new mod.UserId(matrixUserId(userId))])
-    if (missing) {
-      await sendAndMark(mod, current, deviceId, missing as WireRequest)
-      missing.free?.()
-    }
-    const bundle = await current.exportSecretsBundle()
-    try {
-      const encrypted = await device.encryptToDeviceEvent(
-        'cribstalk.link',
-        { v: 1, bundle: bundle.to_json() },
-        mod.CollectStrategy.allDevices(),
-      )
-      await apiClient.post('/api/message-e2ee/request', {
-        type: 3,
-        eventType: 'm.room.encrypted',
-        deviceId,
-        body: JSON.stringify({
-          messages: {
-            [matrixUserId(userId)]: {
-              [parsed.deviceId]: JSON.parse(encrypted),
-            },
-          },
-        }),
-      })
-    } finally {
-      bundle.free?.()
+  try {
+    await withMachine(userId, async ({ mod, current, deviceId }) => {
+      if (parsed.deviceId === deviceId) {
+        throw new Error('That code is for this browser. Paste the other browser’s code instead.')
+      }
+      await current.markAllTrackedUsersAsDirty()
+      await flush(mod, current, deviceId)
+      // Query keys again so a browser that just opened Link a device is visible.
+      // updateTrackedUsers invalidates its UserId args — do not free after success.
+      const tracked = new mod.UserId(matrixUserId(userId))
+      try {
+        await current.updateTrackedUsers([tracked])
+      } catch {
+        releaseUserId(tracked)
+      }
+      await flush(mod, current, deviceId)
+      const owner = new mod.UserId(matrixUserId(userId))
+      const target = new mod.DeviceId(parsed.deviceId)
+      let device = await current.getDevice(owner, target, 0)
+      if (!device) {
+        await current.markAllTrackedUsersAsDirty()
+        await flush(mod, current, deviceId)
+        device = await current.getDevice(owner, target, 0)
+      }
+      if (!device) {
+        owner.free()
+        target.free()
+        throw new Error(
+          'That browser has not published encryption keys yet. Open Link a device on it, wait a few seconds, then try again.',
+        )
+      }
+      // getMissingSessions also invalidates UserIds.
+      const missing = await current.getMissingSessions([new mod.UserId(matrixUserId(userId))])
+      if (missing) {
+        await sendAndMark(mod, current, deviceId, missing as WireRequest)
+        missing.free?.()
+      }
+      await flush(mod, current, deviceId)
+      // Prefer a fresh Device handle after the Olm session is established.
       device.free()
-      target.free()
+      device = await current.getDevice(owner, target, 0)
+      owner.free()
+      if (!device) {
+        target.free()
+        throw new Error('Could not reach that device after creating a secure channel. Try again.')
+      }
+      const bundle = await current.exportSecretsBundle()
+      try {
+        const encrypted = await device.encryptToDeviceEvent(
+          'cribstalk.link',
+          { v: 1, bundle: bundle.to_json() },
+          mod.CollectStrategy.allDevices(),
+        )
+        await apiClient.post('/api/message-e2ee/request', {
+          type: 3,
+          eventType: 'm.room.encrypted',
+          deviceId,
+          body: JSON.stringify({
+            messages: {
+              [matrixUserId(userId)]: {
+                [parsed.deviceId]: JSON.parse(encrypted),
+              },
+            },
+          }),
+        })
+      } finally {
+        bundle.free?.()
+        device.free()
+        target.free()
+      }
+    })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : ''
+    if (/null pointer|out of bounds|moved value/i.test(message)) {
+      throw new Error('Linking hit a crypto error on this browser. Refresh both windows and try pasting the other device id again.')
     }
-  })
+    throw error
+  }
 }
 
 export async function safetyNumberForUser(userId: string, otherUserId: string): Promise<string> {
