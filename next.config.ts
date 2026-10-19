@@ -10,9 +10,16 @@ const bunnyCdnHost = (() => {
   }
 })()
 
+const nodePolyfillAliases = {
+  crypto: 'crypto-browserify',
+  stream: 'stream-browserify',
+  assert: 'assert',
+  buffer: 'buffer',
+  process: 'process/browser',
+}
+
 const nextConfig: NextConfig = {
   reactStrictMode: false,
-  serverExternalPackages: ['@matrix-org/matrix-sdk-crypto-wasm'],
 
   images: {
     remotePatterns: [
@@ -21,6 +28,34 @@ const nextConfig: NextConfig = {
         ? [{ protocol: 'https' as const, hostname: bunnyCdnHost }]
         : []),
     ],
+  },
+
+  // libsignal is Node-oriented; alias Node built-ins for the browser bundle.
+  turbopack: {
+    resolveAlias: nodePolyfillAliases,
+  },
+
+  webpack: (config, { isServer, webpack }) => {
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        crypto: require.resolve('crypto-browserify'),
+        stream: require.resolve('stream-browserify'),
+        assert: require.resolve('assert/'),
+        buffer: require.resolve('buffer/'),
+        process: require.resolve('process/browser'),
+        fs: false,
+        path: false,
+        os: false,
+      }
+      config.plugins.push(
+        new webpack.ProvidePlugin({
+          Buffer: ['buffer', 'Buffer'],
+          process: 'process/browser',
+        }),
+      )
+    }
+    return config
   },
 
   async rewrites() {
@@ -45,14 +80,6 @@ const nextConfig: NextConfig = {
       {
         source: '/.well-known/assetlinks.json',
         headers: [{ key: 'Content-Type', value: 'application/json' }],
-      },
-      // Matrix E2EE WASM must be application/wasm for instantiateStreaming.
-      {
-        source: '/matrix_sdk_crypto_wasm_bg.wasm',
-        headers: [
-          { key: 'Content-Type', value: 'application/wasm' },
-          { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
-        ],
       },
     ]
   },

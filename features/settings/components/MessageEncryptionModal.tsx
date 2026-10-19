@@ -28,8 +28,8 @@ const QR_TTL_MS = 5 * 60 * 1000
 
 /**
  * Single encryption modal: Link a device (QR + paste).
- * QR is rendered from local storage immediately (no WASM).
- * OlmMachine / key publish runs in the background afterward.
+ * QR is rendered from local storage immediately.
+ * Signal key publish / session bootstrap runs in the background afterward.
  */
 export function MessageEncryptionModal({ open, onClose }: MessageEncryptionModalProps) {
   const { user } = useAuth()

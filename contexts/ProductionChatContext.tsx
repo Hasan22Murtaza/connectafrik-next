@@ -53,11 +53,11 @@ function mergeChatMessageRealtime(prev: ChatMessage, incoming: ChatMessage): Cha
     reactions: incomingEmptyReactions ? prev.reactions : incoming.reactions,
     sender: senderLooksStub ? prev.sender : incoming.sender,
     content:
-      prev.e2ee_version === 2 && !prev.e2ee_locked && incoming.e2ee_locked
+      (prev.e2ee_version === 2 || prev.e2ee_version === 3) && !prev.e2ee_locked && incoming.e2ee_locked
         ? prev.content
         : incoming.content,
     e2ee_locked:
-      prev.e2ee_version === 2 && !prev.e2ee_locked && incoming.e2ee_locked
+      (prev.e2ee_version === 2 || prev.e2ee_version === 3) && !prev.e2ee_locked && incoming.e2ee_locked
         ? false
         : incoming.e2ee_locked,
     view_once: Boolean(incoming.view_once || prev.view_once),

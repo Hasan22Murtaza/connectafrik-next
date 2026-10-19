@@ -39,13 +39,14 @@ export async function POST(request: NextRequest, context: RouteContext) {
         updated_at: now,
         content: '',
         ciphertext: null,
-        megolm_session_id: null,
         sender_device_id: null,
       })
       .eq('id', messageId)
       .eq('thread_id', threadId)
 
     if (updateError) return errorResponse(updateError.message, 400)
+
+    await serviceClient.from('signal_message_envelopes').delete().eq('message_id', messageId)
 
     return jsonResponse({ success: true })
   } catch (error: any) {

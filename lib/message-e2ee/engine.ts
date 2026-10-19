@@ -4,106 +4,53 @@ import { apiClient } from '@/lib/api-client'
 import type { ChatAttachment, ChatMessage } from '@/features/chat/services/supabaseMessagingService'
 import { openCla1 } from '@/lib/message-e2ee/cla1'
 import {
+  isRawSignalBody,
+  LEGACY_MEGOLM_VERSION,
+  parseEncryptedMessage,
+  pickEnvelopeForDevice,
+  SIGNAL_E2EE_VERSION,
+} from '@/lib/message-e2ee/codec'
+import type { EncryptedEnvelope } from '@/lib/message-e2ee/types'
+import {
   deviceCredentials,
   localLinkDeviceInfo as readLocalLinkDeviceInfo,
   storageKey,
 } from '@/lib/message-e2ee/device-local'
-import { linkPayload, matrixRoomId, matrixUserId, normalizeLinkInput } from '@/lib/message-e2ee/ids'
+import { linkPayload, normalizeLinkInput } from '@/lib/message-e2ee/ids'
+import { SignalEncryptionService } from '@/lib/message-e2ee/signal-service'
 import { messageE2eeActive } from '@/lib/message-e2ee/status'
-import { safetyNumberDigits } from '@/lib/message-e2ee/safety'
+import type { DeviceKeyBundle } from '@/lib/message-e2ee/types'
 
 export { localLinkDeviceInfo } from '@/lib/message-e2ee/device-local'
-
-type Wasm = typeof import('@matrix-org/matrix-sdk-crypto-wasm')
-type Machine = import('@matrix-org/matrix-sdk-crypto-wasm').OlmMachine
+export { SIGNAL_E2EE_VERSION }
 
 const LOCKED = "🔒 This message can't be read on this device"
-const ROTATION_MICROS = BigInt(7) * BigInt(24) * BigInt(60) * BigInt(60) * BigInt(1000000)
 
 export type EncryptResult =
   | { mode: 'off' }
   | { mode: 'fallback'; reason: string }
   | {
-      mode: 'megolm'
+      mode: 'signal'
+      /** Raw Signal body only — never a JSON pack. */
       ciphertext: string
-      sessionId: string
       senderDeviceId: string
+      e2eeVersion: typeof SIGNAL_E2EE_VERSION
+      envelopes: EncryptedEnvelope[]
     }
 
-type WireRequest = {
-  id?: string
-  type?: number
-  body?: string
-  event_type?: string
-  free?: () => void
+type SyncEvent = {
+  id: string
+  type: string
+  sender: string
+  content: unknown
 }
 
-type SyncEvent = { id: string; type: string; sender: string; content: unknown }
-
-let wasmPromise: Promise<Wasm> | null = null
-let machine: Machine | null = null
+let service: SignalEncryptionService | null = null
 let activeUserId: string | null = null
-let activeDeviceId: string | null = null
-let ownsIdentity = false
 let queue: Promise<unknown> = Promise.resolve()
 let pollTimer: number | null = null
 const keyListeners = new Set<() => void>()
 const decryptCache = new Map<string, ChatMessage>()
-
-/** Public URL so Turbopack/webpack do not need special .wasm asset rules. */
-const PUBLIC_WASM_PATH = '/matrix_sdk_crypto_wasm_bg.wasm'
-
-/**
- * Resolve a URL that WebAssembly.instantiateStreaming will accept.
- * Some reverse proxies serve .wasm as octet-stream; re-wrap as a blob when needed.
- */
-async function resolveWasmUrl(): Promise<string | URL> {
-  const res = await fetch(PUBLIC_WASM_PATH)
-  if (!res.ok) {
-    throw new Error(
-      `Encryption module missing (${res.status}). Redeploy after npm install so public/matrix_sdk_crypto_wasm_bg.wasm exists.`,
-    )
-  }
-  const type = (res.headers.get('content-type') || '').toLowerCase()
-  if (type.includes('application/wasm') || type.includes('application/octet-stream')) {
-    if (type.includes('application/wasm')) return PUBLIC_WASM_PATH
-    const buffer = await res.arrayBuffer()
-    return URL.createObjectURL(new Blob([buffer], { type: 'application/wasm' }))
-  }
-  // HTML error pages / wrong MIME — blob wrap still lets instantiateStreaming run.
-  const buffer = await res.arrayBuffer()
-  if (buffer.byteLength < 1000) {
-    throw new Error('Encryption module failed to download. Check that the site is served over HTTPS.')
-  }
-  return URL.createObjectURL(new Blob([buffer], { type: 'application/wasm' }))
-}
-
-async function loadWasm(): Promise<Wasm> {
-  if (!wasmPromise) {
-    wasmPromise = (async () => {
-      if (typeof window !== 'undefined' && !window.isSecureContext) {
-        throw new Error(
-          'End-to-end encryption needs a secure context (HTTPS or localhost). Open this site over HTTPS.',
-        )
-      }
-      const mod = await import('@matrix-org/matrix-sdk-crypto-wasm')
-      const url = await resolveWasmUrl()
-      try {
-        await mod.initAsync(url)
-      } finally {
-        // Blob URLs are only used when the proxy MIME type is wrong.
-        if (typeof url === 'string' && url.startsWith('blob:')) {
-          URL.revokeObjectURL(url)
-        }
-      }
-      return mod
-    })().catch((error) => {
-      wasmPromise = null
-      throw error
-    })
-  }
-  return wasmPromise
-}
 
 function enqueue<T>(task: () => Promise<T>): Promise<T> {
   const run = queue.then(task, task)
@@ -114,260 +61,133 @@ function enqueue<T>(task: () => Promise<T>): Promise<T> {
   return run
 }
 
-function memberKey(threadId: string) {
-  return `cribstalk.megolm.members.${threadId}`
-}
-
 function writeOwnsIdentity(userId: string, owns: boolean) {
-  ownsIdentity = owns
+  service?.store.setOwnsIdentity(owns)
   localStorage.setItem(storageKey(userId, 'owns-identity'), owns ? 'yes' : 'no')
 }
 
-async function postRequest(deviceId: string, request: WireRequest, eventType?: string) {
+function memberKey(threadId: string) {
+  return `cribstalk.signal.members.${threadId}`
+}
+
+async function postCrypto(type: number | string, deviceId: string, body: unknown, eventType?: string) {
   return apiClient.post<Record<string, unknown>>('/api/message-e2ee/request', {
-    id: request.id,
-    type: request.type,
-    body: request.body,
+    type,
     deviceId,
+    body: JSON.stringify(body),
     ...(eventType ? { eventType } : {}),
   })
 }
 
-async function sendAndMark(mod: Wasm, current: Machine, deviceId: string, request: WireRequest) {
-  if (!request.id || request.type == null || !request.body) return { existing: false, serverHasIdentity: false }
-  const response = await postRequest(deviceId, request, request.event_type)
-  await current.markRequestAsSent(request.id, request.type, JSON.stringify(response ?? {}))
-  const masterKeys = response?.master_keys
-  const serverHasIdentity = Boolean(
-    masterKeys && typeof masterKeys === 'object' && Object.keys(masterKeys as object).length > 0,
-  )
-  return { existing: response?.existing === true, serverHasIdentity }
+async function publishKeys(current: SignalEncryptionService, replenishOtks = false) {
+  const uploaded = await current.publicUploadBundle({ replenishOtks })
+  const result = await postCrypto('register', current.deviceId, {
+    identity_key: uploaded.keys.identityPublicKey,
+    registration_id: uploaded.keys.registrationId,
+    signed_prekey: {
+      key_id: uploaded.keys.signedPreKey.keyId,
+      public_key: uploaded.keys.signedPreKey.publicKey,
+      signature: uploaded.keys.signedPreKey.signature,
+    },
+    one_time_prekeys: uploaded.keys.oneTimePreKeys.map((item) => ({
+      key_id: item.keyId,
+      public_key: item.publicKey,
+    })),
+    device_name: uploaded.deviceName,
+    platform: uploaded.platform,
+  })
+  if (result?.is_first_device === true) {
+    writeOwnsIdentity(current.userId, true)
+  } else if (localStorage.getItem(storageKey(current.userId, 'owns-identity')) !== 'yes') {
+    // Keep prior owner flag; new devices stay non-owner until linked.
+    if (!current.store.getOwnsIdentity()) writeOwnsIdentity(current.userId, false)
+  }
+  return result
 }
 
-async function flush(mod: Wasm, current: Machine, deviceId: string, depth = 0): Promise<boolean> {
-  if (depth > 5) return false
-  const requests = (await current.outgoingRequests()) as WireRequest[]
-  if (!requests?.length) return false
-  let serverHasIdentity = false
-  for (const request of requests) {
+async function pullToDevice(current: SignalEncryptionService) {
+  const sync = await apiClient.get<{ events?: SyncEvent[]; oneTimeKeyCount?: number }>(
+    '/api/message-e2ee/sync',
+    { device_id: current.deviceId },
+  )
+  const events = Array.isArray(sync?.events) ? sync.events : []
+  const ackIds: string[] = []
+  let gotKeys = false
+
+  for (const event of events) {
     try {
-      if (request.type === 5 || request.type === 6) {
-        if (request.id && request.type != null) {
-          await current.markRequestAsSent(request.id, request.type, '{}')
-        }
-      } else {
-        const result = await sendAndMark(mod, current, deviceId, request)
-        if (result.serverHasIdentity) serverHasIdentity = true
+      const content = (event.content || {}) as {
+        type?: number
+        body?: string
+        v?: number
+        kind?: string
+        sender_device_id?: string
       }
+      if (event.type === 'cribstalk.link' || content.kind === 'link-approve') {
+        const senderDeviceId = typeof content.sender_device_id === 'string' ? content.sender_device_id : ''
+        if (typeof content.type === 'number' && typeof content.body === 'string' && senderDeviceId) {
+          const plain = await current.decryptMessage(event.sender, senderDeviceId, {
+            type: content.type,
+            body: content.body,
+          })
+          const parsed = JSON.parse(plain) as { approved?: boolean }
+          if (parsed.approved) {
+            writeOwnsIdentity(current.userId, true)
+            gotKeys = true
+          }
+        }
+        ackIds.push(event.id)
+        continue
+      }
+      ackIds.push(event.id)
     } catch (error) {
-      console.warn('[message-e2ee] key request failed', {
-        type: request.type,
+      console.warn('[message-e2ee] to-device event failed', {
         reason: error instanceof Error ? error.name : 'error',
       })
-    } finally {
-      request.free?.()
     }
   }
-  const nested = await flush(mod, current, deviceId, depth + 1)
-  return serverHasIdentity || nested
-}
 
-async function pull(mod: Wasm, current: Machine, userId: string, deviceId: string) {
-  const sync = await apiClient.get<{
-    events?: SyncEvent[]
-    oneTimeKeyCount?: number
-    unusedFallback?: string[]
-  }>('/api/message-e2ee/sync', { device_id: deviceId })
-  const events = Array.isArray(sync?.events) ? sync.events : []
-  const lists = new mod.DeviceLists()
-  const counts = new Map<string, number>([['signed_curve25519', sync?.oneTimeKeyCount ?? 0]])
-  const unused = new Set(sync?.unusedFallback || [])
-  let processed: Array<{ rawEvent?: string; type?: number; free?: () => void }> = []
-  try {
-    processed = (await current.receiveSyncChanges(
-      JSON.stringify(events.map(({ type, sender, content }) => ({ type, sender, content }))),
-      lists,
-      counts,
-      unused,
-    )) as Array<{ rawEvent?: string; type?: number; free?: () => void }>
-  } finally {
-    lists.free()
-  }
-  // Never ack UnableToDecrypt to-device events — those are room keys / link
-  // bundles we still need. Deleting them left web clients permanently locked.
-  const ackIds: string[] = []
-  for (let i = 0; i < events.length; i++) {
-    const id = events[i]?.id
-    if (!id) continue
-    const result = processed[i]
-    if (!result || result.type === mod.ProcessedToDeviceEventType.UnableToDecrypt) {
-      if (result?.type === mod.ProcessedToDeviceEventType.UnableToDecrypt) {
-        console.warn('[message-e2ee] to-device event still locked; leaving queued', { id })
-      }
-      continue
-    }
-    ackIds.push(id)
-  }
   if (ackIds.length > 0) {
     await apiClient.post('/api/message-e2ee/sync/ack', { ids: ackIds }).catch(() => undefined)
   }
-  let gotKeys = false
-  for (const event of processed) {
-    try {
-      if (event.type === mod.ProcessedToDeviceEventType.UnableToDecrypt) continue
-      if (!event.rawEvent) continue
-      const raw = JSON.parse(event.rawEvent) as { type?: string; content?: { v?: number; bundle?: unknown } }
-      if (raw.type === 'cribstalk.link' && raw.content?.bundle) {
-        const bundle = mod.SecretsBundle.from_json(raw.content.bundle)
-        await current.importSecretsBundle(bundle)
-        writeOwnsIdentity(userId, true)
-        await signCurrentDevice(mod, current, deviceId)
-        gotKeys = true
-      }
-      if (raw.type === 'm.room_key' || raw.type === 'm.forwarded_room_key') {
-        gotKeys = true
-      }
-    } catch (error) {
-      console.warn('[message-e2ee] to-device event failed', {
-        reason: error instanceof Error ? error.message || error.name : 'error',
-      })
-    } finally {
-      event.free?.()
-    }
+  if ((sync?.oneTimeKeyCount ?? 100) < 20) {
+    await publishKeys(current, true).catch(() => undefined)
   }
-  if (gotKeys || processed.some((event) => event.type === mod.ProcessedToDeviceEventType.Decrypted)) {
-    keyListeners.forEach((listener) => listener())
-  }
+  if (gotKeys) keyListeners.forEach((listener) => listener())
 }
 
-async function signCurrentDevice(mod: Wasm, current: Machine, deviceId: string) {
-  const status = await current.crossSigningStatus()
-  if (!status.hasMaster || !status.hasSelfSigning) return
-  const boot = await current.bootstrapCrossSigning(false)
-  try {
-    if (boot.uploadKeysRequest) {
-      await sendAndMark(mod, current, deviceId, boot.uploadKeysRequest as WireRequest)
-    }
-    const signingBody = boot.uploadSigningKeysRequest?.body
-    if (typeof signingBody === 'string') {
-      await apiClient.post('/api/message-e2ee/request', {
-        type: 'signing-keys',
-        body: signingBody,
-        deviceId,
-      })
-    }
-    if (boot.uploadSignaturesRequest) {
-      await sendAndMark(mod, current, deviceId, boot.uploadSignaturesRequest as WireRequest)
-    }
-  } finally {
-    boot.free?.()
+async function openService(userId: string): Promise<SignalEncryptionService> {
+  if (service && activeUserId === userId) return service
+  if (typeof window !== 'undefined' && !window.isSecureContext) {
+    throw new Error(
+      'End-to-end encryption needs a secure context (HTTPS or localhost). Open this site over HTTPS.',
+    )
   }
-}
-
-async function bootstrapIdentity(mod: Wasm, current: Machine, userId: string, deviceId: string) {
-  const serverHasIdentity = await flush(mod, current, deviceId)
-  const me = new mod.UserId(matrixUserId(userId))
-  try {
-    await current.updateTrackedUsers([me])
-  } catch {
-    me.free()
-  }
-  const queried = await flush(mod, current, deviceId)
-  const status = await current.crossSigningStatus()
-  if (status.hasMaster && status.hasSelfSigning && status.hasUserSigning) {
-    if (localStorage.getItem(storageKey(userId, 'owns-identity')) !== 'no') {
-      writeOwnsIdentity(userId, true)
-    } else {
-      ownsIdentity = false
-    }
-    return
-  }
-  const identityUser = new mod.UserId(matrixUserId(userId))
-  const identity = await current.getIdentity(identityUser)
-  identityUser.free()
-  const serverIdentity = Boolean(identity) || serverHasIdentity || queried
-  identity?.free?.()
-  if (serverIdentity) {
-    writeOwnsIdentity(userId, false)
-    return
-  }
-  const boot = await current.bootstrapCrossSigning(true)
-  try {
-    if (boot.uploadKeysRequest) {
-      await sendAndMark(mod, current, deviceId, boot.uploadKeysRequest as WireRequest)
-    }
-    const signingBody = boot.uploadSigningKeysRequest?.body
-    if (typeof signingBody === 'string') {
-      const result = await apiClient.post<{ existing?: boolean }>('/api/message-e2ee/request', {
-        type: 'signing-keys',
-        body: signingBody,
-        deviceId,
-      })
-      if (result?.existing) {
-        writeOwnsIdentity(userId, false)
-        return
-      }
-    }
-    if (boot.uploadSignaturesRequest) {
-      await sendAndMark(mod, current, deviceId, boot.uploadSignaturesRequest as WireRequest)
-    }
-    writeOwnsIdentity(userId, true)
-  } finally {
-    boot.free?.()
-  }
-  await flush(mod, current, deviceId)
-}
-
-async function openMachine(userId: string): Promise<{ mod: Wasm; current: Machine; deviceId: string }> {
-  if (machine && activeUserId === userId && activeDeviceId) {
-    return { mod: await loadWasm(), current: machine, deviceId: activeDeviceId }
-  }
-  if (machine) {
-    machine.close()
-    machine = null
-  }
-  const mod = await loadWasm()
   const { deviceId, passphrase } = deviceCredentials(userId)
-  const user = new mod.UserId(matrixUserId(userId))
-  const device = new mod.DeviceId(deviceId)
-  const current = await mod.OlmMachine.initialize(
-    user,
-    device,
-    `cribstalk-message-e2ee:${userId}:${deviceId}`,
-    passphrase,
-  )
-  user.free()
-  device.free()
-  machine = current
-  activeUserId = userId
-  activeDeviceId = deviceId
-  try {
-    current.registerRoomKeyUpdatedCallback(async () => {
-      keyListeners.forEach((listener) => listener())
-    })
-  } catch {
-    // Older wasm builds may omit the callback; poll + decrypt still run.
+  const next = new SignalEncryptionService(userId, deviceId, passphrase)
+  await next.initialize()
+  if (localStorage.getItem(storageKey(userId, 'owns-identity')) === 'yes') {
+    next.store.setOwnsIdentity(true)
   }
-  await bootstrapIdentity(mod, current, userId, deviceId)
+  await publishKeys(next, true)
+  service = next
+  activeUserId = userId
   if (pollTimer == null) {
     pollTimer = window.setInterval(() => {
       void enqueue(async () => {
-        if (!machine || !activeUserId || !activeDeviceId) return
-        const loaded = await loadWasm()
-        await pull(loaded, machine, activeUserId, activeDeviceId)
-        await flush(loaded, machine, activeDeviceId)
+        if (!service || !activeUserId) return
+        await pullToDevice(service)
       }).catch(() => undefined)
     }, 4000)
   }
-  return { mod, current, deviceId }
+  return next
 }
 
-async function withMachine<T>(userId: string, task: (ctx: { mod: Wasm; current: Machine; deviceId: string }) => Promise<T>) {
+async function withService<T>(userId: string, task: (current: SignalEncryptionService) => Promise<T>) {
   return enqueue(async () => {
-    const ctx = await openMachine(userId)
-    await pull(ctx.mod, ctx.current, userId, ctx.deviceId)
-    await flush(ctx.mod, ctx.current, ctx.deviceId)
-    return task(ctx)
+    const current = await openService(userId)
+    await pullToDevice(current)
+    return task(current)
   })
 }
 
@@ -389,64 +209,73 @@ function rememberMembers(threadId: string, ids: string[]): boolean {
   return previous.some((id) => !nextSet.has(id))
 }
 
-async function shareSession(
-  mod: Wasm,
-  current: Machine,
-  deviceId: string,
-  threadId: string,
+async function fetchDevices(
+  current: SignalEncryptionService,
   userIds: string[],
-  rotate: boolean,
-) {
-  const room = new mod.RoomId(matrixRoomId(threadId))
-  try {
-    if (rotate) await current.invalidateGroupSession(room)
-    const tracked = userIds.map((id) => new mod.UserId(matrixUserId(id)))
-    try {
-      await current.updateTrackedUsers(tracked)
-    } catch {
-      tracked.forEach((id) => id.free())
+): Promise<DeviceKeyBundle[]> {
+  const listed = await postCrypto('devices', current.deviceId, { user_ids: userIds })
+  const devicesMap = (listed?.devices || {}) as Record<string, Array<Record<string, unknown>>>
+  const bundles: DeviceKeyBundle[] = []
+  for (const userId of userIds) {
+    const rows = Array.isArray(devicesMap[userId]) ? devicesMap[userId]! : []
+    for (const row of rows) {
+      const deviceId = typeof row.device_id === 'string' ? row.device_id : ''
+      if (!deviceId || (userId === current.userId && deviceId === current.deviceId)) continue
+      const signed = (row.signed_prekey || {}) as Record<string, unknown>
+      bundles.push({
+        userId,
+        deviceId,
+        identityKey: typeof row.identity_key === 'string' ? row.identity_key : '',
+        registrationId: typeof row.registration_id === 'number' ? row.registration_id : Number(row.registration_id),
+        signedPreKey: {
+          keyId: typeof signed.key_id === 'number' ? signed.key_id : Number(signed.key_id),
+          publicKey: typeof signed.public_key === 'string' ? signed.public_key : '',
+          signature: typeof signed.signature === 'string' ? signed.signature : '',
+        },
+        deviceName: typeof row.device_name === 'string' ? row.device_name : undefined,
+        platform: typeof row.platform === 'string' ? row.platform : undefined,
+        lastSeenAt: typeof row.last_seen_at === 'string' ? row.last_seen_at : undefined,
+      })
     }
-    await flush(mod, current, deviceId)
-    const missingUsers = userIds.map((id) => new mod.UserId(matrixUserId(id)))
-    const claim = await current.getMissingSessions(missingUsers)
-    if (claim) {
-      await sendAndMark(mod, current, deviceId, claim as WireRequest)
-      claim.free?.()
-    }
-    await flush(mod, current, deviceId)
-    const settings = new mod.EncryptionSettings()
-    settings.algorithm = mod.EncryptionAlgorithm.MegolmV1AesSha2
-    settings.historyVisibility = mod.HistoryVisibility.Joined
-    settings.rotationPeriodMessages = BigInt(100)
-    settings.rotationPeriod = ROTATION_MICROS
-    // Share to every published device (web↔web and phone). Cross-signing is
-    // still used for safety numbers; requiring signed devices here left web
-    // recipients with locked messages when signatures lagged.
-    settings.sharingStrategy = mod.CollectStrategy.allDevices()
-    const shareUsers = userIds.map((id) => new mod.UserId(matrixUserId(id)))
-    try {
-      const requests = await current.shareRoomKey(room, shareUsers, settings)
-      for (const request of requests as WireRequest[]) {
-        await sendAndMark(mod, current, deviceId, request)
-        request.free?.()
-      }
-    } finally {
-      settings.free()
-    }
-  } finally {
-    room.free()
   }
+  return bundles.filter((item) => item.identityKey && item.signedPreKey.publicKey)
+}
+
+async function ensureSession(current: SignalEncryptionService, target: DeviceKeyBundle) {
+  if (await current.hasSession(target.userId, target.deviceId)) return
+  const claimed = await postCrypto('claim', current.deviceId, {
+    user_id: target.userId,
+    device_id: target.deviceId,
+  })
+  const bundle = (claimed?.bundle || {}) as Record<string, unknown>
+  const signed = (bundle.signed_prekey || {}) as Record<string, unknown>
+  const otk = (bundle.one_time_prekey || null) as Record<string, unknown> | null
+  await current.createSession({
+    userId: target.userId,
+    deviceId: target.deviceId,
+    identityKey: typeof bundle.identity_key === 'string' ? bundle.identity_key : target.identityKey,
+    registrationId:
+      typeof bundle.registration_id === 'number' ? bundle.registration_id : target.registrationId,
+    signedPreKey: {
+      keyId: typeof signed.key_id === 'number' ? signed.key_id : target.signedPreKey.keyId,
+      publicKey: typeof signed.public_key === 'string' ? signed.public_key : target.signedPreKey.publicKey,
+      signature: typeof signed.signature === 'string' ? signed.signature : target.signedPreKey.signature,
+    },
+    oneTimePreKey: otk
+      ? {
+          keyId: typeof otk.key_id === 'number' ? otk.key_id : Number(otk.key_id),
+          publicKey: typeof otk.public_key === 'string' ? otk.public_key : '',
+        }
+      : null,
+  })
 }
 
 function msgtypeFor(messageType: string | undefined, attachments: ChatAttachment[]): string {
-  if (attachments.some((item) => item.type === 'image' || item.mimeType.startsWith('image/'))) return 'm.image'
-  if (attachments.some((item) => item.type === 'video' || item.mimeType.startsWith('video/'))) return 'm.video'
-  if (attachments.some((item) => item.mimeType.startsWith('audio/'))) return 'm.audio'
-  if (attachments.length > 0) return 'm.file'
-  if (messageType === 'image') return 'm.image'
-  if (messageType === 'video') return 'm.video'
-  if (messageType === 'audio') return 'm.audio'
-  return 'm.text'
+  if (attachments.some((item) => item.type === 'image' || item.mimeType.startsWith('image/'))) return 'image'
+  if (attachments.some((item) => item.type === 'video' || item.mimeType.startsWith('video/'))) return 'video'
+  if (attachments.some((item) => item.mimeType.startsWith('audio/'))) return 'audio'
+  if (attachments.length > 0) return 'file'
+  return messageType || 'text'
 }
 
 export async function tryEncryptOutgoing(input: {
@@ -460,44 +289,53 @@ export async function tryEncryptOutgoing(input: {
   const attachments = input.attachments || []
   const sealed = attachments.filter((item) => item.sealed)
   try {
-    return await withMachine(input.userId, async ({ mod, current, deviceId }) => {
+    return await withService(input.userId, async (current) => {
       const ids = await participantIds(input.threadId, input.userId)
-      const shrunk = rememberMembers(input.threadId, ids)
-      await shareSession(mod, current, deviceId, input.threadId, ids, shrunk)
-      const room = new mod.RoomId(matrixRoomId(input.threadId))
-      try {
-        const plaintext = JSON.stringify({
-          msgtype: msgtypeFor(input.messageType, attachments),
-          body: input.content || '',
-          attachments: sealed.map((item) => ({
-            name: item.sealed!.plainName,
-            mime: item.sealed!.plainMime,
-            size: item.sealed!.plainSize,
-            sha256: item.sealed!.sha256,
-            key: item.sealed!.key,
-            url: item.url,
-          })),
+      rememberMembers(input.threadId, ids)
+      const devices = await fetchDevices(current, ids)
+      if (devices.length === 0) {
+        return { mode: 'fallback', reason: 'no-devices' }
+      }
+      const plaintext = JSON.stringify({
+        msgtype: msgtypeFor(input.messageType, attachments),
+        body: input.content || '',
+        attachments: sealed.map((item) => ({
+          name: item.sealed!.plainName,
+          mime: item.sealed!.plainMime,
+          size: item.sealed!.plainSize,
+          sha256: item.sealed!.sha256,
+          key: item.sealed!.key,
+          url: item.url,
+        })),
+      })
+      const envelopes: EncryptedEnvelope[] = []
+      for (const device of devices) {
+        await ensureSession(current, device)
+        const encrypted = await current.encryptMessage(device.deviceId, device.userId, plaintext)
+        envelopes.push({
+          recipient_user_id: device.userId,
+          recipient_device_id: device.deviceId,
+          type: encrypted.type,
+          body: encrypted.body,
         })
-        const encrypted = JSON.parse(await current.encryptRoomEvent(room, 'm.room.message', plaintext)) as {
-          session_id?: string
-          device_id?: string
-        }
-        if (!encrypted.session_id) throw new Error('session')
-        return {
-          mode: 'megolm' as const,
-          ciphertext: JSON.stringify(encrypted),
-          sessionId: encrypted.session_id,
-          senderDeviceId: encrypted.device_id || deviceId,
-        }
-      } finally {
-        room.free()
+      }
+      if (envelopes.length === 0) return { mode: 'fallback', reason: 'no-envelopes' }
+      // Ciphertext column stores only the Signal body (first envelope). Extra
+      // recipient devices are relayed via envelopes[] → signal_message_envelopes.
+      const primary = envelopes[0]!
+      return {
+        mode: 'signal' as const,
+        ciphertext: primary.body,
+        senderDeviceId: current.deviceId,
+        e2eeVersion: SIGNAL_E2EE_VERSION,
+        envelopes,
       }
     })
   } catch (error) {
     if (sealed.length > 0) {
       throw new Error('Attachment was uploaded as ciphertext and could not be sealed into the message')
     }
-    console.warn('[message-e2ee] megolm send failed', {
+    console.warn('[message-e2ee] signal send failed', {
       threadId: input.threadId,
       reason: error instanceof Error ? error.name : 'error',
     })
@@ -513,39 +351,70 @@ async function openAttachment(url: string, key: string, sha256: string, mime: st
   return URL.createObjectURL(new Blob([blob], { type: mime || 'application/octet-stream' }))
 }
 
+async function accountUserId(): Promise<string> {
+  if (activeUserId) return activeUserId
+  const { data } = await (await import('@/lib/supabase')).supabase.auth.getUser()
+  const userId = data.user?.id
+  if (!userId) throw new Error('signed-out')
+  return userId
+}
+
 export async function decryptStoredMessage(message: ChatMessage): Promise<ChatMessage> {
-  if (message.e2ee_version !== 2 || !message.ciphertext) return message
+  if (message.e2ee_version === LEGACY_MEGOLM_VERSION) {
+    return { ...message, content: LOCKED, e2ee_locked: true, attachments: [] }
+  }
+  if (message.e2ee_version !== SIGNAL_E2EE_VERSION) return message
+  const hasCiphertext = Boolean(message.ciphertext)
+  const hasEnvelopes = Array.isArray(message.envelopes) && message.envelopes.length > 0
+  if (!hasCiphertext && !hasEnvelopes) return message
   const cached = decryptCache.get(message.id)
   if (cached && cached.ciphertext === message.ciphertext) return { ...message, ...cached, sender: message.sender }
   if (!(await messageE2eeActive())) {
     return { ...message, content: LOCKED, e2ee_locked: true, attachments: [] }
   }
   try {
-    const content = JSON.parse(message.ciphertext) as { session_id?: string }
-    const opened = await withMachine(await accountUserId(), async ({ mod, current }) => {
-      const room = new mod.RoomId(matrixRoomId(message.thread_id))
-      const settings = new mod.DecryptionSettings(mod.TrustRequirement.Untrusted)
-      try {
-        const event = JSON.stringify({
-          type: 'm.room.encrypted',
-          sender: matrixUserId(message.sender_id),
-          event_id: `$${message.id.replace(/-/g, '')}`,
-          origin_server_ts: Date.parse(message.created_at) || Date.now(),
-          content,
-        })
-        const decrypted = await current.decryptRoomEvent(event, room, settings)
-        try {
-          return JSON.parse(decrypted.event) as { content?: { body?: string; attachments?: Array<Record<string, unknown>> } }
-        } finally {
-          decrypted.free()
+    const userId = await accountUserId()
+    const senderDeviceId = message.sender_device_id || ''
+    const opened = await withService(userId, async (current) => {
+      const fromList = pickEnvelopeForDevice(message.envelopes ?? undefined, userId, current.deviceId)
+      let type = fromList?.type
+      let body = fromList?.body
+      let senderDevice = senderDeviceId
+
+      if (!body && message.ciphertext) {
+        const legacy = parseEncryptedMessage(message.ciphertext)
+        if (legacy) {
+          const mine = pickEnvelopeForDevice(legacy.envelopes, userId, current.deviceId)
+          if (!mine) throw new Error('no-envelope')
+          type = mine.type
+          body = mine.body
+          senderDevice = legacy.sender_device_id || senderDeviceId
+        } else if (isRawSignalBody(message.ciphertext)) {
+          body = message.ciphertext
         }
-      } finally {
-        room.free()
-        settings.free()
+      }
+
+      if (!body || !senderDevice) throw new Error('no-envelope')
+
+      const tryDecrypt = async (messageType: number) =>
+        current.decryptMessage(message.sender_id, senderDevice, { type: messageType, body: body! })
+
+      let plain: string
+      if (type === 1 || type === 3) {
+        plain = await tryDecrypt(type)
+      } else {
+        try {
+          plain = await tryDecrypt(3)
+        } catch {
+          plain = await tryDecrypt(1)
+        }
+      }
+      return JSON.parse(plain) as {
+        body?: string
+        attachments?: Array<Record<string, unknown>>
       }
     })
-    const plain = opened.content || {}
-    const sealedAttachments = Array.isArray(plain.attachments) ? plain.attachments : []
+    const sealedAttachments = Array.isArray(opened.attachments) ? opened.attachments : []
     const attachments: ChatAttachment[] = []
     for (const item of sealedAttachments) {
       const url = typeof item.url === 'string' ? item.url : ''
@@ -581,7 +450,7 @@ export async function decryptStoredMessage(message: ChatMessage): Promise<ChatMe
     }
     const next: ChatMessage = {
       ...message,
-      content: typeof plain.body === 'string' ? plain.body : '',
+      content: typeof opened.body === 'string' ? opened.body : '',
       attachments: attachments.length > 0 ? attachments : message.attachments,
       e2ee_locked: false,
     }
@@ -590,37 +459,15 @@ export async function decryptStoredMessage(message: ChatMessage): Promise<ChatMe
   } catch (error) {
     console.warn('[message-e2ee] decrypt failed', {
       messageId: message.id,
-      reason: error instanceof Error ? error.message || error.name : 'error',
+      reason: error instanceof Error ? error.name : 'error',
     })
     return { ...message, content: LOCKED, e2ee_locked: true, attachments: [] }
   }
 }
 
-async function accountUserId(): Promise<string> {
-  if (activeUserId) return activeUserId
-  const { data } = await (await import('@/lib/supabase')).supabase.auth.getUser()
-  const userId = data.user?.id
-  if (!userId) throw new Error('signed-out')
-  return userId
-}
-
-export async function rotateThreadSession(threadId: string, userId: string): Promise<void> {
-  if (!(await messageE2eeActive())) return
-  await enqueue(async () => {
-    const { mod, current } = await openMachine(userId)
-    const room = new mod.RoomId(matrixRoomId(threadId))
-    try {
-      await current.invalidateGroupSession(room)
-    } finally {
-      room.free()
-    }
-    sessionStorage.removeItem(memberKey(threadId))
-  }).catch((error) => {
-    console.warn('[message-e2ee] session rotation failed', {
-      threadId,
-      reason: error instanceof Error ? error.name : 'error',
-    })
-  })
+export async function rotateThreadSession(threadId: string, _userId: string): Promise<void> {
+  // Signal has no shared group session; membership shrink just stops targeting left devices.
+  sessionStorage.removeItem(memberKey(threadId))
 }
 
 export function onMessageKeys(listener: () => void): () => void {
@@ -628,24 +475,16 @@ export function onMessageKeys(listener: () => void): () => void {
   return () => keyListeners.delete(listener)
 }
 
-export async function encryptionDeviceStatus(userId: string): Promise<{ deviceId: string; ownsIdentity: boolean; payload: string }> {
+export async function encryptionDeviceStatus(
+  userId: string,
+): Promise<{ deviceId: string; ownsIdentity: boolean; payload: string }> {
   if (!(await messageE2eeActive())) throw new Error('off')
-  // Prefer live machine identity once bootstrapped; fall back to localStorage flag.
   const local = readLocalLinkDeviceInfo(userId)
-  return withMachine(userId, async ({ deviceId }) => ({
-    deviceId,
-    ownsIdentity: activeUserId === userId ? ownsIdentity : local.ownsIdentity,
-    payload: linkPayload(userId, deviceId),
+  return withService(userId, async (current) => ({
+    deviceId: current.deviceId,
+    ownsIdentity: current.store.getOwnsIdentity() || local.ownsIdentity,
+    payload: linkPayload(userId, current.deviceId),
   }))
-}
-
-/** updateTrackedUsers / getMissingSessions / shareRoomKey take ownership of UserIds. */
-function releaseUserId(id: { free?: () => void } | null | undefined) {
-  try {
-    id?.free?.()
-  } catch {
-    // Already consumed by WASM.
-  }
 }
 
 export async function linkDeviceFromPayload(userId: string, payload: string): Promise<void> {
@@ -654,114 +493,111 @@ export async function linkDeviceFromPayload(userId: string, payload: string): Pr
     throw new Error('That is not a valid device code. Paste the full code or the other browser’s device id.')
   }
   if (parsed.userId !== userId) throw new Error('This QR code is for a different account')
-  if (!ownsIdentity) throw new Error('This device does not hold the account encryption keys')
-  try {
-    await withMachine(userId, async ({ mod, current, deviceId }) => {
-      if (parsed.deviceId === deviceId) {
-        throw new Error('That code is for this browser. Paste the other browser’s code instead.')
-      }
-      await current.markAllTrackedUsersAsDirty()
-      await flush(mod, current, deviceId)
-      // Query keys again so a browser that just opened Link a device is visible.
-      // updateTrackedUsers invalidates its UserId args — do not free after success.
-      const tracked = new mod.UserId(matrixUserId(userId))
-      try {
-        await current.updateTrackedUsers([tracked])
-      } catch {
-        releaseUserId(tracked)
-      }
-      await flush(mod, current, deviceId)
-      const owner = new mod.UserId(matrixUserId(userId))
-      const target = new mod.DeviceId(parsed.deviceId)
-      let device = await current.getDevice(owner, target, 0)
-      if (!device) {
-        await current.markAllTrackedUsersAsDirty()
-        await flush(mod, current, deviceId)
-        device = await current.getDevice(owner, target, 0)
-      }
-      if (!device) {
-        owner.free()
-        target.free()
-        throw new Error(
-          'That browser has not published encryption keys yet. Open Link a device on it, wait a few seconds, then try again.',
-        )
-      }
-      // getMissingSessions also invalidates UserIds.
-      const missing = await current.getMissingSessions([new mod.UserId(matrixUserId(userId))])
-      if (missing) {
-        await sendAndMark(mod, current, deviceId, missing as WireRequest)
-        missing.free?.()
-      }
-      await flush(mod, current, deviceId)
-      // Prefer a fresh Device handle after the Olm session is established.
-      device.free()
-      device = await current.getDevice(owner, target, 0)
-      owner.free()
-      if (!device) {
-        target.free()
-        throw new Error('Could not reach that device after creating a secure channel. Try again.')
-      }
-      const bundle = await current.exportSecretsBundle()
-      try {
-        const encrypted = await device.encryptToDeviceEvent(
-          'cribstalk.link',
-          { v: 1, bundle: bundle.to_json() },
-          mod.CollectStrategy.allDevices(),
-        )
-        await apiClient.post('/api/message-e2ee/request', {
-          type: 3,
-          eventType: 'm.room.encrypted',
-          deviceId,
-          body: JSON.stringify({
-            messages: {
-              [matrixUserId(userId)]: {
-                [parsed.deviceId]: JSON.parse(encrypted),
-              },
-            },
-          }),
-        })
-      } finally {
-        bundle.free?.()
-        device.free()
-        target.free()
-      }
-    })
-  } catch (error) {
-    const message = error instanceof Error ? error.message : ''
-    if (/null pointer|out of bounds|moved value/i.test(message)) {
-      throw new Error('Linking hit a crypto error on this browser. Refresh both windows and try pasting the other device id again.')
+  await withService(userId, async (current) => {
+    if (!current.store.getOwnsIdentity()) {
+      throw new Error('This device does not hold the account encryption keys')
     }
-    throw error
-  }
+    if (parsed.deviceId === current.deviceId) {
+      throw new Error('That code is for this browser. Paste the other browser’s code instead.')
+    }
+    const devices = await fetchDevices(current, [userId])
+    const target = devices.find((item) => item.deviceId === parsed.deviceId)
+    if (!target) {
+      throw new Error(
+        'That browser has not published encryption keys yet. Open Link a device on it, wait a few seconds, then try again.',
+      )
+    }
+    await ensureSession(current, target)
+    const encrypted = await current.encryptMessage(
+      target.deviceId,
+      userId,
+      JSON.stringify({ v: 1, approved: true, kind: 'link-approve' }),
+    )
+    current.store.setDeviceVerified(userId, target.deviceId, true)
+    await current.store.flush()
+    await postCrypto(
+      'to-device',
+      current.deviceId,
+      {
+        messages: {
+          [userId]: {
+            [parsed.deviceId]: {
+              kind: 'link-approve',
+              v: 1,
+              type: encrypted.type,
+              body: encrypted.body,
+              sender_device_id: current.deviceId,
+            },
+          },
+        },
+      },
+      'cribstalk.link',
+    )
+  })
+}
+
+export async function listLinkedDevices(userId: string): Promise<
+  Array<{
+    deviceId: string
+    deviceName: string
+    platform: string
+    lastSeenAt: string
+    verified: boolean
+    isCurrent: boolean
+    identityChanged: boolean
+  }>
+> {
+  if (!(await messageE2eeActive())) return []
+  return withService(userId, async (current) => {
+    const devices = await fetchDevices(current, [userId])
+    const mine = {
+      deviceId: current.deviceId,
+      deviceName: current.store.getDeviceMeta().deviceName,
+      platform: current.store.getDeviceMeta().platform,
+      lastSeenAt: new Date().toISOString(),
+      verified: true,
+      isCurrent: true,
+      identityChanged: false,
+    }
+    const others = devices.map((device) => ({
+      deviceId: device.deviceId,
+      deviceName: device.deviceName || 'Device',
+      platform: device.platform || 'web',
+      lastSeenAt: device.lastSeenAt || '',
+      verified: current.store.isDeviceVerified(userId, device.deviceId),
+      isCurrent: false,
+      identityChanged: current.store.hasIdentityChange(userId, device.deviceId),
+    }))
+    return [mine, ...others]
+  })
+}
+
+export async function verifyDevice(userId: string, deviceId: string): Promise<void> {
+  await withService(userId, async (current) => {
+    current.store.setDeviceVerified(userId, deviceId, true)
+    current.store.clearIdentityChange(userId, deviceId)
+    await current.store.flush()
+  })
+}
+
+export async function removeLinkedDevice(userId: string, deviceId: string): Promise<void> {
+  await withService(userId, async (current) => {
+    if (deviceId === current.deviceId) throw new Error('Cannot remove the current device here')
+    if (!current.store.getOwnsIdentity()) {
+      throw new Error('Only a verified owner device can remove linked devices')
+    }
+    await postCrypto('revoke', current.deviceId, { device_id: deviceId })
+  })
 }
 
 export async function safetyNumberForUser(userId: string, otherUserId: string): Promise<string> {
   if (!(await messageE2eeActive())) throw new Error('off')
-  return withMachine(userId, async ({ mod, current, deviceId }) => {
-    const ids = [userId, otherUserId].map((id) => new mod.UserId(matrixUserId(id)))
-    try {
-      await current.updateTrackedUsers(ids)
-    } catch {
-      ids.forEach((id) => id.free())
+  return withService(userId, async (current) => {
+    const devices = await fetchDevices(current, [otherUserId])
+    const primary = devices[0]
+    if (!primary?.identityKey) {
+      throw new Error('That person has not set up encryption on a device yet')
     }
-    await flush(mod, current, deviceId)
-    const localUser = new mod.UserId(matrixUserId(userId))
-    const remoteUser = new mod.UserId(matrixUserId(otherUserId))
-    try {
-      const local = await current.getIdentity(localUser)
-      const remote = await current.getIdentity(remoteUser)
-      try {
-        if (!local?.masterKey || !remote?.masterKey) {
-          throw new Error('That person has not set up encryption on a device yet')
-        }
-        return await safetyNumberDigits(local.masterKey, remote.masterKey)
-      } finally {
-        local?.free?.()
-        remote?.free?.()
-      }
-    } finally {
-      localUser.free()
-      remoteUser.free()
-    }
+    return current.safetyNumber(otherUserId, primary.identityKey)
   })
 }

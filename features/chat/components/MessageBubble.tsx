@@ -593,7 +593,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
           claimed.token
         );
         const sealed = message.attachments?.[items.length]?.sealed;
-        if (message.e2ee_version === 2) {
+        if (message.e2ee_version === 2 || message.e2ee_version === 3) {
           if (!sealed?.key || !sealed.sha256) {
             throw new Error("This message can't be read on this device");
           }

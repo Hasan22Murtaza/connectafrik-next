@@ -434,7 +434,7 @@ export async function POST(request: NextRequest) {
         .select('e2ee_version')
         .eq('id', messageId)
         .maybeSingle()
-      sealedPush = sealedRow?.e2ee_version === 2
+      sealedPush = sealedRow?.e2ee_version === 2 || sealedRow?.e2ee_version === 3
     }
     if (sealedPush) {
       notificationBody = '🔒 New message'

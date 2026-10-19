@@ -1,7 +1,7 @@
 function compareBytes(left: Uint8Array, right: Uint8Array): number {
   const length = Math.min(left.length, right.length)
   for (let i = 0; i < length; i += 1) {
-    if (left[i] !== right[i]) return left[i] - right[i]
+    if (left[i] !== right[i]) return left[i]! - right[i]!
   }
   return left.length - right.length
 }
@@ -23,41 +23,13 @@ function decodeBase64Key(value: string): Uint8Array {
   return bytes
 }
 
-/**
- * Identity.masterKey from matrix-sdk-crypto-wasm is usually a JSON CrossSigningKey
- * (`{ keys: { "ed25519:…": "…" } }`), not raw base64. Accept both shapes.
- */
-function publicKeyMaterial(value: string): string {
-  const trimmed = value.trim()
-  if (!trimmed) throw new Error('bad-key')
-  if (trimmed.startsWith('{')) {
-    try {
-      const parsed = JSON.parse(trimmed) as { keys?: Record<string, string> }
-      const keys = parsed?.keys && typeof parsed.keys === 'object' ? parsed.keys : null
-      if (!keys) throw new Error('bad-key')
-      const ed = Object.entries(keys).find(([id, key]) => id.startsWith('ed25519:') && typeof key === 'string' && key.length > 0)
-      if (ed) return ed[1]
-      const first = Object.values(keys).find((key) => typeof key === 'string' && key.length > 0)
-      if (first) return first
-    } catch {
-      throw new Error('bad-key')
-    }
-    throw new Error('bad-key')
-  }
-  return trimmed
-}
-
-function bytesFromKey(value: string): Uint8Array {
-  return decodeBase64Key(publicKeyMaterial(value))
-}
-
-/** 60 decimal digits from the two master public keys. The server is not asked. */
+/** 60 decimal digits from two Signal identity public keys. */
 export async function safetyNumberDigits(leftKey: string, rightKey: string): Promise<string> {
   let left: Uint8Array
   let right: Uint8Array
   try {
-    left = bytesFromKey(leftKey)
-    right = bytesFromKey(rightKey)
+    left = decodeBase64Key(leftKey)
+    right = decodeBase64Key(rightKey)
   } catch {
     throw new Error('Could not build the safety number from these encryption keys.')
   }
@@ -67,8 +39,7 @@ export async function safetyNumberDigits(leftKey: string, rightKey: string): Pro
   material.set(second, first.length)
   let digest = new Uint8Array(await crypto.subtle.digest('SHA-512', material))
   for (let round = 0; round < 1000; round += 1) {
-    const next = new Uint8Array(await crypto.subtle.digest('SHA-512', digest))
-    digest = next
+    digest = new Uint8Array(await crypto.subtle.digest('SHA-512', digest))
   }
   let value = BigInt(0)
   for (const byte of digest) value = (value << BigInt(8)) + BigInt(byte)

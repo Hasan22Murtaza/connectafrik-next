@@ -73,10 +73,16 @@ export interface ChatMessage {
   view_once_opened_at?: string | null
   view_once_opened_by?: string | null
   ciphertext?: string | null
-  megolm_session_id?: string | null
   sender_device_id?: string | null
   e2ee_version?: number | null
   e2ee_locked?: boolean
+  /** Per-device Signal bodies for the current user (e2ee_version 3). */
+  envelopes?: Array<{
+    recipient_user_id: string
+    recipient_device_id: string
+    type: number
+    body: string
+  }> | null
 }
 
 export function getChatMessageAuthorId(message: Pick<ChatMessage, 'sender_id' | 'sender'>): string {
@@ -248,7 +254,7 @@ const notifyMessageSubscribers = async (message: ChatMessage, options?: { skipPu
         const viewOnceVideo = (message.attachments || []).some(
           (a) => a.type === 'video' || (a.mimeType || '').startsWith('video/')
         )
-        const encrypted = message.e2ee_version === 2
+        const encrypted = message.e2ee_version === 2 || message.e2ee_version === 3
         const messagePreview = encrypted
           ? '🔒 New message'
           : isViewOnce
@@ -939,9 +945,9 @@ const mapApiMessageToChatMessage = (message: any): ChatMessage => {
     reply_to_id: message.reply_to_id,
     reactions: Array.isArray(message.reactions) ? message.reactions : [],
     ciphertext: message.ciphertext ?? null,
-    megolm_session_id: message.megolm_session_id ?? null,
     sender_device_id: message.sender_device_id ?? null,
     e2ee_version: message.e2ee_version ?? null,
+    envelopes: Array.isArray(message.envelopes) ? message.envelopes : null,
   }
 }
 
@@ -967,7 +973,7 @@ async function contentForStorage(
 
 async function showStoredMessage(message: any): Promise<ChatMessage> {
   const mapped = mapApiMessageToChatMessage(message)
-  if (mapped.e2ee_version === 2 && mapped.ciphertext) {
+  if ((mapped.e2ee_version === 2 || mapped.e2ee_version === 3) && mapped.ciphertext) {
     try {
       const { decryptStoredMessage } = await import('@/lib/message-e2ee/engine')
       return await decryptStoredMessage(mapped)
@@ -1490,11 +1496,16 @@ export const supabaseMessagingService = {
     try {
       const messageType = payload.message_type ?? 'text'
       let storedContent = payload.content ?? ''
-      let megolm: {
+      let sealed: {
         ciphertext: string
-        megolm_session_id: string
         sender_device_id: string
-        e2ee_version: 2
+        e2ee_version: 3
+        envelopes: Array<{
+          recipient_user_id: string
+          recipient_device_id: string
+          type: number
+          body: string
+        }>
       } | null = null
       if (!SKIP_GENERIC_CHAT_PUSH_MESSAGE_TYPES.has(messageType)) {
         const { messageE2eeActive } = await import('@/lib/message-e2ee/status')
@@ -1507,13 +1518,14 @@ export const supabaseMessagingService = {
             content: storedContent,
             attachments: payload.attachments,
           })
-          if (encrypted.mode === 'megolm') {
+          if (encrypted.mode === 'signal') {
             storedContent = ''
-            megolm = {
+            sealed = {
+              // Body only — never the full envelope pack JSON.
               ciphertext: encrypted.ciphertext,
-              megolm_session_id: encrypted.sessionId,
               sender_device_id: encrypted.senderDeviceId,
-              e2ee_version: 2,
+              e2ee_version: 3,
+              envelopes: encrypted.envelopes,
             }
           } else {
             storedContent = await contentForStorage(threadId, messageType, payload.content ?? '')
@@ -1530,7 +1542,7 @@ export const supabaseMessagingService = {
         reply_to_id: payload.reply_to_id,
         ...(payload.is_forward === true ? { is_forward: true } : {}),
         ...(payload.view_once === true ? { view_once: true } : {}),
-        ...(megolm ?? {}),
+        ...(sealed ?? {}),
       })
       const rawMessage = (res as any)?.data
       if (!rawMessage) throw new Error('No message returned')
@@ -1772,7 +1784,6 @@ export const supabaseMessagingService = {
           deleted_at: new Date().toISOString(),
           content: '',
           ciphertext: null,
-          megolm_session_id: null,
           sender_device_id: null,
         })
         .eq('id', messageId)
@@ -1852,13 +1863,13 @@ export const supabaseMessagingService = {
             messageType: 'text',
             content: trimmed,
           })
-          if (encrypted.mode === 'megolm') {
+          if (encrypted.mode === 'signal') {
             patchBody = {
               content: '',
               ciphertext: encrypted.ciphertext,
-              megolm_session_id: encrypted.sessionId,
               sender_device_id: encrypted.senderDeviceId,
-              e2ee_version: 2,
+              e2ee_version: 3,
+              envelopes: encrypted.envelopes,
             }
           }
         }

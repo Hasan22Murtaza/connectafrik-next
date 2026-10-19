@@ -69,17 +69,41 @@ const isSameCallIdentity = (
   return Number.isFinite(existingTs) && (Date.now() - existingTs) <= TERMINAL_CONFLICT_WINDOW_MS
 }
 
+const loadSignalEnvelopes = async (serviceClient: any, message: any, readerId: string) => {
+  if (message?.e2ee_version !== 3) return message
+  const { data } = await serviceClient
+    .from('signal_message_envelopes')
+    .select('recipient_user_id, recipient_device_id, message_type, ciphertext')
+    .eq('message_id', message.id)
+    .eq('recipient_user_id', readerId)
+  const envelopes = (data || []).map((row: any) => ({
+    recipient_user_id: row.recipient_user_id as string,
+    recipient_device_id: row.recipient_device_id as string,
+    type: Number(row.message_type),
+    body: row.ciphertext as string,
+  }))
+  if (envelopes.length === 1) {
+    return {
+      ...message,
+      envelopes,
+      ciphertext: envelopes[0].body,
+    }
+  }
+  return { ...message, envelopes }
+}
+
 const enrichMessageResponse = async (serviceClient: any, message: any, fallbackReaderId: string) => {
-  const [readsRes, attachmentsRes] = await Promise.all([
+  const [readsRes, attachmentsRes, withEnvelopes] = await Promise.all([
     serviceClient.from('message_reads').select('user_id').eq('message_id', message.id),
     serviceClient.from('message_attachments').select('*').eq('message_id', message.id),
+    loadSignalEnvelopes(serviceClient, message, fallbackReaderId),
   ])
   const rawReadBy = (readsRes.data || []).map((r: any) => r.user_id)
   const readerIds = [...new Set([...rawReadBy, fallbackReaderId])]
   const relationships = await getRelationships(fallbackReaderId, readerIds, serviceClient)
   const readBy = filterReadByForViewer(readerIds, fallbackReaderId, relationships)
   return sanitizeViewOnceMessage({
-    ...message,
+    ...withEnvelopes,
     read_by: readBy.length ? readBy : [fallbackReaderId],
     attachments: attachmentsRes.data || [],
     reactions: [],
@@ -262,18 +286,61 @@ export async function POST(request: NextRequest, context: RouteContext) {
     if (messageDenied) return messageDenied
 
     let safeContent = typeof content === 'string' ? content : ''
-    const wantsMegolm = body.e2ee_version === 2 || body.e2ee_version === '2'
-    let megolmCiphertext = ''
-    let megolmSessionId = ''
-    let megolmDeviceId = ''
-    if (wantsMegolm) {
+    const e2eeVersionRaw = body.e2ee_version === 2 || body.e2ee_version === '2'
+      ? 2
+      : body.e2ee_version === 3 || body.e2ee_version === '3'
+        ? 3
+        : null
+    const wantsE2ee = e2eeVersionRaw === 2 || e2eeVersionRaw === 3
+    let sealedCiphertext = ''
+    let sealedDeviceId = ''
+    let signalEnvelopes: Array<{
+      recipient_user_id: string
+      recipient_device_id: string
+      type: number
+      body: string
+    }> = []
+    if (wantsE2ee) {
       if (!isMessageE2eeEnabledForUser(user.id)) {
         return errorResponse('End-to-end encryption is not enabled for this account', 403)
       }
-      megolmCiphertext = typeof body.ciphertext === 'string' ? body.ciphertext : ''
-      megolmSessionId = typeof body.megolm_session_id === 'string' ? body.megolm_session_id : ''
-      megolmDeviceId = typeof body.sender_device_id === 'string' ? body.sender_device_id : ''
-      if (!megolmCiphertext || !megolmSessionId || !megolmDeviceId || megolmCiphertext.length > 200_000) {
+      sealedCiphertext = typeof body.ciphertext === 'string' ? body.ciphertext : ''
+      sealedDeviceId = typeof body.sender_device_id === 'string' ? body.sender_device_id : ''
+      if (e2eeVersionRaw === 3 && Array.isArray(body.envelopes)) {
+        signalEnvelopes = body.envelopes
+          .map((item: unknown) => {
+            if (!item || typeof item !== 'object') return null
+            const row = item as Record<string, unknown>
+            const recipientUserId = typeof row.recipient_user_id === 'string' ? row.recipient_user_id : ''
+            const recipientDeviceId =
+              typeof row.recipient_device_id === 'string' ? row.recipient_device_id : ''
+            const type = typeof row.type === 'number' ? row.type : Number(row.type)
+            const envelopeBody = typeof row.body === 'string' ? row.body : ''
+            if (!recipientUserId || !recipientDeviceId || !envelopeBody || (type !== 1 && type !== 3)) {
+              return null
+            }
+            if (envelopeBody.length > 200_000) return null
+            return {
+              recipient_user_id: recipientUserId,
+              recipient_device_id: recipientDeviceId,
+              type,
+              body: envelopeBody,
+            }
+          })
+          .filter(Boolean) as typeof signalEnvelopes
+      }
+      if (e2eeVersionRaw === 3) {
+        // Ciphertext must be a raw Signal body, never a JSON pack.
+        if (sealedCiphertext.trim().startsWith('{')) {
+          return errorResponse('Encrypted message ciphertext must be the Signal body only', 400)
+        }
+        if (signalEnvelopes.length > 0) {
+          sealedCiphertext = signalEnvelopes[0]!.body
+        }
+        if (!sealedCiphertext || !sealedDeviceId || sealedCiphertext.length > 200_000) {
+          return errorResponse('Encrypted message is missing its ciphertext', 400)
+        }
+      } else if (!sealedCiphertext || !sealedDeviceId || sealedCiphertext.length > 500_000) {
         return errorResponse('Encrypted message is missing its ciphertext', 400)
       }
       safeContent = ''
@@ -307,7 +374,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
         : safeContent.length > 100
           ? safeContent.slice(0, 97) + '...'
           : (safeContent || (hasAttachments ? 'Shared an attachment' : ''))
-    if (wantsMegolm && !(wantsViewOnce && viewOnceKind)) {
+    if (wantsE2ee && !(wantsViewOnce && viewOnceKind)) {
       preview = '🔒 Encrypted message'
     }
     const now = new Date().toISOString()
@@ -420,12 +487,11 @@ export async function POST(request: NextRequest, context: RouteContext) {
         reply_to_id: reply_to_id || null,
         ...(typeof is_forward === 'boolean' ? { is_forward } : {}),
         ...(wantsViewOnce ? { view_once: true } : {}),
-        ...(wantsMegolm
+        ...(wantsE2ee
           ? {
-              ciphertext: megolmCiphertext,
-              megolm_session_id: megolmSessionId,
-              sender_device_id: megolmDeviceId,
-              e2ee_version: 2,
+              ciphertext: sealedCiphertext,
+              sender_device_id: sealedDeviceId,
+              e2ee_version: e2eeVersionRaw,
             }
           : isEncodedMessage(safeContent)
             ? { e2ee_version: 1 }
@@ -436,6 +502,22 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
     if (msgError || !message) {
       return errorResponse(msgError?.message || 'Failed to send message', 400)
+    }
+
+    if (e2eeVersionRaw === 3 && signalEnvelopes.length > 0) {
+      const envelopeRows = signalEnvelopes.map((item) => ({
+        message_id: message.id,
+        recipient_user_id: item.recipient_user_id,
+        recipient_device_id: item.recipient_device_id,
+        message_type: item.type,
+        ciphertext: item.body,
+      }))
+      const { error: envelopeError } = await serviceClient
+        .from('signal_message_envelopes')
+        .upsert(envelopeRows, { onConflict: 'message_id,recipient_user_id,recipient_device_id' })
+      if (envelopeError) {
+        return errorResponse(envelopeError.message || 'Failed to store encrypted envelopes', 400)
+      }
     }
 
     const [readsRes, threadRes, bumpRes] = await Promise.all([

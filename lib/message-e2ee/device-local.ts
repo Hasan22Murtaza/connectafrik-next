@@ -3,9 +3,10 @@
 import { linkPayload } from '@/lib/message-e2ee/ids'
 
 /**
- * Local-only device id / link payload. No WASM, no network.
- * Used to render the Link a device QR immediately on every host
- * (local and deployed), while OlmMachine bootstraps in the background.
+ * Local-only device id / vault passphrase metadata.
+ * Used to render the Link a device QR immediately while Signal keys bootstrap.
+ * The passphrase unlocks the AES-GCM sealed IndexedDB vault — private keys are
+ * not stored in localStorage.
  */
 
 function storageKey(userId: string, name: string) {
