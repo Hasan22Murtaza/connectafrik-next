@@ -683,16 +683,22 @@ const FriendsPageContent: React.FC = () => {
                           {/* Profile Image */}
                           <Link href={`/user/${request.requester_id || ''}`} className="block cursor-pointer">
                             <div className="w-full aspect-square bg-surface-secondary relative">
-                              {request.requester?.avatar_url ? (
+                              <div className="w-full h-full flex items-center justify-center text-4xl font-bold text-primary-600 bg-primary-100">
+                                {request.requester?.full_name?.charAt(0)?.toUpperCase() || "U"}
+                              </div>
+
+                              {request.requester?.avatar_url && (
                                 <img
                                   src={request.requester.avatar_url}
-                                  alt={request.requester.full_name}
-                                  className="w-full h-full object-cover"
+                                  alt={request.requester.full_name || "User"}
+                                  onLoad={(e) => {
+                                    e.currentTarget.style.display = "block";
+                                  }}
+                                  onError={(e) => {
+                                    e.currentTarget.style.display = "none";
+                                  }}
+                                  className="absolute inset-0 w-full h-full object-cover"
                                 />
-                              ) : (
-                                <div className="w-full h-full flex items-center justify-center text-4xl font-bold text-primary-600 bg-primary-100">
-                                  {request.requester?.full_name?.charAt(0) || "U"}
-                                </div>
                               )}
                             </div>
                           </Link>
@@ -781,17 +787,20 @@ const FriendsPageContent: React.FC = () => {
                         >
                           {/* Profile Image */}
                           <Link href={`/user/${suggestion.user_id || ''}`} className="block cursor-pointer">
-                            <div className="w-full aspect-square bg-surface-secondary relative">
-                              {suggestion.avatar_url ? (
+                           <div className="w-full aspect-square bg-surface-secondary relative">
+                              <div className="w-full h-full flex items-center justify-center text-4xl font-bold text-primary-600 bg-primary-100">
+                                {suggestion.full_name?.charAt(0)?.toUpperCase() || "U"}
+                              </div>
+
+                              {suggestion.avatar_url && (
                                 <img
                                   src={suggestion.avatar_url}
-                                  alt={suggestion.full_name}
-                                  className="w-full h-full object-cover"
+                                  alt={suggestion.full_name || "User"}
+                                  onError={(e) => {
+                                    e.currentTarget.style.display = "none";
+                                  }}
+                                  className="absolute inset-0 w-full h-full object-cover"
                                 />
-                              ) : (
-                                <div className="w-full h-full flex items-center justify-center text-4xl font-bold text-primary-600 bg-primary-100">
-                                  {suggestion.full_name?.charAt(0) || "U"}
-                                </div>
                               )}
                             </div>
                           </Link>
@@ -1076,19 +1085,22 @@ const FriendsPageContent: React.FC = () => {
                     >
                       {/* Profile Image */}
                       <Link href={`/user/${suggestion.user_id || ''}`} className="block cursor-pointer">
-                        <div className="w-full aspect-square bg-surface-secondary relative">
-                          {suggestion.avatar_url ? (
-                            <img
-                              src={suggestion.avatar_url}
-                              alt={suggestion.full_name}
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center text-4xl font-bold text-primary-600 bg-primary-100">
-                              {suggestion.full_name?.charAt(0) || "U"}
+                         <div className="w-full aspect-square bg-surface-secondary relative">
+                              <div className="w-full h-full flex items-center justify-center text-4xl font-bold text-primary-600 bg-primary-100">
+                                {suggestion.full_name?.charAt(0)?.toUpperCase() || "U"}
+                              </div>
+
+                              {suggestion.avatar_url && (
+                                <img
+                                  src={suggestion.avatar_url}
+                                  alt={suggestion.full_name || "User"}
+                                  onError={(e) => {
+                                    e.currentTarget.style.display = "none";
+                                  }}
+                                  className="absolute inset-0 w-full h-full object-cover"
+                                />
+                              )}
                             </div>
-                          )}
-                        </div>
                       </Link>
 
                       {/* Content */}
