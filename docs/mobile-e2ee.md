@@ -456,6 +456,22 @@ The last chunk may be shorter. The AES key is 32 random bytes, standard base64, 
 
 Linked devices share the **account cross-signing identity** so a second phone/tablet can decrypt new Megolm messages. They do **not** copy old Megolm sessions (no history backfill).
 
+### 6.0 UI — one Link a device modal
+
+Match web: **one modal** everywhere — settings, chat **Encryption** menu, and locked-message **Link a device** CTA. Do **not** use a separate “End-to-end encrypted” hub with Safety number / Link a device menu items.
+
+**Link a device (the only encryption modal):**
+
+- Title: **Link a device** (padlock)
+- Intro: add another browser with its device id, or scan this code from the CribsTalk phone app
+- Large QR for `cribstalk-link:1:…` with ~5 minute refresh (“Code refreshes in m:ss”)
+- Section **Or link another browser**: paste device id + copy this device’s id
+- Owner copy: device id alone is not authentication — this device must already hold the encryption keys
+
+Safety number comparison is a separate concern (see §7); it is not nested in this modal.
+
+Web reference: `MessageEncryptionModal`.
+
 ### 6.1 Roles
 
 | Role | Device | Responsibility |

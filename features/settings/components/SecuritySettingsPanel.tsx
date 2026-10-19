@@ -22,8 +22,9 @@ import {
 } from '@/shared/utils/sessionDeviceLabel'
 import toast from 'react-hot-toast'
 import { useConfirmDialog } from '@/shared/components/ui/ConfirmDialog'
+import { messageE2eeActive } from '@/lib/message-e2ee/status'
 import { ChangePasswordModal } from './ChangePasswordModal'
-import { MessageEncryptionPanel } from './MessageEncryptionPanel'
+import { MessageEncryptionModal } from './MessageEncryptionModal'
 import { TwoFactorSetupModal } from './TwoFactorSetupModal'
 import {
   Divider,
@@ -66,6 +67,8 @@ export function SecuritySettingsPanel() {
   const [revokingSessionId, setRevokingSessionId] = useState<string | null>(null)
   const [showChangePasswordModal, setShowChangePasswordModal] = useState(false)
   const [showTwoFactorModal, setShowTwoFactorModal] = useState(false)
+  const [messageE2eeEnabled, setMessageE2eeEnabled] = useState<boolean | null>(null)
+  const [linkDeviceOpen, setLinkDeviceOpen] = useState(false)
   const [twoFactorBusy, setTwoFactorBusy] = useState(false)
   const [twoFactorResending, setTwoFactorResending] = useState(false)
   const [twoFactorError, setTwoFactorError] = useState('')
@@ -106,6 +109,16 @@ export function SecuritySettingsPanel() {
   useEffect(() => {
     if (user) void loadAuthSessions()
   }, [user, loadAuthSessions])
+
+  useEffect(() => {
+    let cancelled = false
+    void messageE2eeActive().then((on) => {
+      if (!cancelled) setMessageE2eeEnabled(on)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   useEffect(() => {
     if (!profile) return
@@ -455,7 +468,31 @@ export function SecuritySettingsPanel() {
           </div>
         </SettingsCard>
 
-        <MessageEncryptionPanel />
+        {messageE2eeEnabled === null ? null : messageE2eeEnabled === false ? (
+          <SettingsCard>
+            <SettingsSectionHeader
+              title="Message encryption"
+              description="End-to-end encryption is off for this account. Messages stay on the current storage path."
+            />
+          </SettingsCard>
+        ) : (
+          <SettingsCard>
+            <SettingsSectionHeader
+              title="Message encryption"
+              description="Keys for this browser stay on this device. Open Link a device to show a QR code the CribsTalk phone app can scan. A linked device can read new messages. It does not receive older ones."
+            />
+            <div className="px-4 py-4 sm:px-5">
+              <button
+                type="button"
+                onClick={() => setLinkDeviceOpen(true)}
+                className="btn-secondary min-h-11 rounded-[14px] px-4"
+              >
+                Link a device
+              </button>
+            </div>
+            <MessageEncryptionModal open={linkDeviceOpen} onClose={() => setLinkDeviceOpen(false)} />
+          </SettingsCard>
+        )}
 
         <SettingsCard>
           <SettingsSectionHeader title="Your data" description="Download a copy of your CribsTalk information." />

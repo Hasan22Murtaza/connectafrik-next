@@ -672,7 +672,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const composerEditorRef = useRef<ChatRichTextEditorHandle>(null);
   const [showOptionsMenu, setShowOptionsMenu] = useState(false);
   const [encryptionOpen, setEncryptionOpen] = useState(false);
-  const [encryptionPurpose, setEncryptionPurpose] = useState<"link" | "encryption">("encryption");
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedMessageIds, setSelectedMessageIds] = useState<string[]>([]);
   const [showMediaGallery, setShowMediaGallery] = useState(false);
@@ -2739,7 +2738,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         trailing: <ChevronRight className="h-4 w-4 opacity-70" />,
         onClick: () => {
           setShowOptionsMenu(false);
-          setEncryptionPurpose("encryption");
           setEncryptionOpen(true);
         },
       },
@@ -3346,7 +3344,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                           : undefined
                       }
                       onLinkDevice={() => {
-                        setEncryptionPurpose("link");
                         setEncryptionOpen(true);
                       }}
                     />
@@ -4064,9 +4061,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       <MessageEncryptionModal
         open={encryptionOpen}
         onClose={() => setEncryptionOpen(false)}
-        purpose={encryptionPurpose}
-        otherUserId={!isGroupThread && !isSelfChat ? primaryParticipant?.id : null}
-        otherName={!isGroupThread && !isSelfChat ? primaryParticipant?.name || displayThreadName : null}
       />
     </div>
   );
