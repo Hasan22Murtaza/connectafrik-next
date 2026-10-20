@@ -48,9 +48,9 @@ interface TradeHubFilterSidebarProps {
 }
 
 const menuRowClass =
-  "w-full flex items-center justify-between gap-3 px-4 py-3 text-left text-[15px] text-content hover:bg-primary-50 transition-colors";
+  "w-full flex items-center justify-between gap-3 px-4 py-3 text-left text-[15px]  hover:bg-primary-50 transition-colors";
 
-const menuRowActiveClass = "bg-primary-50 text-orange-500";
+const menuRowActiveClass = "bg-primary-50 ";
 
 const sectionTitleClass = "px-4 pt-4 pb-2 text-[17px] font-bold ";
 
@@ -370,7 +370,7 @@ const TradeHubFilterSidebar: React.FC<TradeHubFilterSidebarProps> = ({
           <button
             type="button"
             onClick={backToMain}
-            className="w-full flex items-center gap-2 px-4 py-3.5 text-left border-b border-primary-100 hover:bg-primary-50 transition-colors sticky top-0 bg-surface z-10"
+            className="w-full flex items-center gap-2 px-4 py-3.5 text-left border-b border-gray-200 hover:bg-primary-50 transition-colors sticky top-0 bg-surface z-10"
           >
             <ChevronRight className="w-4 h-4 text-primary-600 rotate-180 shrink-0" />
             <span className="text-[13px] font-bold uppercase tracking-wide text-orange-500">
