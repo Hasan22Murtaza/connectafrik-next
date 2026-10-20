@@ -1,5 +1,5 @@
 import type { ComponentType } from 'react'
-import { Bell, Shield, User, Lock } from '@/shared/icons'
+import { Bell, Shield, User, Lock, Monitor } from '@/shared/icons'
 import type { SettingsTab } from './types'
 
 export type SettingsNavItem = {
@@ -36,7 +36,14 @@ export const SETTINGS_NAV: SettingsNavItem[] = [
     id: 'security',
     href: '/settings?tab=security',
     label: 'Security',
-    description: 'Password, devices, and account',
+    description: 'Password, 2FA, and account',
     icon: Lock,
+  },
+  {
+    id: 'devices',
+    href: '/settings?tab=devices',
+    label: 'Devices',
+    description: 'Sessions, encryption, and linked devices',
+    icon: Monitor,
   },
 ]

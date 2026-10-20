@@ -1536,7 +1536,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                     onClick={(event) => {
                       event.stopPropagation();
                       if (onLinkDevice) onLinkDevice();
-                      else window.location.assign("/settings?tab=security");
+                      else window.location.assign("/settings?tab=devices");
                     }}
                     className={`mt-1 block text-left text-[12px] underline ${isOwnMessage ? "text-white" : "text-content"}`}
                   >

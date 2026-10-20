@@ -1,14 +1,21 @@
-export type SettingsTab = 'profile' | 'privacy' | 'notifications' | 'security'
+export type SettingsTab = 'profile' | 'privacy' | 'notifications' | 'security' | 'devices'
 
 export const SETTINGS_TABS: SettingsTab[] = [
   'profile',
   'privacy',
   'notifications',
   'security',
+  'devices',
 ]
 
 export function isSettingsTab(value: string | null): value is SettingsTab {
-  return value === 'profile' || value === 'privacy' || value === 'notifications' || value === 'security'
+  return (
+    value === 'profile' ||
+    value === 'privacy' ||
+    value === 'notifications' ||
+    value === 'security' ||
+    value === 'devices'
+  )
 }
 
 export function parseSettingsTab(pathname: string, raw: string | null): SettingsTab | 'hub' {

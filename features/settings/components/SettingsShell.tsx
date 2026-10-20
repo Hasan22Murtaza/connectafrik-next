@@ -22,7 +22,7 @@ export function SettingsShell({ activeTab, title, description, children }: Setti
         <header className="mb-6 hidden md:block">
           <h1 className="text-[28px] font-semibold tracking-tight text-content">Settings</h1>
           <p className="mt-1 text-[15px] text-content-secondary">
-            Manage your profile, privacy, notifications, and security.
+            Manage your profile, privacy, notifications, security, and devices.
           </p>
         </header>
 

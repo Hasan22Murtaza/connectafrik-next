@@ -125,6 +125,18 @@ export function MessageEncryptionModal({ open, onClose }: MessageEncryptionModal
         wasOwner.current = next.ownsIdentity
         statusRef.current = next
         setStatus(next)
+        // Non-owner devices create a short-lived server link session (same QR payload format).
+        if (!next.ownsIdentity) {
+          try {
+            const session = await engine.createLinkSession(userId)
+            if (gen !== sessionGen.current) return
+            if (session.payload && payloadRef.current !== session.payload) {
+              await renderQr(session.payload, gen)
+            }
+          } catch {
+            // Local QR remains valid even if session API is unavailable.
+          }
+        }
         if (payloadRef.current !== next.payload) {
           await renderQr(next.payload, gen)
         }
@@ -318,6 +330,39 @@ export function MessageEncryptionModal({ open, onClose }: MessageEncryptionModal
     const id = window.setInterval(tick, 1000)
     return () => window.clearInterval(id)
   }, [open, expiresAt, linkPhase])
+
+  // Poll link-session status while waiting so UI can flip to Linked without a full reload.
+  useEffect(() => {
+    if (!open || !user?.id || linkPhase === 'success' || linkPhase === 'expired') return
+    if (status?.ownsIdentity) return
+    let cancelled = false
+    const poll = async () => {
+      try {
+        const engine = await import('@/lib/message-e2ee/engine')
+        const session = await engine.getLinkSessionStatus(user.id)
+        if (cancelled) return
+        if (session?.status === 'completed' || session?.status === 'approved') {
+          const next = await engine.encryptionDeviceStatus(user.id)
+          if (cancelled) return
+          if (next.ownsIdentity) {
+            setNotice('Device linked successfully')
+            setLinkPhase('success')
+            wasOwner.current = true
+            statusRef.current = next
+            setStatus(next)
+          }
+        }
+      } catch {
+        // Keep waiting; crypto sync poll remains the source of truth for ownership.
+      }
+    }
+    void poll()
+    const id = window.setInterval(() => void poll(), 4000)
+    return () => {
+      cancelled = true
+      window.clearInterval(id)
+    }
+  }, [open, user?.id, linkPhase, status?.ownsIdentity])
 
   const link = async (payload: string) => {
     if (!user?.id) return

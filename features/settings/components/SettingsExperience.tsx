@@ -9,6 +9,7 @@ import { ProfileSettingsPanel } from './ProfileSettingsPanel'
 import { PrivacySettingsPanel } from './PrivacySettingsPanel'
 import { NotificationSettingsPanel } from './NotificationSettingsPanel'
 import { SecuritySettingsPanel } from './SecuritySettingsPanel'
+import { DevicesSettingsPanel } from './DevicesSettingsPanel'
 import { SettingsSignInPrompt } from './SettingsPrimitives'
 
 const PANEL_COPY: Record<SettingsTab, { title: string; description: string }> = {
@@ -26,7 +27,11 @@ const PANEL_COPY: Record<SettingsTab, { title: string; description: string }> = 
   },
   security: {
     title: 'Security',
-    description: 'Protect your account, devices, and sign-in details.',
+    description: 'Protect your account and sign-in details.',
+  },
+  devices: {
+    title: 'Devices',
+    description: 'Manage signed-in sessions, message encryption, and linked devices.',
   },
 }
 
@@ -49,6 +54,7 @@ function SettingsExperienceInner() {
       {displayTab === 'privacy' ? <PrivacySettingsPanel /> : null}
       {displayTab === 'notifications' ? <NotificationSettingsPanel /> : null}
       {displayTab === 'security' ? <SecuritySettingsPanel /> : null}
+      {displayTab === 'devices' ? <DevicesSettingsPanel /> : null}
     </SettingsShell>
   )
 }
