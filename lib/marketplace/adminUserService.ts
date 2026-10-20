@@ -1,5 +1,6 @@
 import { SupabaseClient, User as AuthUser } from '@supabase/supabase-js'
 import { sendAccountReactivatedEmail, sendAccountSuspendedEmail } from '@/shared/services/emailService'
+import { deleteUserAccount } from '@/lib/account/deleteAccount'
 
 export type AdminUserAccountType = 'buyer' | 'seller' | 'both' | 'none'
 export type AdminUserAccountStatus = 'active' | 'suspended'
@@ -608,8 +609,8 @@ export async function deleteAdminUser(
 ) {
   await assertCanManageUser(serviceClient, targetUserId, actingAdminId)
 
-  const { error } = await serviceClient.auth.admin.deleteUser(targetUserId)
-  if (error) throw new Error(error.message)
-
-  return { deleted: true as const, id: targetUserId }
+  const { data: authData } = await serviceClient.auth.admin.getUserById(targetUserId)
+  return deleteUserAccount(serviceClient, targetUserId, {
+    email: authData?.user?.email ?? null,
+  })
 }

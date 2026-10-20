@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
 import { getAuthenticatedUser, createServiceClient } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
+import { deleteUserAccount } from '@/lib/account/deleteAccount'
 /** Client only uses `online` + `null` (left); keep legacy values for old rows / clients. */
 const VALID_STATUSES = ['online', 'away', 'busy', 'offline'] as const
 
@@ -156,5 +157,39 @@ export async function PATCH(request: NextRequest) {
       return unauthorizedResponse()
     }
     return errorResponse(error?.message || 'Internal server error', 500)
+  }
+}
+
+/**
+ * DELETE /api/users/me — permanently delete the authenticated account and associated data.
+ * Body (optional): `{ "confirmation": "DELETE" }` — required when present; must equal "DELETE".
+ */
+export async function DELETE(request: NextRequest) {
+  try {
+    const { user } = await getAuthenticatedUser(request)
+
+    let confirmation: string | undefined
+    try {
+      const raw = await request.json()
+      if (raw && typeof raw === 'object' && 'confirmation' in raw) {
+        confirmation = String((raw as { confirmation?: unknown }).confirmation ?? '')
+      }
+    } catch {
+      // Empty body is allowed; client may send confirmation for extra safety.
+    }
+
+    if (confirmation !== undefined && confirmation !== 'DELETE') {
+      return errorResponse('Type DELETE to confirm account deletion', 400)
+    }
+
+    const serviceClient = createServiceClient()
+    const result = await deleteUserAccount(serviceClient, user.id, { email: user.email })
+    return jsonResponse(result)
+  } catch (error: unknown) {
+    const err = error as { message?: string }
+    if (err.message === 'Unauthorized' || err.message === 'Missing Authorization header') {
+      return unauthorizedResponse()
+    }
+    return errorResponse(err.message || 'Failed to delete account', 500)
   }
 }

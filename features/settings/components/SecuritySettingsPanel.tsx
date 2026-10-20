@@ -32,9 +32,10 @@ type SecurityState = {
 }
 
 export function SecuritySettingsPanel() {
-  const { user } = useAuth()
+  const { user, signOutAllDevices } = useAuth()
   const { profile, loading, updateProfile, refetch } = useProfile()
   const { confirm, dialog } = useConfirmDialog()
+  const [deleteBusy, setDeleteBusy] = useState(false)
 
   const [security, setSecurity] = useState<SecurityState>({
     two_factor_enabled: false,
@@ -188,6 +189,8 @@ export function SecuritySettingsPanel() {
   }
 
   const handleDeleteAccount = async () => {
+    if (deleteBusy) return
+
     const confirmed = await confirm({
       title: 'Delete account',
       message: 'Are you sure you want to delete your account? This action cannot be undone.',
@@ -201,10 +204,17 @@ export function SecuritySettingsPanel() {
       return
     }
 
+    setDeleteBusy(true)
     try {
-      toast.error('Account deletion not implemented yet. Please contact support.')
-    } catch {
-      toast.error('Failed to delete account')
+      await apiClient.delete<{ deleted: boolean; id: string }>('/api/users/me', {
+        confirmation: 'DELETE',
+      })
+      toast.success('Your account has been deleted.')
+      await signOutAllDevices()
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : 'Failed to delete account')
+    } finally {
+      setDeleteBusy(false)
     }
   }
 
@@ -333,11 +343,12 @@ export function SecuritySettingsPanel() {
           <div className="px-4 pb-4 sm:px-5">
             <button
               type="button"
+              disabled={deleteBusy}
               onClick={handleDeleteAccount}
-              className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-[14px] border border-red-300 bg-surface px-4 text-sm font-semibold text-danger transition-colors duration-200 hover:bg-red-50 sm:w-auto dark:hover:bg-red-950/40"
+              className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-[14px] border border-red-300 bg-surface px-4 text-sm font-semibold text-danger transition-colors duration-200 hover:bg-red-50 disabled:opacity-50 sm:w-auto dark:hover:bg-red-950/40"
             >
               <Trash2 className="h-4 w-4" />
-              Delete account
+              {deleteBusy ? 'Deleting…' : 'Delete account'}
             </button>
           </div>
         </section>

@@ -179,7 +179,7 @@ export function DevicesSettingsPanel() {
           </div>
         </SettingsCard>
 
-        {messageE2eeEnabled === null ? null : (
+        {/* {messageE2eeEnabled === null ? null : (
           <SettingsCard>
             <SettingsSectionHeader
               title="Message encryption"
@@ -190,7 +190,7 @@ export function DevicesSettingsPanel() {
               }
             />
           </SettingsCard>
-        )}
+        )} */}
       </div>
       {dialog}
     </>
