@@ -973,26 +973,25 @@ async function contentForStorage(
 
 async function showStoredMessage(message: any): Promise<ChatMessage> {
   const mapped = mapApiMessageToChatMessage(message)
+  // Prefer Signal plaintext when available (legacy rows). Never replace with a lock placeholder —
+  // fall through to DB content (messageCodec) so the UI always shows the real message.
   if ((mapped.e2ee_version === 2 || mapped.e2ee_version === 3) && mapped.ciphertext) {
     try {
       const { decryptStoredMessage } = await import('@/lib/message-e2ee/engine')
-      return await decryptStoredMessage(mapped)
+      const decrypted = await decryptStoredMessage(mapped)
+      if (decrypted.content?.trim()) return decrypted
     } catch (error) {
       console.warn('[message-e2ee] decrypt failed', {
         messageId: mapped.id,
         reason: error instanceof Error ? error.name : 'error',
       })
-      return {
-        ...mapped,
-        content: "🔒 This message can't be read on this device",
-        e2ee_locked: true,
-        attachments: [],
-      }
     }
   }
-  if (!mapped.thread_id || !mapped.content) return mapped
+  if (!mapped.thread_id || !mapped.content) return { ...mapped, e2ee_locked: false }
   const content = await decodeMessageContent(mapped.thread_id, mapped.content)
-  return content === mapped.content ? mapped : { ...mapped, content }
+  return content === mapped.content
+    ? { ...mapped, e2ee_locked: false }
+    : { ...mapped, content, e2ee_locked: false }
 }
 
 function attachmentsForApi(attachments: ChatAttachment[] | undefined): ChatAttachment[] | undefined {
@@ -1495,45 +1494,10 @@ export const supabaseMessagingService = {
   async sendMessage(threadId: string, payload: SendMessageOptions, currentUser: ChatParticipant): Promise<ChatMessage> {
     try {
       const messageType = payload.message_type ?? 'text'
-      let storedContent = payload.content ?? ''
-      let sealed: {
-        ciphertext: string
-        sender_device_id: string
-        e2ee_version: 3
-        envelopes: Array<{
-          recipient_user_id: string
-          recipient_device_id: string
-          type: number
-          body: string
-        }>
-      } | null = null
-      if (!SKIP_GENERIC_CHAT_PUSH_MESSAGE_TYPES.has(messageType)) {
-        const { messageE2eeActive } = await import('@/lib/message-e2ee/status')
-        if (await messageE2eeActive()) {
-          const { tryEncryptOutgoing } = await import('@/lib/message-e2ee/engine')
-          const encrypted = await tryEncryptOutgoing({
-            userId: currentUser.id,
-            threadId,
-            messageType,
-            content: storedContent,
-            attachments: payload.attachments,
-          })
-          if (encrypted.mode === 'signal') {
-            storedContent = ''
-            sealed = {
-              // Body only — never the full envelope pack JSON.
-              ciphertext: encrypted.ciphertext,
-              sender_device_id: encrypted.senderDeviceId,
-              e2ee_version: 3,
-              envelopes: encrypted.envelopes,
-            }
-          } else {
-            storedContent = await contentForStorage(threadId, messageType, payload.content ?? '')
-          }
-        } else {
-          storedContent = await contentForStorage(threadId, messageType, payload.content ?? '')
-        }
-      }
+      // DB-only encryption (messageCodec). Signal device E2EE is not used for chat content.
+      const storedContent = !SKIP_GENERIC_CHAT_PUSH_MESSAGE_TYPES.has(messageType)
+        ? await contentForStorage(threadId, messageType, payload.content ?? '')
+        : (payload.content ?? '')
       const res = await apiClient.post<{ data: any }>(`/api/chat/threads/${threadId}/messages`, {
         content: storedContent,
         message_type: messageType,
@@ -1542,22 +1506,10 @@ export const supabaseMessagingService = {
         reply_to_id: payload.reply_to_id,
         ...(payload.is_forward === true ? { is_forward: true } : {}),
         ...(payload.view_once === true ? { view_once: true } : {}),
-        ...(sealed ?? {}),
       })
       const rawMessage = (res as any)?.data
       if (!rawMessage) throw new Error('No message returned')
-      let formattedMessage = await showStoredMessage(rawMessage)
-      if (formattedMessage.e2ee_locked) {
-        formattedMessage = {
-          ...formattedMessage,
-          content: payload.content || formattedMessage.content,
-          e2ee_locked: false,
-          attachments: (payload.attachments || []).map(({ sealed: _sealed, ...attachment }) => ({
-            ...attachment,
-            url: attachment.previewUrl || attachment.url,
-          })),
-        }
-      }
+      const formattedMessage = await showStoredMessage(rawMessage)
 
       // Send call signaling notifications.
       // For reject/missed signals we await delivery to avoid window-close races in call popup flows.
@@ -1850,29 +1802,8 @@ export const supabaseMessagingService = {
     }
 
     try {
-      const { data: authData } = await supabase.auth.getUser()
-      const editorId = authData.user?.id || ''
-      let patchBody: Record<string, unknown> = { content: await encodeMessageContent(threadId, trimmed) }
-      if (editorId) {
-        const { messageE2eeActive } = await import('@/lib/message-e2ee/status')
-        if (await messageE2eeActive()) {
-          const { tryEncryptOutgoing } = await import('@/lib/message-e2ee/engine')
-          const encrypted = await tryEncryptOutgoing({
-            userId: editorId,
-            threadId,
-            messageType: 'text',
-            content: trimmed,
-          })
-          if (encrypted.mode === 'signal') {
-            patchBody = {
-              content: '',
-              ciphertext: encrypted.ciphertext,
-              sender_device_id: encrypted.senderDeviceId,
-              e2ee_version: 3,
-              envelopes: encrypted.envelopes,
-            }
-          }
-        }
+      const patchBody: Record<string, unknown> = {
+        content: await encodeMessageContent(threadId, trimmed),
       }
       const res = await apiClient.patch<{ data: Record<string, unknown> }>(
         `/api/chat/threads/${threadId}/messages/${messageId}`,

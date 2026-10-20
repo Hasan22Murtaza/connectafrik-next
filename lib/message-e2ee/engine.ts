@@ -18,8 +18,6 @@ import { messageE2eeActive } from '@/lib/message-e2ee/status'
 
 export { SIGNAL_E2EE_VERSION }
 
-const LOCKED = "🔒 This message can't be read on this device"
-
 export type EncryptResult =
   | { mode: 'off' }
   | { mode: 'fallback'; reason: string }
@@ -286,8 +284,9 @@ async function accountUserId(): Promise<string> {
 }
 
 export async function decryptStoredMessage(message: ChatMessage): Promise<ChatMessage> {
+  // Legacy Megolm / inactive Signal: keep stored content (DB codec) — never a lock placeholder.
   if (message.e2ee_version === LEGACY_MEGOLM_VERSION) {
-    return { ...message, content: LOCKED, e2ee_locked: true, attachments: [] }
+    return { ...message, e2ee_locked: false }
   }
   if (message.e2ee_version !== SIGNAL_E2EE_VERSION) return message
   const hasCiphertext = Boolean(message.ciphertext)
@@ -296,7 +295,7 @@ export async function decryptStoredMessage(message: ChatMessage): Promise<ChatMe
   const cached = decryptCache.get(message.id)
   if (cached && cached.ciphertext === message.ciphertext) return { ...message, ...cached, sender: message.sender }
   if (!(await messageE2eeActive())) {
-    return { ...message, content: LOCKED, e2ee_locked: true, attachments: [] }
+    return { ...message, e2ee_locked: false }
   }
   try {
     const userId = await accountUserId()
@@ -387,7 +386,8 @@ export async function decryptStoredMessage(message: ChatMessage): Promise<ChatMe
       messageId: message.id,
       reason: error instanceof Error ? error.name : 'error',
     })
-    return { ...message, content: LOCKED, e2ee_locked: true, attachments: [] }
+    // Fall back to DB-stored content (messageCodec) — do not show a lock placeholder.
+    return { ...message, e2ee_locked: false }
   }
 }
 
