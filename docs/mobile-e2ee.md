@@ -37,7 +37,7 @@ Attachment sealing (`lib/message-e2ee/attachment-seal.ts`, CLA1 wire format) is 
 
 ## Linked devices
 
-QR / paste uses `cribstalk-link:2:{userId}:{deviceId}` (unchanged). An owner device encrypts a `cribstalk.link` approval to the new device over a Signal session (`crypto_to_device`). Do not put private keys in the QR payload.
+QR / paste uses `cribstalk-link:2:{userId}:{deviceId}` (unchanged). An owner device approves via `crypto_device_link_sessions`. Do not put private keys in the QR payload.
 
 ### Link session APIs (web + mobile)
 
@@ -48,26 +48,25 @@ Short-lived pairing metadata lives in `crypto_device_link_sessions` (5 minute TT
 | `POST` | `/api/message-e2ee/devices/link/session` | New device creates a pending session after key register |
 | `GET` | `/api/message-e2ee/devices/link/session/:sessionId` | Poll status (`pending`…`completed` / `expired`) |
 | `GET` | `/api/message-e2ee/devices/link/open?device_id=` | Owner resolves open session from scanned device id |
-| `POST` | `/api/message-e2ee/devices/link/approve` | Trusted device records approval after Signal `to-device` |
-| `POST` | `/api/message-e2ee/devices/link/complete` | New device finalizes after decrypting bootstrap |
+| `POST` | `/api/message-e2ee/devices/link/approve` | Trusted device records approval |
+| `POST` | `/api/message-e2ee/devices/link/complete` | New device finalizes after seeing approved status |
 | `GET` | `/api/message-e2ee/devices` | List this user’s crypto devices (public metadata) |
 | `GET` | `/api/message-e2ee/devices/current?device_id=` | Current device metadata |
 | `DELETE` | `/api/message-e2ee/devices/:deviceId` | Revoke device (`crypto_device_keys` + OTKs) |
 
-Crypto register / claim / to-device / revoke via `/api/message-e2ee/request` is unchanged. The server never holds private keys or plaintext bootstrap material.
+Crypto register / claim / revoke via `/api/message-e2ee/request` is unchanged. The server never holds private keys or plaintext bootstrap material.
 
 ### Linking sequence
 
 ```text
 new device → register keys → create link session → show QR (cribstalk-link:2:…)
      → trusted device scans/pastes → validates session + identity key
-     → encrypts link-approve over Signal → stores crypto_to_device
-     → marks session approved → new device sync/decrypt → complete session
+     → marks session approved → new device polls session → complete session
 ```
 
 ## Mobile checklist
 
-- [ ] Flag on → Signal identity + prekey upload + sync loop
+- [ ] Flag on → Signal identity + prekey upload
 - [ ] Encrypt for every recipient device (and own other devices)
 - [ ] Decrypt version 3 envelopes for this device id
 - [ ] Leave version 2 Megolm rows locked

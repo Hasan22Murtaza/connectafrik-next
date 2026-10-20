@@ -18,7 +18,6 @@ export async function POST(request: NextRequest) {
     const result = await handleMessageCryptoRequest(service, user.id, {
       type: body?.type,
       body: body?.body,
-      eventType: typeof body?.eventType === 'string' ? body.eventType : undefined,
       deviceId: typeof body?.deviceId === 'string' ? body.deviceId : undefined,
     })
     return jsonResponse(result)

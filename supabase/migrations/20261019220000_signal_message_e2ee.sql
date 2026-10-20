@@ -1,5 +1,5 @@
 -- Signal Protocol message E2EE (e2ee_version = 3).
--- Reuses crypto_* tables for public key / prekey / to-device relay.
+-- Reuses crypto_* tables for public key / prekey relay.
 -- Private keys never appear in this schema. Legacy Megolm rows (version 2) remain readable as locked.
 
 alter table public.chat_messages drop constraint if exists chat_messages_e2ee_version_check;
