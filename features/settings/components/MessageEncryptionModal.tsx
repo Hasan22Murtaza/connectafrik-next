@@ -353,7 +353,7 @@ export function MessageEncryptionModal({ open, onClose }: MessageEncryptionModal
           }
         }
       } catch {
-        // Keep waiting; crypto sync poll remains the source of truth for ownership.
+        // Keep waiting; engine also polls link-session status for ownership.
       }
     }
     void poll()

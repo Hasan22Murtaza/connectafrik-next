@@ -1,5 +1,6 @@
--- Message E2EE public keys, one-time keys, and to-device ciphertext.
+-- Message E2EE public keys and one-time keys.
 -- Private keys stay in the browser. The server never stores them.
+-- Note: crypto_to_device was added here historically; dropped in 20261020130000.
 
 do $$
 begin
