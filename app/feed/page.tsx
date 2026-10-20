@@ -401,8 +401,8 @@ const FeedPage: React.FC = () => {
                     onClick={() => setActiveCategory(id)}
                     className={`flex items-center gap-1 rounded-full border sm:px-4 px-3 sm:py-1 py-2 text-sm transition-colors focus:outline-none focus:ring-1 focus:ring-orange-400 cursor-pointer ${
                       isActive
-                        ? 'border-orange-400 bg-primary-200 text-orange-900'
-                        : 'border-border bg-surface-secondary text-content-secondary hover:border-orange-400 hover:text-orange-900 hover:bg-primary-200'
+                        ? 'border-orange-400 bg-primary-50 text-orange-600'
+                        : 'border-border bg-surface-secondary text-content-secondary hover:border-orange-400 hover:text-orange-600 hover:bg-primary-50'
                     }`}
                   >
                     <Icon className="h-3 w-3" />

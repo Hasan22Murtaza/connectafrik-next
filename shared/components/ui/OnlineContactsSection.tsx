@@ -103,19 +103,22 @@ const OnlineContactsSection: React.FC<OnlineContactsSectionProps> = ({
             className="group flex items-center justify-between rounded-lg p-2 transition-colors hover:bg-gray-50  cursor-pointer"
           >
             <div className="flex flex-1 items-center space-x-3 min-w-0">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-surface-tertiary">
-                {contact.avatarUrl ? (
-                  <img
-                    src={contact.avatarUrl}
-                    alt={contact.name}
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
-                  <span className="text-sm font-semibold text-content-secondary">
-                    {contact.name.charAt(0).toUpperCase()}
-                  </span>
-                )}
-              </div>
+             <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-surface-tertiary relative">
+              <span className="text-sm font-semibold text-content-secondary">
+                {contact.name?.charAt(0)?.toUpperCase() || "U"}
+              </span>
+
+              {contact.avatarUrl && (
+                <img
+                  src={contact.avatarUrl}
+                  alt={contact.name || "User"}
+                  onError={(e) => {
+                    e.currentTarget.style.display = "none";
+                  }}
+                  className="absolute inset-0 h-full w-full object-cover"
+                />
+              )}
+            </div>
 
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm text-gray-700 group-hover:text-gray-900">{contact.name}</p>
