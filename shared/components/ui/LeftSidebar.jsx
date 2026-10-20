@@ -16,7 +16,7 @@ import { usePathname } from "next/navigation";
 const shortcuts = [
   { name: "Politics", to: "/politics", icon: Landmark },
   { name: "Culture", to: "/culture", icon: Palette },
-  { name: "Chats", to: "/chat", icon: MessageCircle, badgeKey: "chat" },
+  { name: "Messages", to: "/chat", icon: MessageCircle, badgeKey: "chat" },
   { name: "Calls", to: "/calls", icon: Phone, badgeKey: "calls" },
   { name: "Saved", to: "/saved", icon: Bookmark },
   { name: "Feedback", to: "/feedback", icon: MessageSquareText },
