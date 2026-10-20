@@ -1,52 +1,11 @@
 'use client'
 
 /**
- * Local device id / vault passphrase + link QR payloads.
- * Kept separate from signal.ts so Link-a-device UI can render before crypto loads.
+ * Local device id + vault passphrase for this browser's Signal identity.
  *
  * IMPORTANT: Avoid Array.from(..., (byte) => localConst[...]) — Turbopack's
  * production minify has dropped those closed-over locals ("alphabet is not defined").
  */
-
-export function parseLinkPayload(payload: string): { userId: string; deviceId: string } | null {
-  const trimmed = payload.trim().replace(/\s+/g, '')
-  const v2 =
-    /^cribstalk-link:2:([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}):([A-Za-z0-9]{8,64})$/i.exec(
-      trimmed,
-    )
-  if (v2) {
-    return { userId: v2[1]!.toLowerCase(), deviceId: v2[2]! }
-  }
-  const v1 =
-    /^cribstalk-link:1:@([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}):cribstalk:([A-Za-z0-9]{8,64})$/i.exec(
-      trimmed,
-    )
-  if (v1) {
-    return { userId: v1[1]!.toLowerCase(), deviceId: v1[2]! }
-  }
-  return null
-}
-
-export function normalizeLinkInput(
-  raw: string,
-  accountUserId: string,
-): { userId: string; deviceId: string } | null {
-  const trimmed = raw.trim()
-  const parsed = parseLinkPayload(trimmed.replace(/\s+/g, ''))
-  if (parsed) return parsed
-
-  const deviceOnly =
-    /^([A-Za-z0-9]{8,64})$/.exec(trimmed)?.[1] ||
-    /^This\s*device:\s*([A-Za-z0-9]{8,64})$/i.exec(trimmed)?.[1]
-  if (!deviceOnly) return null
-  const userId = accountUserId.trim().toLowerCase()
-  if (!userId) return null
-  return { userId, deviceId: deviceOnly }
-}
-
-export function linkPayload(userId: string, deviceId: string): string {
-  return `cribstalk-link:2:${userId.trim().toLowerCase()}:${deviceId}`
-}
 
 export function storageKey(userId: string, name: string) {
   return `cribstalk.message-e2ee.${userId}.${name}`
@@ -110,7 +69,7 @@ function writeStorage(key: string, value: string) {
 
 export function deviceCredentials(userId: string): { deviceId: string; passphrase: string } {
   if (typeof window === 'undefined') {
-    throw new Error('Device linking requires a browser')
+    throw new Error('Message encryption requires a browser')
   }
   const deviceKey = storageKey(userId, 'device-id')
   const passKey = storageKey(userId, 'store-passphrase')
@@ -133,18 +92,5 @@ export function readOwnsIdentityFlag(userId: string): boolean {
     return localStorage.getItem(storageKey(userId, 'owns-identity')) === 'yes'
   } catch {
     return false
-  }
-}
-
-export function localLinkDeviceInfo(userId: string): {
-  deviceId: string
-  ownsIdentity: boolean
-  payload: string
-} {
-  const { deviceId } = deviceCredentials(userId)
-  return {
-    deviceId,
-    ownsIdentity: readOwnsIdentityFlag(userId),
-    payload: linkPayload(userId, deviceId),
   }
 }

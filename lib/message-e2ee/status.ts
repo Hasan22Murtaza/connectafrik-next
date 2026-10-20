@@ -28,7 +28,7 @@ export async function messageE2eeStatus(): Promise<MessageE2eeClientStatus> {
     console.warn('[message-e2ee/status] status request failed', {
       reason: err instanceof Error ? err.message : 'unknown',
     })
-    // Keep prior cache so a blip does not blank the Link a device UI.
+    // Keep prior cache so a brief network blip does not flip the feature off.
     if (cache) return { enabled: cache.enabled, ready: cache.ready }
     cache = { enabled: false, ready: false, at: Date.now() }
   }
@@ -44,7 +44,7 @@ export async function messageE2eeActive(): Promise<boolean> {
   return status.enabled && status.ready
 }
 
-/** True when MESSAGE_E2EE is on — use for Link a device UI even if storage is not ready yet. */
+/** True when MESSAGE_E2EE is on — even if crypto storage is not ready yet. */
 export async function messageE2eeFlagOn(): Promise<boolean> {
   const status = await messageE2eeStatus()
   return status.enabled

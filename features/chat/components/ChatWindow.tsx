@@ -63,9 +63,6 @@ import {
   X,
   XCircle,
   ChevronDown,
-  ChevronRight,
-  Shield,
-  ShieldOff,
 } from '@/shared/icons';
 import { usePathname, useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
@@ -113,7 +110,6 @@ import {
 import { useActiveCallSession } from "@/features/chat/hooks/useActiveCallSession";
 import { useMessageTranslations } from "@/features/chat/hooks/useMessageTranslations";
 import { messageTranslationLanguageLabel } from "@/features/chat/constants/messageTranslationLanguages";
-import { MessageEncryptionModal } from "@/features/settings/components/MessageEncryptionModal";
 
 interface ChatWindowProps {
   threadId: string;
@@ -671,7 +667,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const draftBeforeComposerEditRef = useRef("");
   const composerEditorRef = useRef<ChatRichTextEditorHandle>(null);
   const [showOptionsMenu, setShowOptionsMenu] = useState(false);
-  const [encryptionOpen, setEncryptionOpen] = useState(false);
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedMessageIds, setSelectedMessageIds] = useState<string[]>([]);
   const [showMediaGallery, setShowMediaGallery] = useState(false);
@@ -2732,16 +2727,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
 
       {
-        id: "encryption",
-        label: "Encryption",
-        Icon: Shield,
-        trailing: <ChevronRight className="h-4 w-4 opacity-70" />,
-        onClick: () => {
-          setShowOptionsMenu(false);
-          setEncryptionOpen(true);
-        },
-      },
-      {
         id: "close",
         label: "Close chat",
         Icon: XCircle,
@@ -3343,9 +3328,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                           ? () => cancelMessageUpload(message.id)
                           : undefined
                       }
-                      onLinkDevice={() => {
-                        setEncryptionOpen(true);
-                      }}
                     />
                   </Fragment>
                 );
@@ -4058,10 +4040,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       ) : null}
 
       {dialog}
-      <MessageEncryptionModal
-        open={encryptionOpen}
-        onClose={() => setEncryptionOpen(false)}
-      />
     </div>
   );
 };

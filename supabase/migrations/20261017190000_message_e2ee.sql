@@ -1,6 +1,5 @@
 -- Message E2EE public keys and one-time keys.
 -- Private keys stay in the browser. The server never stores them.
--- Note: crypto_to_device was added here historically; dropped in 20261020130000.
 
 do $$
 begin
@@ -73,19 +72,6 @@ create table if not exists public.crypto_identities (
   updated_at timestamptz not null default now()
 );
 
-create table if not exists public.crypto_to_device (
-  id uuid primary key default gen_random_uuid(),
-  recipient_user_id uuid not null references public.profiles (id) on delete cascade,
-  recipient_device_id text not null,
-  sender_user_id uuid not null references public.profiles (id) on delete cascade,
-  event_type text not null,
-  content jsonb not null,
-  created_at timestamptz not null default now()
-);
-
-create index if not exists crypto_to_device_recipient_idx
-  on public.crypto_to_device (recipient_user_id, recipient_device_id, created_at);
-
 create or replace function public.crypto_claim_one_time_key(p_user_id uuid, p_device_id text)
 returns jsonb
 language plpgsql
@@ -126,7 +112,6 @@ alter table public.crypto_device_keys enable row level security;
 alter table public.crypto_one_time_keys enable row level security;
 alter table public.crypto_fallback_keys enable row level security;
 alter table public.crypto_identities enable row level security;
-alter table public.crypto_to_device enable row level security;
 
 drop policy if exists crypto_device_keys_select on public.crypto_device_keys;
 create policy crypto_device_keys_select on public.crypto_device_keys
@@ -158,19 +143,12 @@ create policy crypto_identities_select on public.crypto_identities
     )
   );
 
-drop policy if exists crypto_to_device_select on public.crypto_to_device;
-create policy crypto_to_device_select on public.crypto_to_device
-  for select to authenticated
-  using (recipient_user_id = auth.uid());
-
 revoke all on public.crypto_device_keys from anon;
 revoke all on public.crypto_one_time_keys from anon;
 revoke all on public.crypto_fallback_keys from anon;
 revoke all on public.crypto_identities from anon;
-revoke all on public.crypto_to_device from anon;
 
 grant all on public.crypto_device_keys to service_role;
 grant all on public.crypto_one_time_keys to service_role;
 grant all on public.crypto_fallback_keys to service_role;
 grant all on public.crypto_identities to service_role;
-grant all on public.crypto_to_device to service_role;

@@ -7,8 +7,8 @@ import { messageCryptoReady } from '@/lib/message-e2ee/broker'
 /**
  * `enabled` = rollout flag (MESSAGE_E2EE) for this user.
  * `ready` = crypto tables reachable (migrations applied).
- * Clients must not treat `ready: false` as "feature off" — local QR / device id
- * should still render; key publish fails soft until the backend is ready.
+ * Clients must not treat `ready: false` as "feature off" — the rollout flag
+ * can still be on while key publish waits for migrations.
  */
 export async function GET(request: NextRequest) {
   try {

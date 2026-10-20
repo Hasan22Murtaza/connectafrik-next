@@ -12,8 +12,6 @@ import {
 import toast from 'react-hot-toast'
 import { useConfirmDialog } from '@/shared/components/ui/ConfirmDialog'
 import { messageE2eeFlagOn } from '@/lib/message-e2ee/status'
-import { LinkedDevicesPanel } from './LinkedDevicesPanel'
-import { MessageEncryptionModal } from './MessageEncryptionModal'
 import { Divider, SettingsCard, SettingsSectionHeader } from './SettingsPrimitives'
 
 type ListedAuthSession = {
@@ -31,7 +29,6 @@ export function DevicesSettingsPanel() {
   const [sessionsLoading, setSessionsLoading] = useState(false)
   const [revokingSessionId, setRevokingSessionId] = useState<string | null>(null)
   const [messageE2eeEnabled, setMessageE2eeEnabled] = useState<boolean | null>(null)
-  const [linkDeviceOpen, setLinkDeviceOpen] = useState(false)
 
   const currentAuthSessionId = getSessionIdFromAccessToken(session?.access_token ?? null)
 
@@ -182,33 +179,18 @@ export function DevicesSettingsPanel() {
           </div>
         </SettingsCard>
 
-        {messageE2eeEnabled === null ? null : messageE2eeEnabled === false ? (
+        {messageE2eeEnabled === null ? null : (
           <SettingsCard>
             <SettingsSectionHeader
               title="Message encryption"
-              description="End-to-end encryption is off for this account. Messages stay on the current storage path."
+              description={
+                messageE2eeEnabled
+                  ? 'End-to-end encryption uses Signal Protocol keys that stay on this browser. Messages encrypted here can be read on this device.'
+                  : 'End-to-end encryption is off for this account. Messages stay on the current storage path.'
+              }
             />
-          </SettingsCard>
-        ) : (
-          <SettingsCard>
-            <SettingsSectionHeader
-              title="Message encryption"
-              description="Keys for this browser stay on this device. Open Link a device to show a QR code the CribsTalk phone app can scan. A linked device can read new messages. It does not receive older ones."
-            />
-            <div className="px-4 py-4 sm:px-5">
-              <button
-                type="button"
-                onClick={() => setLinkDeviceOpen(true)}
-                className="btn-secondary min-h-11 rounded-[14px] px-4"
-              >
-                Link a device
-              </button>
-            </div>
-            <MessageEncryptionModal open={linkDeviceOpen} onClose={() => setLinkDeviceOpen(false)} />
           </SettingsCard>
         )}
-
-        {messageE2eeEnabled ? <LinkedDevicesPanel enabled /> : null}
       </div>
       {dialog}
     </>

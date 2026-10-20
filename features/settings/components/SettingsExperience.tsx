@@ -31,7 +31,7 @@ const PANEL_COPY: Record<SettingsTab, { title: string; description: string }> = 
   },
   devices: {
     title: 'Devices',
-    description: 'Manage signed-in sessions, message encryption, and linked devices.',
+    description: 'Manage signed-in sessions and message encryption.',
   },
 }
 

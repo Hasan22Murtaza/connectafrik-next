@@ -43,7 +43,7 @@ export const SETTINGS_NAV: SettingsNavItem[] = [
     id: 'devices',
     href: '/settings?tab=devices',
     label: 'Devices',
-    description: 'Sessions, encryption, and linked devices',
+    description: 'Sessions and message encryption',
     icon: Monitor,
   },
 ]

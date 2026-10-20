@@ -3,13 +3,7 @@
 import { apiClient } from '@/lib/api-client'
 import type { ChatAttachment, ChatMessage } from '@/features/chat/services/supabaseMessagingService'
 import { openAttachment as decryptSealedBytes } from '@/lib/message-e2ee/attachment-seal'
-import {
-  deviceCredentials,
-  localLinkDeviceInfo as readLocalLinkDeviceInfo,
-  linkPayload,
-  normalizeLinkInput,
-  storageKey,
-} from '@/lib/message-e2ee/device'
+import { deviceCredentials, storageKey } from '@/lib/message-e2ee/device'
 import {
   isRawSignalBody,
   LEGACY_MEGOLM_VERSION,
@@ -22,11 +16,9 @@ import {
 } from '@/lib/message-e2ee/signal'
 import { messageE2eeActive } from '@/lib/message-e2ee/status'
 
-export { localLinkDeviceInfo } from '@/lib/message-e2ee/device'
 export { SIGNAL_E2EE_VERSION }
 
 const LOCKED = "🔒 This message can't be read on this device"
-const LINK_SESSION_KEY = 'link-session-id'
 
 export type EncryptResult =
   | { mode: 'off' }
@@ -40,95 +32,11 @@ export type EncryptResult =
       envelopes: EncryptedEnvelope[]
     }
 
-type LinkSessionCreateResult = {
-  sessionId: string
-  deviceId: string
-  expiresAt: string
-  status: string
-  qrPayload: string
-}
-
 let service: SignalEncryptionService | null = null
 let activeUserId: string | null = null
 let queue: Promise<unknown> = Promise.resolve()
-let pollTimer: number | null = null
 const keyListeners = new Set<() => void>()
 const decryptCache = new Map<string, ChatMessage>()
-
-function readLinkSessionId(userId: string): string {
-  try {
-    return localStorage.getItem(storageKey(userId, LINK_SESSION_KEY)) || ''
-  } catch {
-    return ''
-  }
-}
-
-function writeLinkSessionId(userId: string, sessionId: string) {
-  try {
-    if (sessionId) localStorage.setItem(storageKey(userId, LINK_SESSION_KEY), sessionId)
-    else localStorage.removeItem(storageKey(userId, LINK_SESSION_KEY))
-  } catch {
-    // ignore storage failures — session id is best-effort cache
-  }
-}
-
-async function ensureLinkSession(
-  current: SignalEncryptionService,
-  publicKey?: string,
-  forceNew = false,
-): Promise<LinkSessionCreateResult | null> {
-  if (current.store.getOwnsIdentity()) return null
-  try {
-    if (!forceNew) {
-      const existingId = readLinkSessionId(current.userId)
-      if (existingId) {
-        const status = await apiClient
-          .get<{ status?: string; expiresAt?: string; sessionId?: string; deviceId?: string }>(
-            `/api/message-e2ee/devices/link/session/${encodeURIComponent(existingId)}`,
-          )
-          .catch(() => null)
-        if (status?.status === 'pending' || status?.status === 'scanned' || status?.status === 'approved') {
-          return {
-            sessionId: status.sessionId || existingId,
-            deviceId: status.deviceId || current.deviceId,
-            expiresAt: status.expiresAt || '',
-            status: status.status,
-            qrPayload: linkPayload(current.userId, current.deviceId),
-          }
-        }
-      }
-    }
-    let identityKey = publicKey || ''
-    if (!identityKey) {
-      const uploaded = await current.publicUploadBundle({ replenishOtks: false })
-      identityKey = uploaded.keys.identityPublicKey
-    }
-    const meta = current.store.getDeviceMeta()
-    const created = await apiClient.post<LinkSessionCreateResult>('/api/message-e2ee/devices/link/session', {
-      deviceId: current.deviceId,
-      deviceType: 'browser',
-      platform: meta.platform || 'web',
-      deviceName: meta.deviceName || 'Web',
-      publicKey: identityKey,
-    })
-    if (created?.sessionId) writeLinkSessionId(current.userId, created.sessionId)
-    return created
-  } catch {
-    return null
-  }
-}
-
-async function completeOpenLinkSession(userId: string, deviceId: string) {
-  const sessionId = readLinkSessionId(userId)
-  if (!sessionId) return
-  try {
-    await apiClient.post('/api/message-e2ee/devices/link/complete', { sessionId, deviceId })
-  } catch {
-    // Session bookkeeping is best-effort; crypto ownership already applied locally.
-  } finally {
-    writeLinkSessionId(userId, '')
-  }
-}
 
 function enqueue<T>(task: () => Promise<T>): Promise<T> {
   const run = queue.then(task, task)
@@ -176,35 +84,11 @@ async function publishKeys(current: SignalEncryptionService, replenishOtks = fal
   if (result?.is_first_device === true) {
     writeOwnsIdentity(current.userId, true)
   } else if (localStorage.getItem(storageKey(current.userId, 'owns-identity')) !== 'yes') {
-    // Keep prior owner flag; new devices stay non-owner until linked.
     if (!current.store.getOwnsIdentity()) {
       writeOwnsIdentity(current.userId, false)
-      await ensureLinkSession(current, uploaded.keys.identityPublicKey)
     }
   }
   return result
-}
-
-/** Apply local ownership when a trusted device has approved this device's link session. */
-async function syncLinkOwnership(current: SignalEncryptionService) {
-  if (current.store.getOwnsIdentity()) return
-  const sessionId = readLinkSessionId(current.userId)
-  if (!sessionId) return
-  try {
-    const status = await apiClient.get<{ status?: string }>(
-      `/api/message-e2ee/devices/link/session/${encodeURIComponent(sessionId)}`,
-    )
-    if (status?.status !== 'approved' && status?.status !== 'completed') return
-    writeOwnsIdentity(current.userId, true)
-    if (status.status === 'approved') {
-      await completeOpenLinkSession(current.userId, current.deviceId)
-    } else {
-      writeLinkSessionId(current.userId, '')
-    }
-    keyListeners.forEach((listener) => listener())
-  } catch {
-    // Session poll is best-effort; UI also polls while the link modal is open.
-  }
 }
 
 async function openService(userId: string): Promise<SignalEncryptionService> {
@@ -223,21 +107,12 @@ async function openService(userId: string): Promise<SignalEncryptionService> {
   await publishKeys(next, true)
   service = next
   activeUserId = userId
-  if (pollTimer == null) {
-    pollTimer = window.setInterval(() => {
-      void enqueue(async () => {
-        if (!service || !activeUserId) return
-        await syncLinkOwnership(service)
-      }).catch(() => undefined)
-    }, 4000)
-  }
   return next
 }
 
 async function withService<T>(userId: string, task: (current: SignalEncryptionService) => Promise<T>) {
   return enqueue(async () => {
     const current = await openService(userId)
-    await syncLinkOwnership(current)
     return task(current)
   })
 }
@@ -524,249 +399,6 @@ export async function rotateThreadSession(threadId: string, _userId: string): Pr
 export function onMessageKeys(listener: () => void): () => void {
   keyListeners.add(listener)
   return () => keyListeners.delete(listener)
-}
-
-export async function encryptionDeviceStatus(
-  userId: string,
-): Promise<{ deviceId: string; ownsIdentity: boolean; payload: string }> {
-  if (!(await messageE2eeActive())) throw new Error('off')
-  const local = readLocalLinkDeviceInfo(userId)
-  return withService(userId, async (current) => ({
-    deviceId: current.deviceId,
-    ownsIdentity: current.store.getOwnsIdentity() || local.ownsIdentity,
-    payload: linkPayload(userId, current.deviceId),
-  }))
-}
-
-export async function linkDeviceFromPayload(userId: string, payload: string): Promise<void> {
-  const parsed = normalizeLinkInput(payload, userId)
-  if (!parsed) {
-    throw new Error('That is not a valid device code. Paste the full code or the other browser’s device id.')
-  }
-  if (parsed.userId !== userId) throw new Error('This QR code is for a different account')
-  await withService(userId, async (current) => {
-    if (!current.store.getOwnsIdentity()) {
-      throw new Error('This device does not hold the account encryption keys')
-    }
-    if (parsed.deviceId === current.deviceId) {
-      throw new Error('That code is for this browser. Paste the other browser’s code instead.')
-    }
-    const devices = await fetchDevices(current, [userId])
-    const target = devices.find((item) => item.deviceId === parsed.deviceId)
-    if (!target) {
-      throw new Error(
-        'That browser has not published encryption keys yet. Open Link a device on it, wait a few seconds, then try again.',
-      )
-    }
-
-    // Linking is session-based: validate open QR session, then mark approved.
-    let open: {
-      sessionId?: string
-      publicKey?: string
-      status?: string
-    } | null = null
-    try {
-      open = await apiClient.get<{
-        sessionId?: string
-        publicKey?: string
-        status?: string
-      } | null>('/api/message-e2ee/devices/link/open', {
-        device_id: parsed.deviceId,
-      })
-    } catch (error) {
-      const details = error as { details?: { code?: string }; message?: string }
-      const code = details?.details?.code || ''
-      if (
-        code === 'LINK_SESSION_EXPIRED' ||
-        code === 'LINK_SESSION_ALREADY_USED' ||
-        code === 'DEVICE_PUBLIC_KEY_MISMATCH' ||
-        code === 'USER_MISMATCH' ||
-        code === 'DEVICE_NOT_AUTHORIZED'
-      ) {
-        throw error instanceof Error ? error : new Error(details?.message || 'Device approval failed')
-      }
-      throw error instanceof Error
-        ? error
-        : new Error('That browser’s linking session expired or is missing. Open Link a device on it again.')
-    }
-    if (!open?.sessionId || !open.publicKey) {
-      throw new Error(
-        'That browser’s linking session expired or is missing. Open Link a device on it again, then scan.',
-      )
-    }
-    if (open.publicKey !== target.identityKey) {
-      throw new Error('The device public key does not match the registered keys')
-    }
-
-    await apiClient
-      .post('/api/message-e2ee/devices/link/approve', {
-        sessionId: open.sessionId,
-        deviceId: parsed.deviceId,
-        publicKey: open.publicKey,
-        approverDeviceId: current.deviceId,
-        markScannedOnly: true,
-      })
-      .catch(() => undefined)
-
-    current.store.setDeviceVerified(userId, target.deviceId, true)
-    await current.store.flush()
-
-    await apiClient.post('/api/message-e2ee/devices/link/approve', {
-      sessionId: open.sessionId,
-      deviceId: parsed.deviceId,
-      publicKey: open.publicKey,
-      approverDeviceId: current.deviceId,
-    })
-  })
-}
-
-export async function listLinkedDevices(userId: string): Promise<
-  Array<{
-    deviceId: string
-    deviceName: string
-    platform: string
-    deviceType: string
-    createdAt: string
-    lastSeenAt: string
-    verified: boolean
-    isCurrent: boolean
-    identityChanged: boolean
-    status: 'trusted' | 'untrusted'
-  }>
-> {
-  if (!(await messageE2eeActive())) return []
-  return withService(userId, async (current) => {
-    try {
-      const listed = await apiClient.get<{
-        devices?: Array<{
-          deviceId: string
-          deviceName: string
-          platform: string
-          deviceType: string
-          createdAt: string
-          lastSeenAt: string
-          isCurrentDevice: boolean
-          status: string
-        }>
-      }>('/api/message-e2ee/devices', { device_id: current.deviceId })
-      const rows = Array.isArray(listed?.devices) ? listed.devices : []
-      if (rows.length > 0) {
-        return rows.map((row) => ({
-          deviceId: row.deviceId,
-          deviceName: row.deviceName || 'Device',
-          platform: row.platform || 'web',
-          deviceType: row.deviceType || 'browser',
-          createdAt: row.createdAt || '',
-          lastSeenAt: row.lastSeenAt || '',
-          verified: row.deviceId === current.deviceId || current.store.isDeviceVerified(userId, row.deviceId),
-          isCurrent: row.deviceId === current.deviceId,
-          identityChanged: current.store.hasIdentityChange(userId, row.deviceId),
-          status: (row.status === 'trusted' ? 'trusted' : 'untrusted') as 'trusted' | 'untrusted',
-        }))
-      }
-    } catch {
-      // Fall back to peer-device list below.
-    }
-
-    const devices = await fetchDevices(current, [userId])
-    const meta = current.store.getDeviceMeta()
-    const mine = {
-      deviceId: current.deviceId,
-      deviceName: meta.deviceName,
-      platform: meta.platform,
-      deviceType: 'browser',
-      createdAt: '',
-      lastSeenAt: new Date().toISOString(),
-      verified: true,
-      isCurrent: true,
-      identityChanged: false,
-      status: 'trusted' as const,
-    }
-    const others = devices.map((device) => ({
-      deviceId: device.deviceId,
-      deviceName: device.deviceName || 'Device',
-      platform: device.platform || 'web',
-      deviceType: 'browser',
-      createdAt: '',
-      lastSeenAt: device.lastSeenAt || '',
-      verified: current.store.isDeviceVerified(userId, device.deviceId),
-      isCurrent: false,
-      identityChanged: current.store.hasIdentityChange(userId, device.deviceId),
-      status: (current.store.isDeviceVerified(userId, device.deviceId) ? 'trusted' : 'untrusted') as
-        | 'trusted'
-        | 'untrusted',
-    }))
-    return [mine, ...others]
-  })
-}
-
-export async function verifyDevice(userId: string, deviceId: string): Promise<void> {
-  await withService(userId, async (current) => {
-    current.store.setDeviceVerified(userId, deviceId, true)
-    current.store.clearIdentityChange(userId, deviceId)
-    await current.store.flush()
-  })
-}
-
-export async function removeLinkedDevice(userId: string, deviceId: string): Promise<void> {
-  await withService(userId, async (current) => {
-    if (deviceId === current.deviceId) throw new Error('Cannot remove the current device here')
-    if (!current.store.getOwnsIdentity()) {
-      throw new Error('Only a verified owner device can remove linked devices')
-    }
-    try {
-      await apiClient.delete(`/api/message-e2ee/devices/${encodeURIComponent(deviceId)}`, {
-        requesterDeviceId: current.deviceId,
-      })
-    } catch {
-      await postCrypto('revoke', current.deviceId, { device_id: deviceId })
-    }
-  })
-}
-
-/** Create / refresh a server link session for the current (often unlinked) device. */
-export async function createLinkSession(
-  userId: string,
-): Promise<LinkSessionCreateResult & { payload: string; ownsIdentity: boolean }> {
-  if (!(await messageE2eeActive())) throw new Error('off')
-  return withService(userId, async (current) => {
-    const local = readLocalLinkDeviceInfo(userId)
-    if (current.store.getOwnsIdentity() || local.ownsIdentity) {
-      return {
-        sessionId: '',
-        deviceId: current.deviceId,
-        expiresAt: '',
-        status: 'trusted',
-        qrPayload: linkPayload(userId, current.deviceId),
-        payload: linkPayload(userId, current.deviceId),
-        ownsIdentity: true,
-      }
-    }
-    const created = await ensureLinkSession(current, undefined, true)
-    const payload = created?.qrPayload || linkPayload(userId, current.deviceId)
-    return {
-      sessionId: created?.sessionId || readLinkSessionId(userId),
-      deviceId: current.deviceId,
-      expiresAt: created?.expiresAt || '',
-      status: created?.status || 'pending',
-      qrPayload: payload,
-      payload,
-      ownsIdentity: false,
-    }
-  })
-}
-
-export async function getLinkSessionStatus(
-  userId: string,
-  sessionId?: string,
-): Promise<{ sessionId: string; status: string; deviceId?: string; expiresAt?: string } | null> {
-  const id = sessionId || readLinkSessionId(userId)
-  if (!id) return null
-  try {
-    return await apiClient.get(`/api/message-e2ee/devices/link/session/${encodeURIComponent(id)}`)
-  } catch {
-    return null
-  }
 }
 
 export async function safetyNumberForUser(userId: string, otherUserId: string): Promise<string> {

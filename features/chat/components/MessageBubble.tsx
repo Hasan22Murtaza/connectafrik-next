@@ -244,8 +244,6 @@ interface MessageBubbleProps {
   // showTail?: boolean;
   /** Last bubble in a consecutive same-sender cluster */
   isClusterEnd?: boolean;
-  /** Opens the device-link code so another device can scan it. */
-  onLinkDevice?: () => void;
 }
 
 export const MessageBubble: React.FC<MessageBubbleProps> = ({
@@ -286,7 +284,6 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   onCancelUpload,
   // showTail = true,
   isClusterEnd = true,
-  onLinkDevice,
 }) => {
   const [showMenu, setShowMenu] = useState(false);
   const [showReactionPicker, setShowReactionPicker] = useState(false);
@@ -1535,20 +1532,6 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                     onToggleExpand={() => toggleExpanded(message.id)}
                   />
                 ) : null}
-                {message.e2ee_locked ? (
-                  <button
-                    type="button"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      if (onLinkDevice) onLinkDevice();
-                      else window.location.assign("/settings?tab=devices");
-                    }}
-                    className={`mt-1 block text-left text-[12px] underline ${isOwnMessage ? "text-white" : "text-content"}`}
-                  >
-                    Link a device
-                  </button>
-                ) : null}
-
                 {canTranslate &&
                   !isDeleted &&
                   !locationPayload &&
