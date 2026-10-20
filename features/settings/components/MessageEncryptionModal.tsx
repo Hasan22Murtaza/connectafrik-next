@@ -1,12 +1,12 @@
 'use client'
 
 import React, { useCallback, useEffect, useRef, useState } from 'react'
+import QRCode from 'qrcode'
 import { Check, Copy, Loader2, Lock, Phone, RefreshCw, X } from '@/shared/icons'
 import Portal from '@/shared/components/ui/Portal'
 import { useAuth } from '@/contexts/AuthContext'
 import { localLinkDeviceInfo } from '@/lib/message-e2ee/device-local'
 import { messageE2eeStatus } from '@/lib/message-e2ee/status'
-import { linkQrDataUrl } from '@/lib/message-e2ee/qr'
 
 type DeviceStatus = { deviceId: string; ownsIdentity: boolean; payload: string }
 
@@ -22,7 +22,6 @@ type LinkPhase =
   | 'success'
   | 'failed'
   | 'expired'
-  | 'qr-error'
 
 const QR_TTL_MS = 5 * 60 * 1000
 
@@ -37,7 +36,6 @@ export function MessageEncryptionModal({ open, onClose }: MessageEncryptionModal
   const [backendReady, setBackendReady] = useState(true)
   const [status, setStatus] = useState<DeviceStatus | null>(null)
   const [qrUrl, setQrUrl] = useState('')
-  const [qrError, setQrError] = useState('')
   const [paste, setPaste] = useState('')
   const [busy, setBusy] = useState('')
   const [error, setError] = useState('')
@@ -61,7 +59,6 @@ export function MessageEncryptionModal({ open, onClose }: MessageEncryptionModal
     setNotice('')
     setCopied(false)
     setQrUrl('')
-    setQrError('')
     setStatus(null)
     statusRef.current = null
     setLinkPhase('starting')
@@ -75,22 +72,22 @@ export function MessageEncryptionModal({ open, onClose }: MessageEncryptionModal
 
   const renderQr = useCallback(async (payload: string, gen: number) => {
     try {
-      const url = await linkQrDataUrl(payload)
+      const url = await QRCode.toDataURL(payload, {
+        width: 200,
+        margin: 2,
+        errorCorrectionLevel: 'M',
+      })
       if (gen !== sessionGen.current) return
       payloadRef.current = payload
       setQrUrl(url)
-      setQrError('')
       setExpiresAt(Date.now() + QR_TTL_MS)
       setRemainingSec(Math.floor(QR_TTL_MS / 1000))
       setLinkPhase((prev) => (prev === 'success' ? prev : 'ready'))
-    } catch (err) {
+    } catch {
       if (gen !== sessionGen.current) return
-      console.warn('[MessageEncryptionModal] QR render failed', {
-        reason: err instanceof Error ? err.message : 'unknown',
-      })
       setQrUrl('')
-      setQrError('Unable to generate QR code. Please try again.')
-      setLinkPhase('qr-error')
+      setLinkPhase('failed')
+      setError('Unable to generate QR code. Please try again.')
     }
   }, [])
 
@@ -121,7 +118,7 @@ export function MessageEncryptionModal({ open, onClose }: MessageEncryptionModal
           setLinkPhase('success')
         } else {
           setLinkPhase((prev) => {
-            if (prev === 'success' || prev === 'qr-error' || prev === 'expired') return prev
+            if (prev === 'success' || prev === 'expired') return prev
             return next.ownsIdentity ? 'ready' : 'waiting'
           })
         }
@@ -136,7 +133,7 @@ export function MessageEncryptionModal({ open, onClose }: MessageEncryptionModal
         const message = err instanceof Error ? err.message : ''
         // Keep local QR / device id. Engine publish is best-effort.
         setLinkPhase((prev) => {
-          if (prev === 'qr-error' || prev === 'ready' || prev === 'waiting' || prev === 'expired') {
+          if (prev === 'ready' || prev === 'waiting' || prev === 'expired') {
             return prev
           }
           return payloadRef.current || statusRef.current ? 'waiting' : prev
@@ -156,8 +153,8 @@ export function MessageEncryptionModal({ open, onClose }: MessageEncryptionModal
     if (!userId) return
     const gen = ++sessionGen.current
     setError('')
-    setQrError('')
     setNotice('')
+    setQrUrl('')
     setLinkPhase((prev) => (prev === 'success' ? prev : 'starting'))
 
     try {
@@ -227,7 +224,7 @@ export function MessageEncryptionModal({ open, onClose }: MessageEncryptionModal
         setError(
           'Encryption storage is not ready on this server yet. You can still share this device id or QR; key sync will work after migrations are applied.',
         )
-        setLinkPhase((prev) => (prev === 'qr-error' || prev === 'expired' ? prev : 'waiting'))
+        setLinkPhase((prev) => (prev === 'expired' ? prev : 'waiting'))
         return
       }
 
@@ -260,7 +257,7 @@ export function MessageEncryptionModal({ open, onClose }: MessageEncryptionModal
         const message = err instanceof Error ? err.message : ''
         // Never blank a working local QR because Signal failed to load.
         if (payloadRef.current || statusRef.current) {
-          setLinkPhase((prev) => (prev === 'qr-error' || prev === 'expired' ? prev : 'waiting'))
+          setLinkPhase((prev) => (prev === 'expired' ? prev : 'waiting'))
           setError(
             message && !/^off$/i.test(message)
               ? `${message} You can still share the device id or QR below.`
@@ -308,11 +305,14 @@ export function MessageEncryptionModal({ open, onClose }: MessageEncryptionModal
   }, [open, user?.id, resetTransient, renderQr, bootstrapCrypto])
 
   useEffect(() => {
-    if (!open || !expiresAt || linkPhase === 'success' || linkPhase === 'qr-error') return
+    if (!open || !expiresAt || linkPhase === 'success') return
     const tick = () => {
       const left = Math.max(0, Math.ceil((expiresAt - Date.now()) / 1000))
       setRemainingSec(left)
-      if (left <= 0) setLinkPhase('expired')
+      if (left <= 0) {
+        setQrUrl('')
+        setLinkPhase('expired')
+      }
     }
     tick()
     const id = window.setInterval(tick, 1000)
@@ -362,17 +362,6 @@ export function MessageEncryptionModal({ open, onClose }: MessageEncryptionModal
     : 'Share this device id with another CribsTalk browser that already reads your encrypted messages, or scan this QR from that phone.'
 
   const qrVisual = (() => {
-    if (linkPhase === 'qr-error' || qrError) {
-      return (
-        <div className="flex h-[200px] w-[200px] flex-col items-center justify-center gap-3 rounded-xl bg-surface-secondary px-3 text-center">
-          <p className="text-sm font-medium text-content">Unable to generate QR code</p>
-          <p className="text-xs text-content-secondary">Please try again.</p>
-          <button type="button" onClick={retryQr} className="btn-secondary min-h-9 rounded-[12px] px-3 text-sm">
-            Retry
-          </button>
-        </div>
-      )
-    }
     if (linkPhase === 'expired') {
       return (
         <div className="flex h-[200px] w-[200px] flex-col items-center justify-center gap-3 rounded-xl bg-surface-secondary px-3 text-center">
@@ -411,7 +400,7 @@ export function MessageEncryptionModal({ open, onClose }: MessageEncryptionModal
     return (
       <div className="flex h-[200px] w-[200px] flex-col items-center justify-center gap-2 rounded-xl bg-surface-secondary">
         <Loader2 className="h-6 w-6 animate-spin text-content-tertiary" />
-        <p className="px-3 text-center text-xs text-content-secondary">Preparing secure device linking…</p>
+        <p className="px-3 text-center text-xs text-content-secondary">Generating QR code…</p>
       </div>
     )
   })()
@@ -480,7 +469,7 @@ export function MessageEncryptionModal({ open, onClose }: MessageEncryptionModal
                       : null}
                   </p>
                 ) : null}
-                {linkPhase === 'failed' && qrUrl ? (
+                {linkPhase === 'failed' && (qrUrl || error) ? (
                   <button
                     type="button"
                     onClick={retryQr}
@@ -555,6 +544,9 @@ export function MessageEncryptionModal({ open, onClose }: MessageEncryptionModal
                 <p className="text-sm text-content">{notice}</p>
               ) : null}
               {error && linkPhase !== 'failed' ? <p className="text-sm text-danger">{error}</p> : null}
+              {error && linkPhase === 'failed' && qrUrl ? (
+                <p className="text-sm text-danger">{error}</p>
+              ) : null}
             </div>
           )}
         </div>
