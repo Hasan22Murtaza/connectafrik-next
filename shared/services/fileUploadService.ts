@@ -77,26 +77,10 @@ export const fileUploadService = {
         continue
       }
 
-      let uploadFile = result.file
-      let sealed = result.sealed
-      let uploadedSize = result.size
-      if (options?.threadId) {
-        const { messageE2eeActive } = await import('@/lib/message-e2ee/status')
-        if (await messageE2eeActive()) {
-          const { sealAttachment } = await import('@/lib/message-e2ee/attachment-seal')
-          const sealedFile = await sealAttachment(result.file)
-          const sealedBytes = sealedFile.bytes
-          const sealedBuffer = sealedBytes.buffer.slice(
-            sealedBytes.byteOffset,
-            sealedBytes.byteOffset + sealedBytes.byteLength,
-          ) as ArrayBuffer
-          uploadFile = new File([sealedBuffer], `${result.file.name}.cla1`, {
-            type: 'application/octet-stream',
-          })
-          sealed = sealedFile.meta
-          uploadedSize = sealedFile.bytes.byteLength
-        }
-      }
+      // Attachments stay as plain uploads; chat text uses DB-only messageCodec encryption.
+      const uploadFile = result.file
+      const sealed = result.sealed
+      const uploadedSize = result.size
 
       const { publicUrl } = await uploadFileToBunny(uploadFile, {
         folder: 'chat-media',
