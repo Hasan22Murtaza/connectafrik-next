@@ -1113,24 +1113,29 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
       >
         {showSenderHeader && !isOwnMessage && message.sender ? (
           <div className="mb-0.5 flex max-w-full items-center gap-1.5 px-1">
-            {message.sender.avatarUrl ? (
-              <img
-                src={message.sender.avatarUrl}
-                alt=""
-                className="h-5 w-5 rounded-full object-cover ring-1 ring-black/5"
-              />
-            ) : (
+           <div className="relative h-5 w-5 shrink-0">
               <span
-                className="flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold text-white"
+                className="flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold text-white ring-1 ring-black/5"
                 style={{
                   backgroundColor: participantNameColor(
-                    message.sender.id || message.sender_id
+                    message.sender?.id || message.sender_id
                   ),
                 }}
               >
-                {(message.sender.name || "?").charAt(0).toUpperCase()}
+                {(message.sender?.name || "?").charAt(0).toUpperCase()}
               </span>
-            )}
+
+              {message.sender?.avatarUrl && (
+                <img
+                  src={message.sender.avatarUrl}
+                  alt=""
+                  onError={(e) => {
+                    e.currentTarget.style.display = "none";
+                  }}
+                  className="absolute inset-0 h-5 w-5 rounded-full object-cover ring-1 ring-black/5"
+                />
+              )}
+            </div>
             <span
               className="truncate text-[12px] font-semibold cursor-pointer hover:underline"
               style={{

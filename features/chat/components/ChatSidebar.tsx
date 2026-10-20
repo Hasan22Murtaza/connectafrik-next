@@ -1370,9 +1370,8 @@ export default function ChatSidebar({
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between gap-2">
-                        {/* <div className="flex gap-4"> */}
                           <span className="min-w-0 truncate text-[15px] font-medium text-content">{displayName}</span>
-                          <div className="flex gap-1">
+                          <div className="flex gap-1 items-center">
                             <div>
                             <button
                               type="button"
@@ -1382,7 +1381,7 @@ export default function ChatSidebar({
                                 e.stopPropagation();
                                 setMenuThreadId((prev) => (prev === thread.id ? null : thread.id));
                               }}
-                              className="rounded-full p-1.5 text-content-tertiary opacity-60 transition hover:bg-orange-50 hover:text-content dark:hover:bg-surface-hover sm:opacity-0 sm:group-hover:opacity-100"
+                              className="rounded-full m-0 text-content-tertiary opacity-60 transition hover:bg-orange-50 hover:text-content dark:hover:bg-surface-hover sm:opacity-0 sm:group-hover:opacity-100"
                             >
                               <MoreVertical className="h-4 w-4" />
                             </button>
@@ -1446,7 +1445,6 @@ export default function ChatSidebar({
                           ) : null}
                         </span>
                           </div>
-                        {/* </div> */}
                         
                       </div>
                       <div className="mt-0.5 flex items-center justify-between gap-2">
