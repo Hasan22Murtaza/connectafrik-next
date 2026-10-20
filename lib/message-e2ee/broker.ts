@@ -39,16 +39,6 @@ async function countUnclaimed(service: ServiceClient, userId: string, deviceId: 
   return count ?? 0
 }
 
-async function assertDevice(service: ServiceClient, userId: string, deviceId: string) {
-  const { data } = await service
-    .from('crypto_device_keys')
-    .select('device_id')
-    .eq('user_id', userId)
-    .eq('device_id', deviceId)
-    .maybeSingle()
-  if (!data) throw new Error('This device has not published encryption keys')
-}
-
 async function registerDevice(
   service: ServiceClient,
   userId: string,
@@ -228,34 +218,6 @@ async function claimBundle(service: ServiceClient, requesterId: string, body: Re
   }
 }
 
-async function storeToDevice(
-  service: ServiceClient,
-  senderId: string,
-  eventType: string,
-  body: Record<string, unknown>,
-) {
-  const messages = asRecord(body.messages) ?? {}
-  const rows: Array<Record<string, unknown>> = []
-  for (const [recipientId, devices] of Object.entries(messages)) {
-    const deviceMap = asRecord(devices)
-    if (!deviceMap || !(await sharesChat(service, senderId, recipientId))) continue
-    for (const [deviceId, content] of Object.entries(deviceMap)) {
-      if (!content || typeof content !== 'object') continue
-      rows.push({
-        recipient_user_id: recipientId,
-        recipient_device_id: deviceId,
-        sender_user_id: senderId,
-        event_type: eventType || 'cribstalk.signal',
-        content,
-      })
-    }
-  }
-  if (rows.length === 0) return { ok: true }
-  const { error } = await service.from('crypto_to_device').insert(rows)
-  if (error) throw new Error(error.message)
-  return { ok: true }
-}
-
 async function revokeDevice(service: ServiceClient, userId: string, deviceId: string) {
   await service.from('crypto_device_keys').delete().eq('user_id', userId).eq('device_id', deviceId)
   await service.from('crypto_one_time_keys').delete().eq('user_id', userId).eq('device_id', deviceId)
@@ -270,7 +232,7 @@ export async function messageCryptoReady(service: ServiceClient): Promise<boolea
 export async function handleMessageCryptoRequest(
   service: ServiceClient,
   userId: string,
-  input: { type?: number | string; body?: string; eventType?: string; deviceId?: string },
+  input: { type?: number | string; body?: string; deviceId?: string },
 ) {
   if (typeof input.body !== 'string' || input.body.length === 0 || input.body.length > MAX_BODY) {
     throw new Error('Encryption request is empty')
@@ -293,9 +255,6 @@ export async function handleMessageCryptoRequest(
   }
   if (type === 1 || type === 'devices') return listDevices(service, userId, parsed)
   if (type === 2 || type === 'claim') return claimBundle(service, userId, parsed)
-  if (type === 3 || type === 'to-device') {
-    return storeToDevice(service, userId, input.eventType || 'cribstalk.signal', parsed)
-  }
   if (type === 'revoke') {
     const target =
       (typeof parsed.device_id === 'string' && parsed.device_id.trim()) ||
@@ -305,38 +264,4 @@ export async function handleMessageCryptoRequest(
     return revokeDevice(service, userId, target)
   }
   return {}
-}
-
-export async function pullMessageCryptoSync(service: ServiceClient, userId: string, deviceId: string) {
-  await assertDevice(service, userId, deviceId)
-  const { data, error } = await service
-    .from('crypto_to_device')
-    .select('id, event_type, content, sender_user_id, created_at')
-    .eq('recipient_user_id', userId)
-    .eq('recipient_device_id', deviceId)
-    .order('created_at', { ascending: true })
-    .limit(50)
-  if (error) throw new Error(error.message)
-  const events = (data || []).map((row) => ({
-    id: row.id as string,
-    type: row.event_type as string,
-    sender: row.sender_user_id as string,
-    content: row.content,
-  }))
-  return {
-    events,
-    oneTimeKeyCount: await countUnclaimed(service, userId, deviceId),
-  }
-}
-
-export async function ackMessageCryptoSync(service: ServiceClient, userId: string, ids: string[]) {
-  const unique = [...new Set(ids.filter((id) => typeof id === 'string' && id.length > 0))].slice(0, 50)
-  if (unique.length === 0) return { deleted: 0 }
-  const { error, count } = await service
-    .from('crypto_to_device')
-    .delete({ count: 'exact' })
-    .eq('recipient_user_id', userId)
-    .in('id', unique)
-  if (error) throw new Error(error.message)
-  return { deleted: count ?? 0 }
 }

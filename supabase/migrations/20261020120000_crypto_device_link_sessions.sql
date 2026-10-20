@@ -1,6 +1,6 @@
 -- Short-lived device linking sessions for Signal message E2EE.
 -- Stores only public pairing metadata. Private keys never leave the device.
--- Reuses crypto_device_keys / crypto_to_device for registration and bootstrap.
+-- Reuses crypto_device_keys for registration; linking is session-status based.
 
 create table if not exists public.crypto_device_link_sessions (
   id uuid primary key default gen_random_uuid(),

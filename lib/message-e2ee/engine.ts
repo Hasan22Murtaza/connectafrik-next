@@ -40,13 +40,6 @@ export type EncryptResult =
       envelopes: EncryptedEnvelope[]
     }
 
-type SyncEvent = {
-  id: string
-  type: string
-  sender: string
-  content: unknown
-}
-
 type LinkSessionCreateResult = {
   sessionId: string
   deviceId: string
@@ -75,7 +68,7 @@ function writeLinkSessionId(userId: string, sessionId: string) {
     if (sessionId) localStorage.setItem(storageKey(userId, LINK_SESSION_KEY), sessionId)
     else localStorage.removeItem(storageKey(userId, LINK_SESSION_KEY))
   } catch {
-    // ignore storage failures — linking still works via crypto_to_device
+    // ignore storage failures — session id is best-effort cache
   }
 }
 
@@ -155,12 +148,11 @@ function memberKey(threadId: string) {
   return `cribstalk.signal.members.${threadId}`
 }
 
-async function postCrypto(type: number | string, deviceId: string, body: unknown, eventType?: string) {
+async function postCrypto(type: number | string, deviceId: string, body: unknown) {
   return apiClient.post<Record<string, unknown>>('/api/message-e2ee/request', {
     type,
     deviceId,
     body: JSON.stringify(body),
-    ...(eventType ? { eventType } : {}),
   })
 }
 
@@ -193,56 +185,26 @@ async function publishKeys(current: SignalEncryptionService, replenishOtks = fal
   return result
 }
 
-async function pullToDevice(current: SignalEncryptionService) {
-  const sync = await apiClient.get<{ events?: SyncEvent[]; oneTimeKeyCount?: number }>(
-    '/api/message-e2ee/sync',
-    { device_id: current.deviceId },
-  )
-  const events = Array.isArray(sync?.events) ? sync.events : []
-  const ackIds: string[] = []
-  let gotKeys = false
-
-  for (const event of events) {
-    try {
-      const content = (event.content || {}) as {
-        type?: number
-        body?: string
-        v?: number
-        kind?: string
-        sender_device_id?: string
-      }
-      if (event.type === 'cribstalk.link' || content.kind === 'link-approve') {
-        const senderDeviceId = typeof content.sender_device_id === 'string' ? content.sender_device_id : ''
-        if (typeof content.type === 'number' && typeof content.body === 'string' && senderDeviceId) {
-          const plain = await current.decryptMessage(event.sender, senderDeviceId, {
-            type: content.type,
-            body: content.body,
-          })
-          const parsed = JSON.parse(plain) as { approved?: boolean }
-          if (parsed.approved) {
-            writeOwnsIdentity(current.userId, true)
-            gotKeys = true
-            await completeOpenLinkSession(current.userId, current.deviceId)
-          }
-        }
-        ackIds.push(event.id)
-        continue
-      }
-      ackIds.push(event.id)
-    } catch (error) {
-      console.warn('[message-e2ee] to-device event failed', {
-        reason: error instanceof Error ? error.name : 'error',
-      })
+/** Apply local ownership when a trusted device has approved this device's link session. */
+async function syncLinkOwnership(current: SignalEncryptionService) {
+  if (current.store.getOwnsIdentity()) return
+  const sessionId = readLinkSessionId(current.userId)
+  if (!sessionId) return
+  try {
+    const status = await apiClient.get<{ status?: string }>(
+      `/api/message-e2ee/devices/link/session/${encodeURIComponent(sessionId)}`,
+    )
+    if (status?.status !== 'approved' && status?.status !== 'completed') return
+    writeOwnsIdentity(current.userId, true)
+    if (status.status === 'approved') {
+      await completeOpenLinkSession(current.userId, current.deviceId)
+    } else {
+      writeLinkSessionId(current.userId, '')
     }
+    keyListeners.forEach((listener) => listener())
+  } catch {
+    // Session poll is best-effort; UI also polls while the link modal is open.
   }
-
-  if (ackIds.length > 0) {
-    await apiClient.post('/api/message-e2ee/sync/ack', { ids: ackIds }).catch(() => undefined)
-  }
-  if ((sync?.oneTimeKeyCount ?? 100) < 20) {
-    await publishKeys(current, true).catch(() => undefined)
-  }
-  if (gotKeys) keyListeners.forEach((listener) => listener())
 }
 
 async function openService(userId: string): Promise<SignalEncryptionService> {
@@ -265,7 +227,7 @@ async function openService(userId: string): Promise<SignalEncryptionService> {
     pollTimer = window.setInterval(() => {
       void enqueue(async () => {
         if (!service || !activeUserId) return
-        await pullToDevice(service)
+        await syncLinkOwnership(service)
       }).catch(() => undefined)
     }, 4000)
   }
@@ -275,7 +237,7 @@ async function openService(userId: string): Promise<SignalEncryptionService> {
 async function withService<T>(userId: string, task: (current: SignalEncryptionService) => Promise<T>) {
   return enqueue(async () => {
     const current = await openService(userId)
-    await pullToDevice(current)
+    await syncLinkOwnership(current)
     return task(current)
   })
 }
@@ -597,33 +559,21 @@ export async function linkDeviceFromPayload(userId: string, payload: string): Pr
       )
     }
 
-    // Pre-check open link session (TTL / key match). Approve only after encrypted bootstrap is stored.
-    let openSession: { sessionId: string; publicKey: string } | null = null
+    // Linking is session-based: validate open QR session, then mark approved.
+    let open: {
+      sessionId?: string
+      publicKey?: string
+      status?: string
+    } | null = null
     try {
-      const open = await apiClient.get<{
+      open = await apiClient.get<{
         sessionId?: string
         publicKey?: string
         status?: string
       } | null>('/api/message-e2ee/devices/link/open', {
         device_id: parsed.deviceId,
       })
-      if (open?.sessionId && open.publicKey) {
-        if (open.publicKey !== target.identityKey) {
-          throw new Error('The device public key does not match the registered keys')
-        }
-        openSession = { sessionId: open.sessionId, publicKey: open.publicKey }
-        await apiClient
-          .post('/api/message-e2ee/devices/link/approve', {
-            sessionId: open.sessionId,
-            deviceId: parsed.deviceId,
-            publicKey: open.publicKey,
-            approverDeviceId: current.deviceId,
-            markScannedOnly: true,
-          })
-          .catch(() => undefined)
-      }
     } catch (error) {
-      if (error instanceof Error && /public key/i.test(error.message)) throw error
       const details = error as { details?: { code?: string }; message?: string }
       const code = details?.details?.code || ''
       if (
@@ -635,51 +585,38 @@ export async function linkDeviceFromPayload(userId: string, payload: string): Pr
       ) {
         throw error instanceof Error ? error : new Error(details?.message || 'Device approval failed')
       }
+      throw error instanceof Error
+        ? error
+        : new Error('That browser’s linking session expired or is missing. Open Link a device on it again.')
+    }
+    if (!open?.sessionId || !open.publicKey) {
+      throw new Error(
+        'That browser’s linking session expired or is missing. Open Link a device on it again, then scan.',
+      )
+    }
+    if (open.publicKey !== target.identityKey) {
+      throw new Error('The device public key does not match the registered keys')
     }
 
-    await ensureSession(current, target)
-    const encrypted = await current.encryptMessage(
-      target.deviceId,
-      userId,
-      JSON.stringify({ v: 1, approved: true, kind: 'link-approve' }),
-    )
+    await apiClient
+      .post('/api/message-e2ee/devices/link/approve', {
+        sessionId: open.sessionId,
+        deviceId: parsed.deviceId,
+        publicKey: open.publicKey,
+        approverDeviceId: current.deviceId,
+        markScannedOnly: true,
+      })
+      .catch(() => undefined)
+
     current.store.setDeviceVerified(userId, target.deviceId, true)
     await current.store.flush()
-    await postCrypto(
-      'to-device',
-      current.deviceId,
-      {
-        messages: {
-          [userId]: {
-            [parsed.deviceId]: {
-              kind: 'link-approve',
-              v: 1,
-              type: encrypted.type,
-              body: encrypted.body,
-              sender_device_id: current.deviceId,
-            },
-          },
-        },
-      },
-      'cribstalk.link',
-    )
 
-    if (openSession) {
-      try {
-        await apiClient.post('/api/message-e2ee/devices/link/approve', {
-          sessionId: openSession.sessionId,
-          deviceId: parsed.deviceId,
-          publicKey: openSession.publicKey,
-          approverDeviceId: current.deviceId,
-        })
-      } catch (error) {
-        // Encrypted bootstrap already stored; session bookkeeping must not undo linking.
-        const details = error as { details?: { code?: string } }
-        console.warn('[message-e2ee] link session approve after to-device failed', {
-          code: details?.details?.code || 'unknown',
-        })
-      }
-    }
+    await apiClient.post('/api/message-e2ee/devices/link/approve', {
+      sessionId: open.sessionId,
+      deviceId: parsed.deviceId,
+      publicKey: open.publicKey,
+      approverDeviceId: current.deviceId,
+    })
   })
 }
 

@@ -5,8 +5,7 @@ import { deviceLinkErrorResponse, jsonResponse, withDeviceLinkAuth } from '@/lib
 
 /**
  * POST /api/message-e2ee/devices/link/approve
- * Server validates session + public keys. Cryptographic signing stays on the trusted client
- * (linkDeviceFromPayload → crypto_to_device). Call this after (or immediately before) that step.
+ * Server validates session + public keys. Call from the trusted device after scanning the QR.
  */
 export async function POST(request: NextRequest) {
   try {
