@@ -7,6 +7,10 @@ import { linkPayload } from '@/lib/message-e2ee/ids'
  * Used to render the Link a device QR immediately while Signal keys bootstrap.
  * The passphrase unlocks the AES-GCM sealed IndexedDB vault — private keys are
  * not stored in localStorage.
+ *
+ * IMPORTANT: Avoid Array.from(..., (byte) => localConst[...]) — Turbopack's
+ * production minify has dropped those closed-over locals ("alphabet is not defined"),
+ * which blanked the live QR and blocked crypto_device_keys registration.
  */
 
 function storageKey(userId: string, name: string) {
@@ -23,15 +27,31 @@ function webCrypto(): Crypto {
   return c
 }
 
+/** Hex from random bytes / UUID — no custom alphabet tables (minify-safe). */
 function randomDeviceId(): string {
-  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
-  const bytes = webCrypto().getRandomValues(new Uint8Array(10))
-  return Array.from(bytes, (byte) => alphabet[byte % alphabet.length]).join('')
+  const c = webCrypto()
+  if (typeof c.randomUUID === 'function') {
+    return c.randomUUID().replace(/-/g, '').slice(0, 16).toUpperCase()
+  }
+  const bytes = c.getRandomValues(new Uint8Array(8))
+  let out = ''
+  for (let i = 0; i < bytes.length; i += 1) {
+    const value = bytes[i] ?? 0
+    out += (value >>> 4).toString(16)
+    out += (value & 0xf).toString(16)
+  }
+  return out.toUpperCase()
 }
 
 function randomPassphrase(): string {
   const bytes = webCrypto().getRandomValues(new Uint8Array(32))
-  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('')
+  let out = ''
+  for (let i = 0; i < bytes.length; i += 1) {
+    const value = bytes[i] ?? 0
+    out += (value >>> 4).toString(16)
+    out += (value & 0xf).toString(16)
+  }
+  return out
 }
 
 function readStorage(key: string): string {
