@@ -1,19 +1,54 @@
 'use client'
 
-import { linkPayload } from '@/lib/message-e2ee/ids'
-
 /**
- * Local-only device id / vault passphrase metadata.
- * Used to render the Link a device QR immediately while Signal keys bootstrap.
- * The passphrase unlocks the AES-GCM sealed IndexedDB vault — private keys are
- * not stored in localStorage.
+ * Local device id / vault passphrase + link QR payloads.
+ * Kept separate from signal.ts so Link-a-device UI can render before crypto loads.
  *
  * IMPORTANT: Avoid Array.from(..., (byte) => localConst[...]) — Turbopack's
- * production minify has dropped those closed-over locals ("alphabet is not defined"),
- * which blanked the live QR and blocked crypto_device_keys registration.
+ * production minify has dropped those closed-over locals ("alphabet is not defined").
  */
 
-function storageKey(userId: string, name: string) {
+export function parseLinkPayload(payload: string): { userId: string; deviceId: string } | null {
+  const trimmed = payload.trim().replace(/\s+/g, '')
+  const v2 =
+    /^cribstalk-link:2:([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}):([A-Za-z0-9]{8,64})$/i.exec(
+      trimmed,
+    )
+  if (v2) {
+    return { userId: v2[1]!.toLowerCase(), deviceId: v2[2]! }
+  }
+  const v1 =
+    /^cribstalk-link:1:@([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}):cribstalk:([A-Za-z0-9]{8,64})$/i.exec(
+      trimmed,
+    )
+  if (v1) {
+    return { userId: v1[1]!.toLowerCase(), deviceId: v1[2]! }
+  }
+  return null
+}
+
+export function normalizeLinkInput(
+  raw: string,
+  accountUserId: string,
+): { userId: string; deviceId: string } | null {
+  const trimmed = raw.trim()
+  const parsed = parseLinkPayload(trimmed.replace(/\s+/g, ''))
+  if (parsed) return parsed
+
+  const deviceOnly =
+    /^([A-Za-z0-9]{8,64})$/.exec(trimmed)?.[1] ||
+    /^This\s*device:\s*([A-Za-z0-9]{8,64})$/i.exec(trimmed)?.[1]
+  if (!deviceOnly) return null
+  const userId = accountUserId.trim().toLowerCase()
+  if (!userId) return null
+  return { userId, deviceId: deviceOnly }
+}
+
+export function linkPayload(userId: string, deviceId: string): string {
+  return `cribstalk-link:2:${userId.trim().toLowerCase()}:${deviceId}`
+}
+
+export function storageKey(userId: string, name: string) {
   return `cribstalk.message-e2ee.${userId}.${name}`
 }
 
@@ -27,7 +62,6 @@ function webCrypto(): Crypto {
   return c
 }
 
-/** Hex from random bytes / UUID — no custom alphabet tables (minify-safe). */
 function randomDeviceId(): string {
   const c = webCrypto()
   if (typeof c.randomUUID === 'function') {
@@ -114,5 +148,3 @@ export function localLinkDeviceInfo(userId: string): {
     payload: linkPayload(userId, deviceId),
   }
 }
-
-export { storageKey }

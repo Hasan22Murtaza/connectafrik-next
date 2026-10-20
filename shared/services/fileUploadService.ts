@@ -83,8 +83,8 @@ export const fileUploadService = {
       if (options?.threadId) {
         const { messageE2eeActive } = await import('@/lib/message-e2ee/status')
         if (await messageE2eeActive()) {
-          const { sealCla1 } = await import('@/lib/message-e2ee/cla1')
-          const sealedFile = await sealCla1(result.file)
+          const { sealAttachment } = await import('@/lib/message-e2ee/attachment-seal')
+          const sealedFile = await sealAttachment(result.file)
           const sealedBytes = sealedFile.bytes
           const sealedBuffer = sealedBytes.buffer.slice(
             sealedBytes.byteOffset,

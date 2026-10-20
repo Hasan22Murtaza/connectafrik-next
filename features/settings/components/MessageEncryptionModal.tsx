@@ -5,7 +5,7 @@ import QRCode from 'qrcode'
 import { Check, Copy, Loader2, Lock, Phone, RefreshCw, X } from '@/shared/icons'
 import Portal from '@/shared/components/ui/Portal'
 import { useAuth } from '@/contexts/AuthContext'
-import { localLinkDeviceInfo } from '@/lib/message-e2ee/device-local'
+import { localLinkDeviceInfo } from '@/lib/message-e2ee/device'
 import { messageE2eeStatus } from '@/lib/message-e2ee/status'
 
 type DeviceStatus = { deviceId: string; ownsIdentity: boolean; payload: string }

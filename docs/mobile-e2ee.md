@@ -33,7 +33,7 @@ Each install is its own Signal identity. Upload only public material via `/api/m
 
 ## Attachments
 
-CLA1 file sealing (`lib/message-e2ee/cla1.ts`) is unchanged. File keys travel inside the Signal plaintext payload, never to the server in the clear.
+Attachment sealing (`lib/message-e2ee/attachment-seal.ts`, CLA1 wire format) is unchanged. File keys travel inside the Signal plaintext payload, never to the server in the clear.
 
 ## Linked devices
 

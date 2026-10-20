@@ -1,3 +1,7 @@
+/**
+ * Full ambient types for libsignal. The published index.d.ts is incomplete
+ * (missing keyhelper) and ambient `declare module` here replaces it.
+ */
 declare module 'libsignal' {
   import type { Buffer } from 'buffer'
 

@@ -2,26 +2,27 @@
 
 import { apiClient } from '@/lib/api-client'
 import type { ChatAttachment, ChatMessage } from '@/features/chat/services/supabaseMessagingService'
-import { openCla1 } from '@/lib/message-e2ee/cla1'
+import { openAttachment as decryptSealedBytes } from '@/lib/message-e2ee/attachment-seal'
+import {
+  deviceCredentials,
+  localLinkDeviceInfo as readLocalLinkDeviceInfo,
+  linkPayload,
+  normalizeLinkInput,
+  storageKey,
+} from '@/lib/message-e2ee/device'
 import {
   isRawSignalBody,
   LEGACY_MEGOLM_VERSION,
   parseEncryptedMessage,
   pickEnvelopeForDevice,
   SIGNAL_E2EE_VERSION,
-} from '@/lib/message-e2ee/codec'
-import type { EncryptedEnvelope } from '@/lib/message-e2ee/types'
-import {
-  deviceCredentials,
-  localLinkDeviceInfo as readLocalLinkDeviceInfo,
-  storageKey,
-} from '@/lib/message-e2ee/device-local'
-import { linkPayload, normalizeLinkInput } from '@/lib/message-e2ee/ids'
-import { SignalEncryptionService } from '@/lib/message-e2ee/signal-service'
+  SignalEncryptionService,
+  type DeviceKeyBundle,
+  type EncryptedEnvelope,
+} from '@/lib/message-e2ee/signal'
 import { messageE2eeActive } from '@/lib/message-e2ee/status'
-import type { DeviceKeyBundle } from '@/lib/message-e2ee/types'
 
-export { localLinkDeviceInfo } from '@/lib/message-e2ee/device-local'
+export { localLinkDeviceInfo } from '@/lib/message-e2ee/device'
 export { SIGNAL_E2EE_VERSION }
 
 const LOCKED = "🔒 This message can't be read on this device"
@@ -347,7 +348,7 @@ async function openAttachment(url: string, key: string, sha256: string, mime: st
   const response = await fetch(url)
   if (!response.ok) return null
   const sealed = new Uint8Array(await response.arrayBuffer())
-  const blob = await openCla1(sealed, key, sha256)
+  const blob = await decryptSealedBytes(sealed, key, sha256)
   return URL.createObjectURL(new Blob([blob], { type: mime || 'application/octet-stream' }))
 }
 

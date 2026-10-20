@@ -597,8 +597,8 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
           if (!sealed?.key || !sealed.sha256) {
             throw new Error("This message can't be read on this device");
           }
-          const { openCla1 } = await import("@/lib/message-e2ee/cla1");
-          const opened = await openCla1(new Uint8Array(await blob.arrayBuffer()), sealed.key, sealed.sha256);
+          const { openAttachment } = await import("@/lib/message-e2ee/attachment-seal");
+          const opened = await openAttachment(new Uint8Array(await blob.arrayBuffer()), sealed.key, sealed.sha256);
           blob = opened.type ? opened : new Blob([await opened.arrayBuffer()], { type: sealed.plainMime || att.mimeType });
         }
         const objectUrl = URL.createObjectURL(blob);

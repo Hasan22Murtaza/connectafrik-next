@@ -1,3 +1,5 @@
+/** CLA1 wire format: chunked AES-GCM attachment sealing for E2EE chats. */
+
 const MAGIC = [0x43, 0x4c, 0x41, 0x31] // CLA1
 
 function bufferOf(bytes: Uint8Array): ArrayBuffer {
@@ -7,7 +9,7 @@ const VERSION = 1
 const CHUNK_SIZE = 65536
 const HEADER_BYTES = 4 + 1 + 4 + 8 + 32
 
-export type Cla1Meta = {
+export type SealedAttachmentMeta = {
   key: string
   sha256: string
   plainSize: number
@@ -17,7 +19,7 @@ export type Cla1Meta = {
 
 function bytesToBase64(bytes: Uint8Array): string {
   let binary = ''
-  for (let i = 0; i < bytes.length; i += 1) binary += String.fromCharCode(bytes[i])
+  for (let i = 0; i < bytes.length; i += 1) binary += String.fromCharCode(bytes[i]!)
   return btoa(binary)
 }
 
@@ -48,7 +50,7 @@ async function sha256Hex(bytes: Uint8Array): Promise<string> {
   return Array.from(digest, (byte) => byte.toString(16).padStart(2, '0')).join('')
 }
 
-export async function sealCla1(file: File): Promise<{ bytes: Uint8Array; meta: Cla1Meta }> {
+export async function sealAttachment(file: File): Promise<{ bytes: Uint8Array; meta: SealedAttachmentMeta }> {
   const plain = new Uint8Array(await file.arrayBuffer())
   const keyBytes = crypto.getRandomValues(new Uint8Array(32))
   const key = await crypto.subtle.importKey('raw', bufferOf(keyBytes), 'AES-GCM', false, ['encrypt'])
@@ -91,7 +93,11 @@ export async function sealCla1(file: File): Promise<{ bytes: Uint8Array; meta: C
   }
 }
 
-export async function openCla1(sealed: Uint8Array, keyBase64: string, expectedSha256: string): Promise<Blob> {
+export async function openAttachment(
+  sealed: Uint8Array,
+  keyBase64: string,
+  expectedSha256: string,
+): Promise<Blob> {
   if (sealed.length < HEADER_BYTES) throw new Error('truncated')
   if (sealed[0] !== MAGIC[0] || sealed[1] !== MAGIC[1] || sealed[2] !== MAGIC[2] || sealed[3] !== MAGIC[3]) {
     throw new Error('format')
@@ -103,7 +109,9 @@ export async function openCla1(sealed: Uint8Array, keyBase64: string, expectedSh
   if (!Number.isFinite(plainSize) || plainSize < 0 || chunkSize < 1 || chunkSize > 1024 * 1024) {
     throw new Error('header')
   }
-  const key = await crypto.subtle.importKey('raw', bufferOf(base64ToBytes(keyBase64)), 'AES-GCM', false, ['decrypt'])
+  const key = await crypto.subtle.importKey('raw', bufferOf(base64ToBytes(keyBase64)), 'AES-GCM', false, [
+    'decrypt',
+  ])
   const plain = new Uint8Array(plainSize)
   let read = HEADER_BYTES
   let written = 0
