@@ -50,7 +50,7 @@ interface TradeHubFilterSidebarProps {
 const menuRowClass =
   "w-full flex items-center justify-between gap-3 px-4 py-3 text-left text-[15px]  hover:bg-primary-50 transition-colors";
 
-const menuRowActiveClass = "bg-primary-50 ";
+const menuRowActiveClass = "bg-primary-50 text-orange-500 ";
 
 const sectionTitleClass = "px-4 pt-4 pb-2 text-[17px] font-bold ";
 
@@ -140,7 +140,7 @@ const TradeHubFilterSidebar: React.FC<TradeHubFilterSidebarProps> = ({
               !filters.category ? menuRowActiveClass : ""
             }`}
           >
-            <span className={!filters.category ? "font-semibold text-orange-500" : ""}>
+            <span className={!filters.category ? "font-semibold" : ""}>
               All Categories
             </span>
           </button>

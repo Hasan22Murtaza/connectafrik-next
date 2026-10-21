@@ -126,16 +126,19 @@ function SentRequestCard({
     <div className="bg-surface rounded-lg shadow-card overflow-hidden hover:shadow-md transition-shadow">
       <Link href={`/user/${userId}`} className="block cursor-pointer">
         <div className="w-full aspect-square bg-surface-secondary relative">
-          {profile?.avatar_url ? (
+          <div className="w-full h-full flex items-center justify-center text-4xl font-bold text-primary-600 bg-primary-100">
+            {profile?.full_name?.charAt(0)?.toUpperCase() || "U"}
+          </div>
+
+          {profile?.avatar_url && (
             <img
               src={profile.avatar_url}
-              alt={profile.full_name}
-              className="w-full h-full object-cover"
+              alt={profile?.full_name || "User"}
+              onError={(e) => {
+                e.currentTarget.style.display = "none";
+              }}
+              className="absolute inset-0 w-full h-full object-cover"
             />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center text-4xl font-bold text-primary-600 bg-primary-100">
-              {profile?.full_name?.charAt(0) || "U"}
-            </div>
           )}
         </div>
       </Link>
