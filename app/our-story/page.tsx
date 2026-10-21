@@ -329,7 +329,7 @@ const OurStory = () => {
                 Join CribsTalk
               </Link>
               <Link
-                href="/support"
+                href="/contact"
                 className="inline-flex rounded-lg border border-slate-300 px-6 py-3 font-medium text-slate-700 transition hover:border-emerald-500 hover:text-emerald-700 dark:border-slate-700 dark:text-slate-300 dark:hover:border-emerald-500 dark:hover:text-emerald-300"
               >
                 Contact Us

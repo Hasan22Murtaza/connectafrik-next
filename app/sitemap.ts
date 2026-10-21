@@ -1,4 +1,5 @@
 import type { MetadataRoute } from 'next'
+import { legalPaths } from '@/features/legal/registry'
 import { getCanonicalUrl, seoPaths } from '@/lib/seo/canonical'
 import { SITEMAP_CHUNK_SIZE } from '@/lib/seo/config'
 import {
@@ -34,6 +35,12 @@ function staticEntries(): MetadataRoute.Sitemap {
       changeFrequency: 'daily',
       priority: 1,
     },
+    ...legalPaths().map((path) => ({
+      url: getCanonicalUrl(path),
+      lastModified: new Date('2026-10-20'),
+      changeFrequency: 'yearly' as const,
+      priority: 0.4,
+    })),
   ]
 }
 

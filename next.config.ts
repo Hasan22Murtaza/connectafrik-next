@@ -22,6 +22,18 @@ const nextConfig: NextConfig = {
     ],
   },
 
+  async redirects() {
+    return [
+      { source: '/privacy-policy', destination: '/privacy', permanent: true },
+      { source: '/terms-of-service', destination: '/terms', permanent: true },
+      { source: '/guidelines', destination: '/community-standards', permanent: true },
+      { source: '/support', destination: '/contact', permanent: false },
+      { source: '/settings/privacy', destination: '/profile?tab=privacy', permanent: false },
+      { source: '/settings/content', destination: '/profile?tab=privacy', permanent: false },
+      { source: '/settings/blocking', destination: '/profile?tab=privacy', permanent: false },
+    ]
+  },
+
   async rewrites() {
     return [
       {

@@ -274,14 +274,14 @@ const Signup: React.FC = () => {
           <p className=" text-xs leading-5 text-[#6B7280]">
             By continuing, you agree to our{' '}
             <Link
-              href="/terms-of-service"
+              href="/terms"
               className="underline decoration-[#D1D5DB] underline-offset-2 hover:text-[#6B7280]"
             >
               Terms of Service
             </Link>{' '}
             and{' '}
             <Link
-              href="/privacy-policy"
+              href="/privacy"
               className="underline decoration-[#D1D5DB] underline-offset-2 hover:text-[#6B7280]"
             >
               Privacy Policy

@@ -15,14 +15,75 @@ const productLinks = [
 
 const companyLinks = [
   { href: "/our-story", label: "About" },
-  { href: "/support", label: "Contact" },
+  { href: "/contact", label: "Contact" },
   { href: "/feedback", label: "Feedback" },
+  { href: "/help", label: "Help" },
 ];
 
 const legalLinks = [
-  { href: "/privacy-policy", label: "Privacy" },
-  { href: "/terms-of-service", label: "Terms" },
+  { href: "/privacy", label: "Privacy" },
+  { href: "/terms", label: "Terms" },
+  { href: "/community-standards", label: "Community Standards" },
+  { href: "/child-safety", label: "Child Safety" },
+  { href: "/safety", label: "Safety" },
+  { href: "/cookie-policy", label: "Cookies" },
+  { href: "/copyright", label: "Copyright" },
+  { href: "/delete-account", label: "Delete Account" },
 ];
+
+const contactLinks = [
+  {
+    href: "mailto:info@cribstalk.com",
+    label: "info@cribstalk.com",
+    Icon: Mail,
+  },
+  {
+    href: "tel:+233534787731",
+    label: "+233 534 787 731",
+    Icon: Phone,
+  },
+  {
+    href: "tel:+19144337155",
+    label: "+1 914 433 7155",
+    Icon: Phone,
+  },
+];
+
+function FooterLinkList({
+  title,
+  links,
+  columns = 1,
+}: {
+  title: string;
+  links: { href: string; label: string }[];
+  columns?: 1 | 2;
+}) {
+  return (
+    <div className="space-y-4">
+      <h3 className="text-sm font-semibold uppercase tracking-wider text-[#111827]">
+        {title}
+      </h3>
+      <ul
+        className={
+          columns === 2
+            ? "grid grid-cols-1 gap-x-8 gap-y-2.5 text-sm sm:grid-cols-2"
+            : "space-y-2.5 text-sm"
+        }
+      >
+        {links.map((link) => (
+          <li key={link.href}>
+            <Link
+              href={link.href}
+              className="inline-flex items-center text-[#4B5563] transition-colors duration-300 hover:text-[#F97316]"
+            >
+              {link.label}
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
 
 const Footer: React.FC = () => {
   const currentYear = new Date().getFullYear();
@@ -30,8 +91,8 @@ const Footer: React.FC = () => {
   return (
     <footer className="relative border-t border-black/[0.06] bg-[#FAFAF9] text-[#111827]">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 gap-10 py-14 sm:grid-cols-2 lg:grid-cols-4 lg:gap-12">
-          <div className="space-y-4">
+        <div className="grid grid-cols-1 gap-10 py-14 sm:grid-cols-2 lg:grid-cols-12 lg:gap-8">
+          <div className="space-y-4 sm:col-span-2 lg:col-span-4">
             <img
               src="/assets/images/logo_2.png"
               alt="CribsTalk"
@@ -43,83 +104,30 @@ const Footer: React.FC = () => {
             <p className="max-w-xs text-sm leading-relaxed text-[#6B7280]">
               Our Crib. Our Culture. Our Roots.
             </p>
-          </div>
-
-          <div className="space-y-4">
-            <h3 className="text-sm font-semibold uppercase tracking-wider text-[#111827]">
-              Product
-            </h3>
-            <ul className="space-y-2.5 text-sm">
-              {productLinks.map((link) => (
-                <li key={link.href}>
-                  <Link
-                    href={link.href}
-                    className="inline-flex items-center text-[#4B5563] transition-colors duration-300 hover:text-[#F97316]"
-                  >
-                    {link.label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          <div className="space-y-4">
-            <h3 className="text-sm font-semibold uppercase tracking-wider text-[#111827]">
-              Company
-            </h3>
-            <ul className="space-y-2.5 text-sm">
-              {companyLinks.map((link) => (
-                <li key={link.href}>
-                  <Link
-                    href={link.href}
-                    className="inline-flex items-center text-[#4B5563] transition-colors duration-300 hover:text-[#F97316]"
-                  >
-                    {link.label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          <div className="space-y-4">
-            <h3 className="text-sm font-semibold uppercase tracking-wider text-[#111827]">
-              Legal
-            </h3>
-            <ul className="space-y-2.5 text-sm">
-              {legalLinks.map((link) => (
-                <li key={link.href}>
-                  <Link
-                    href={link.href}
-                    className="inline-flex items-center text-[#4B5563] transition-colors duration-300 hover:text-[#F97316]"
-                  >
-                    {link.label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
             <div className="space-y-2 pt-2 text-sm text-[#4B5563]">
-              <a
-                href="mailto:info@cribstalk.com"
-                className="flex items-center gap-2.5 transition-colors duration-300 hover:text-[#F97316]"
-              >
-                <Mail className="h-4 w-4 flex-none" />
-                info@cribstalk.com
-              </a>
-              <a
-                href="tel:+233534787731"
-                className="flex items-center gap-2.5 transition-colors duration-300 hover:text-[#F97316]"
-              >
-                <Phone className="h-4 w-4 flex-none" />
-                +233 534 787 731
-              </a>
-              <a
-                href="tel:+19144337155"
-                className="flex items-center gap-2.5 transition-colors duration-300 hover:text-[#F97316]"
-              >
-                <Phone className="h-4 w-4 flex-none" />
-                +1 914 433 7155
-              </a>
+              {contactLinks.map(({ href, label, Icon }) => (
+                <a
+                  key={href}
+                  href={href}
+                  className="flex items-center gap-2.5 transition-colors duration-300 hover:text-[#F97316]"
+                >
+                  <Icon className="h-4 w-4 flex-none" />
+                  {label}
+                </a>
+              ))}
             </div>
+          </div>
+
+          <div className="lg:col-span-2">
+            <FooterLinkList title="Product" links={productLinks} />
+          </div>
+
+          <div className="lg:col-span-2">
+            <FooterLinkList title="Company" links={companyLinks} />
+          </div>
+
+          <div className="sm:col-span-2 lg:col-span-4">
+            <FooterLinkList title="Legal" links={legalLinks} columns={2} />
           </div>
         </div>
 
@@ -131,13 +139,13 @@ const Footer: React.FC = () => {
           </div>
           <div className="flex items-center gap-6 text-sm text-[#6B7280]">
             <Link
-              href="/privacy-policy"
+              href="/privacy"
               className="transition-colors duration-300 hover:text-[#F97316]"
             >
               Privacy
             </Link>
             <Link
-              href="/terms-of-service"
+              href="/terms"
               className="transition-colors duration-300 hover:text-[#F97316]"
             >
               Terms

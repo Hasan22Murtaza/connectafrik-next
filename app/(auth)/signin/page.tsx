@@ -367,14 +367,14 @@ const SigninForm: React.FC = () => {
       <p className="mt-5 text-center text-[11px] leading-relaxed text-[#9CA3AF]">
         By continuing, you agree to our{" "}
         <Link
-          href="/terms-of-service"
+          href="/terms"
           className="underline decoration-[#D1D5DB] underline-offset-2 hover:text-[#6B7280]"
         >
           Terms of Service
         </Link>{" "}
         and{" "}
         <Link
-          href="/privacy-policy"
+          href="/privacy"
           className="underline decoration-[#D1D5DB] underline-offset-2 hover:text-[#6B7280]"
         >
           Privacy Policy

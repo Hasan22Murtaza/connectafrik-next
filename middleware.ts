@@ -138,10 +138,44 @@ export async function middleware(request: NextRequest) {
     '/guidelines',
     '/our-story',
     '/privacy-policy',
+    '/privacy',
     '/terms-of-service',
+    '/terms',
     '/support',
+    '/contact',
+    '/help',
     '/feedback',
     '/marketplace',
+    '/community-standards',
+    '/child-safety',
+    '/safety',
+    '/cookie-policy',
+    '/copyright',
+    '/delete-account',
+    '/account-recovery',
+    '/report',
+    '/emergency-report',
+    '/appeals',
+    '/parents',
+    '/youth-safety',
+    '/security',
+    '/sister-cities',
+    '/mentor-verification',
+    '/mentor-guidelines',
+    '/become-a-mentor',
+    '/mentors',
+    '/marketplace-policy',
+    '/marketplace-safety',
+    '/tradehub-policy',
+    '/privacy-center',
+  ]
+  const publicPrefixes = [
+    '/privacy/',
+    '/safety/',
+    '/appeals/',
+    '/parents/',
+    '/sister-cities/',
+    '/security/',
   ]
 
   const memoryAppSegments = new Set(['foryou', 'explore', 'following', 'my-videos', 'create'])
@@ -174,7 +208,9 @@ export async function middleware(request: NextRequest) {
 
   // Check if the current path is a public route
   const isPublicRoute =
-    publicRoutes.some((route) => pathname === route) || isMarketplaceProductDetail
+    publicRoutes.some((route) => pathname === route) ||
+    publicPrefixes.some((prefix) => pathname.startsWith(prefix)) ||
+    isMarketplaceProductDetail
 
   // If user is authenticated and tries to access sign-in/sign-up routes, redirect to feed
   if (session && isAuthRouteThatRedirectsWhenLoggedIn) {
