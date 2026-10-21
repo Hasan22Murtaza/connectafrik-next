@@ -60,10 +60,10 @@ export function DeleteAccountAction() {
           Sign in to the account you want to delete. You will come back to this page, and it will let
           you delete the account.
         </p>
-        <div className="not-prose mt-4">
+        <div className="mt-4">
           <Link
             href="/signin?redirect=/delete-account"
-            className="inline-flex h-12 w-full items-center justify-center rounded-xl bg-[#F97316] px-4 text-sm font-semibold text-white transition-colors hover:bg-[#EA580C]"
+            className="inline-flex h-12 w-full items-center justify-center rounded-xl bg-[#F97316] px-4 text-sm font-semibold !text-white !no-underline transition-colors hover:bg-[#EA580C] hover:!text-white"
           >
             Sign in
           </Link>
