@@ -152,6 +152,7 @@ export async function middleware(request: NextRequest) {
     '/cookie-policy',
     '/copyright',
     '/delete-account',
+    '/delete-data',
     '/account-recovery',
     '/report',
     '/emergency-report',

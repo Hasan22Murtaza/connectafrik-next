@@ -10,6 +10,7 @@ import {
   CookiePolicy,
   CopyrightPolicy,
   DeleteAccountPage,
+  DeleteSomeDataPage,
   EmergencyReportPage,
   HelpCenterPage,
   ParentalSafetyPage,
@@ -85,9 +86,14 @@ export const legalPages: Record<string, LegalEntry> = {
     Component: CopyrightPolicy,
   },
   'delete-account': {
-    title: 'Delete your account',
-    description: 'How to delete a CribsTalk account.',
+    title: 'Delete your CribsTalk account',
+    description: 'Delete your CribsTalk account from this page or from Settings.',
     Component: DeleteAccountPage,
+  },
+  'delete-data': {
+    title: 'Delete some of your CribsTalk data',
+    description: 'How to delete messages, posts, stories, and other CribsTalk data without closing your account.',
+    Component: DeleteSomeDataPage,
   },
   'account-recovery': {
     title: 'Account recovery',

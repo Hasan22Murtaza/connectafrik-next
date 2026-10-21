@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { LegalDocument } from '../LegalDocument'
 import { POLICY_DATE } from '../policyLinks'
+import { DeleteAccountAction } from './DeleteAccountAction'
 
 function Page({
   title,
@@ -82,41 +83,162 @@ export function CopyrightPolicy() {
   )
 }
 
+export function DeleteSomeDataPage() {
+  return (
+    <Page title="Delete some of your CribsTalk data">
+      <p>
+        CribsTalk is operated by Allora Digital Group LLC. You can delete these things yourself, at
+        any time, without closing your account. To close the account and delete everything, go to{' '}
+        <Link href="/delete-account">Delete your account</Link>.
+      </p>
+      <section>
+        <h2>Messages</h2>
+        <ul>
+          <li>
+            In the app, press and hold a message; on the website, open the message’s menu. Choose{' '}
+            <strong>Delete for everyone</strong> to remove a message you sent for both sides. This
+            is available for a limited time after you send it.
+          </li>
+          <li>
+            <strong>Delete for me</strong> removes a message from your view only. The other person
+            still has their copy.
+          </li>
+          <li>
+            To remove a whole conversation from your view, open the chat’s menu and choose{' '}
+            <strong>Clear chat</strong>.
+          </li>
+          <li>
+            Group messages work the same way. A group admin can also delete a group from the group’s
+            details, which removes the group and its messages for everyone.
+          </li>
+        </ul>
+      </section>
+      <section>
+        <h2>Posts</h2>
+        <p>
+          Open the menu on a post you created and choose <strong>Delete</strong>. The post leaves
+          CribsTalk feeds and your profile.
+        </p>
+      </section>
+      <section>
+        <h2>Stories</h2>
+        <p>
+          Open your story and choose <strong>Delete Story</strong>. Stories also disappear on their
+          own after 24 hours.
+        </p>
+      </section>
+      <section>
+        <h2>Memories and comments</h2>
+        <p>
+          On a Memory you published, open the menu and choose <strong>Delete</strong>. To remove a
+          comment you wrote on a post, Memory, or thread, open the comment menu and choose{' '}
+          <strong>Delete</strong>.
+        </p>
+      </section>
+      <section>
+        <h2>Friends</h2>
+        <p>
+          To remove a friend, go to <Link href="/friends">Friends</Link> or their profile and choose{' '}
+          <strong>Remove</strong>.
+        </p>
+      </section>
+      <section>
+        <h2>What happens to deleted data</h2>
+        <ul>
+          <li>
+            Messages, stories, comments, and friend connections are deleted straight away from the
+            product experience.
+          </li>
+          <li>
+            A deleted post or Memory disappears from feeds, search, and your profile at once. Stored
+            media files may be kept for a short period in case the content was deleted by mistake or
+            is needed for a legal request, then permanently destroyed unless a specific legal
+            requirement obliges us to keep it.
+          </li>
+          <li>
+            Copies in our database backups can persist for a short time until they are overwritten in
+            the normal backup cycle.
+          </li>
+        </ul>
+      </section>
+      <section>
+        <h2>Anything else</h2>
+        <p>
+          To ask us to delete other data we hold about you, email{' '}
+          <a href="mailto:privacy@alloradigitalgroup.com">privacy@alloradigitalgroup.com</a> from
+          the address on your account and tell us what you want deleted. The full detail is in our{' '}
+          <Link href="/privacy">Privacy Policy</Link>.
+        </p>
+      </section>
+    </Page>
+  )
+}
+
 export function DeleteAccountPage() {
   return (
-    <Page title="Delete your account">
-      <p>You can delete your CribsTalk account yourself. You do not have to install anything extra.</p>
+    <Page title="Delete your CribsTalk account">
+      <p>
+        CribsTalk is operated by Allora Digital Group LLC. Only want to delete some things, such as
+        messages or posts, and keep your account? See{' '}
+        <Link href="/privacy/delete-data">Delete my information</Link>.
+      </p>
       <section>
-        <h2>On the web or in the app</h2>
-        <ol>
-          <li>Sign in.</li>
-          <li>
-            Open <Link href="/settings?tab=security">Settings → Security</Link>.
-          </li>
-          <li>Choose Delete account and confirm.</li>
-        </ol>
+        <h2>Delete it here</h2>
+        <DeleteAccountAction />
+      </section>
+      <section>
+        <h2>Or delete it in Settings</h2>
         <p>
-          Download a copy first if you want one:{' '}
-          <Link href="/privacy/export-data">Download my information</Link>.
+          On the website or in the CribsTalk app, open{' '}
+          <Link href="/settings?tab=security">Settings → Security</Link> and choose Delete account.
+          That does exactly what this page does.
+        </p>
+        <p>
+          If you still have access and cannot sign in, see{' '}
+          <Link href="/account-recovery">account recovery</Link>.
         </p>
       </section>
       <section>
         <h2>What happens</h2>
         <ul>
-          <li>Public content may be removed</li>
-          <li>Your profile may be anonymized</li>
-          <li>Sign-in to that account ends</li>
-          <li>Some records stay only when the law, a safety investigation, or a dispute requires it</li>
+          <li>
+            Your posts and public content are removed from CribsTalk — from feeds, search, and your
+            profile.
+          </li>
+          <li>
+            Your profile is anonymized to “Deleted account”, and your picture, bio, and location are
+            cleared. Your username is released.
+          </li>
+          <li>Sign-in to the account is permanently disabled, and you are signed out everywhere.</li>
+          <li>
+            Conversations, comments, and threads you took part in remain for the other people in
+            them, attributed to “Deleted account”.
+          </li>
         </ul>
       </section>
       <section>
-        <h2>Ask us to delete it</h2>
+        <h2>What we keep</h2>
         <p>
-          Email <a href="mailto:privacy@alloradigitalgroup.com">privacy@alloradigitalgroup.com</a> from
-          the address on the account. Use the subject “Delete my account”.
+          Before the account is closed, an archived copy of your profile, your email address, and
+          records of your uploads — with the stored media files — may be placed in a restricted
+          store that ordinary CribsTalk systems and staff cannot use for everyday product work. We
+          keep it for legal obligations, fraud and abuse investigations, and dispute resolution. It
+          is never used to run the Platform, recommend content, or advertise.
         </p>
         <p>
-          If you still have access and cannot sign in, see <Link href="/account-recovery">account recovery</Link>.
+          We keep it for 90 days. After that it is permanently erased, together with your stored
+          media files and your sign-in details, unless a specific legal requirement (such as a court
+          order or a preservation request from law enforcement) obliges us to keep part of it for
+          longer.
+        </p>
+        <p>
+          You can ask us to erase that archived copy too. Email{' '}
+          <a href="mailto:privacy@alloradigitalgroup.com">privacy@alloradigitalgroup.com</a> and we
+          will erase it unless the law requires us to keep it — in which case we will tell you what
+          we must keep and why.
+        </p>
+        <p>
+          The full detail is in section 15 of our <Link href="/privacy">Privacy Policy</Link>.
         </p>
       </section>
     </Page>
