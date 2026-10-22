@@ -39,6 +39,22 @@ function mapBirthdayProfileToFriend(p: BirthdayProfileRow): Friend {
     birthday: p.birthday,
   };
 }
+
+const handleBackgroundColor = (name = "") => {
+  let hash = 0;
+
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  }
+
+  const hue = Math.abs(hash) % 360;
+
+  return {
+    backgroundColor: `hsl(${hue}, 40%, 90%)`,
+    color: `hsl(${hue}, 40%, 20%)`,
+  };
+};
+
 type Section = FriendsSection;
 type RequestsView = "received" | "pending";
 const FRIENDS_SECTIONS: Section[] = ["home", "requests", "suggestions", "all", "birthdays"];
@@ -126,9 +142,14 @@ function SentRequestCard({
     <div className="bg-surface rounded-lg shadow-card overflow-hidden hover:shadow-md transition-shadow">
       <Link href={`/user/${userId}`} className="block cursor-pointer">
         <div className="w-full aspect-square bg-surface-secondary relative">
-          <div className="w-full h-full flex items-center justify-center text-4xl font-bold text-primary-600 bg-primary-100">
+          {/* <div className="w-full h-full flex items-center justify-center text-4xl font-bold text-primary-600 bg-primary-100">
             {profile?.full_name?.charAt(0)?.toUpperCase() || "U"}
-          </div>
+          </div> */}
+          <div 
+                              style={handleBackgroundColor(profile?.full_name)}
+                              className={`w-full h-full flex items-center justify-center text-4xl font-semibold text-primary-600  `}>
+                                {profile?.full_name?.slice(0, 2)?.toUpperCase() || "U"}
+                              </div>
 
           {profile?.avatar_url && (
             <img
@@ -553,6 +574,8 @@ const FriendsPageContent: React.FC = () => {
       suggestion.username?.toLowerCase().includes(suggestionsSearchTerm.toLowerCase())
   );
 
+
+
   return (
     <div className="min-h-screen px-4">
       <div className="flex gap-6 sm:pb-0 pb-18">
@@ -791,8 +814,10 @@ const FriendsPageContent: React.FC = () => {
                           {/* Profile Image */}
                           <Link href={`/user/${suggestion.user_id || ''}`} className="block cursor-pointer">
                            <div className="w-full aspect-square bg-surface-secondary relative">
-                              <div className="w-full h-full flex items-center justify-center text-4xl font-bold text-primary-600 bg-primary-100">
-                                {suggestion.full_name?.charAt(0)?.toUpperCase() || "U"}
+                              <div 
+                              style={handleBackgroundColor(suggestion.full_name)}
+                              className={`w-full h-full flex items-center justify-center text-4xl font-semibold text-primary-600  `}>
+                                {suggestion.full_name?.slice(0, 2)?.toUpperCase() || "U"}
                               </div>
 
                               {suggestion.avatar_url && (
@@ -922,9 +947,11 @@ const FriendsPageContent: React.FC = () => {
                               className="w-full h-full object-cover"
                             />
                           ) : (
-                            <div className="w-full h-full flex items-center justify-center text-4xl font-bold text-primary-600 bg-primary-100">
-                              {request.requester?.full_name?.charAt(0) || "U"}
-                            </div>
+                            <div 
+                              style={handleBackgroundColor(request.requester?.full_name)}
+                              className={`w-full h-full flex items-center justify-center text-4xl font-semibold text-primary-600  `}>
+                                {request.requester?.full_name?.slice(0, 2)?.toUpperCase() || "U"}
+                              </div>
                           )}
                         </div>
                       </Link>
@@ -1089,8 +1116,10 @@ const FriendsPageContent: React.FC = () => {
                       {/* Profile Image */}
                       <Link href={`/user/${suggestion.user_id || ''}`} className="block cursor-pointer">
                          <div className="w-full aspect-square bg-surface-secondary relative">
-                              <div className="w-full h-full flex items-center justify-center text-4xl font-bold text-primary-600 bg-primary-100">
-                                {suggestion.full_name?.charAt(0)?.toUpperCase() || "U"}
+                              <div 
+                              style={handleBackgroundColor(suggestion.full_name)}
+                              className={`w-full h-full flex items-center justify-center text-4xl font-semibold text-primary-600  `}>
+                                {suggestion.full_name?.slice(0, 2)?.toUpperCase() || "U"}
                               </div>
 
                               {suggestion.avatar_url && (
