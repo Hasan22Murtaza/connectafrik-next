@@ -28,6 +28,7 @@ import MobileSearchModal from "@/shared/components/search/MobileSearchModal";
 import UserMenu from "@/shared/components/theme/UserMenu";
 import { useHeaderInboxCounts } from "@/shared/hooks/useHeaderInboxCounts";
 import { useSpaceNavCounts } from "@/shared/hooks/useSpaceNavCounts";
+import { Chat } from "@livekit/components-react";
 
 interface HeaderProps {
   searchTerm?: string;
@@ -154,7 +155,7 @@ const Header: React.FC<HeaderProps> = ({
                 : "flex w-full items-center justify-between gap-4"
             }
           >
-            <div className="flex items-center ">
+            <div className="flex items-center flex-1">
             {/* Logo - Pinned to left */}
             <Link href="/" className="flex-shrink-0 " aria-label="CribsTalk home">
               <img src="/assets/images/logo_2.png" alt="CribsTalk" className="sm:w-40 w-32" />
@@ -162,7 +163,7 @@ const Header: React.FC<HeaderProps> = ({
 
             {/* Search Bar - Only when logged in; hidden on mobile, visible on tablet+ */}
             {user && (
-              <div className="hidden md:flex  max-w-70  w-full">
+              <div className="hidden md:flex  max-w-md  w-full">
                 <div className="relative w-full" ref={searchContainerRef}>
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-content-tertiary w-4 h-4 z-10" />
                   <input
@@ -206,116 +207,13 @@ const Header: React.FC<HeaderProps> = ({
             {/* Navigation and User Menu - Pinned to right */}
               {user ? (
                 <>
-                  {/* Navigation Links - Hidden on mobile, visible on desktop */}
-                  <nav className="md:block hidden flex-1 md:max-w-lg lg:max-w-lg 2xl:max-w-2xl mx-auto">
-                    <ul className="flex items-center gap-6  pt-3 justify-between  ">
-
-                      {/* Feed */}
-                      <li className="relative">
-                        <Link
-                          href="/feed"
-                          className={`group flex flex-col items-center gap-1 pb-2 px-0 sm:px-4 transition-colors ${pathname === "/feed"
-                            ? "text-primary-600"
-                            : "text-content-secondary hover:text-primary-600"
-                            }`}
-                        >
-                          <Home className="w-12" />
-                          <span className="text-sm font-medium">Feed</span>
-
-                          {/* <span
-                            className={`absolute bottom-0 left-0 h-[2px] bg-primary-600 rounded-full transition-all duration-300 ease-in-out ${pathname === "/feed"
-                              ? "w-full"
-                              : "w-0 group-hover:w-full"
-                              }`}
-                          /> */}
-                        </Link>
-                      </li>
-
-                      {/* Reels */}
-                      <li className="relative">
-                        <Link
-                          href="/reels/foryou"
-                          className={`group flex flex-col items-center gap-1 pb-2 px-0 sm:px-4 transition-colors ${pathname.startsWith("/reels")
-                            ? "text-primary-600"
-                            : "text-content-secondary hover:text-primary-600"
-                            }`}
-                        >
-                          <Video className="w-12" />
-                          <span className="text-sm font-medium">Reels</span>
-
-                        </Link>
-                      </li>
-
-                      {/* tradehub */}
-                      <li className="relative">
-                        <Link
-                          href="/marketplace"
-                          className={`group flex flex-col items-center gap-1 pb-2 px-0 sm:px-4 transition-colors ${pathname === "/marketplace"
-                            ? "text-primary-600"
-                            : "text-content-secondary hover:text-primary-600"
-                            }`}
-                        >
-                          <Store className="w-12" />
-                          <span className="text-sm font-medium">TradeHub</span>
-
-                          
-                        </Link>
-                      </li>
-
-                      {/* friends */}
-                      <li className="relative">
-                        <Link
-                          href="/friends"
-                          className={`group flex flex-col items-center gap-1 pb-2 px-0 sm:px-4 transition-colors ${pathname === "/friends"
-                            ? "text-primary-600"
-                            : "text-content-secondary hover:text-primary-600"
-                            }`}
-                        >
-                          <UserRound className="w-12" />
-                          <span className="text-sm font-medium">Friends</span>
-
-                          {friendRequestCount > 0 && (
-                            <span className="absolute top-0 right-2 w-4 h-4 px-1.2 rounded-full bg-red-500 text-white text-xs font-medium flex items-center justify-center">
-                              {friendRequestCount > 99 ? "99+" : friendRequestCount}
-                            </span>
-                          )}
-                        </Link>
-                      </li>
-
-                      {/* Groups */}
-                      <li className="relative">
-                        <Link
-                          href="/groups"
-                          className={`group flex flex-col items-center gap-1 pb-2 px-0 sm:px-4 transition-colors ${pathname === "/groups"
-                            ? "text-primary-600"
-                            : "text-content-secondary hover:text-primary-600"
-                            }`}
-                        >
-                          <Users className="w-12" />
-                          <span className="text-sm font-medium">Groups</span>
-
-                          {/* <span
-                            className={`absolute bottom-0 left-0 h-[2px] bg-primary-600 rounded-full transition-all duration-300 ease-in-out ${pathname === "/groups"
-                              ? "w-full"
-                              : "w-0 group-hover:w-full"
-                              }`}
-                          /> */}
-                        </Link>
-                      </li>
-
-                    </ul>
-                  </nav>
-
                   {/* Notifications & Messaging */}
                   <div className="flex items-center space-x-2 sm:space-x-2 border-border-subtle w-65 xl:w-80 2xl:w-[24rem] justify-end">
 
-                    {/* Chat & Calls live in LeftSidebar on lg+; keep in header for mobile */}
-                    <div className="relative lg:hidden">
-                      <Link
-                        href="/chat"
-                        onClick={() => setShowNotifications(false)}
-                        className="relative p-1 sm:p-1.5 lg:p-2 text-content-tertiary hover:text-primary-600 transition-colors inline-flex"
-                        aria-label="Chat"
+                 <div className="relative">
+                      <button
+                        onClick={() => router.push("/chat")}
+                        className="relative p-1 sm:p-1.5 lg:p-2 text-content-tertiary hover:text-primary-600 transition-colors"
                       >
                         <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5" />
                         {unreadMessages > 0 && (
@@ -323,25 +221,10 @@ const Header: React.FC<HeaderProps> = ({
                             {unreadMessages > 99 ? "99+" : unreadMessages}
                           </span>
                         )}
-                      </Link>
+                      </button>
+                    
                     </div>
-
-                    <div className="relative lg:hidden">
-                      <Link
-                        href="/calls"
-                        onClick={() => setShowNotifications(false)}
-                        className="relative p-1 sm:p-1.5 lg:p-2 text-content-tertiary hover:text-primary-600 transition-colors inline-flex"
-                        aria-label="Calls"
-                      >
-                        <Phone className="w-4 h-4 sm:w-5 sm:h-5" />
-                        {callBadgeCount > 0 && (
-                          <span className="absolute -top-1 -right-1 w-4 h-4 sm:w-5 sm:h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-medium">
-                            {callBadgeCount > 99 ? "99+" : callBadgeCount}
-                          </span>
-                        )}
-                      </Link>
-                    </div>
-
+                    
                     <div className="relative">
                       <button
                         onClick={() => {
@@ -362,7 +245,6 @@ const Header: React.FC<HeaderProps> = ({
                         onUnreadCountChange={setUnreadNotificationCount}
                       />
                     </div>
-
 
                     {/* User Menu */}
                     <div className="relative group ">

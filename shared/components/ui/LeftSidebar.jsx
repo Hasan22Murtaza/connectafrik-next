@@ -9,15 +9,25 @@ import {
   Settings,
   Landmark,
   Palette,
+  Home,
+  Video,
+  Users,
+  User,
+  Store,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const shortcuts = [
-  { name: "Politics", to: "/politics", icon: Landmark },
-  { name: "Culture", to: "/culture", icon: Palette },
+  { name: "Feed", to: "/feed", icon: Home },
+  { name: "Reels", to: "/reels", icon: Video },
+  { name: "Friends", to: "/friends", icon: User },
+  { name: "Groups", to: "/groups", icon: Users },
   { name: "Messages", to: "/chat", icon: MessageCircle, badgeKey: "chat" },
   { name: "Calls", to: "/calls", icon: Phone, badgeKey: "calls" },
+  { name: "TradeHub", to: "/marketplace", icon: Store },
+  { name: "Politics", to: "/politics", icon: Landmark },
+  { name: "Culture", to: "/culture", icon: Palette },
   { name: "Saved", to: "/saved", icon: Bookmark },
   { name: "Feedback", to: "/feedback", icon: MessageSquareText },
   { name: "Settings", to: "/settings", icon: Settings },
@@ -48,7 +58,7 @@ const LeftSidebar = () => {
   };
 
   const itemClass = (isActive) =>
-    `group relative flex w-full items-center space-x-2 px-3 py-2 rounded-lg 
+    `group relative flex w-full items-center space-x-2 px-3 py-1.5 rounded-lg 
           transition-all duration-300 ease-in-out
           ${
             isActive
@@ -57,8 +67,8 @@ const LeftSidebar = () => {
           }`;
 
   return (
-    <aside className="hidden lg:block shrink-0 h-full overflow-y-auto py-4  w-55 xl:w-70 2xl:w-[24rem]">
-      <ul className="space-y-3">
+    <aside className="hidden lg:block shrink-0 h-full overflow-y-auto py-1   w-55 xl:w-60 2xl:w-[24rem] ">
+      <ul className="space-y-1">
         {shortcuts.map((item) => {
           const isActive = isPathActive(pathname, item.to);
           const Icon = item.icon;

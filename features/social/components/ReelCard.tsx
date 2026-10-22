@@ -108,7 +108,7 @@ export function ReelCard({ reel, index = 0, href, onClick, className = '' }: Pro
       ref={videoRef}
       src={reel.video_url}
       poster={reel.thumbnail_url || undefined}
-      className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.03]"
+      className="h-full w-full object-cover transition duration-300 rounded-md"
       muted
       loop
       playsInline
