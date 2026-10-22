@@ -8,7 +8,7 @@ export type SeoPageType =
   | 'profile'
   | 'group'
   | 'groupPost'
-  | 'memory'
+  | 'reel'
   | 'product'
 
 export interface SeoAuthor {
@@ -44,7 +44,6 @@ export interface SeoInput {
   section?: string
   tags?: string[]
   breadcrumbs?: BreadcrumbItem[]
-  /** Video memories / video posts */
   video?: {
     url: string
     durationSeconds?: number
@@ -107,7 +106,7 @@ export interface PublicGroupPostSeo {
   group: PublicGroupSeo
 }
 
-export interface PublicMemorySeo {
+export interface PublicReelSeo {
   id: string
   title: string | null
   description: string | null

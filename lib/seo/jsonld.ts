@@ -1,4 +1,4 @@
-import { getCanonicalUrl } from './canonical'
+﻿import { getCanonicalUrl } from './canonical'
 import { getSeoSiteUrl, SEO_DEFAULT_DESCRIPTION, SEO_LOGO_PATH, SEO_SITE_NAME } from './config'
 import type { BreadcrumbItem, SeoInput } from './types'
 
@@ -115,7 +115,7 @@ export function generateJsonLd(input: SeoInput): Record<string, unknown>[] {
     })
   }
 
-  if (input.type === 'memory' || input.video?.url) {
+  if (input.type === 'reel' || input.video?.url) {
     nodes.push({
       '@context': 'https://schema.org',
       '@type': 'VideoObject',

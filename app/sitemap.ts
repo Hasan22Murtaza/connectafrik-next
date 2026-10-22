@@ -1,15 +1,15 @@
-import type { MetadataRoute } from 'next'
+﻿import type { MetadataRoute } from 'next'
 import { legalPaths } from '@/features/legal/registry'
 import { getCanonicalUrl, seoPaths } from '@/lib/seo/canonical'
 import { SITEMAP_CHUNK_SIZE } from '@/lib/seo/config'
 import {
   countPublicGroupPosts,
   countPublicGroups,
-  countPublicMemories,
+  countPublicReels,
   countPublicPosts,
   listPublicGroupPostsForSitemap,
   listPublicGroupsForSitemap,
-  listPublicMemoriesForSitemap,
+  listPublicReelsForSitemap,
   listPublicPostsForSitemap,
 } from '@/lib/seo/queries'
 
@@ -46,18 +46,18 @@ function staticEntries(): MetadataRoute.Sitemap {
 
 export async function generateSitemaps(): Promise<{ id: SitemapId }[]> {
   try {
-    const [posts, groups, groupPosts, memories] = await Promise.all([
+    const [posts, groups, groupPosts, reels] = await Promise.all([
       countPublicPosts(),
       countPublicGroups(),
       countPublicGroupPosts(),
-      countPublicMemories(),
+      countPublicReels(),
     ])
 
     const ids: { id: SitemapId }[] = [{ id: 'static' }]
     for (let i = 0; i < chunkCount(posts); i += 1) ids.push({ id: `posts-${i}` })
     for (let i = 0; i < chunkCount(groups); i += 1) ids.push({ id: `groups-${i}` })
     for (let i = 0; i < chunkCount(groupPosts); i += 1) ids.push({ id: `groupposts-${i}` })
-    for (let i = 0; i < chunkCount(memories); i += 1) ids.push({ id: `memories-${i}` })
+    for (let i = 0; i < chunkCount(reels); i += 1) ids.push({ id: `reels-${i}` })
     return ids
   } catch (error) {
     console.error('Failed to enumerate sitemaps:', error)
@@ -106,10 +106,10 @@ export default async function sitemap({
       }))
     }
 
-    if (kind === 'memories') {
-      const rows = await listPublicMemoriesForSitemap(offset, SITEMAP_CHUNK_SIZE)
+    if (kind === 'reels') {
+      const rows = await listPublicReelsForSitemap(offset, SITEMAP_CHUNK_SIZE)
       return rows.map((row) => ({
-        url: getCanonicalUrl(seoPaths.memory(row.id)),
+        url: getCanonicalUrl(seoPaths.reel(row.id)),
         lastModified: new Date(row.updated_at || row.created_at),
         changeFrequency: 'weekly',
         priority: 0.7,

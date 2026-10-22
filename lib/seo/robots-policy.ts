@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+﻿import type { Metadata } from 'next'
 
 export const indexFollowRobots: Metadata['robots'] = {
   index: true,
@@ -42,7 +42,7 @@ export function isIndexableGroupPost(input: {
   return true
 }
 
-export function isIndexableMemory(input: { is_public?: boolean; is_deleted?: boolean }): boolean {
+export function isIndexableReel(input: { is_public?: boolean; is_deleted?: boolean }): boolean {
   if (input.is_deleted) return false
   return input.is_public === true
 }

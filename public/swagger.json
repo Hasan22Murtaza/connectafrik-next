@@ -2,7 +2,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "CribsTalk API",
-    "description": "Complete API documentation for the CribsTalk platform — a social network with marketplace, messaging, groups, stories, and more.",
+    "description": "Complete API documentation for the CribsTalk platform â€” a social network with marketplace, messaging, groups, stories, and more.",
     "version": "1.0.0",
     "contact": {
       "name": "CribsTalk Team"
@@ -27,7 +27,7 @@
     { "name": "Marketplace", "description": "Product listings and saved items" },
     { "name": "Marketplace Admin", "description": "Admin revenue and payout management" },
     { "name": "Checkout - Stripe", "description": "Stripe payment processing" },
-    { "name": "Memories", "description": "Short video reels/memories" },
+    { "name": "Reels", "description": "Short video reels" },
     { "name": "Notifications", "description": "User notifications" },
     { "name": "Orders", "description": "Marketplace order management" },
     { "name": "Posts", "description": "Social feed posts" },
@@ -221,7 +221,7 @@
           "created_at": { "type": "string", "format": "date-time" }
         }
       },
-      "Memory": {
+      "Reel": {
         "type": "object",
         "properties": {
           "id": { "type": "string", "format": "uuid" },
@@ -1879,7 +1879,7 @@
         "parameters": [
           { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
           { "name": "postId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
-          { "name": "limit", "in": "query", "schema": { "type": "integer", "minimum": 1, "maximum": 50 }, "description": "Enable paginated mode — number of reactions per page" },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "minimum": 1, "maximum": 50 }, "description": "Enable paginated mode â€” number of reactions per page" },
           { "name": "page", "in": "query", "schema": { "type": "integer", "default": 0, "minimum": 0 }, "description": "Pagination page index (used with limit)" },
           { "name": "reaction_type", "in": "query", "schema": { "type": "string" }, "description": "Filter by reaction type (e.g. love, like, haha)" }
         ],
@@ -2318,10 +2318,10 @@
         }
       }
     },
-    "/memories": {
+    "/reels": {
       "get": {
-        "tags": ["Memories"],
-        "summary": "List memories/reels",
+        "tags": ["Reels"],
+        "summary": "List reels",
         "parameters": [
           { "name": "category", "in": "query", "schema": { "type": "string" } },
           { "name": "author_id", "in": "query", "schema": { "type": "string", "format": "uuid" } },
@@ -2332,51 +2332,51 @@
           { "name": "page", "in": "query", "schema": { "type": "integer", "default": 0, "minimum": 0 } }
         ],
         "responses": {
-          "200": { "description": "Memories list", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Memory" } }, "page": { "type": "integer" }, "pageSize": { "type": "integer" }, "hasMore": { "type": "boolean" } } } } } },
+          "200": { "description": "Reels list", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Reel" } }, "page": { "type": "integer" }, "pageSize": { "type": "integer" }, "hasMore": { "type": "boolean" } } } } } },
           "500": { "$ref": "#/components/responses/ServerError" }
         }
       },
       "post": {
-        "tags": ["Memories"],
-        "summary": "Create a memory",
+        "tags": ["Reels"],
+        "summary": "Create a reel",
         "security": [{ "BearerAuth": [] }],
         "requestBody": {
           "required": true,
           "content": { "application/json": { "schema": { "type": "object", "required": ["title", "video_url", "duration"], "properties": { "title": { "type": "string" }, "video_url": { "type": "string" }, "duration": { "type": "number" }, "description": { "type": "string" }, "thumbnail_url": { "type": "string" }, "category": { "type": "string" }, "tags": { "type": "array", "items": { "type": "string" } }, "is_public": { "type": "boolean" } } } } }
         },
         "responses": {
-          "201": { "description": "Memory created", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/Memory" } } } } } },
+          "201": { "description": "Reel created", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/Reel" } } } } } },
           "401": { "$ref": "#/components/responses/Unauthorized" }
         }
       }
     },
-    "/memories/{id}": {
+    "/reels/{id}": {
       "get": {
-        "tags": ["Memories"],
-        "summary": "Get memory details",
+        "tags": ["Reels"],
+        "summary": "Get reel details",
         "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
         "responses": {
-          "200": { "description": "Memory details", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/Memory" } } } } } },
+          "200": { "description": "Reel details", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/Reel" } } } } } },
           "404": { "$ref": "#/components/responses/NotFound" }
         }
       },
       "patch": {
-        "tags": ["Memories"],
-        "summary": "Update a memory (author only)",
+        "tags": ["Reels"],
+        "summary": "Update a reel (author only)",
         "security": [{ "BearerAuth": [] }],
         "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
         "requestBody": {
           "content": { "application/json": { "schema": { "type": "object", "properties": { "title": { "type": "string" }, "description": { "type": "string" }, "category": { "type": "string" }, "tags": { "type": "array", "items": { "type": "string" } }, "is_public": { "type": "boolean" } } } } }
         },
         "responses": {
-          "200": { "description": "Memory updated", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/Memory" } } } } } },
+          "200": { "description": "Reel updated", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/Reel" } } } } } },
           "401": { "$ref": "#/components/responses/Unauthorized" },
           "404": { "$ref": "#/components/responses/NotFound" }
         }
       },
       "delete": {
-        "tags": ["Memories"],
-        "summary": "Delete a memory (author only, soft delete)",
+        "tags": ["Reels"],
+        "summary": "Delete a reel (author only, soft delete)",
         "security": [{ "BearerAuth": [] }],
         "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
         "responses": {
@@ -2386,10 +2386,10 @@
         }
       }
     },
-    "/memories/{id}/save": {
+    "/reels/{id}/save": {
       "post": {
-        "tags": ["Memories"],
-        "summary": "Toggle save a memory",
+        "tags": ["Reels"],
+        "summary": "Toggle save a reel",
         "security": [{ "BearerAuth": [] }],
         "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
         "responses": {
@@ -2398,10 +2398,10 @@
         }
       }
     },
-    "/memories/{id}/view": {
+    "/reels/{id}/view": {
       "post": {
-        "tags": ["Memories"],
-        "summary": "Record a memory view",
+        "tags": ["Reels"],
+        "summary": "Record a reel view",
         "security": [{ "BearerAuth": [] }],
         "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
         "requestBody": {
@@ -2413,10 +2413,10 @@
         }
       }
     },
-    "/memories/{id}/share": {
+    "/reels/{id}/share": {
       "post": {
-        "tags": ["Memories"],
-        "summary": "Record a memory share",
+        "tags": ["Reels"],
+        "summary": "Record a reel share",
         "security": [{ "BearerAuth": [] }],
         "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
         "requestBody": {
@@ -2429,10 +2429,10 @@
         }
       }
     },
-    "/memories/{id}/like": {
+    "/reels/{id}/like": {
       "post": {
-        "tags": ["Memories"],
-        "summary": "Toggle like on a memory",
+        "tags": ["Reels"],
+        "summary": "Toggle like on a reel",
         "security": [{ "BearerAuth": [] }],
         "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
         "responses": {
@@ -2441,18 +2441,18 @@
         }
       }
     },
-    "/memories/{id}/comments": {
+    "/reels/{id}/comments": {
       "get": {
-        "tags": ["Memories"],
-        "summary": "List memory comments",
+        "tags": ["Reels"],
+        "summary": "List reel comments",
         "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
         "responses": {
           "200": { "description": "Comments with nested replies", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Comment" } } } } } } }
         }
       },
       "post": {
-        "tags": ["Memories"],
-        "summary": "Add a memory comment",
+        "tags": ["Reels"],
+        "summary": "Add a reel comment",
         "security": [{ "BearerAuth": [] }],
         "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
         "requestBody": {
@@ -2465,10 +2465,10 @@
         }
       }
     },
-    "/memories/{id}/comments/{commentId}": {
+    "/reels/{id}/comments/{commentId}": {
       "delete": {
-        "tags": ["Memories"],
-        "summary": "Delete a memory comment (author only)",
+        "tags": ["Reels"],
+        "summary": "Delete a reel comment (author only)",
         "security": [{ "BearerAuth": [] }],
         "parameters": [
           { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
@@ -2606,7 +2606,7 @@
       "get": {
         "tags": ["Posts"],
         "summary": "Get post feed",
-        "description": "Returns the post feed. Authentication is optional — authenticated users get personalized results (like status, follow info, visibility filtering).",
+        "description": "Returns the post feed. Authentication is optional â€” authenticated users get personalized results (like status, follow info, visibility filtering).",
         "security": [{ "BearerAuth": [] }, {}],
         "parameters": [
           { "name": "page", "in": "query", "schema": { "type": "integer", "default": 0 }, "description": "Page number (0-indexed)" },
@@ -2830,7 +2830,7 @@
         "description": "Returns grouped reaction summary by default. When `limit` is provided, returns a paginated list of individual reactions with user profiles.",
         "parameters": [
           { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
-          { "name": "limit", "in": "query", "schema": { "type": "integer", "minimum": 1, "maximum": 50 }, "description": "Enable paginated mode — number of reactions per page" },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "minimum": 1, "maximum": 50 }, "description": "Enable paginated mode â€” number of reactions per page" },
           { "name": "page", "in": "query", "schema": { "type": "integer", "default": 0, "minimum": 0 }, "description": "Pagination page index (used with limit)" },
           { "name": "reaction_type", "in": "query", "schema": { "type": "string" }, "description": "Filter by reaction type (e.g. love, like, haha)" }
         ],

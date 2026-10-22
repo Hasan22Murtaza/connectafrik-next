@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
@@ -9,7 +9,7 @@ import type { Reel } from '@/shared/types/reels'
 const THUMB_WIDTH = 'w-[118px] sm:w-[132px]'
 
 function ReelThumb({ reel, isFirst }: { reel: Reel; isFirst: boolean }) {
-  const href = `/memories/explore/feed?start=${encodeURIComponent(reel.id)}`
+  const href = `/reels/explore/feed?start=${encodeURIComponent(reel.id)}`
   const videoRef = useRef<HTMLVideoElement>(null)
   const [isPlaying, setIsPlaying] = useState(false)
   const hasVideo = Boolean(reel.video_url?.trim())
@@ -171,7 +171,7 @@ export const FeedReelsStrip: React.FC = () => {
           Reels
         </h3>
         <Link
-          href="/memories/explore"
+          href="/reels/explore"
           className="flex h-9 w-9 items-center justify-center rounded-full text-content-secondary transition-colors hover:bg-primary-50 hover:text-orange-500"
           aria-label="More reels"
         >
@@ -213,7 +213,7 @@ export const FeedReelsStrip: React.FC = () => {
 
       <div className="border-t border-border-subtle py-3">
         <Link
-          href="/memories/explore"
+          href="/reels/explore"
           className="block text-center text-sm font-semibold text-primary-600 hover:text-orange-500 hover:underline"
         >
           See all

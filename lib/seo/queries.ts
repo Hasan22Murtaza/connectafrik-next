@@ -4,7 +4,7 @@ import { createServiceClient } from '@/lib/supabase-server'
 import type {
   PublicGroupPostSeo,
   PublicGroupSeo,
-  PublicMemorySeo,
+  PublicReelSeo,
   PublicPostSeo,
 } from './types'
 
@@ -49,7 +49,7 @@ function mapAuthor(raw: unknown): PublicPostSeo['author'] {
   }
 }
 
-function mapMemoryAuthor(raw: unknown): PublicMemorySeo['author'] {
+function mapReelAuthor(raw: unknown): PublicReelSeo['author'] {
   if (!raw || typeof raw !== 'object') return null
   const a = raw as Record<string, unknown>
   return {
@@ -139,7 +139,7 @@ export const getGroupPostSeoData = cache(
           .select('username, full_name, avatar_url')
           .eq('id', post.author_id)
           .maybeSingle()
-        author = mapMemoryAuthor(profile)
+        author = mapReelAuthor(profile)
       }
 
       return {
@@ -164,7 +164,7 @@ export const getGroupPostSeoData = cache(
   }
 )
 
-export const getMemorySeoData = cache(async (id: string): Promise<PublicMemorySeo | null> => {
+export const getReelSeoData = cache(async (id: string): Promise<PublicReelSeo | null> => {
   try {
     const supabase = getSeoSupabase()
     const { data, error } = await supabase
@@ -193,17 +193,16 @@ export const getMemorySeoData = cache(async (id: string): Promise<PublicMemorySe
       is_public: data.is_public !== false,
       created_at: data.created_at,
       updated_at: data.updated_at ?? null,
-      author: mapMemoryAuthor(data.profiles),
+      author: mapReelAuthor(data.profiles),
     }
   } catch (error) {
-    console.error('SEO memory query failed:', error)
+    console.error('SEO reel query failed:', error)
     return null
   }
 })
 
 export async function countPublicPosts(): Promise<number> {
   const supabase = getSeoSupabase()
-  // Over-count slightly so visibility filtering in listPublicPostsForSitemap cannot drop URLs off the last chunk.
   const { count } = await supabase
     .from('posts')
     .select('id', { count: 'exact', head: true })
@@ -282,7 +281,7 @@ export async function listPublicGroupPostsForSitemap(offset: number, limit: numb
   return data
 }
 
-export async function countPublicMemories(): Promise<number> {
+export async function countPublicReels(): Promise<number> {
   const supabase = getSeoSupabase()
   const { count } = await supabase
     .from('reels')
@@ -292,7 +291,7 @@ export async function countPublicMemories(): Promise<number> {
   return count ?? 0
 }
 
-export async function listPublicMemoriesForSitemap(offset: number, limit: number) {
+export async function listPublicReelsForSitemap(offset: number, limit: number) {
   const supabase = getSeoSupabase()
   const { data, error } = await supabase
     .from('reels')

@@ -128,10 +128,10 @@ export function DeleteSomeDataPage() {
         </p>
       </section>
       <section>
-        <h2>Memories and comments</h2>
+        <h2>Reels and comments</h2>
         <p>
-          On a Memory you published, open the menu and choose <strong>Delete</strong>. To remove a
-          comment you wrote on a post, Memory, or thread, open the comment menu and choose{' '}
+          On a Reel you published, open the menu and choose <strong>Delete</strong>. To remove a
+          comment you wrote on a post, Reel, or thread, open the comment menu and choose{' '}
           <strong>Delete</strong>.
         </p>
       </section>
@@ -150,7 +150,7 @@ export function DeleteSomeDataPage() {
             product experience.
           </li>
           <li>
-            A deleted post or Memory disappears from feeds, search, and your profile at once. Stored
+            A deleted post or Reel disappears from feeds, search, and your profile at once. Stored
             media files may be kept for a short period in case the content was deleted by mistake or
             is needed for a legal request, then permanently destroyed unless a specific legal
             requirement obliges us to keep it.

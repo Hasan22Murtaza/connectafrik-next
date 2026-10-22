@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
@@ -234,8 +234,8 @@ const Header: React.FC<HeaderProps> = ({
                       {/* Reels */}
                       <li className="relative">
                         <Link
-                          href="/memories/foryou"
-                          className={`group flex flex-col items-center gap-1 pb-2 px-0 sm:px-4 transition-colors ${pathname.startsWith("/memories")
+                          href="/reels/foryou"
+                          className={`group flex flex-col items-center gap-1 pb-2 px-0 sm:px-4 transition-colors ${pathname.startsWith("/reels")
                             ? "text-primary-600"
                             : "text-content-secondary hover:text-primary-600"
                             }`}
@@ -461,7 +461,7 @@ const Header: React.FC<HeaderProps> = ({
         )}
       </header>
       {/* Mobile Navigation */}
-      {user && !pathname?.startsWith("/memories") && (
+      {user && !pathname?.startsWith("/reels") && (
         <div className="md:hidden fixed bottom-0 w-full  block bg-white border-t border-gray-200 py-1 z-50">
           <nav className="w-full">
             <ul className="flex justify-between w-full px-2">
@@ -481,8 +481,8 @@ const Header: React.FC<HeaderProps> = ({
               {/* Reels */}
               <li>
                 <Link
-                  href="/memories/foryou"
-                  className={`flex items-center justify-center py-2 px-3 transition-colors ${pathname?.startsWith("/memories")
+                  href="/reels/foryou"
+                  className={`flex items-center justify-center py-2 px-3 transition-colors ${pathname?.startsWith("/reels")
                     ? "text-primary-600"
                     : "text-gray-500 hover:text-primary-600"
                     }`}

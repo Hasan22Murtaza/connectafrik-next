@@ -1,4 +1,4 @@
-import type { MetadataRoute } from 'next'
+﻿import type { MetadataRoute } from 'next'
 import { getSeoSiteUrl } from '@/lib/seo/config'
 
 export default function robots(): MetadataRoute.Robots {
@@ -7,7 +7,7 @@ export default function robots(): MetadataRoute.Robots {
     rules: [
       {
         userAgent: '*',
-        allow: ['/', '/post/', '/groups/', '/memories/'],
+        allow: ['/', '/post/', '/groups/', '/reels/'],
         disallow: [
           '/api/',
           '/admin',
@@ -38,11 +38,11 @@ export default function robots(): MetadataRoute.Robots {
           '/marketplace/disputes',
           '/groups/create',
           '/groups/*/edit',
-          '/memories/foryou',
-          '/memories/explore',
-          '/memories/following',
-          '/memories/my-videos',
-          '/memories/create',
+          '/reels/foryou',
+          '/reels/explore',
+          '/reels/following',
+          '/reels/my-videos',
+          '/reels/create',
           '/user/',
         ],
       },

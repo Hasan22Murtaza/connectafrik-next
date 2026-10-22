@@ -1,4 +1,4 @@
-export { getCanonicalUrl, seoPaths } from './canonical'
+﻿export { getCanonicalUrl, seoPaths } from './canonical'
 export {
   getSeoSiteUrl,
   getSeoMetadataBase,
@@ -21,17 +21,17 @@ export {
   getPostMetadata,
   getGroupMetadata,
   getGroupPostMetadata,
-  getMemoryMetadata,
+  getReelMetadata,
   getPostSeoInput,
   getGroupSeoInput,
   getGroupPostSeoInput,
-  getMemorySeoInput,
+  getReelSeoInput,
 } from './builders'
 export {
   getPostSeoData,
   getGroupSeoData,
   getGroupPostSeoData,
-  getMemorySeoData,
+  getReelSeoData,
 } from './queries'
 export {
   indexFollowRobots,
@@ -39,7 +39,7 @@ export {
   isPublicPostVisibility,
   isIndexableGroup,
   isIndexableGroupPost,
-  isIndexableMemory,
+  isIndexableReel,
 } from './robots-policy'
 export type {
   SeoInput,
@@ -48,5 +48,5 @@ export type {
   PublicPostSeo,
   PublicGroupSeo,
   PublicGroupPostSeo,
-  PublicMemorySeo,
+  PublicReelSeo,
 } from './types'

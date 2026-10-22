@@ -4,13 +4,13 @@ import { pickMediaImage } from './openGraph'
 import {
   isIndexableGroup,
   isIndexableGroupPost,
-  isIndexableMemory,
+  isIndexableReel,
   isPublicPostVisibility,
 } from './robots-policy'
 import type {
   PublicGroupPostSeo,
   PublicGroupSeo,
-  PublicMemorySeo,
+  PublicReelSeo,
   PublicPostSeo,
   SeoInput,
 } from './types'
@@ -114,38 +114,38 @@ export function getGroupPostMetadata(post: PublicGroupPostSeo): Metadata {
   })
 }
 
-export function getMemoryMetadata(memory: PublicMemorySeo): Metadata {
-  const indexable = isIndexableMemory(memory)
-  const authorName = displayName(memory.author)
-  const title = truncatePlainText(memory.title, 70) || `Memory by ${authorName}`
+export function getReelMetadata(reel: PublicReelSeo): Metadata {
+  const indexable = isIndexableReel(reel)
+  const authorName = displayName(reel.author)
+  const title = truncatePlainText(reel.title, 70) || `Reel by ${authorName}`
   const description =
-    truncatePlainText(memory.description) ||
-    `${title} — a CribsTalk memory by ${authorName}`
+    truncatePlainText(reel.description) ||
+    `${title} — a CribsTalk reel by ${authorName}`
   return getPageMetadata({
     title,
     description,
-    path: seoPaths.memory(memory.id),
-    type: 'memory',
+    path: seoPaths.reel(reel.id),
+    type: 'reel',
     indexable,
-    keywords: [...(memory.tags ?? []), memory.category].filter(Boolean) as string[],
-    image: memory.thumbnail_url ? { url: memory.thumbnail_url, alt: title } : null,
+    keywords: [...(reel.tags ?? []), reel.category].filter(Boolean) as string[],
+    image: reel.thumbnail_url ? { url: reel.thumbnail_url, alt: title } : null,
     author: {
       name: authorName,
-      url: authorPath(memory.author?.username),
+      url: authorPath(reel.author?.username),
     },
-    publishedTime: memory.created_at,
-    modifiedTime: memory.updated_at || memory.created_at,
-    section: memory.category || undefined,
-    tags: memory.tags ?? undefined,
+    publishedTime: reel.created_at,
+    modifiedTime: reel.updated_at || reel.created_at,
+    section: reel.category || undefined,
+    tags: reel.tags ?? undefined,
     breadcrumbs: [
       { name: 'Home', path: '/' },
-      { name: title, path: seoPaths.memory(memory.id) },
+      { name: title, path: seoPaths.reel(reel.id) },
     ],
-    video: memory.video_url
+    video: reel.video_url
       ? {
-          url: memory.video_url,
-          durationSeconds: memory.duration ?? undefined,
-          thumbnailUrl: memory.thumbnail_url ?? undefined,
+          url: reel.video_url,
+          durationSeconds: reel.duration ?? undefined,
+          thumbnailUrl: reel.thumbnail_url ?? undefined,
         }
       : undefined,
   })
@@ -217,27 +217,27 @@ export function getGroupPostSeoInput(post: PublicGroupPostSeo): SeoInput {
   }
 }
 
-export function getMemorySeoInput(memory: PublicMemorySeo): SeoInput {
-  const title = truncatePlainText(memory.title, 70) || `Memory by ${displayName(memory.author)}`
+export function getReelSeoInput(reel: PublicReelSeo): SeoInput {
+  const title = truncatePlainText(reel.title, 70) || `Reel by ${displayName(reel.author)}`
   return {
     title,
-    description: truncatePlainText(memory.description) || title,
-    path: seoPaths.memory(memory.id),
-    type: 'memory',
-    indexable: isIndexableMemory(memory),
-    image: memory.thumbnail_url ? { url: memory.thumbnail_url, alt: title } : null,
-    author: { name: displayName(memory.author), url: authorPath(memory.author?.username) },
-    publishedTime: memory.created_at,
-    modifiedTime: memory.updated_at || memory.created_at,
+    description: truncatePlainText(reel.description) || title,
+    path: seoPaths.reel(reel.id),
+    type: 'reel',
+    indexable: isIndexableReel(reel),
+    image: reel.thumbnail_url ? { url: reel.thumbnail_url, alt: title } : null,
+    author: { name: displayName(reel.author), url: authorPath(reel.author?.username) },
+    publishedTime: reel.created_at,
+    modifiedTime: reel.updated_at || reel.created_at,
     breadcrumbs: [
       { name: 'Home', path: '/' },
-      { name: title, path: seoPaths.memory(memory.id) },
+      { name: title, path: seoPaths.reel(reel.id) },
     ],
-    video: memory.video_url
+    video: reel.video_url
       ? {
-          url: memory.video_url,
-          durationSeconds: memory.duration ?? undefined,
-          thumbnailUrl: memory.thumbnail_url ?? undefined,
+          url: reel.video_url,
+          durationSeconds: reel.duration ?? undefined,
+          thumbnailUrl: reel.thumbnail_url ?? undefined,
         }
       : undefined,
   }

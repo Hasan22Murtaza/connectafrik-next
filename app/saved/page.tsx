@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useAuth } from '@/contexts/AuthContext'
 import { PostCard } from '@/features/social/components/PostCard'
@@ -81,7 +81,7 @@ const SavedPage: React.FC = () => {
         let hasMore = true
 
         while (hasMore) {
-          const res = await apiClient.get<SavedListPayload<Reel>>('/api/memories/saved', {
+          const res = await apiClient.get<SavedListPayload<Reel>>('/api/reels/saved', {
             page,
             limit: 20,
           })
@@ -266,7 +266,7 @@ const SavedPage: React.FC = () => {
             <EmptyState
               icon={LayoutGrid}
               title="No saved posts"
-              description="Use the menu on any post (···) and choose Save post."
+              description="Use the menu on any post (Â·Â·Â·) and choose Save post."
               ctaLabel="Go to feed"
               onCta={() => router.push('/feed')}
             />
@@ -282,7 +282,7 @@ const SavedPage: React.FC = () => {
             title="No saved reels"
             description="Tap the save icon on any reel to keep it here for later."
             ctaLabel="Explore reels"
-            onCta={() => router.push('/memories')}
+            onCta={() => router.push('/reels')}
           />
         )}
       </div>

@@ -1,4 +1,4 @@
-import { getSeoSiteUrl } from './config'
+﻿import { getSeoSiteUrl } from './config'
 
 function stripTrailingSlash(pathname: string): string {
   if (pathname.length > 1 && pathname.endsWith('/')) {
@@ -26,5 +26,5 @@ export const seoPaths = {
   post: (id: string) => `/post/${id}`,
   group: (id: string) => `/groups/${id}`,
   groupPost: (groupId: string, postId: string) => `/groups/${groupId}/post/${postId}`,
-  memory: (id: string) => `/memories/${id}`,
+  reel: (id: string) => `/reels/${id}`,
 } as const

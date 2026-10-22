@@ -9,7 +9,7 @@ import { trackEvent } from '@/features/social/services/engagementTracking'
 import { sendNotification } from '@/shared/services/notificationService'
 import { Reel } from '@/shared/types/reels'
 import { ReelCard } from './ReelCard'
-import MemoryShortsSlide from './MemoryShortsSlide'
+import ReelShortsSlide from './ReelShortsSlide'
 import ReelComments from './ReelComments'
 import ShareModal from './ShareModal'
 import toast from 'react-hot-toast'
@@ -22,7 +22,7 @@ type Props = {
 
 /**
  * Full-screen vertical feed overlay that reuses the exact reels-page slide
- * design (MemoryShortsSlide) so saved reels look identical to the reels page.
+ * design (ReelShortsSlide) so saved reels look identical to the reels page.
  */
 const SavedReelsFeedOverlay: React.FC<{
   reels: Reel[]
@@ -80,7 +80,7 @@ const SavedReelsFeedOverlay: React.FC<{
       },
       { root, threshold: [0, 0.1, 0.25, 0.4, 0.55, 0.7, 0.85, 1] }
     )
-    root.querySelectorAll('[data-memory-slide]').forEach((el) => observer.observe(el))
+    root.querySelectorAll('[data-reel-slide]').forEach((el) => observer.observe(el))
     return () => observer.disconnect()
   }, [reels])
 
@@ -109,17 +109,17 @@ const SavedReelsFeedOverlay: React.FC<{
   const handleDelete = useCallback(
     async (reelId: string) => {
       const confirmed = await confirm({
-        title: 'Delete Memory',
-        message: 'Delete this memory? This action cannot be undone.',
+        title: 'Delete Reel',
+        message: 'Delete this reel? This action cannot be undone.',
         confirmLabel: 'Delete',
       })
       if (!confirmed) return
       const { success, error } = await deleteReel(reelId)
       if (success) {
-        toast.success('Memory deleted')
+        toast.success('Reel deleted')
         onReelDeleted?.(reelId)
       } else {
-        toast.error(error || 'Failed to delete memory')
+        toast.error(error || 'Failed to delete reel')
       }
     },
     [deleteReel, onReelDeleted, confirm]
@@ -127,8 +127,8 @@ const SavedReelsFeedOverlay: React.FC<{
 
   const shareUrl = useMemo(() => {
     if (!shareState.reelId) return ''
-    if (typeof window === 'undefined') return `/memories/${shareState.reelId}`
-    return `${process.env.NEXT_PUBLIC_APP_URL ?? window.location.origin}/memories/${shareState.reelId}`
+    if (typeof window === 'undefined') return `/reels/${shareState.reelId}`
+    return `${process.env.NEXT_PUBLIC_APP_URL ?? window.location.origin}/reels/${shareState.reelId}`
   }, [shareState.reelId])
 
   const handleSendToMembers = useCallback(
@@ -143,10 +143,10 @@ const SavedReelsFeedOverlay: React.FC<{
         memberIds.map((memberId) =>
           sendNotification({
             user_id: memberId,
-            title: 'Memory Shared With You',
+            title: 'Reel Shared With You',
             body: message
-              ? `${senderName} shared a memory with you: "${message}"`
-              : `${senderName} shared a memory with you`,
+              ? `${senderName} shared a reel with you: "${message}"`
+              : `${senderName} shared a reel with you`,
             notification_type: 'post_share',
             data: {
               type: 'reel_share',
@@ -154,7 +154,7 @@ const SavedReelsFeedOverlay: React.FC<{
               sender_id: user?.id || '',
               sender_name: senderName,
               message,
-              url: `/memories/${reelId}`,
+              url: `/reels/${reelId}`,
             },
           })
         )
@@ -186,7 +186,7 @@ const SavedReelsFeedOverlay: React.FC<{
         style={{ scrollSnapStop: 'always' } as React.CSSProperties}
       >
         {reels.map((reel, index) => (
-          <MemoryShortsSlide
+          <ReelShortsSlide
             key={reel.id}
             reel={reel}
             isActive={activeReelId === reel.id}
@@ -195,7 +195,7 @@ const SavedReelsFeedOverlay: React.FC<{
             onComment={() => setShowCommentsFor(reel.id)}
             onShare={() => setShareState({ open: true, reelId: reel.id })}
             isOwner={!!user?.id && user.id === reel.author_id}
-            onEdit={() => toast('Open the reel on the Memories page to edit.')}
+            onEdit={() => toast('Open the reel on the Reels page to edit.')}
             onDelete={() => handleDelete(reel.id)}
           />
         ))}
