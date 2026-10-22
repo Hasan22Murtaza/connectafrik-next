@@ -1,8 +1,12 @@
 'use client'
 
+import { useEffect, useRef, useState, type Ref } from 'react'
 import Link from 'next/link'
 import { Heart, Play, Video } from '@/shared/icons'
 import { Reel } from '@/shared/types/reels'
+
+/** Preview speed on explore/list grids (faster than real-time). */
+const PREVIEW_PLAYBACK_RATE = 1.75
 
 function formatShortCount(num: number): string {
   if (num >= 1_000_000) return `${(num / 1_000_000).toFixed(1).replace(/\.0$/, '')}M`
@@ -36,22 +40,100 @@ type Props = {
 
 export function ReelCard({ reel, index = 0, href, onClick, className = '' }: Props) {
   const aspect = TILE_ASPECTS[index % TILE_ASPECTS.length]
+  const cardRef = useRef<HTMLElement | null>(null)
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const [inView, setInView] = useState(false)
+  const [loadVideo, setLoadVideo] = useState(false)
+  const hasVideo = Boolean(reel.video_url?.trim())
+
+  useEffect(() => {
+    const el = cardRef.current
+    if (!el || !hasVideo) return
+
+    const io = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0]
+        if (!entry) return
+        const visible = entry.isIntersecting
+        setInView(visible)
+        if (visible) setLoadVideo(true)
+      },
+      { threshold: 0.35, rootMargin: '120px 0px' }
+    )
+
+    io.observe(el)
+    return () => io.disconnect()
+  }, [hasVideo, reel.id])
+
+  useEffect(() => {
+    const v = videoRef.current
+    if (!v || !loadVideo) return
+
+    v.muted = true
+    v.defaultMuted = true
+    v.playsInline = true
+    v.loop = true
+    v.playbackRate = PREVIEW_PLAYBACK_RATE
+    v.defaultPlaybackRate = PREVIEW_PLAYBACK_RATE
+
+    const applyRate = () => {
+      if (v.playbackRate !== PREVIEW_PLAYBACK_RATE) {
+        v.playbackRate = PREVIEW_PLAYBACK_RATE
+      }
+    }
+
+    const tryPlay = () => {
+      applyRate()
+      void v.play().catch(() => {})
+    }
+
+    if (inView) {
+      if (v.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) tryPlay()
+      else v.addEventListener('canplay', tryPlay, { once: true })
+      v.addEventListener('playing', applyRate)
+      v.addEventListener('ratechange', applyRate)
+    } else {
+      v.pause()
+    }
+
+    return () => {
+      v.removeEventListener('canplay', tryPlay)
+      v.removeEventListener('playing', applyRate)
+      v.removeEventListener('ratechange', applyRate)
+    }
+  }, [inView, loadVideo, reel.video_url])
+
+  const media = hasVideo && loadVideo ? (
+    <video
+      ref={videoRef}
+      src={reel.video_url}
+      poster={reel.thumbnail_url || undefined}
+      className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.03]"
+      muted
+      loop
+      playsInline
+      autoPlay
+      preload="metadata"
+      disablePictureInPicture
+      disableRemotePlayback
+    />
+  ) : reel.thumbnail_url ? (
+    // eslint-disable-next-line @next/next/no-img-element -- remote CDN thumbs
+    <img
+      src={reel.thumbnail_url}
+      alt=""
+      className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.03]"
+      loading="lazy"
+    />
+  ) : (
+    <div className="flex h-full w-full items-center justify-center bg-gradient-to-b from-neutral-800 to-neutral-950 text-white/35">
+      <Video className="h-10 w-10" />
+    </div>
+  )
 
   const inner = (
     <>
-      {reel.thumbnail_url ? (
-        // eslint-disable-next-line @next/next/no-img-element -- remote CDN thumbs
-        <img
-          src={reel.thumbnail_url}
-          alt=""
-          className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.03]"
-          loading="lazy"
-        />
-      ) : (
-        <div className="flex h-full w-full items-center justify-center bg-gradient-to-b from-neutral-800 to-neutral-950 text-white/35">
-          <Video className="h-10 w-10" />
-        </div>
-      )}
+      {media}
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent" />
       <div className="absolute bottom-2 left-2 flex items-center gap-1 text-[11px] font-semibold text-white drop-shadow-sm sm:text-xs">
         <Play className="h-3 w-3 fill-white" strokeWidth={0} aria-hidden />
@@ -64,18 +146,28 @@ export function ReelCard({ reel, index = 0, href, onClick, className = '' }: Pro
     </>
   )
 
-  const baseClass = `group relative ${aspect} w-full overflow-hidden rounded-2xl bg-neutral-900 text-left shadow-sm ring-1 ring-white/5 transition hover:ring-[color-mix(in_srgb,var(--african-orange)_55%,transparent)] ${className}`
+  const baseClass = `group relative isolate ${aspect} w-full overflow-hidden rounded-[10px] bg-neutral-900 text-left shadow-sm ring-1 ring-white/5 transition hover:ring-[color-mix(in_srgb,var(--african-orange)_55%,transparent)] ${className}`
 
   if (href) {
     return (
-      <Link href={href} scroll={false} className={baseClass}>
+      <Link
+        ref={cardRef as Ref<HTMLAnchorElement>}
+        href={href}
+        scroll={false}
+        className={baseClass}
+      >
         {inner}
       </Link>
     )
   }
 
   return (
-    <button type="button" onClick={onClick} className={baseClass}>
+    <button
+      ref={cardRef as Ref<HTMLButtonElement>}
+      type="button"
+      onClick={onClick}
+      className={baseClass}
+    >
       {inner}
     </button>
   )
