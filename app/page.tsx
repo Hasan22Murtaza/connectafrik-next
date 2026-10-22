@@ -344,7 +344,7 @@ const Home: React.FC = () => {
               </Reveal>
 
               <Reveal delay={1}>
-                <h1 className="mt-2  font-extrabold sm:leading-[1.02] tracking-tight text-[#111827] sm:mt-3 sm:text-[3.5rem] lg:text-[4.5rem] text-[1.8rem] ">
+                <h1 className="mt-2  font-extrabold leading-[1.2] tracking-tight text-[#111827] sm:mt-3 sm:text-[3.5rem] lg:text-[4.5rem] text-[1.8rem] ">
                   {SEO_SITE_TAGLINE}
                 </h1>
               </Reveal>
