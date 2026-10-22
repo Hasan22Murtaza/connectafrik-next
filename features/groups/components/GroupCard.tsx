@@ -165,7 +165,7 @@ const GroupCard: React.FC<GroupCardProps> = ({
         <div className="flex items-center justify-between gap-3 mb-3">
           <div>
             <div className="flex items-center gap-2">
-              <h3 className="font-semibold text-gray-900 text-lg hover:underline cursor-pointer truncate w-55"
+              <h3 className="font-semibold text-gray-900 text-lg hover:underline cursor-pointer truncate w-1/2"
                 onClick={() => handleViewGroup()}>
                 {group.name}
               </h3>

@@ -126,7 +126,7 @@ const LeftSidebar = () => {
   // Always reserve space in the flex row (never position:absolute the flex item).
   // Hover mode keeps a collapsed rail and only overlays the wide panel.
   const railClass =
-    mode === "expanded" ? "w-56" : "w-14";
+    mode === "expanded" ? "w-50" : "w-14";
 
   const itemClass = (isActive) =>
     `group relative flex w-full items-center gap-3 rounded-md px-2.5 py-2 text-sm font-medium transition-colors duration-150 ${

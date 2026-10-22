@@ -578,9 +578,9 @@ const FriendsPageContent: React.FC = () => {
 
   return (
     <div className="min-h-screen px-4">
-      <div className="flex gap-6 sm:pb-0 pb-18">
+      <div className="flex gap-6 sm:pb-0 pb-18 md:min-h-[calc(100dvh-4rem)]">
         {/* Left Sidebar */}
-        <aside className="sticky top-[73px] hidden h-[calc(100dvh-73px)] w-64 shrink-0 self-start overflow-y-auto border-r border-border-subtle bg-background px-3 py-4 md:block">
+        <aside className="sticky top-[73px] hidden h-[calc(100dvh-73px)]  shrink-0 self-start overflow-y-auto  bg-background  py-4 md:block">
           <FriendsSidebar
             activeSection={activeSection}
             requestCount={requests.length}

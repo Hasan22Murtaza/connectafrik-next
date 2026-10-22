@@ -115,7 +115,7 @@ const ProfileSkeleton = ({
   onSectionSelect: (section: FriendsSection) => void;
 }) => (
   <div className="mx-auto flex min-h-screen w-full max-w-screen-2xl gap-4 px-4 pb-20 sm:gap-6 sm:pb-8">
-    <aside className="sticky top-[73px] hidden h-[calc(100dvh-73px)] w-64 shrink-0 self-start overflow-y-auto border-r border-border-subtle bg-background px-3 py-4 md:block">
+    <aside className="sticky top-[73px] hidden h-[calc(100dvh-73px)]  shrink-0 self-start overflow-y-auto  bg-background py-4 md:block">
       <FriendsSidebar
         onSectionSelect={onSectionSelect}
       />
@@ -701,7 +701,7 @@ const UserProfilePage: React.FC = () => {
   return (
     <div className="mx-auto flex min-h-screen gap-6 px-4 pb-20 sm:pb-8">
       {/* Left Sidebar */}
-      <aside className="sticky top-[73px] hidden h-[calc(100dvh-73px)] w-64 shrink-0 self-start overflow-y-auto border-r border-border-subtle bg-background px-3 py-4 md:block">
+      <aside className="sticky top-[73px] hidden h-[calc(100dvh-73px)]  shrink-0 self-start overflow-y-auto  bg-background  py-4 md:block">
         <FriendsSidebar
           onSectionSelect={navigateToFriendsSection}
         />

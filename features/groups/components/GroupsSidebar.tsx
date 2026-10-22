@@ -94,7 +94,7 @@ const GroupsSidebar: React.FC<GroupsSidebarProps> = ({
               type="button"
               onClick={() => onViewChange(itemView)}
               aria-current={view === itemView ? "page" : undefined}
-              className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-colors duration-200 ${
+              className={`flex w-full items-center gap-3 rounded-lg px-3 py-1.5 text-left transition-colors duration-200 ${
                 view === itemView
                   ? "bg-orange-50 text-primary-600 dark:bg-orange-500/15 dark:text-orange-300"
                   : "text-content-secondary hover:bg-gray-50 hover:text-gray-700 dark:hover:bg-surface-hover dark:hover:text-content"

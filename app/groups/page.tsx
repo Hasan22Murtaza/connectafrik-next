@@ -374,9 +374,9 @@ const GroupsPage: React.FC = () => {
           </div>
         </div>
 
-        <div className="flex gap-4 lg:gap-6">
+        <div className="flex gap-4 ">
           {/* Secondary Groups nav — sits beside the global icon rail */}
-          <aside className="sticky top-[73px] hidden h-[calc(100dvh-73px)] w-64 shrink-0 self-start overflow-y-auto border-r border-border-subtle bg-background px-3 py-1 scrollbar-hover lg:block xl:w-72">
+          <aside className="sticky top-[73px] hidden h-[calc(100dvh-73px)]  shrink-0 self-start overflow-y-auto  bg-background  py-1 scrollbar-hover lg:block ">
             <GroupsSidebar
               view={view}
               onViewChange={handleViewChange}

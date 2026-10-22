@@ -30,10 +30,10 @@ const FriendsSidebar: React.FC<FriendsSidebarProps> = ({
   requestCount = 0,
   onSectionSelect,
 }) => (
-  <aside className="w-full shrink-0 md:w-64">
-    <div className="py-4">
+  <aside className="w-full shrink-0 md:w-50">
+    <div className="">
       <h2 className="mb-6 text-xl font-semibold text-content">Friends</h2>
-      <nav className="space-y-2" aria-label="Friends navigation">
+      <nav className="space-y-1" aria-label="Friends navigation">
         {menu.map(({ key, label, icon: Icon }) => {
           const isActive = activeSection === key;
           return (
@@ -42,7 +42,7 @@ const FriendsSidebar: React.FC<FriendsSidebarProps> = ({
               type="button"
               onClick={() => onSectionSelect(key)}
               aria-current={isActive ? "page" : undefined}
-              className={`group flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-left transition-colors duration-200 ${
+              className={`group flex w-full items-center justify-between rounded-lg px-3 py-1.5 text-left transition-colors duration-200 ${
                 isActive
                   ? "bg-orange-50 text-primary-600 dark:bg-orange-500/15 dark:text-orange-300"
                   : "text-content-secondary hover:bg-gray-50 hover:text-gray-700 dark:hover:bg-surface-hover dark:hover:text-content"
