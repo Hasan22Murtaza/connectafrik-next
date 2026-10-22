@@ -86,7 +86,7 @@ const GroupsSidebar: React.FC<GroupsSidebarProps> = ({
         <h2 className="text-2xl font-semibold text-content">Groups</h2>
       </div>
 
-      <nav className="space-y-2" aria-label="Groups navigation">
+      <nav className="space-y-1" aria-label="Groups navigation">
         {navigationItems.map(({ view: itemView, label, Icon }) =>
           itemView === "my-groups" && !isAuthenticated ? null : (
             <button
