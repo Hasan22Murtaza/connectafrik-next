@@ -1,7 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import LeftSidebar from '@/shared/components/ui/LeftSidebar'
 import RightSidebar from '@/shared/components/ui/RightSidebar'
-import MobileMenuButton from '@/shared/components/ui/MobileMenuButton'
 import { useAuth } from '@/contexts/AuthContext'
 import { checkUpcomingBirthdays } from '@/shared/services/birthdayNotificationService'
 import { friendRequestService } from '@/features/social/services/friendRequestService'
@@ -108,12 +106,6 @@ const FeedLayout = ({ children }) => {
     })
   }, [friends])
 
-  // Online friends only (for left sidebar)
-  const onlineFriends = useMemo(
-    () => friendsWithPresence.filter((contact) => contact.status !== 'offline'),
-    [friendsWithPresence]
-  )
-
   // All friends list (for right sidebar contacts section)
   const friendsList = useMemo(
     () =>
@@ -141,12 +133,7 @@ const FeedLayout = ({ children }) => {
 
   return (
     <div className="flex min-h-screen px-1 sm:px-2 2xl:px-6 ">
-      {/* Left Sidebar - Hidden on mobile, visible on desktop */}
-      <div className="hidden lg:block overflow-y-auto sticky top-[73px] h-[calc(100vh-80px)] ">
-        <LeftSidebar onlineContacts={onlineFriends} />
-      </div>
-
-      {/* Main Content - Full width on mobile, centered on desktop */}
+      {/* Main Content — global LeftSidebar is provided by ConditionalAppSidebar */}
       <main className="flex-1 md:max-w-lg lg:max-w-3xl overflow-x-auto lg:mx-auto py-2 sm:py-4  px-2 sm:px-2 lg:px-4">
         {children}
       </main>
@@ -161,8 +148,6 @@ const FeedLayout = ({ children }) => {
         />
       </div>
 
-      {/* Mobile Menu Button - Floating button on mobile only */}
-      {/* <MobileMenuButton /> */}
     </div>
   )
 }

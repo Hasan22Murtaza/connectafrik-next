@@ -375,18 +375,16 @@ const GroupsPage: React.FC = () => {
         </div>
 
         <div className="flex gap-4 lg:gap-6">
-          {/* Left Sidebar - Desktop */}
-          <div className="w-75 shrink-0 lg:block hidden ">
-                  <aside className="fixed w-75 shrink-0 top-22 hidden h-[calc(100vh-6rem)] self-start overflow-y-auto scrollbar-hover lg:block">
-                    <GroupsSidebar
-                       view={view}
-                        onViewChange={handleViewChange}
-                        isAuthenticated={!!user}
-                        managedGroups={managedGroups}
-                        joinedGroups={joinedGroups}
-                    />
-                  </aside>
-                </div>
+          {/* Secondary Groups nav — sits beside the global icon rail */}
+          <aside className="sticky top-[73px] hidden h-[calc(100dvh-73px)] w-64 shrink-0 self-start overflow-y-auto border-r border-border-subtle bg-background px-3 py-1 scrollbar-hover lg:block xl:w-72">
+            <GroupsSidebar
+              view={view}
+              onViewChange={handleViewChange}
+              isAuthenticated={!!user}
+              managedGroups={managedGroups}
+              joinedGroups={joinedGroups}
+            />
+          </aside>
 
 
           {/* Main Content */}

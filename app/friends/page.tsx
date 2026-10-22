@@ -580,15 +580,13 @@ const FriendsPageContent: React.FC = () => {
     <div className="min-h-screen px-4">
       <div className="flex gap-6 sm:pb-0 pb-18">
         {/* Left Sidebar */}
-        <div className="hidden md:block w-64 shrink-0">
-          <div className="fixed top-18 h-[calc(100vh-6rem)]  py-4 overflow-y-auto ">
-            <FriendsSidebar
-              activeSection={activeSection}
-              requestCount={requests.length}
-              onSectionSelect={selectSection}
-            />
-          </div>
-        </div>
+        <aside className="sticky top-[73px] hidden h-[calc(100dvh-73px)] w-64 shrink-0 self-start overflow-y-auto border-r border-border-subtle bg-background px-3 py-4 md:block">
+          <FriendsSidebar
+            activeSection={activeSection}
+            requestCount={requests.length}
+            onSectionSelect={selectSection}
+          />
+        </aside>
 
         {/* Main Content */}
         <div className="flex-1 max-w-full py-3 sm:py-6 sm:px-4 px-0 ">
@@ -1402,16 +1400,14 @@ function FriendsPageFallback() {
   return (
     <div className="min-h-screen px-4">
       <div className="flex gap-6">
-        <div className="hidden md:block w-64 shrink-0">
-          <div className="sticky top-18 h-[calc(100vh-6rem)] py-4">
-            <div className="h-7 w-24 bg-surface-tertiary rounded animate-pulse mb-6" />
-            <div className="space-y-4">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <div key={i} className="h-10 bg-surface-tertiary rounded-lg animate-pulse" />
-              ))}
-            </div>
+        <aside className="sticky top-[73px] hidden h-[calc(100dvh-73px)] w-64 shrink-0 self-start border-r border-border-subtle bg-background px-3 py-4 md:block">
+          <div className="mb-6 h-7 w-24 animate-pulse rounded bg-surface-tertiary" />
+          <div className="space-y-4">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="h-10 animate-pulse rounded-lg bg-surface-tertiary" />
+            ))}
           </div>
-        </div>
+        </aside>
         <div className="flex-1 max-w-full py-3 sm:py-6 px-4">
           <FriendsGridShimmer count={8} />
         </div>

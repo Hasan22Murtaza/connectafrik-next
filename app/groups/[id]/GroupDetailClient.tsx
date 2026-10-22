@@ -524,7 +524,7 @@ const GroupDetailPage: React.FC = () => {
     return (
       <div className="mx-auto flex min-h-screen gap-4 px-2 py-5 sm:gap-6 sm:px-6">
         {/* Keep Groups Sidebar visible while group page loads */}
-        <aside className="sticky top-22 hidden h-[calc(100vh-6rem)] w-75 shrink-0  self-start overflow-y-auto scrollbar-hover lg:block">
+        <aside className="sticky top-[73px] hidden h-[calc(100dvh-73px)] w-64 shrink-0 self-start overflow-y-auto border-r border-border-subtle bg-background px-3 py-1 scrollbar-hover lg:block xl:w-72">
           <GroupsSidebar
             view="group-detail"
             onViewChange={(nextView) =>
@@ -597,20 +597,18 @@ const GroupDetailPage: React.FC = () => {
   return (
     <div className="mx-auto flex min-h-screen  gap-4 px-2 py-5 sm:gap-6 sm:px-6">
 
-      <div className="w-75 shrink-0 hidden lg:block">
-        <aside className="fixed w-75 shrink-0 top-22 hidden h-[calc(100vh-6rem)] self-start overflow-y-auto scrollbar-hover lg:block">
-          <GroupsSidebar
-            view="group-detail"
-            onViewChange={(nextView) =>
-              router.push(nextView === 'feed' ? '/groups' : `/groups?view=${nextView}`)
-            }
-            isAuthenticated={!!user}
-            managedGroups={managedGroups}
-            joinedGroups={joinedGroups}
-            activeGroupId={groupId}
-          />
-        </aside>
-      </div>
+      <aside className="sticky top-[73px] hidden h-[calc(100dvh-73px)] w-64 shrink-0 self-start overflow-y-auto border-r border-border-subtle bg-background px-3 py-1 scrollbar-hover lg:block xl:w-72">
+        <GroupsSidebar
+          view="group-detail"
+          onViewChange={(nextView) =>
+            router.push(nextView === 'feed' ? '/groups' : `/groups?view=${nextView}`)
+          }
+          isAuthenticated={!!user}
+          managedGroups={managedGroups}
+          joinedGroups={joinedGroups}
+          activeGroupId={groupId}
+        />
+      </aside>
 
       <main className="min-w-0 flex-1">
         <div className="bg-surface pt-2 pb-0 px-2 rounded-2xl shadow-sm overflow-hidden">

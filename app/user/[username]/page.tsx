@@ -115,12 +115,10 @@ const ProfileSkeleton = ({
   onSectionSelect: (section: FriendsSection) => void;
 }) => (
   <div className="mx-auto flex min-h-screen w-full max-w-screen-2xl gap-4 px-4 pb-20 sm:gap-6 sm:pb-8">
-    <aside className="hidden w-64 shrink-0 md:block">
-      <div className="fixed top-18 h-[calc(100vh-6rem)] overflow-y-auto py-4">
-        <FriendsSidebar
-          onSectionSelect={onSectionSelect}
-        />
-      </div>
+    <aside className="sticky top-[73px] hidden h-[calc(100dvh-73px)] w-64 shrink-0 self-start overflow-y-auto border-r border-border-subtle bg-background px-3 py-4 md:block">
+      <FriendsSidebar
+        onSectionSelect={onSectionSelect}
+      />
     </aside>
     <main className="min-w-0 flex-1">
       <div className="mt-4 w-full">
@@ -703,13 +701,11 @@ const UserProfilePage: React.FC = () => {
   return (
     <div className="mx-auto flex min-h-screen gap-6 px-4 pb-20 sm:pb-8">
       {/* Left Sidebar */}
-      <div className="hidden w-64 shrink-0 md:block">
-        <div className="fixed top-18 h-[calc(100vh-6rem)] overflow-y-auto py-4">
-          <FriendsSidebar
-            onSectionSelect={navigateToFriendsSection}
-          />
-        </div>
-      </div>
+      <aside className="sticky top-[73px] hidden h-[calc(100dvh-73px)] w-64 shrink-0 self-start overflow-y-auto border-r border-border-subtle bg-background px-3 py-4 md:block">
+        <FriendsSidebar
+          onSectionSelect={navigateToFriendsSection}
+        />
+      </aside>
 
       <main className="min-w-0 flex-1">
         <div className="mt-4">
