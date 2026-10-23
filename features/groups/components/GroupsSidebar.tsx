@@ -38,25 +38,38 @@ const GroupsSidebar: React.FC<GroupsSidebarProps> = ({
         type="button"
         onClick={() => router.push(`/groups/${group.id}`)}
         aria-current={isActive ? "page" : undefined}
-        className={`flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left transition-colors ${
-          isActive
+        className={`flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left transition-colors ${isActive
             ? "bg-orange-50 dark:bg-orange-500/15"
             : "hover:bg-surface-secondary dark:hover:bg-surface-hover"
-        }`}
+          }`}
       >
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary-500 to-african-green">
+
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-primary-500 to-african-green">
           {group.banner_url ? (
             <img
               src={group.banner_url}
               alt={group.name}
-              className="h-full w-full rounded-lg object-cover"
+              onError={(e) => {
+                e.currentTarget.style.display = "none";
+
+                const fallback = e.currentTarget.nextElementSibling;
+
+                if (fallback instanceof HTMLElement) {
+                  fallback.style.display = "flex";
+                }
+              }}
+              className="h-full w-full rounded-full object-cover"
             />
-          ) : (
-            <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-surface-tertiary text-sm font-bold text-content">
-              {group.name.charAt(0).toUpperCase()}
-            </span>
-          )}
+          ) : null}
+
+          <span
+            className={`h-full w-full items-center justify-center rounded-full bg-primary-50 text-orange-500 text-sm font-bold text-content ${group.banner_url ? "hidden" : "flex"
+              }`}
+          >
+            {group.name?.slice(0, 2).toUpperCase() || "G"}
+          </span>
         </div>
+
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-medium text-content">{group.name}</p>
           <p className="text-xs text-content-secondary">
@@ -75,10 +88,10 @@ const GroupsSidebar: React.FC<GroupsSidebarProps> = ({
     label: string;
     Icon: typeof FileText;
   }[] = [
-    { view: "feed", label: "Your feed", Icon: FileText },
-    { view: "discover", label: "Discover", Icon: Compass },
-    { view: "my-groups", label: "Your groups", Icon: Users },
-  ];
+      { view: "feed", label: "Your feed", Icon: FileText },
+      { view: "discover", label: "Discover", Icon: Compass },
+      { view: "my-groups", label: "Your groups", Icon: Users },
+    ];
 
   return (
     <div className="space-y-4">
@@ -94,11 +107,10 @@ const GroupsSidebar: React.FC<GroupsSidebarProps> = ({
               type="button"
               onClick={() => onViewChange(itemView)}
               aria-current={view === itemView ? "page" : undefined}
-              className={`flex w-full items-center gap-3 rounded-lg px-3 py-1.5 text-left transition-colors duration-200 ${
-                view === itemView
+              className={`flex w-full items-center gap-3 rounded-lg px-3 py-1.5 text-left transition-colors duration-200 ${view === itemView
                   ? "bg-orange-50 text-primary-600 dark:bg-orange-500/15 dark:text-orange-300"
                   : "text-content-secondary hover:bg-gray-50 hover:text-gray-700 dark:hover:bg-surface-hover dark:hover:text-content"
-              }`}
+                }`}
             >
               <Icon className="h-5 w-5" />
               <span className="font-medium">{label}</span>

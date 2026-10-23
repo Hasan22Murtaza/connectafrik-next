@@ -12,7 +12,7 @@ import {
   LogOut,
   Clock,
 } from '@/shared/icons';
-import { formatDistanceToNow } from "date-fns";
+import { formatDistanceToNowStrict } from "date-fns";
 import { Group } from "@/shared/types";
 import { useAuth } from "@/contexts/AuthContext";
 import { useGroups } from "@/shared/hooks/useGroups";
@@ -140,14 +140,33 @@ const GroupCard: React.FC<GroupCardProps> = ({
   return (
     <div className="rounded-xl overflow-hidden shadow-card hover:shadow-lg transition-shadow bg-white">
       {/* Banner */}
+
       <div className="relative group">
         {group.banner_url ? (
-          <div className="bg-gray-100 w-full h-40 sm:h-50 overflow-hidden rounded-lg">
+          <div className="relative bg-gray-100 w-full h-40 sm:h-50 overflow-hidden rounded-lg">
             <img
               src={group.banner_url}
               alt={group.name}
+              onError={(e) => {
+                e.currentTarget.style.display = "none";
+
+                const fallback =
+                  e.currentTarget.parentElement?.querySelector(
+                    ".group-banner-fallback"
+                  );
+
+                if (fallback instanceof HTMLElement) {
+                  fallback.style.display = "flex";
+                }
+              }}
               className="w-full h-full object-cover transition-transform duration-300 ease-in-out group-hover:scale-105"
             />
+
+            <div
+              className={`group-banner-fallback hidden w-full h-full items-center justify-center ${categoryInfo.color} absolute inset-0`}
+            >
+              <span className="group_card_image">{categoryInfo.icon}</span>
+            </div>
           </div>
         ) : (
           <div
@@ -157,6 +176,7 @@ const GroupCard: React.FC<GroupCardProps> = ({
           </div>
         )}
       </div>
+
 
       {/* Content */}
       <div className="p-4">
@@ -213,7 +233,7 @@ const GroupCard: React.FC<GroupCardProps> = ({
         <div className="flex items-center gap-2 text-xs text-gray-500 py-1 ">
           <div className="flex items-center gap-1">
             <Calendar className="w-3.5 h-3.5" />
-            {formatDistanceToNow(new Date(group.created_at), {
+            {formatDistanceToNowStrict(new Date(group.created_at), {
               addSuffix: true,
             })}
           </div>

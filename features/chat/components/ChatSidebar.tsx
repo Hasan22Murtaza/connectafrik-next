@@ -757,7 +757,7 @@ export default function ChatSidebar({
 
   return (
     <aside
-      className={`flex h-full w-full flex-col sm:w-[360px] sm:shrink-0 lg:w-[400px] ${selectedThreadId ? "hidden sm:flex" : "flex"
+      className={`flex h-full w-full br border-gray-100 flex-col sm:w-[360px] sm:shrink-0 lg:w-[400px] ${selectedThreadId ? "hidden sm:flex" : "flex"
         }`}
     >
       <header className="shrink-0 border-b border-border bg-surface">
