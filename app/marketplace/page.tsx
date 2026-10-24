@@ -312,7 +312,7 @@ const MarketplacePage: React.FC = () => {
   return (
     <div className={MP.page}>
       <div className={MP.shell}>
-        <aside className="hidden md:flex md:flex-col md:sticky md:top-16 md:h-[calc(100vh-4rem)] md:w-[280px] md:shrink-0 md:self-start md:overflow-hidden bg-surface">
+        <aside className="hidden md:flex md:flex-col border-r border-gray-200 md:sticky md:top-16 md:h-[calc(100vh-4rem)] md:w-[240px] md:shrink-0 md:self-start md:overflow-hidden bg-surface">
           <div className="shrink-0 px-4 pt-3">
             <MarketplaceHubNav
               activeHub="browse"

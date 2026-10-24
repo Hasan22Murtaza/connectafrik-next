@@ -48,7 +48,7 @@ interface TradeHubFilterSidebarProps {
 }
 
 const menuRowClass =
-  "w-full flex items-center justify-between gap-3 px-4 py-3 text-left text-[15px]  hover:bg-primary-50 transition-colors";
+  "w-full flex items-center justify-between gap-3 px-4 py-2 text-left text-[15px]  hover:bg-primary-50 transition-colors";
 
 const menuRowActiveClass = "bg-primary-50 text-orange-500 ";
 

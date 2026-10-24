@@ -108,7 +108,7 @@ export function ReelCard({ reel, index = 0, href, onClick, className = '' }: Pro
       ref={videoRef}
       src={reel.video_url}
       poster={reel.thumbnail_url || undefined}
-      className="h-full w-full object-cover transition duration-300 rounded-md"
+      className="h-full w-full object-cover transition duration-300"
       muted
       loop
       playsInline
@@ -146,7 +146,7 @@ export function ReelCard({ reel, index = 0, href, onClick, className = '' }: Pro
     </>
   )
 
-  const baseClass = `group relative isolate ${aspect} w-full overflow-hidden rounded-[10px] bg-neutral-900 text-left shadow-sm ring-1 ring-white/5 transition hover:ring-[color-mix(in_srgb,var(--african-orange)_55%,transparent)] ${className}`
+  const baseClass = `group relative isolate ${aspect} w-full overflow-hidden rounded-xl bg-neutral-900 text-left shadow-sm ring-1 ring-white/5 transition hover:ring-[color-mix(in_srgb,var(--african-orange)_55%,transparent)] ${className}`
 
   if (href) {
     return (

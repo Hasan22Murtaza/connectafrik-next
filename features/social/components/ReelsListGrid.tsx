@@ -154,10 +154,10 @@ function ListBody({ feed }: Props) {
   }
 
   return (
-    <div className="relative w-full min-h-[calc(100dvh-4.5rem)] bg-white pb-[calc(5.5rem+env(safe-area-inset-bottom))] text-content lg:pb-10">
+    <div className="relative mx-auto w-full max-w-[1600px] min-h-[calc(100dvh-4.5rem)] bg-white pb-[calc(5.5rem+env(safe-area-inset-bottom))] text-content lg:pb-10">
       <ReelsBrowseHeader feed={feed} exploreCategories={exploreCategories} />
 
-      <div className="mx-auto w-full max-w-[1600px]">
+      <div>
         {loading && reels.length === 0 ? (
           <div className="flex min-h-[50vh] items-center justify-center">
             <div className="h-10 w-10 animate-spin rounded-full border-2 border-border border-t-[var(--african-orange)]" />
@@ -179,7 +179,7 @@ function ListBody({ feed }: Props) {
         ) : (
           <div className={`px-2.5 pt-2 sm:px-4 lg:px-5 ${gridClass}`}>
             {reels.map((reel, i) => (
-              <div key={reel.id} className="mb-2.5 break-inside-avoid sm:mb-3">
+              <div key={reel.id} className="mb-2.5 break-inside-avoid sm:mb-3 rounded-lg overflow-hidden">
                 <ReelCard reel={reel} index={i} href={feedHrefFor(reel.id)} />
               </div>
             ))}
@@ -195,13 +195,18 @@ function ListBody({ feed }: Props) {
         )}
       </div>
 
-      <Link
-        href="/reels/create"
-        aria-label="Create reel"
-        className="fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom))] left-1/2 z-[47] flex h-14 w-14 -translate-x-1/2 items-center justify-center rounded-full bg-[var(--african-orange)] text-white shadow-lg ring-2 ring-black/5 lg:bottom-8"
-      >
-        <Plus className="h-7 w-7" strokeWidth={2.5} />
-      </Link>
+<Link
+  href="/reels/create"
+  aria-label="Create reel"
+  className="fixed left-[56vw] bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-[47] flex h-14 w-14 -translate-x-1/2 items-center justify-center rounded-full bg-[var(--african-orange)] text-white shadow-lg ring-2 ring-black/5 lg:bottom-8"
+>
+  <Plus
+    className="h-7 w-7 shrink-0"
+    strokeWidth={2.5}
+  />
+</Link>
+
+
 
       <div className="fixed bottom-0 left-0 right-0 z-[46] border-t border-border bg-white/90 px-2 pb-[calc(0.4rem+env(safe-area-inset-bottom))] pt-1 lg:hidden">
         <div className="mx-auto max-w-lg">

@@ -116,7 +116,7 @@ function RequestsViewTabs({
                 </span>
               )}
               {isActive && (
-                <span className="absolute inset-x-2 bottom-0 h-0.5 rounded-full bg-primary-600" />
+                <span className="absolute inset-x-2 bottom-0 h-0.5 rounded-full bg-primary-600 w-full left-0" />
               )}
             </button>
           );
@@ -577,10 +577,10 @@ const FriendsPageContent: React.FC = () => {
 
 
   return (
-    <div className="min-h-screen px-4">
-      <div className="flex gap-6 sm:pb-0 pb-18 md:min-h-[calc(100dvh-4rem)]">
+    <div className="min-h-screen">
+      <div className="flex gap-4 sm:pb-0 pb-18 md:min-h-[calc(100dvh-4rem)]">
         {/* Left Sidebar */}
-        <aside className="sticky top-[73px] hidden h-[calc(100dvh-73px)]  shrink-0 self-start overflow-y-auto  bg-background  py-4 md:block">
+        <aside className="sticky top-[73px] hidden h-[calc(100dvh-73px)]  shrink-0 self-start overflow-y-auto  bg-background  md:block">
           <FriendsSidebar
             activeSection={activeSection}
             requestCount={requests.length}
@@ -589,7 +589,7 @@ const FriendsPageContent: React.FC = () => {
         </aside>
 
         {/* Main Content */}
-        <div className="flex-1 max-w-full py-3 sm:py-6 sm:px-4 px-0 ">
+        <div className="flex-1 max-w-full py-3 sm:py-6  pr-4 ">
           <div className="flex gap-2 sm:hidden overflow-x-auto w-full pb-5  scrollbar-hide">
             {/* We use inline-flex + min-w-fit to prevent shrinking */}
             <button
@@ -619,7 +619,7 @@ const FriendsPageContent: React.FC = () => {
               >
                 Friend requests
                 {requests.length > 0 && (
-                  <span className="ml-2 bg-orange-600 text-white text-xs px-2 py-0.5 rounded-full">
+                  <span className="ml-2 bg-orange-600 text-white text-xs px-2 py-0.5 rounded-full ">
                     {requests.length}
                   </span>
                 )}

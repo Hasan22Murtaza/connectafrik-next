@@ -88,14 +88,12 @@ export function ReelsLibraryGrid({ mode }: Props) {
   const feedHref = (id: string) => `/reels/${id}`
 
   return (
-    <div className="relative w-full min-h-[calc(100dvh-4.5rem)] bg-white pb-[calc(5.5rem+env(safe-area-inset-bottom))] text-content lg:pb-10">
+    <div className="relative mx-auto w-full max-w-[1600px]  min-h-[calc(100dvh-4.5rem)] bg-white pb-[calc(5.5rem+env(safe-area-inset-bottom))] text-content lg:pb-10">
       <header className="sticky top-[4.5rem] z-20 w-full bg-white/95 backdrop-blur-md lg:top-0">
-        <div className="mx-auto w-full max-w-[1600px]">
           <ReelsMainTabs />
-        </div>
       </header>
 
-      <div className="mx-auto w-full max-w-[1600px]">
+      <div className="">
         {!user?.id ? (
           <div className="flex min-h-[50vh] flex-col items-center justify-center px-6 text-center">
             <p className="text-sm text-content-secondary">Sign in to see your {mode} reels.</p>
@@ -131,7 +129,7 @@ export function ReelsLibraryGrid({ mode }: Props) {
         ) : (
           <div className={`px-2.5 pt-2 sm:px-4 lg:px-5 ${gridClass}`}>
             {reels.map((reel, i) => (
-              <div key={reel.id} className="mb-2.5 break-inside-avoid sm:mb-3">
+              <div key={reel.id} className="mb-2.5 break-inside-avoid sm:mb-3 rounded-lg overflow-hidden ">
                 <ReelCard reel={reel} index={i} href={feedHref(reel.id)} />
               </div>
             ))}

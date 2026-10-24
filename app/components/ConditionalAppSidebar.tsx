@@ -38,7 +38,7 @@ export default function ConditionalAppSidebar({
   const pathname = usePathname();
   const { user, loading } = useAuth();
 
-  if (loading || !user || shouldHideSidebar(pathname)) {
+  if ((!loading && !user) || shouldHideSidebar(pathname)) {
     return <>{children}</>;
   }
 
