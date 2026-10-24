@@ -101,16 +101,14 @@ function RequestsViewTabs({
               key={tab.key}
               type="button"
               onClick={() => onChange(tab.key)}
-              className={`relative shrink-0 px-4 py-2.5 text-sm font-semibold transition-colors ${
-                isActive ? "text-primary-600" : "text-content-secondary hover:text-content"
-              }`}
+              className={`relative shrink-0 px-4 py-2.5 text-sm font-semibold transition-colors ${isActive ? "text-primary-600" : "text-content-secondary hover:text-content"
+                }`}
             >
               {tab.label}
               {tab.count > 0 && (
                 <span
-                  className={`ml-1.5 tabular-nums ${
-                    isActive ? "text-primary-600" : "text-content-tertiary"
-                  }`}
+                  className={`ml-1.5 tabular-nums ${isActive ? "text-primary-600" : "text-content-tertiary"
+                    }`}
                 >
                   ({tab.count})
                 </span>
@@ -142,14 +140,12 @@ function SentRequestCard({
     <div className="bg-surface rounded-lg shadow-card overflow-hidden hover:shadow-md transition-shadow">
       <Link href={`/user/${userId}`} className="block cursor-pointer">
         <div className="w-full aspect-square bg-surface-secondary relative">
-          {/* <div className="w-full h-full flex items-center justify-center text-4xl font-bold text-primary-600 bg-primary-100">
-            {profile?.full_name?.charAt(0)?.toUpperCase() || "U"}
-          </div> */}
-          <div 
-                              style={handleBackgroundColor(profile?.full_name)}
-                              className={`w-full h-full flex items-center justify-center text-4xl font-semibold text-primary-600  `}>
-                                {profile?.full_name?.slice(0, 2)?.toUpperCase() || "U"}
-                              </div>
+         
+          <div
+            style={handleBackgroundColor(profile?.full_name)}
+            className={`w-full h-full flex items-center justify-center text-4xl font-semibold text-primary-600  `}>
+            {profile?.full_name?.slice(0, 2)?.toUpperCase() || "U"}
+          </div>
 
           {profile?.avatar_url && (
             <img
@@ -596,7 +592,7 @@ const FriendsPageContent: React.FC = () => {
               onClick={() => selectSection("all")}
               className={`min-w-fit   text-center rounded-full px-3 py-1.5 font-medium transition-colors
                  ${activeSection === "home" || activeSection === "all" ?
-                   " border border-orange-500 bg-orange-100 text-orange-500" : "text-content bg-surface-tertiary"
+                  " border border-orange-500 bg-orange-100 text-orange-500" : "text-content bg-surface-tertiary"
                 }`}
             >
               All friends
@@ -638,40 +634,131 @@ const FriendsPageContent: React.FC = () => {
             <div className="space-y-8">
               {/* Friend Requests Section — only shown when loading or there are requests */}
               {(loading || sentLoading || requests.length > 0 || sentRequests.length > 0) && (
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <h2 className="sm:text-2xl font-semibold text-content text-lg">Friend Requests</h2>
-                  <button
-                    onClick={() => selectSection("requests")}
-                    className="text-primary-600 hover:text-orange-700 font-medium hover:underline duration-300 "
-                  >
-                    See all
-                  </button>
-                </div>
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <h2 className="sm:text-2xl font-semibold text-content text-lg">Friend Requests</h2>
+                    <button
+                      onClick={() => selectSection("requests")}
+                      className="text-primary-600 hover:text-orange-700 font-medium hover:underline duration-300 "
+                    >
+                      See all
+                    </button>
+                  </div>
 
-                <RequestsViewTabs
-                  view={requestsView}
-                  onChange={setRequestsView}
-                  receivedCount={requests.length}
-                  pendingCount={sentRequests.length}
-                />
+                  <RequestsViewTabs
+                    view={requestsView}
+                    onChange={setRequestsView}
+                    receivedCount={requests.length}
+                    pendingCount={sentRequests.length}
+                  />
 
-                {requestsView === "pending" ? (
-                  sentLoading ? (
+                  {requestsView === "pending" ? (
+                    sentLoading ? (
+                      <FriendsGridShimmer count={shimmerCount * 2} />
+                    ) : sentRequests.length > 0 ? (
+                      <>
+                        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 2xl:grid-cols-6 gap-4">
+                          {sentRequests.slice(0, requestsDisplayLimit).map((request) => (
+                            <SentRequestCard
+                              key={request.id}
+                              request={request}
+                              cancelling={cancellingRequests.has(request.id)}
+                              onCancel={() => handleCancelSentRequest(request.id)}
+                            />
+                          ))}
+                        </div>
+                        {sentRequests.length > requestsDisplayLimit && (
+                          <div className="flex justify-center mt-6">
+                            <button
+                              onClick={() => setRequestsDisplayLimit(prev => prev + 20)}
+                              className="flex items-center space-x-1 text-primary-600 hover:text-orange-700 font-medium"
+                            >
+                              <span>See more</span>
+                              <ChevronDown className="w-4 h-4" />
+                            </button>
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <div className="text-center py-12 bg-surface rounded-lg">
+                        <Clock className="w-16 h-16 text-content-tertiary mx-auto mb-4" />
+                        <h3 className="text-lg font-medium text-content mb-2">
+                          No pending requests
+                        </h3>
+                        <p className="text-content-secondary">
+                          Friend requests you send will appear here.
+                        </p>
+                      </div>
+                    )
+                  ) : loading ? (
                     <FriendsGridShimmer count={shimmerCount * 2} />
-                  ) : sentRequests.length > 0 ? (
+                  ) : requests.length > 0 ? (
                     <>
                       <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 2xl:grid-cols-6 gap-4">
-                        {sentRequests.slice(0, requestsDisplayLimit).map((request) => (
-                          <SentRequestCard
+                        {requests.slice(0, requestsDisplayLimit).map((request) => (
+                          <div
                             key={request.id}
-                            request={request}
-                            cancelling={cancellingRequests.has(request.id)}
-                            onCancel={() => handleCancelSentRequest(request.id)}
-                          />
+                            className="bg-surface rounded-lg shadow-card overflow-hidden hover:shadow-md transition-shadow"
+                          >
+                            {/* Profile Image */}
+                            <Link href={`/user/${request.requester_id || ''}`} className="block cursor-pointer">
+                              <div className="w-full aspect-square bg-surface-secondary relative">
+                                <div className="w-full h-full flex items-center justify-center text-4xl font-bold text-primary-600 bg-primary-100">
+                                  {request.requester?.full_name?.charAt(0)?.toUpperCase() || "U"}
+                                </div>
+
+                                {request.requester?.avatar_url && (
+                                  <img
+                                    src={request.requester.avatar_url}
+                                    alt={request.requester.full_name || "User"}
+                                    onLoad={(e) => {
+                                      e.currentTarget.style.display = "block";
+                                    }}
+                                    onError={(e) => {
+                                      e.currentTarget.style.display = "none";
+                                    }}
+                                    className="absolute inset-0 w-full h-full object-cover"
+                                  />
+                                )}
+                              </div>
+                            </Link>
+
+                            {/* Content */}
+                            <div className="p-3">
+                              <Link href={`/user/${request.requester_id || ''}`} className="block cursor-pointer">
+                                <h3 className="font-semibold text-content text-sm mb-1 line-clamp-1 hover:text-primary-600 transition-colors">
+                                  {request.requester?.full_name || "Unknown User"}
+                                </h3>
+                              </Link>
+
+                              {/* Mutual Friends */}
+                              {request.mutualFriendsCount !== undefined && request.mutualFriendsCount > 0 && (
+                                <div className="flex items-center space-x-1.5 text-xs text-content-secondary mb-1">
+
+                                  <span>{request.mutualFriendsCount} mutual {request.mutualFriendsCount === 1 ? 'friend' : 'friends'}</span>
+                                </div>
+                              )}
+
+                              {/* Action Buttons */}
+                              <div className="flex gap-2 items-center flex-wrap">
+                                <button
+                                  onClick={() => handleAcceptRequest(request.id)}
+                                  className="flex-1 btn-sm-primary text-sm"
+                                >
+                                  Confirm
+                                </button>
+                                <button
+                                  onClick={() => handleDeclineRequest(request.id)}
+                                  className="flex-1 btn-secondary text-sm"
+                                >
+                                  Delete
+                                </button>
+                              </div>
+                            </div>
+                          </div>
                         ))}
                       </div>
-                      {sentRequests.length > requestsDisplayLimit && (
+                      {requests.length > requestsDisplayLimit && (
                         <div className="flex justify-center mt-6">
                           <button
                             onClick={() => setRequestsDisplayLimit(prev => prev + 20)}
@@ -687,103 +774,12 @@ const FriendsPageContent: React.FC = () => {
                     <div className="text-center py-12 bg-surface rounded-lg">
                       <Clock className="w-16 h-16 text-content-tertiary mx-auto mb-4" />
                       <h3 className="text-lg font-medium text-content mb-2">
-                        No pending requests
+                        No friend requests
                       </h3>
-                      <p className="text-content-secondary">
-                        Friend requests you send will appear here.
-                      </p>
+                      <p className="text-content-secondary">You&apos;re all caught up!</p>
                     </div>
-                  )
-                ) : loading ? (
-                  <FriendsGridShimmer count={shimmerCount * 2} />
-                ) : requests.length > 0 ? (
-                  <>
-                    <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 2xl:grid-cols-6 gap-4">
-                      {requests.slice(0, requestsDisplayLimit).map((request) => (
-                        <div
-                          key={request.id}
-                          className="bg-surface rounded-lg shadow-card overflow-hidden hover:shadow-md transition-shadow"
-                        >
-                          {/* Profile Image */}
-                          <Link href={`/user/${request.requester_id || ''}`} className="block cursor-pointer">
-                            <div className="w-full aspect-square bg-surface-secondary relative">
-                              <div className="w-full h-full flex items-center justify-center text-4xl font-bold text-primary-600 bg-primary-100">
-                                {request.requester?.full_name?.charAt(0)?.toUpperCase() || "U"}
-                              </div>
-
-                              {request.requester?.avatar_url && (
-                                <img
-                                  src={request.requester.avatar_url}
-                                  alt={request.requester.full_name || "User"}
-                                  onLoad={(e) => {
-                                    e.currentTarget.style.display = "block";
-                                  }}
-                                  onError={(e) => {
-                                    e.currentTarget.style.display = "none";
-                                  }}
-                                  className="absolute inset-0 w-full h-full object-cover"
-                                />
-                              )}
-                            </div>
-                          </Link>
-
-                          {/* Content */}
-                          <div className="p-3">
-                            <Link href={`/user/${request.requester_id || ''}`} className="block cursor-pointer">
-                              <h3 className="font-semibold text-content text-sm mb-1 line-clamp-1 hover:text-primary-600 transition-colors">
-                                {request.requester?.full_name || "Unknown User"}
-                              </h3>
-                            </Link>
-
-                            {/* Mutual Friends */}
-                            {request.mutualFriendsCount !== undefined && request.mutualFriendsCount > 0 && (
-                              <div className="flex items-center space-x-1.5 text-xs text-content-secondary mb-1">
-                               
-                                <span>{request.mutualFriendsCount} mutual {request.mutualFriendsCount === 1 ? 'friend' : 'friends'}</span>
-                              </div>
-                            )}
-
-                            {/* Action Buttons */}
-                            <div className="flex gap-2 items-center flex-wrap">
-                              <button
-                                onClick={() => handleAcceptRequest(request.id)}
-                                className="flex-1 btn-sm-primary text-sm"
-                              >
-                                Confirm
-                              </button>
-                              <button
-                                onClick={() => handleDeclineRequest(request.id)}
-                                className="flex-1 btn-secondary text-sm"
-                              >
-                                Delete
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                    {requests.length > requestsDisplayLimit && (
-                      <div className="flex justify-center mt-6">
-                        <button
-                          onClick={() => setRequestsDisplayLimit(prev => prev + 20)}
-                          className="flex items-center space-x-1 text-primary-600 hover:text-orange-700 font-medium"
-                        >
-                          <span>See more</span>
-                          <ChevronDown className="w-4 h-4" />
-                        </button>
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <div className="text-center py-12 bg-surface rounded-lg">
-                    <Clock className="w-16 h-16 text-content-tertiary mx-auto mb-4" />
-                    <h3 className="text-lg font-medium text-content mb-2">
-                      No friend requests
-                    </h3>
-                    <p className="text-content-secondary">You&apos;re all caught up!</p>
-                  </div>
-                )}
-              </div>
+                  )}
+                </div>
               )}
 
               {/* People You May Know Section */}
@@ -811,10 +807,10 @@ const FriendsPageContent: React.FC = () => {
                         >
                           {/* Profile Image */}
                           <Link href={`/user/${suggestion.user_id || ''}`} className="block cursor-pointer">
-                           <div className="w-full aspect-square bg-surface-secondary relative">
-                              <div 
-                              style={handleBackgroundColor(suggestion.full_name)}
-                              className={`w-full h-full flex items-center justify-center text-4xl font-semibold text-primary-600  `}>
+                            <div className="w-full aspect-square bg-surface-secondary relative">
+                              <div
+                                style={handleBackgroundColor(suggestion.full_name)}
+                                className={`w-full h-full flex items-center justify-center text-4xl font-semibold text-primary-600  `}>
                                 {suggestion.full_name?.slice(0, 2)?.toUpperCase() || "U"}
                               </div>
 
@@ -842,7 +838,7 @@ const FriendsPageContent: React.FC = () => {
                             {/* Mutual Friends */}
                             {suggestion.mutual_friends_count > 0 && (
                               <div className="flex items-center space-x-1.5 text-xs text-content-secondary mb-4">
-                              
+
                                 <span>{suggestion.mutual_friends_count} mutual {suggestion.mutual_friends_count === 1 ? 'friend' : 'friends'}</span>
                               </div>
                             )}
@@ -945,11 +941,11 @@ const FriendsPageContent: React.FC = () => {
                               className="w-full h-full object-cover"
                             />
                           ) : (
-                            <div 
+                            <div
                               style={handleBackgroundColor(request.requester?.full_name)}
                               className={`w-full h-full flex items-center justify-center text-4xl font-semibold text-primary-600  `}>
-                                {request.requester?.full_name?.slice(0, 2)?.toUpperCase() || "U"}
-                              </div>
+                              {request.requester?.full_name?.slice(0, 2)?.toUpperCase() || "U"}
+                            </div>
                           )}
                         </div>
                       </Link>
@@ -965,7 +961,7 @@ const FriendsPageContent: React.FC = () => {
                         {/* Mutual Friends */}
                         {request.mutualFriendsCount !== undefined && request.mutualFriendsCount > 0 && (
                           <div className="flex items-center space-x-1.5 mb-2 text-xs text-content-secondary ">
-                         
+
                             <span>{request.mutualFriendsCount} mutual {request.mutualFriendsCount === 1 ? 'friend' : 'friends'}</span>
                           </div>
                         )}
@@ -1113,24 +1109,24 @@ const FriendsPageContent: React.FC = () => {
                     >
                       {/* Profile Image */}
                       <Link href={`/user/${suggestion.user_id || ''}`} className="block cursor-pointer">
-                         <div className="w-full aspect-square bg-surface-secondary relative">
-                              <div 
-                              style={handleBackgroundColor(suggestion.full_name)}
-                              className={`w-full h-full flex items-center justify-center text-4xl font-semibold text-primary-600  `}>
-                                {suggestion.full_name?.slice(0, 2)?.toUpperCase() || "U"}
-                              </div>
+                        <div className="w-full aspect-square bg-surface-secondary relative">
+                          <div
+                            style={handleBackgroundColor(suggestion.full_name)}
+                            className={`w-full h-full flex items-center justify-center text-4xl font-semibold text-primary-600  `}>
+                            {suggestion.full_name?.slice(0, 2)?.toUpperCase() || "U"}
+                          </div>
 
-                              {suggestion.avatar_url && (
-                                <img
-                                  src={suggestion.avatar_url}
-                                  alt={suggestion.full_name || "User"}
-                                  onError={(e) => {
-                                    e.currentTarget.style.display = "none";
-                                  }}
-                                  className="absolute inset-0 w-full h-full object-cover"
-                                />
-                              )}
-                            </div>
+                          {suggestion.avatar_url && (
+                            <img
+                              src={suggestion.avatar_url}
+                              alt={suggestion.full_name || "User"}
+                              onError={(e) => {
+                                e.currentTarget.style.display = "none";
+                              }}
+                              className="absolute inset-0 w-full h-full object-cover"
+                            />
+                          )}
+                        </div>
                       </Link>
 
                       {/* Content */}
@@ -1144,7 +1140,7 @@ const FriendsPageContent: React.FC = () => {
                         {/* Mutual Friends */}
                         {suggestion.mutual_friends_count > 0 && (
                           <div className="flex items-center space-x-1.5 text-xs text-content-secondary mb-4">
-                         
+
                             <span>{suggestion.mutual_friends_count} mutual {suggestion.mutual_friends_count === 1 ? 'friend' : 'friends'}</span>
                           </div>
                         )}

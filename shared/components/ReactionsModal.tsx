@@ -25,7 +25,7 @@ export interface ReactionsModalProps {
   onUserClick?: (userId: string) => void
   /** API endpoint for paginated reactions, e.g. '/api/posts/{id}/reaction' */
   reactionsEndpoint?: string
-  /** Use native emoji for tabs/badges (chat messages) instead of reaction icons */
+  /** Render reaction values as native emoji (used by chat message reactions). */
   reactionDisplay?: 'icon' | 'emoji'
 }
 

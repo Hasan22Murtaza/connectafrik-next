@@ -1,13 +1,15 @@
 'use client'
 
 import React, { useState, useRef, useCallback, useEffect } from 'react'
-import { ThumbsUp, MessageCircle } from '@/shared/icons'
+import { MessageCircle } from '@/shared/icons'
+import { Heart } from 'lucide-react'
 import { PiShareFatLight } from 'react-icons/pi'
 import ReactionTooltip from '@/features/social/components/ReactionTooltip'
 import ReactionIcon, {
   REACTION_CONFIG,
   PICKER_REACTIONS,
   KIND_TO_EMOJI,
+  getReactionKind,
   ReactionKind,
 } from './ReactionIcon'
 import ReactionsModal from './ReactionsModal'
@@ -62,38 +64,37 @@ const PostEngagement: React.FC<PostEngagementProps> = ({
   const userReaction = hasOptimisticReaction
     ? reactionOverride || undefined
     : propUserReaction
-  const userReactionConfig = userReaction
-    ? REACTION_CONFIG[userReaction as ReactionKind]
-    : undefined
+  const userReactionKind = userReaction ? getReactionKind(userReaction) : undefined
+  const userReactionConfig = userReactionKind ? REACTION_CONFIG[userReactionKind] : undefined
   const displayedReactionGroups = hasOptimisticReaction
     ? (() => {
-        const nextReaction = reactionOverride || undefined
-        const groups = reactionGroups.map((group) => ({
-          ...group,
-          count: Math.max(
-            0,
-            group.count - Number(group.type === propUserReaction) + Number(group.type === nextReaction)
-          ),
-          currentUserReacted: group.type === nextReaction && nextReaction !== undefined,
-        }))
+      const nextReaction = reactionOverride || undefined
+      const groups = reactionGroups.map((group) => ({
+        ...group,
+        count: Math.max(
+          0,
+          group.count - Number(group.type === propUserReaction) + Number(group.type === nextReaction)
+        ),
+        currentUserReacted: group.type === nextReaction && nextReaction !== undefined,
+      }))
 
-        if (nextReaction && !groups.some((group) => group.type === nextReaction)) {
-          groups.push({
-            type: nextReaction,
-            count: 1,
-            users: [],
-            currentUserReacted: true,
-          })
-        }
+      if (nextReaction && !groups.some((group) => group.type === nextReaction)) {
+        groups.push({
+          type: nextReaction,
+          count: 1,
+          users: [],
+          currentUserReacted: true,
+        })
+      }
 
-        return groups.filter((group) => group.count > 0).sort((a, b) => b.count - a.count)
-      })()
+      return groups.filter((group) => group.count > 0).sort((a, b) => b.count - a.count)
+    })()
     : reactionGroups
   const displayedReactionCount = hasOptimisticReaction
     ? Math.max(
-        0,
-        totalReactionCount + Number(Boolean(reactionOverride)) - Number(Boolean(propUserReaction))
-      )
+      0,
+      totalReactionCount + Number(Boolean(reactionOverride)) - Number(Boolean(propUserReaction))
+    )
     : totalReactionCount
 
   useEffect(() => {
@@ -158,93 +159,26 @@ const PostEngagement: React.FC<PostEngagementProps> = ({
 
   const handleReactionSelect = useCallback((kind: ReactionKind) => {
     setShowReactionPicker(false)
-    void applyReaction(userReaction === kind ? null : kind, KIND_TO_EMOJI[kind])
-  }, [applyReaction, userReaction])
+    void applyReaction(userReactionKind === kind ? null : kind, KIND_TO_EMOJI[kind])
+  }, [applyReaction, userReactionKind])
 
   return (
     <div>
-      {/* Stats Row */}
-      <div className="flex items-center justify-between px-1 py-1">
-        <div className="flex items-center gap-1.5">
-          {displayedReactionGroups.length > 0 && (
-            <div
-              className="flex items-center gap-1 cursor-pointer group"
-              onClick={(e) => {
-                e.stopPropagation()
-                setShowReactionsModal(true)
-              }}
-            >
-              <div className="flex items-center -space-x-1">
-                {displayedReactionGroups.slice(0, 3).map((group, index) => (
-                  <div
-                    key={group.type}
-                    className="relative"
-                    style={{ zIndex: 10 - index }}
-                    onMouseEnter={() => setHoveredReaction(group.type)}
-                    onMouseLeave={() => setHoveredReaction(null)}
-                  >
-                    <ReactionIcon
-                      type={group.type}
-                      size={22}
-                      className="cursor-pointer noto-color-emoji-regular"
-                    />
-                    <ReactionTooltip
-                      users={group.users || []}
-                      isVisible={hoveredReaction === group.type}
-                    />
-                  </div>
-                ))}
-              </div>
-              {displayedReactionCount > 0 && (
-                <span className="text-[15px] text-gray-500 group-hover:underline">
-                  {displayedReactionCount}
-                </span>
-              )}
-            </div>
-          )}
-        </div>
-
-        <div className="flex items-center gap-2 text-[13px] text-gray-500">
-          {showViews && viewsCount > 0 && (
-            <span className="hover:underline cursor-pointer">
-              {viewsCount} {viewsCount === 1 ? 'view' : 'views'}
-            </span>
-          )}
-          {commentsCount > 0 && (
-            <span
-              className="hover:underline cursor-pointer"
-              onClick={(e) => {
-                e.stopPropagation()
-                onComment()
-              }}
-            >
-              {commentsCount} {commentsCount === 1 ? 'comment' : 'comments'}
-            </span>
-          )}
-          {sharesCount > 0 && (
-            <span className="hover:underline cursor-pointer">
-              {sharesCount} {sharesCount === 1 ? 'share' : 'shares'}
-            </span>
-          )}
-        </div>
-      </div>
-
-      {/* Action Buttons */}
-      <div className="flex items-center gap-1 pt-1">
-        <div
-          className="relative flex-1"
-          onMouseEnter={handleLikeHover}
-          onMouseLeave={handleLikeLeave}
-        >
-          {showReactionPicker && (
-            <div
-              className="absolute bottom-full left-0 mb-2 z-50 animate-[reactionPickerIn_280ms_cubic-bezier(0.34,1.56,0.64,1)_both]"
-              onMouseEnter={handleLikeHover}
-              onMouseLeave={handleLikeLeave}
-            >
-              <div className="flex items-center bg-white rounded-full shadow-[0_2px_12px_rgba(0,0,0,0.15),0_0_0_1px_rgba(0,0,0,0.05)] px-2 py-1 gap-1">
-                {PICKER_REACTIONS.map((kind, index) => {
-                  return (
+      <div className="flex items-center justify-between gap-2  px-1 pt-1">
+        <div className="flex min-w-0 items-center gap-2">
+          <div
+            className="relative shrink-0"
+            onMouseEnter={handleLikeHover}
+            onMouseLeave={handleLikeLeave}
+          >
+            {showReactionPicker && (
+              <div
+                className="absolute bottom-full left-0 mb-2 z-50 animate-[reactionPickerIn_280ms_cubic-bezier(0.34,1.56,0.64,1)_both]"
+                onMouseEnter={handleLikeHover}
+                onMouseLeave={handleLikeLeave}
+              >
+                <div className="flex items-center bg-white rounded-full shadow-[0_2px_12px_rgba(0,0,0,0.15),0_0_0_1px_rgba(0,0,0,0.05)] px-2 py-1 gap-1">
+                  {PICKER_REACTIONS.map((kind, index) => (
                     <button
                       key={kind}
                       onClick={(e) => {
@@ -260,10 +194,9 @@ const PostEngagement: React.FC<PostEngagementProps> = ({
                         {REACTION_CONFIG[kind].label}
                       </span>
                     </button>
-                  )
-                })}
-              </div>
-              <style>{`
+                  ))}
+                </div>
+                <style>{`
                 @keyframes reactionPickerIn {
                   from { opacity: 0; transform: scale(0.8) translateY(8px); }
                   to   { opacity: 1; transform: scale(1) translateY(0); }
@@ -273,71 +206,105 @@ const PostEngagement: React.FC<PostEngagementProps> = ({
                   60%  { opacity: 1; transform: scale(1.15) translateY(-2px); }
                   100% { opacity: 1; transform: scale(1) translateY(0); }
                 }
-              `}</style>
-            </div>
-          )}
+                `}</style>
+              </div>
+            )}
+
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                void applyReaction(
+                  userReaction ? null : 'like',
+                  userReactionKind ? KIND_TO_EMOJI[userReactionKind] : KIND_TO_EMOJI.like
+                )
+              }}
+              className={`flex h-8 items-center justify-center gap-1.5 rounded-full bg-[#f3f4fb] px-3 text-sm font-medium transition-colors duration-150 ${
+                userReactionConfig
+                  ? `${userReactionKind === 'love'
+                    ? 'text-red-500'
+                    : userReactionKind === 'like'
+                      ? 'text-blue-600'
+                      : 'text-amber-500'
+                  } ${userReactionConfig.hoverBg}`
+                  : 'text-[#f28b45] hover:bg-orange-50'
+              }`}
+              aria-label={userReactionConfig ? `${userReactionConfig.label} reaction` : 'Like post'}
+            >
+              {userReactionConfig ? (
+                <ReactionIcon type={userReaction!} size={18} />
+              ) : (
+                <Heart className="h-[17px] w-[17px]" strokeWidth={2} />
+              )}
+              {displayedReactionCount > 0 && (
+                <span className="text-xs font-semibold tabular-nums text-slate-500">
+                  {displayedReactionCount}
+                </span>
+              )}
+            </button>
+          </div>
 
           <button
             onClick={(e) => {
-              e.stopPropagation();
-              void applyReaction(
-                userReaction ? null : 'like',
-                userReaction ? KIND_TO_EMOJI[userReaction as ReactionKind] : KIND_TO_EMOJI.like
-              )
+              e.stopPropagation()
+              onComment()
             }}
-            className={`flex w-full items-center noto-color-emoji-regular justify-center gap-1.5 py-1.5 transition-colors duration-150 cursor-pointer rounded-lg text-sm font-medium dark:hover:bg-blue-900/10 ${userReactionConfig
-                ? `${userReaction === 'love'
-                  ? 'text-red-500'
-                  : userReaction === 'like'
-                    ? 'text-blue-600'
-                    : 'text-amber-500'
-                } ${userReactionConfig.hoverBg}`
-                : 'text-gray-500 hover:text-blue-600 hover:bg-blue-50 '
-              }`}
-            aria-label={
-              userReactionConfig
-                ? `${userReactionConfig.label} reaction`
-                : 'Like post'
-            }
+            className="flex h-8 w-9 shrink-0 items-center justify-center rounded-full bg-[#f3f4fb] text-slate-400 transition-colors hover:bg-orange-50 hover:text-orange-500"
+            aria-label={`Comment on post${commentsCount > 0 ? `, ${commentsCount} ${commentsCount === 1 ? 'comment' : 'comments'}` : ''}`}
+            title={commentsCount > 0 ? `${commentsCount} ${commentsCount === 1 ? 'comment' : 'comments'}` : 'Comment'}
           >
-            {userReactionConfig ? (
-              <ReactionIcon type={userReaction!} size={18} />
-            ) : (
-              <ThumbsUp className="w-4 h-4" />
-            )}
+            <MessageCircle className="h-4 w-4" />
+          </button>
 
-            <span>{userReactionConfig?.label || 'Like'}</span>
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              onShare()
+            }}
+            className="flex h-8 w-9 shrink-0 items-center justify-center rounded-full bg-[#f3f4fb] text-green-500 transition-colors hover:bg-green-50"
+            aria-label={`${isShared ? 'Shared post' : 'Share post'}${sharesCount > 0 ? `, ${sharesCount} ${sharesCount === 1 ? 'share' : 'shares'}` : ''}`}
+            title={sharesCount > 0 ? `${sharesCount} ${sharesCount === 1 ? 'share' : 'shares'}` : isShared ? 'Shared' : 'Share'}
+            aria-pressed={isShared}
+          >
+            <PiShareFatLight className="h-[17px] w-[17px]" />
           </button>
         </div>
 
-        <button
-          onClick={(e) => {
-            e.stopPropagation()
-            onComment()
-          }}
-          className="flex flex-1 items-center justify-center gap-1.5 py-1.5 text-gray-500 hover:text-orange-600 hover:bg-orange-50 transition-colors duration-150 cursor-pointer rounded-lg text-sm font-medium dark:hover:bg-blue-900/10"
-          aria-label="Comment on post"
-        >
-          <MessageCircle className="w-4 h-4" />
-          <span>Comment</span>
-        </button>
-
-        <button
-          onClick={(e) => {
-            e.stopPropagation()
-            onShare()
-          }}
-          className={`flex flex-1 items-center justify-center gap-1.5 py-1.5 transition-colors duration-150 cursor-pointer rounded-lg text-sm font-medium ${isShared
-              ? 'text-green-600 hover:bg-green-50'
-              : 'text-gray-500 hover:text-green-600 hover:bg-green-50 dark:hover:bg-blue-900/10'
-            }`}
-          aria-label={isShared ? 'Shared post' : 'Share post'}
-          aria-pressed={isShared}
-        >
-          <PiShareFatLight className="w-4 h-4" />
-          <span>{isShared ? 'Shared' : 'Share'}</span>
-         
-        </button>
+        <div className="flex min-w-0 items-center gap-1">
+          {showViews && viewsCount > 0 && (
+            <span className="mr-1 text-[11px] text-slate-400" aria-label={`${viewsCount} ${viewsCount === 1 ? 'view' : 'views'}`}>
+              {viewsCount} {viewsCount === 1 ? 'view' : 'views'}
+            </span>
+          )}
+          {displayedReactionGroups.length > 0 && (
+            <button
+              type="button"
+              className="flex items-center"
+              onClick={(e) => {
+                e.stopPropagation()
+                setShowReactionsModal(true)
+              }}
+              aria-label={`View ${displayedReactionCount} reactions`}
+            >
+              <span className="flex items-center -space-x-1">
+                {displayedReactionGroups.slice(0, 3).map((group, index) => (
+                  <span
+                    key={group.type}
+                    className="relative"
+                    style={{ zIndex: 10 - index }}
+                    onMouseEnter={() => setHoveredReaction(group.type)}
+                    onMouseLeave={() => setHoveredReaction(null)}
+                  >
+                    <ReactionIcon type={group.type} size={19} />
+                    <ReactionTooltip
+                      users={group.users || []}
+                      isVisible={hoveredReaction === group.type}
+                    />
+                  </span>
+                ))}
+              </span>
+            </button>
+          )}
+        </div>
       </div>
 
       <ReactionsModal

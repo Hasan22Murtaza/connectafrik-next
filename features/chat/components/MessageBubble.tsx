@@ -48,6 +48,7 @@ import { toast } from "react-hot-toast";
 import ReactionIcon, {
   KIND_TO_EMOJI,
   PICKER_REACTIONS,
+  REACTION_CONFIG,
   type ReactionKind,
 } from "@/shared/components/ReactionIcon";
 import { TbMoodPlus } from "react-icons/tb";
@@ -73,6 +74,7 @@ import ChatLocationCard, {
 import ChatPostCard from "./ChatPostCard";
 
 const WA_QUICK_REACTION_EMOJIS = ["👍", "❤️", "😂", "😮", "😢", "🙏"] as const;
+const CHAT_EXTRA_REACTIONS: ReactionKind[] = [...PICKER_REACTIONS, "idea", "clap"];
 
 export function formatChatDateDividerLabel(date: Date): string {
   if (isToday(date)) return "Today";
@@ -1295,10 +1297,11 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                   onMouseEnter={handleReactionPickerEnter}
                   onMouseLeave={handleReactionPickerLeave}
                 >
-                  {PICKER_REACTIONS.map((kind: ReactionKind) => (
+                  {CHAT_EXTRA_REACTIONS.map((kind) => (
                     <button
                       key={`extra-${kind}`}
                       type="button"
+                      aria-label={`React with ${REACTION_CONFIG[kind].label}`}
                       onClick={(e) => {
                         e.stopPropagation();
                         setShowReactionPicker(false);
@@ -1307,7 +1310,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                       }}
                       className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[22px] transition hover:bg-surface-hover noto-color-emoji-regular"
                     >
-                      <ReactionIcon type={kind} size={22} />
+                      {KIND_TO_EMOJI[kind]}
                     </button>
                   ))}
                 </div>
