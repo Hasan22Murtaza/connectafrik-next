@@ -260,9 +260,17 @@ export function SettingsSignInPrompt({ message }: { message: string }) {
 export function SettingsPanelSkeleton() {
   return (
     <div className="space-y-4" aria-hidden>
-      <div className="h-28 animate-pulse rounded-[16px] bg-surface-secondary" />
-      <div className="h-48 animate-pulse rounded-[16px] bg-surface-secondary" />
-      <div className="h-32 animate-pulse rounded-[16px] bg-surface-secondary" />
+      <div className="overflow-hidden rounded-[16px] border border-border-subtle bg-surface">
+        <div className="h-36 animate-pulse bg-surface-secondary sm:h-44" />
+        <div className="flex items-end gap-4 px-4 pb-5 pt-0 sm:px-5">
+          <div className="-mt-12 h-[104px] w-[104px] shrink-0 animate-pulse rounded-full border-[4px] border-surface bg-surface-secondary sm:-mt-14 sm:h-[120px] sm:w-[120px]" />
+          <div className="mb-2 flex-1 space-y-2 py-3">
+            <div className="h-5 w-40 animate-pulse rounded-md bg-surface-secondary" />
+            <div className="h-3.5 w-24 animate-pulse rounded-md bg-surface-secondary" />
+          </div>
+        </div>
+      </div>
+      <div className="h-64 animate-pulse rounded-[16px] bg-surface-secondary" />
     </div>
   )
 }

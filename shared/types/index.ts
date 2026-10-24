@@ -30,6 +30,7 @@ export interface Profile {
   first_name?: string
   last_name?: string
   avatar_url?: string
+  banner_image?: string | null
   country?: string
   address?: string | null
   city?: string | null
