@@ -45,17 +45,24 @@ export async function GET(
       onlyAuthorId: ownerId,
     })
 
+    const bannerImage = (profile as { banner_image?: string | null }).banner_image ?? null
     const ownerAuthor = {
       id: ownerId,
       username: (profile as { username?: string }).username,
       full_name: (profile as { full_name?: string }).full_name,
       avatar_url: (profile as { avatar_url?: string | null }).avatar_url ?? null,
+      banner_image: bannerImage,
       country: (profile as { country?: string | null }).country ?? null,
     }
 
-    const withAuthor = result.map((p: { author?: unknown }) => ({
+    const withAuthor = result.map((p: { author_id?: string; author?: { banner_image?: string | null } | null }) => ({
       ...p,
-      author: p.author || ownerAuthor,
+      author: p.author
+        ? {
+            ...p.author,
+            banner_image: p.author_id === ownerId ? bannerImage : p.author.banner_image ?? null,
+          }
+        : ownerAuthor,
     }))
 
     return jsonResponse({

@@ -11,6 +11,7 @@ interface Recommendation {
   username: string;
   full_name: string;
   avatar_url: string | null;
+  banner_image?: string | null;
   mutual_friends_count: number;
 }
 

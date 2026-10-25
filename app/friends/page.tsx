@@ -27,6 +27,7 @@ type BirthdayProfileRow = {
   full_name: string;
   username: string;
   avatar_url: string | null;
+  banner_image?: string | null;
   birthday: string;
 };
 
@@ -36,6 +37,7 @@ function mapBirthdayProfileToFriend(p: BirthdayProfileRow): Friend {
     username: p.username,
     full_name: p.full_name,
     avatar_url: p.avatar_url ?? undefined,
+    banner_image: p.banner_image ?? null,
     birthday: p.birthday,
   };
 }
@@ -69,6 +71,7 @@ type SentFriendRequest = {
     username: string;
     full_name: string;
     avatar_url?: string | null;
+    banner_image?: string | null;
   } | null;
 };
 
@@ -194,6 +197,7 @@ const FriendsPageContent: React.FC = () => {
     username: string;
     full_name: string;
     avatar_url: string | null;
+    banner_image?: string | null;
     mutual_friends_count: number;
   }>>([]);
   const [loading, setLoading] = useState(true);

@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
 
     const { data, error } = await supabase
       .from('profiles')
-      .select('id, username, full_name, avatar_url, status, last_seen')
+      .select('id, username, full_name, avatar_url, banner_image, status, last_seen')
       .order('username', { ascending: true })
 
     if (error) return errorResponse(error.message, 400)

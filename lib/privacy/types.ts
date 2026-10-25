@@ -91,5 +91,6 @@ export const IDENTITY_PROFILE_FIELDS = [
   'username',
   'full_name',
   'avatar_url',
+  'banner_image',
   'is_verified',
 ] as const

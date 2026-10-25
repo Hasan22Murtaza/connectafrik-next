@@ -15,6 +15,7 @@ type ReelItem = {
     username: string
     full_name: string
     avatar_url: string | null
+    banner_image: string | null
     country: string | null
   }
 }
@@ -34,7 +35,8 @@ export async function GET(
       ? DEFAULT_POST_ROWS
       : Math.min(Math.max(parsed, 1), MAX_POST_ROWS)
 
-    const { supabase, viewerId, ownerId } = access.ctx
+    const { supabase, viewerId, ownerId, profile } = access.ctx
+    const bannerImage = (profile as { banner_image?: string | null }).banner_image ?? null
     const formatted = await fetchFormattedAuthorPosts(supabase, viewerId, ownerId, postRowLimit)
 
     const data: ReelItem[] = []
@@ -53,6 +55,7 @@ export async function GET(
               username: author.username,
               full_name: author.full_name,
               avatar_url: author.avatar_url,
+              banner_image: bannerImage,
               country: author.country,
             },
           })

@@ -5,6 +5,7 @@ export type ConnectionRow = {
   username: string
   full_name: string
   avatar_url: string | null
+  banner_image: string | null
   country: string | null
 }
 
@@ -56,7 +57,7 @@ export async function fetchConnectionsForOwner(
 
   const { data: profiles } = await supabase
     .from('profiles')
-    .select('id, username, full_name, avatar_url, country')
+    .select('id, username, full_name, avatar_url, banner_image, country')
     .in('id', friendIds)
 
   return (profiles || []).map((p: ConnectionRow) => ({
@@ -64,6 +65,7 @@ export async function fetchConnectionsForOwner(
     username: p.username,
     full_name: p.full_name,
     avatar_url: p.avatar_url,
+    banner_image: p.banner_image ?? null,
     country: p.country,
   }))
 }

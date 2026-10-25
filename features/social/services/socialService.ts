@@ -16,6 +16,7 @@ export interface FriendRequest {
     username: string | null;
     full_name: string | null;
     avatar_url: string | null;
+    banner_image?: string | null;
   };
 }
 

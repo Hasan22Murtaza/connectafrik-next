@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
 import { getAuthenticatedUser } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
+import { withBannerImages } from '../_shared/withBannerImages'
 
 export async function GET(request: NextRequest) {
   try {
@@ -47,7 +48,8 @@ export async function GET(request: NextRequest) {
 
     const paged = suggestions.slice(from, toExclusive)
     const hasMore = suggestions.length > toExclusive
-    return jsonResponse({ data: paged, page, pageSize: limit, hasMore })
+    const data = await withBannerImages(supabase, paged)
+    return jsonResponse({ data, page, pageSize: limit, hasMore })
   } catch (error: any) {
     if (error.message === 'Unauthorized' || error.message === 'Missing Authorization header') {
       return unauthorizedResponse()

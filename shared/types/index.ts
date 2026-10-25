@@ -84,6 +84,7 @@ export interface UserProfile {
   username: string
   full_name: string
   avatar_url: string | null
+  banner_image?: string | null
   bio: string | null
   country: string | null
   address?: string | null
@@ -122,6 +123,7 @@ export interface MutualFriend {
   username: string
   full_name: string
   avatar_url: string | null
+  banner_image?: string | null
 }
 
 export interface Friend {
@@ -129,6 +131,7 @@ export interface Friend {
   username: string
   full_name: string
   avatar_url?: string
+  banner_image?: string | null
   country?: string
   bio?: string
   friendship_date?: string
@@ -147,6 +150,7 @@ export interface FriendRequest {
     username: string
     full_name: string
     avatar_url?: string
+    banner_image?: string | null
     country?: string
   }
 }

@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
 
     const { data: profiles, error: profError } = await supabase
       .from('profiles')
-      .select('id, username, full_name, avatar_url, country, bio, birthday, status, last_seen')
+      .select('id, username, full_name, avatar_url, banner_image, country, bio, birthday, status, last_seen')
       .in('id', receiverIds)
 
     if (profError) {
@@ -51,6 +51,7 @@ export async function GET(request: NextRequest) {
               username: profile.username,
               full_name: profile.full_name,
               avatar_url: profile.avatar_url,
+              banner_image: profile.banner_image ?? null,
               country: profile.country,
               bio: profile.bio,
               birthday: profile.birthday,

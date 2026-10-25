@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
 import { getAuthenticatedUser } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
+import { withBannerImages } from '../../_shared/withBannerImages'
 
 export async function GET(
   request: NextRequest,
@@ -32,10 +33,11 @@ export async function GET(
     const list = listData || []
     const paged = list.slice(from, toExclusive)
     const count = countData ?? 0
+    const data = await withBannerImages(supabase, paged)
 
     return jsonResponse({
       count,
-      data: paged,
+      data,
       page,
       pageSize: limit,
       hasMore: count > toExclusive,

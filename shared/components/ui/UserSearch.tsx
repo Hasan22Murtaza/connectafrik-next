@@ -9,6 +9,7 @@ interface SearchResult {
   username: string
   full_name: string
   avatar_url: string | null
+  banner_image?: string | null
   country: string | null
   mutual_friends_count?: number
   is_friend?: boolean
