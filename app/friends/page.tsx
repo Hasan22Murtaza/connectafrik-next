@@ -6,6 +6,7 @@ import { apiClient } from "@/lib/api-client";
 import { FriendsGridShimmer, useShimmerCount } from "@/shared/components/ui/ShimmerLoaders";
 import { Friend, FriendRequest } from "@/shared/types";
 import FriendsSidebar, { type FriendsSection } from "@/features/social/components/FriendsSidebar";
+import FriendProfileCard from "@/features/social/components/FriendProfileCard";
 import {
   Cake,
   ChevronDown,
@@ -19,7 +20,6 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import React, { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
-import Image from "next/image";
 
 
 
@@ -43,21 +43,6 @@ function mapBirthdayProfileToFriend(p: BirthdayProfileRow): Friend {
   };
 }
 
-const handleBackgroundColor = (name = "") => {
-  let hash = 0;
-
-  for (let i = 0; i < name.length; i++) {
-    hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  }
-
-  const hue = Math.abs(hash) % 360;
-
-  return {
-    backgroundColor: `hsl(${hue}, 40%, 90%)`,
-    color: `hsl(${hue}, 40%, 20%)`,
-  };
-};
-
 type Section = FriendsSection;
 type RequestsView = "received" | "pending";
 const FRIENDS_SECTIONS: Section[] = ["home", "requests", "suggestions", "all", "birthdays"];
@@ -74,6 +59,21 @@ type SentFriendRequest = {
     avatar_url?: string | null;
     banner_image?: string | null;
   } | null;
+};
+
+type FriendSuggestion = {
+  user_id: string;
+  username: string;
+  full_name: string;
+  avatar_url: string | null;
+  banner_image?: string | null;
+  mutual_friends_count: number;
+  mutual_friends?: Array<{
+    user_id: string;
+    username: string;
+    full_name: string;
+    avatar_url: string | null;
+  }>;
 };
 
 function parseFriendsSection(tab: string | null): Section | null {
@@ -141,44 +141,105 @@ function SentRequestCard({
   const userId = request.receiver_id || profile?.id || "";
 
   return (
-    <div className="bg-surface rounded-lg shadow-card overflow-hidden hover:shadow-md transition-shadow">
-      <Link href={`/user/${userId}`} className="block cursor-pointer">
-        <div className="w-full aspect-square bg-surface-secondary relative">
+    <FriendProfileCard
+      userId={userId}
+      fullName={profile?.full_name}
+      username={profile?.username}
+      avatarUrl={profile?.avatar_url}
+      bannerImage={profile?.banner_image}
+      relationshipText="Request sent"
+    >
+      <button
+        onClick={onCancel}
+        disabled={cancelling}
+        className="w-full rounded-full border border-border px-4 py-2.5 text-sm font-semibold text-content-secondary transition-colors hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        {cancelling ? "Cancelling..." : "Cancel request"}
+      </button>
+    </FriendProfileCard>
+  );
+}
 
-          <div
-            style={handleBackgroundColor(profile?.full_name)}
-            className={`w-full h-full flex items-center justify-center text-4xl font-semibold text-primary-600  `}>
-            {profile?.full_name?.slice(0, 2)?.toUpperCase() || "U"}
-          </div>
+function ReceivedRequestCard({
+  request,
+  onAccept,
+  onDecline,
+}: {
+  request: FriendRequest & { mutualFriendsCount?: number };
+  onAccept: () => void;
+  onDecline: () => void;
+}) {
+  const profile = request.requester;
+  const relationshipText = request.mutualFriendsCount
+    ? `${request.mutualFriendsCount} mutual ${request.mutualFriendsCount === 1 ? "friend" : "friends"}`
+    : "Wants to connect with you";
 
-          {profile?.avatar_url && (
-            <img
-              src={profile.avatar_url}
-              alt={profile?.full_name || "User"}
-              onError={(e) => {
-                e.currentTarget.style.display = "none";
-              }}
-              className="absolute inset-0 w-full h-full object-cover"
-            />
-          )}
-        </div>
-      </Link>
-      <div className="p-3">
-        <Link href={`/user/${userId}`} className="block cursor-pointer">
-          <h3 className="font-semibold text-content text-sm mb-1 line-clamp-1 hover:text-primary-600 transition-colors">
-            {profile?.full_name || "Unknown User"}
-          </h3>
-        </Link>
-        <p className="text-xs text-content-secondary mb-3">Request sent</p>
+  return (
+    <FriendProfileCard
+      userId={request.requester_id}
+      fullName={profile?.full_name}
+      username={profile?.username}
+      avatarUrl={profile?.avatar_url}
+      bannerImage={profile?.banner_image}
+      relationshipText={relationshipText}
+    >
+      <div className="flex gap-2">
         <button
-          onClick={onCancel}
-          disabled={cancelling}
-          className="w-full btn-secondary text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+          type="button"
+          onClick={onAccept}
+          className="flex-1 rounded-full bg-[#ff6900] px-3 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#e85f00]"
         >
-          {cancelling ? "Cancelling..." : "Cancel request"}
+          Confirm
+        </button>
+        <button
+          type="button"
+          onClick={onDecline}
+          className="flex-1 rounded-full border border-border px-3 py-2.5 text-sm font-semibold text-content-secondary transition-colors hover:bg-surface-hover"
+        >
+          Delete
         </button>
       </div>
-    </div>
+    </FriendProfileCard>
+  );
+}
+
+function SuggestionCard({
+  suggestion,
+  sending,
+  onSend,
+}: {
+  suggestion: FriendSuggestion;
+  sending: boolean;
+  onSend: () => void;
+}) {
+  const relationshipText = suggestion.mutual_friends_count > 0
+    ? `${suggestion.mutual_friends_count} mutual ${suggestion.mutual_friends_count === 1 ? "friend" : "friends"}`
+    : "Suggested for you";
+
+  return (
+    <FriendProfileCard
+      userId={suggestion.user_id}
+      fullName={suggestion.full_name}
+      username={suggestion.username}
+      avatarUrl={suggestion.avatar_url}
+      bannerImage={suggestion.banner_image}
+      relationshipText={relationshipText}
+    >
+      <button
+        type="button"
+        onClick={onSend}
+        disabled={sending}
+        className="flex w-full items-center justify-center gap-2 rounded-full bg-[#ff6900] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-[#e85f00] hover:shadow-md active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        {sending ? "Sending..." : "Link up"}
+      </button>
+      <Link
+        href={`/user/${suggestion.user_id}`}
+        className="mt-2.5 flex w-full items-center justify-center rounded-full bg-[#eef2ff] px-4 py-2.5 text-sm font-medium text-slate-700 transition-colors hover:bg-[#e0e7ff] dark:bg-white/10 dark:text-content dark:hover:bg-white/15"
+      >
+        View Profile
+      </Link>
+    </FriendProfileCard>
   );
 }
 
@@ -193,20 +254,7 @@ const FriendsPageContent: React.FC = () => {
   const [sentLoading, setSentLoading] = useState(false);
   const [requestsView, setRequestsView] = useState<RequestsView>("received");
   const [cancellingRequests, setCancellingRequests] = useState<Set<string>>(new Set());
-  const [suggestions, setSuggestions] = useState<Array<{
-    user_id: string;
-    username: string;
-    full_name: string;
-    avatar_url: string | null;
-    banner_image?: string | null;
-    mutual_friends_count: number;
-    mutual_friends?: Array<{
-      user_id: string;
-      username: string;
-      full_name: string;
-      avatar_url: string | null;
-    }>;
-  }>>([]);
+  const [suggestions, setSuggestions] = useState<FriendSuggestion[]>([]);
   const [loading, setLoading] = useState(true);
   const [friendsLoading, setFriendsLoading] = useState(false);
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
@@ -707,66 +755,12 @@ const FriendsPageContent: React.FC = () => {
                     <>
                       <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 2xl:grid-cols-6 gap-4">
                         {requests.slice(0, requestsDisplayLimit).map((request) => (
-                          <div
+                          <ReceivedRequestCard
                             key={request.id}
-                            className="bg-surface rounded-lg shadow-card overflow-hidden hover:shadow-md transition-shadow"
-                          >
-                            {/* Profile Image */}
-                            <Link href={`/user/${request.requester_id || ''}`} className="block cursor-pointer">
-                              <div className="w-full aspect-square bg-surface-secondary relative">
-                                <div className="w-full h-full flex items-center justify-center text-4xl font-bold text-primary-600 bg-primary-100">
-                                  {request.requester?.full_name?.charAt(0)?.toUpperCase() || "U"}
-                                </div>
-
-                                {request.requester?.avatar_url && (
-                                  <img
-                                    src={request.requester.avatar_url}
-                                    alt={request.requester.full_name || "User"}
-                                    onLoad={(e) => {
-                                      e.currentTarget.style.display = "block";
-                                    }}
-                                    onError={(e) => {
-                                      e.currentTarget.style.display = "none";
-                                    }}
-                                    className="absolute inset-0 w-full h-full object-cover"
-                                  />
-                                )}
-                              </div>
-                            </Link>
-
-                            {/* Content */}
-                            <div className="p-3">
-                              <Link href={`/user/${request.requester_id || ''}`} className="block cursor-pointer">
-                                <h3 className="font-semibold text-content text-sm mb-1 line-clamp-1 hover:text-primary-600 transition-colors">
-                                  {request.requester?.full_name || "Unknown User"}
-                                </h3>
-                              </Link>
-
-                              {/* Mutual Friends */}
-                              {request.mutualFriendsCount !== undefined && request.mutualFriendsCount > 0 && (
-                                <div className="flex items-center space-x-1.5 text-xs text-content-secondary mb-1">
-
-                                  <span>{request.mutualFriendsCount} mutual {request.mutualFriendsCount === 1 ? 'friend' : 'friends'}</span>
-                                </div>
-                              )}
-
-                              {/* Action Buttons */}
-                              <div className="flex gap-2 items-center flex-wrap">
-                                <button
-                                  onClick={() => handleAcceptRequest(request.id)}
-                                  className="flex-1 btn-sm-primary text-sm"
-                                >
-                                  Confirm
-                                </button>
-                                <button
-                                  onClick={() => handleDeclineRequest(request.id)}
-                                  className="flex-1 btn-secondary text-sm"
-                                >
-                                  Delete
-                                </button>
-                              </div>
-                            </div>
-                          </div>
+                            request={request}
+                            onAccept={() => handleAcceptRequest(request.id)}
+                            onDecline={() => handleDeclineRequest(request.id)}
+                          />
                         ))}
                       </div>
                       {requests.length > requestsDisplayLimit && (
@@ -811,128 +805,14 @@ const FriendsPageContent: React.FC = () => {
                 ) : suggestions.length > 0 ? (
                   <>
                     <div className="grid grid-cols-2 gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
-                      {suggestions.slice(0, suggestionsDisplayLimit).map((suggestion) => {
-                        const fullName = suggestion.full_name || "Janet Afua Kpattey";
-                        const username = suggestion.username
-                          ? `@${suggestion.username.replace(/^@/, "")}`
-                          : "@user";
-                        const initials =
-                          suggestion.full_name?.trim().split(/\s+/).slice(0, 2).map((n) => n[0]).join("").toUpperCase() || "U";
-
-                        return (
-                          <div
-                            key={suggestion.user_id}
-                            className="group relative overflow-hidden rounded-2xl border border-black/5 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl dark:border-white/10 dark:bg-surface"
-                          >
-                            {/* Cover image */}
-                            <Link
-                              href={`/user/${suggestion.user_id || ""}`}
-                              className="relative block aspect-[1.8/1] overflow-hidden bg-gradient-to-br from-orange-200 via-amber-100 to-orange-300"
-                            >
-                              {suggestion.banner_image ? (
-                                <img
-                                  src={suggestion.banner_image}
-                                  alt=""
-                                  onError={(e) => {
-                                    e.currentTarget.style.display = "none";
-                                  }}
-                                  className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                                />
-                              ) : (
-                                <div className="flex h-full w-full ">
-                                  <Image
-                                    src="/assets/images/no-cover.svg"
-                                    alt="Cover image"
-                                    width={1200}
-                                    height={400}
-                                    className="h-auto w-full object-cover"
-                                  />
-                                </div>
-                              )}
-                              <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
-                            </Link>
-
-                            {/* Avatar */}
-                            <div className="relative z-10 -mt-7 ml-4 flex h-14 w-14 items-center justify-center overflow-hidden rounded-full border-[3px] border-white bg-orange-100 shadow-md dark:border-surface">
-                              <span className="text-lg font-bold text-orange-700">
-                                {initials}
-                              </span>
-                              {suggestion.avatar_url && (
-                                <img
-                                  src={suggestion.avatar_url}
-                                  alt={fullName}
-                                  onError={(e) => {
-                                    e.currentTarget.style.display = "none";
-                                  }}
-                                  className="absolute inset-0 h-full w-full rounded-full object-cover"
-                                />
-                              )}
-                            </div>
-
-                            {/* User details */}
-                            <div className="px-4 pb-4 pt-2">
-                              <Link href={`/user/${suggestion.user_id || ""}`}>
-                                <h3 className="truncate text-sm font-bold text-content transition-colors hover:text-orange-500">
-                                  {fullName}
-                                </h3>
-                              </Link>
-
-                              <p className="mt-0.5 truncate text-xs text-content-secondary">
-                                {username}
-                              </p>
-
-                              {/* Mutual friends */}
-                              <div className="mt-3 mb-4 flex min-h-5 items-center gap-2">
-                                <div className="flex -space-x-1.5">
-                                  <span className="h-4 w-4 rounded-full border-2 border-white bg-gray-200 dark:border-surface" />
-                                  <span className="h-4 w-4 rounded-full border-2 border-white bg-orange-300 dark:border-surface" />
-                                </div>
-                                <span className="text-xs text-content-secondary">
-                                  {suggestion.mutual_friends_count > 0
-                                    ? `${suggestion.mutual_friends_count} mutual ${suggestion.mutual_friends_count === 1 ? "friend" : "friends"}`
-                                    : "Suggested for you"}
-                                </span>
-                              </div>
-
-                              {/* Link up */}
-                              <button
-                                type="button"
-                                onClick={() => handleSendFriendRequest(suggestion.user_id)}
-                                disabled={sendingRequests.has(suggestion.user_id)}
-                                className="flex w-full items-center justify-center gap-2 rounded-full bg-[#ff6900] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-[#e85f00] hover:shadow-md active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
-                              >
-                                {sendingRequests.has(suggestion.user_id) ? (
-                                  "Sending..."
-                                ) : (
-                                  <>
-                                    <svg
-                                      viewBox="0 0 24 24"
-                                      fill="none"
-                                      stroke="currentColor"
-                                      strokeWidth="2"
-                                      className="h-4 w-4"
-                                      aria-hidden="true"
-                                    >
-                                      <path d="M16 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                                      <circle cx="10" cy="7" r="4" />
-                                      <path d="M20 8v6m-3-3h6" />
-                                    </svg>
-                                    Link up
-                                  </>
-                                )}
-                              </button>
-
-                              {/* View profile */}
-                              <Link
-                                href={`/user/${suggestion.user_id || ""}`}
-                                className="mt-2.5 flex w-full items-center justify-center rounded-full bg-[#eef2ff] px-4 py-2.5 text-sm font-medium text-slate-700 transition-colors hover:bg-[#e0e7ff] dark:bg-white/10 dark:text-content dark:hover:bg-white/15"
-                              >
-                                View Profile
-                              </Link>
-                            </div>
-                          </div>
-                        );
-                      })}
+                      {suggestions.slice(0, suggestionsDisplayLimit).map((suggestion) => (
+                        <SuggestionCard
+                          key={suggestion.user_id}
+                          suggestion={suggestion}
+                          sending={sendingRequests.has(suggestion.user_id)}
+                          onSend={() => handleSendFriendRequest(suggestion.user_id)}
+                        />
+                      ))}
                     </div>
                     {suggestions.length > suggestionsDisplayLimit && (
                       <div className="flex justify-center mt-6">
@@ -1006,62 +886,12 @@ const FriendsPageContent: React.FC = () => {
               ) : requests.length > 0 ? (
                 <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 2xl:grid-cols-6 gap-4">
                   {requests.map((request) => (
-                    <div
+                    <ReceivedRequestCard
                       key={request.id}
-                      className="bg-surface rounded-lg shadow-card overflow-hidden hover:shadow-md transition-shadow"
-                    >
-                      {/* Profile Image */}
-                      <Link href={`/user/${request.requester_id || ''}`} className="block cursor-pointer">
-                        <div className="w-full aspect-square bg-surface-secondary relative">
-                          {request.requester?.avatar_url ? (
-                            <img
-                              src={request.requester.avatar_url}
-                              alt={request.requester.full_name}
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <div
-                              style={handleBackgroundColor(request.requester?.full_name)}
-                              className={`w-full h-full flex items-center justify-center text-4xl font-semibold text-primary-600  `}>
-                              {request.requester?.full_name?.slice(0, 2)?.toUpperCase() || "U"}
-                            </div>
-                          )}
-                        </div>
-                      </Link>
-
-                      {/* Content */}
-                      <div className="p-3">
-                        <Link href={`/user/${request.requester_id || ''}`} className="block cursor-pointer">
-                          <h3 className="font-semibold text-content text-sm mb-1 line-clamp-1 hover:text-primary-600 transition-colors">
-                            {request.requester?.full_name || "Unknown User"}
-                          </h3>
-                        </Link>
-
-                        {/* Mutual Friends */}
-                        {request.mutualFriendsCount !== undefined && request.mutualFriendsCount > 0 && (
-                          <div className="flex items-center space-x-1.5 mb-2 text-xs text-content-secondary ">
-
-                            <span>{request.mutualFriendsCount} mutual {request.mutualFriendsCount === 1 ? 'friend' : 'friends'}</span>
-                          </div>
-                        )}
-
-                        {/* Action Buttons */}
-                        <div className="flex gap-2 items-center">
-                          <button
-                            onClick={() => handleAcceptRequest(request.id)}
-                            className="w-full btn-sm-primary text-sm"
-                          >
-                            Confirm
-                          </button>
-                          <button
-                            onClick={() => handleDeclineRequest(request.id)}
-                            className="w-full btn-secondary text-sm"
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </div>
-                    </div>
+                      request={request}
+                      onAccept={() => handleAcceptRequest(request.id)}
+                      onDecline={() => handleDeclineRequest(request.id)}
+                    />
                   ))}
                 </div>
               ) : (
@@ -1097,52 +927,22 @@ const FriendsPageContent: React.FC = () => {
               ) : filteredFriends.length > 0 ? (
                 <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
                   {filteredFriends.map((friend) => (
-                    <div
+                    <FriendProfileCard
                       key={friend.id}
-                      className="bg-surface rounded-lg shadow-card overflow-hidden hover:shadow-md transition-shadow"
+                      userId={friend.id}
+                      fullName={friend.full_name}
+                      username={friend.username}
+                      avatarUrl={friend.avatar_url}
+                      bannerImage={friend.banner_image}
+                      relationshipText={friend.country}
                     >
-                      {/* Profile Image */}
-                      <Link href={`/user/${friend.id || ''}`} className="block cursor-pointer">
-                        <div className="w-full aspect-square bg-surface-secondary relative">
-                          {friend.avatar_url ? (
-                            <img
-                              src={friend.avatar_url}
-                              alt={friend.full_name}
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center text-4xl font-bold text-primary-600 bg-primary-100">
-                              {friend.full_name?.charAt(0) || "U"}
-                            </div>
-                          )}
-                        </div>
+                      <Link
+                        href={`/user/${friend.id}`}
+                        className="flex w-full items-center justify-center rounded-full bg-[#ff6900] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#e85f00]"
+                      >
+                        View Profile
                       </Link>
-
-                      {/* Content */}
-                      <div className="p-4">
-                        <Link href={`/user/${friend.id || ''}`} className="block cursor-pointer">
-                          <h3 className="font-semibold text-content text-sm mb-1 line-clamp-1 hover:text-primary-600 transition-colors">
-                            {friend.full_name || "Unknown User"}
-                          </h3>
-                        </Link>
-                        <p className="text-xs text-content-secondary mb-1 line-clamp-1">
-                          @{friend.username}
-                        </p>
-                        {friend.country && (
-                          <p className="text-xs text-content-tertiary mb-4 line-clamp-1">
-                            {friend.country}
-                          </p>
-                        )}
-
-                        {/* Action Button */}
-                        <button
-                          onClick={() => router.push(`/user/${friend.id}`)}
-                          className="w-full btn-sm-primary text-sm"
-                        >
-                          View Profile
-                        </button>
-                      </div>
-                    </div>
+                    </FriendProfileCard>
                   ))}
                 </div>
               ) : (
@@ -1182,78 +982,12 @@ const FriendsPageContent: React.FC = () => {
               ) : filteredSuggestions.length > 0 ? (
                 <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
                   {filteredSuggestions.map((suggestion) => (
-                    <div
+                    <SuggestionCard
                       key={suggestion.user_id}
-                      className="bg-surface rounded-lg shadow-card overflow-hidden hover:shadow-md transition-shadow"
-                    >
-                      {/* Profile Image */}
-                      <Link href={`/user/${suggestion.user_id || ''}`} className="block cursor-pointer">
-                        <div className="w-full aspect-square bg-surface-secondary relative">
-                          <div
-                            style={handleBackgroundColor(suggestion.full_name)}
-                            className={`w-full h-full flex items-center justify-center text-4xl font-semibold text-primary-600  `}>
-                            {suggestion.full_name?.slice(0, 2)?.toUpperCase() || "U"}
-                          </div>
-
-                          {suggestion.avatar_url && (
-                            <img
-                              src={suggestion.avatar_url}
-                              alt={suggestion.full_name || "User"}
-                              onError={(e) => {
-                                e.currentTarget.style.display = "none";
-                              }}
-                              className="absolute inset-0 w-full h-full object-cover"
-                            />
-                          )}
-                        </div>
-                      </Link>
-
-                      {/* Content */}
-                      <div className="p-4">
-                        <Link href={`/user/${suggestion.user_id || ''}`} className="block cursor-pointer">
-                          <h3 className="font-semibold text-content text-sm mb-1 line-clamp-1 hover:text-primary-600 transition-colors">
-                            {suggestion.full_name || "Unknown User"}
-                          </h3>
-                        </Link>
-
-                        {/* Mutual Friends */}
-                        {suggestion.mutual_friends_count > 0 && (
-                          <div className="flex items-center gap-1.5 text-xs text-content-secondary mb-4">
-                            {(suggestion.mutual_friends?.length ?? 0) > 0 && (
-                              <div className="flex -space-x-1.5 shrink-0">
-                                {suggestion.mutual_friends!.slice(0, 3).map((f) => (
-                                  <div
-                                    key={f.user_id}
-                                    className="w-5 h-5 rounded-full border border-white overflow-hidden bg-surface-tertiary"
-                                    title={f.full_name}
-                                  >
-                                    {f.avatar_url ? (
-                                      <img src={f.avatar_url} alt={f.full_name} className="w-full h-full object-cover" />
-                                    ) : (
-                                      <div className="w-full h-full flex items-center justify-center">
-                                        <span className="text-[8px] font-semibold text-content-secondary">
-                                          {f.full_name?.charAt(0)?.toUpperCase() || "?"}
-                                        </span>
-                                      </div>
-                                    )}
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                            <span>{suggestion.mutual_friends_count} mutual {suggestion.mutual_friends_count === 1 ? 'friend' : 'friends'}</span>
-                          </div>
-                        )}
-
-                        {/* Action Button */}
-                        <button
-                          onClick={() => handleSendFriendRequest(suggestion.user_id)}
-                          disabled={sendingRequests.has(suggestion.user_id)}
-                          className="w-full btn-sm-primary text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          {sendingRequests.has(suggestion.user_id) ? "Sending..." : "Link up"}
-                        </button>
-                      </div>
-                    </div>
+                      suggestion={suggestion}
+                      sending={sendingRequests.has(suggestion.user_id)}
+                      onSend={() => handleSendFriendRequest(suggestion.user_id)}
+                    />
                   ))}
                 </div>
               ) : (

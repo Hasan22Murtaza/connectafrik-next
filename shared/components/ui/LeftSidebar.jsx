@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useSpaceNavCounts } from "@/shared/hooks/useSpaceNavCounts";
 import { useHeaderInboxCounts } from "@/shared/hooks/useHeaderInboxCounts";
+import { UserRoundGroup } from "@/shared/icons";
 import {
   Bookmark,
   MessageCircle,
@@ -15,7 +16,6 @@ import {
   PanelLeft,
   Check,
   UsersRound,
-  UserG
 } from "lucide-react";
 
 
@@ -41,7 +41,7 @@ const shortcuts = [
   { name: "Feed", to: "/feed", icon: Home },
   { name: "Reels", to: "/reels", icon: Video },
   { name: "Friends", to: "/friends", icon: UsersRound },
-  { name: "Groups", to: "/groups", icon: UsersRound },
+  { name: "Groups", to: "/groups", icon: UserRoundGroup },
   { name: "Messages", to: "/chat", icon: MessageCircle, badgeKey: "chat" },
   { name: "Calls", to: "/calls", icon: Phone, badgeKey: "calls" },
   { name: "TradeHub", to: "/marketplace", icon: Store },

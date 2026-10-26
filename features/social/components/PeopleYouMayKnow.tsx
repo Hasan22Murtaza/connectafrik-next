@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { UserPlus, Users, ChevronLeft, ChevronRight, X, MoreHorizontal } from '@/shared/icons';
 import { toast } from 'react-hot-toast';
 import UserSearch from '@/shared/components/ui/UserSearch';
+import FriendProfileCard from './FriendProfileCard';
 
 interface Recommendation {
   user_id: string;
@@ -187,84 +188,46 @@ export const PeopleYouMayKnow: React.FC = () => {
             className="flex gap-3 overflow-x-auto scrollbar-hide scroll-smooth px-4 pt-1 pb-3"
           >
             {visibleRecommendations.map((rec) => (
-              <div
+              <FriendProfileCard
                 key={rec.user_id}
-                className="w-[168px] shrink-0 rounded-xl border border-border bg-surface overflow-hidden shadow-sm"
-              >
-                <div className="relative aspect-square bg-surface-secondary">
-                  {rec.avatar_url ? (
-                    <img
-                      src={rec.avatar_url}
-                      alt=""
-                      className="absolute inset-0 h-full w-full object-cover"
-                    />
-                  ) : (
-                    <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-primary-100 to-primary-200">
-                      <span className="text-3xl font-semibold text-orange-500">
-                        {rec.full_name.charAt(0).toUpperCase()}
-                      </span>
-                    </div>
-                  )}
+                userId={rec.user_id}
+                fullName={rec.full_name}
+                username={rec.username}
+                avatarUrl={rec.avatar_url}
+                bannerImage={rec.banner_image}
+                relationshipText={
+                  rec.mutual_friends_count > 0
+                    ? `${rec.mutual_friends_count} mutual ${rec.mutual_friends_count === 1 ? 'friend' : 'friends'}`
+                    : 'Suggested for you'
+                }
+                className="w-[220px] shrink-0"
+                coverAction={
                   <button
                     type="button"
                     onClick={() => handleDismiss(rec.user_id)}
-                    className="absolute top-2 right-2 flex h-7 w-7 items-center justify-center rounded-full bg-gray-800/55 text-white hover:bg-gray-900/65 transition-colors"
+                    className="flex h-7 w-7 items-center justify-center rounded-full bg-gray-800/55 text-white transition-colors hover:bg-gray-900/65"
                     aria-label={`Dismiss ${rec.full_name}`}
                   >
-                    <X className="w-4 h-4" />
+                    <X className="h-4 w-4" />
                   </button>
-                </div>
-                <div className="p-3 pt-2.5">
-                  <p className="font-semibold text-sm text-[#1c1e21] text-center line-clamp-2 min-h-[2.5rem] leading-tight">
-                    {rec.full_name}
-                  </p>
-                  {rec.mutual_friends_count > 0 ? (
-                    <div className="mt-1.5 flex items-center justify-center gap-1.5 px-0.5">
-                      {(rec.mutual_friends?.length ?? 0) > 0 && (
-                        <div className="flex -space-x-1.5 shrink-0">
-                          {rec.mutual_friends!.slice(0, 3).map((f) => (
-                            <div
-                              key={f.user_id}
-                              className="w-5 h-5 rounded-full border border-white overflow-hidden bg-surface-tertiary"
-                              title={f.full_name}
-                            >
-                              {f.avatar_url ? (
-                                <img src={f.avatar_url} alt={f.full_name} className="w-full h-full object-cover" />
-                              ) : (
-                                <div className="w-full h-full flex items-center justify-center">
-                                  <span className="text-[8px] font-semibold text-content-secondary">
-                                    {f.full_name?.charAt(0)?.toUpperCase() || '?'}
-                                  </span>
-                                </div>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                      <p className="text-xs text-content-secondary truncate">
-                        {rec.mutual_friends_count} mutual {rec.mutual_friends_count === 1 ? 'friend' : 'friends'}
-                      </p>
-                    </div>
+                }
+              >
+                <button
+                  type="button"
+                  onClick={() => handleSendRequest(rec.user_id)}
+                  disabled={sendingRequests.has(rec.user_id)}
+                  className="flex w-full items-center justify-center gap-1.5 rounded-full bg-[#ff6900] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#e85f00] disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {sendingRequests.has(rec.user_id) ? (
+                    'Sending…'
                   ) : (
-                    <p className="mt-1.5 text-xs text-content-tertiary text-center">Suggested for you</p>
+                    <>
+                      <UserPlus className="h-4 w-4 shrink-0" />
+                      Link Up
+                    </>
                   )}
-                  <button
-                    type="button"
-                    onClick={() => handleSendRequest(rec.user_id)}
-                    disabled={sendingRequests.has(rec.user_id)}
-                    className="mt-2.5 flex w-full items-center justify-center gap-1.5 rounded-lg border border-[var(--primary-200)] bg-primary-50 py-2 text-sm font-semibold text-primary-600 transition-colors hover:bg-[var(--primary-100)] disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    {sendingRequests.has(rec.user_id) ? (
-                      'Sending…'
-                    ) : (
-                      <>
-                        <UserPlus className="h-4 w-4 shrink-0" />
-                        Link Up
-                      </>
-                    )}
-                  </button>
-                </div>
-              </div>
+                </button>
+              </FriendProfileCard>
             ))}
           </div>
         </div>
