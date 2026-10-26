@@ -14,6 +14,7 @@ export interface Reel {
   shares_count: number
   views_count: number
   saves_count: number
+  reposts_count?: number
   is_public: boolean
   is_featured: boolean
   is_deleted: boolean
@@ -23,6 +24,7 @@ export interface Reel {
   is_following?: boolean
   is_saved?: boolean
   is_liked?: boolean
+  is_reposted?: boolean
   is_shared?: boolean
   is_viewed?: boolean
   profiles?: {
@@ -103,6 +105,13 @@ export interface ReelSave {
   created_at: string
 }
 
+export interface ReelRepost {
+  id: string
+  user_id: string
+  reel_id: string
+  created_at: string
+}
+
 export interface ReelShare {
   id: string
   user_id: string
@@ -161,6 +170,11 @@ export interface ReelFilters {
   max_duration?: number
   tags?: string[]
   search?: string
+  /** Author profile country (marketplace-style location filter). */
+  country?: string
+  lat?: number
+  lng?: number
+  radius_km?: number
 }
 
 export interface ReelSortOptions {
@@ -187,6 +201,7 @@ export interface ReelPlayerState {
 export interface ReelInteractionState {
   isLiked: boolean
   isSaved: boolean
+  isReposted: boolean
   isFollowing: boolean
   hasViewed: boolean
 }

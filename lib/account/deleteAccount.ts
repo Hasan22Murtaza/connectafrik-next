@@ -45,6 +45,7 @@ export async function deleteUserAccount(
   await ignore(delEq('shares', 'user_id'))
   await ignore(delEq('reel_likes', 'user_id'))
   await ignore(delEq('reel_saves', 'user_id'))
+  await ignore(delEq('reel_reposts', 'user_id'))
   await ignore(delEq('reel_views', 'user_id'))
   await ignore(delEq('reel_comment_likes', 'user_id'))
   await ignore(delEq('story_views', 'user_id'))
@@ -124,6 +125,10 @@ export async function deleteUserAccount(
         run: () => serviceClient.from('reel_saves').delete().in('reel_id', reelIds),
       })
       await ignore({
+        label: 'delete reel_reposts on own reels',
+        run: () => serviceClient.from('reel_reposts').delete().in('reel_id', reelIds),
+      })
+      await ignore({
         label: 'delete reel_views on own reels',
         run: () => serviceClient.from('reel_views').delete().in('reel_id', reelIds),
       })
@@ -148,6 +153,7 @@ export async function deleteUserAccount(
   await ignore(delEq('reel_comments', 'user_id'))
   await ignore(delEq('reel_likes', 'user_id'))
   await ignore(delEq('reel_saves', 'user_id'))
+  await ignore(delEq('reel_reposts', 'user_id'))
   await ignore(delEq('reel_shares', 'user_id'))
   await ignore(delEq('reel_views', 'user_id'))
   await ignore(delEq('reel_reactions', 'user_id'))

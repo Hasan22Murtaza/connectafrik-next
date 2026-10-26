@@ -13,6 +13,12 @@ interface Recommendation {
   avatar_url: string | null;
   banner_image?: string | null;
   mutual_friends_count: number;
+  mutual_friends?: Array<{
+    user_id: string;
+    username: string;
+    full_name: string;
+    avatar_url: string | null;
+  }>;
 }
 
 export const PeopleYouMayKnow: React.FC = () => {
@@ -213,9 +219,32 @@ export const PeopleYouMayKnow: React.FC = () => {
                     {rec.full_name}
                   </p>
                   {rec.mutual_friends_count > 0 ? (
-                    <p className="mt-1.5 text-xs text-content-secondary text-center truncate px-0.5">
-                      {rec.mutual_friends_count} mutual {rec.mutual_friends_count === 1 ? 'friend' : 'friends'}
-                    </p>
+                    <div className="mt-1.5 flex items-center justify-center gap-1.5 px-0.5">
+                      {(rec.mutual_friends?.length ?? 0) > 0 && (
+                        <div className="flex -space-x-1.5 shrink-0">
+                          {rec.mutual_friends!.slice(0, 3).map((f) => (
+                            <div
+                              key={f.user_id}
+                              className="w-5 h-5 rounded-full border border-white overflow-hidden bg-surface-tertiary"
+                              title={f.full_name}
+                            >
+                              {f.avatar_url ? (
+                                <img src={f.avatar_url} alt={f.full_name} className="w-full h-full object-cover" />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center">
+                                  <span className="text-[8px] font-semibold text-content-secondary">
+                                    {f.full_name?.charAt(0)?.toUpperCase() || '?'}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      <p className="text-xs text-content-secondary truncate">
+                        {rec.mutual_friends_count} mutual {rec.mutual_friends_count === 1 ? 'friend' : 'friends'}
+                      </p>
+                    </div>
                   ) : (
                     <p className="mt-1.5 text-xs text-content-tertiary text-center">Suggested for you</p>
                   )}

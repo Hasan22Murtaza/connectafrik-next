@@ -115,9 +115,9 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
     const { searchParams } = new URL(request.url)
     const tab = parseTab(searchParams.get('tab') ?? searchParams.get('type'))
-    const parsedLimit = parseInt(searchParams.get('limit') || '60', 10)
+    const parsedLimit = parseInt(searchParams.get('limit') || '20', 10)
     const parsedPage = parseInt(searchParams.get('page') || '0', 10)
-    const limit = Number.isNaN(parsedLimit) ? 60 : Math.min(Math.max(parsedLimit, 1), 100)
+    const limit = Number.isNaN(parsedLimit) ? 20 : Math.min(Math.max(parsedLimit, 1), 100)
     const page = Number.isNaN(parsedPage) ? 0 : Math.max(parsedPage, 0)
     const from = page * limit
     const to = from + limit - 1

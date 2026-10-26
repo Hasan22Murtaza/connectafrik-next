@@ -11,6 +11,7 @@ import {
   Pencil,
   Trash2,
   MoreVertical,
+  Repeat2,
   ThumbsUp,
 } from '@/shared/icons'
 import { useAuth } from '@/contexts/AuthContext'
@@ -76,7 +77,8 @@ const ReelShortsSlide: React.FC<ReelShortsSlideProps> = ({
   onDelete,
 }) => {
   const { user } = useAuth()
-  const { toggleLike, toggleSave, recordView, shareReel, loading: interactionLoading } = useReelInteractions(reel.id)
+  const { toggleLike, toggleSave, toggleRepost, recordView, shareReel, loading: interactionLoading } =
+    useReelInteractions(reel.id)
 
   const videoRef = useRef<HTMLVideoElement>(null)
   const watchTrackerRef = useRef<VideoWatchTracker | null>(null)
@@ -88,8 +90,10 @@ const ReelShortsSlide: React.FC<ReelShortsSlideProps> = ({
   const [isPlaying, setIsPlaying] = useState(true)
   const [isLiked, setIsLiked] = useState(Boolean(reel.is_liked))
   const [isSaved, setIsSaved] = useState(Boolean(reel.is_saved))
+  const [isReposted, setIsReposted] = useState(Boolean(reel.is_reposted))
   const [likesCount, setLikesCount] = useState(reel.likes_count)
   const [savesCount, setSavesCount] = useState(reel.saves_count ?? 0)
+  const [repostsCount, setRepostsCount] = useState(reel.reposts_count ?? 0)
   const [sharesCount, setSharesCount] = useState(reel.shares_count ?? 0)
   const [showHeartBurst, setShowHeartBurst] = useState(false)
   const [showPlayIcon, setShowPlayIcon] = useState(false)
@@ -251,6 +255,31 @@ const ReelShortsSlide: React.FC<ReelShortsSlideProps> = ({
     }
   }, [user, toggleSave, isSaved, reel.id])
 
+  const handleRepostButton = useCallback(async () => {
+    if (!user) {
+      toast.error('Please sign in to repost reels')
+      return
+    }
+    try {
+      const { success, error } = await toggleRepost()
+      if (!success) {
+        if (error) toast.error(error)
+        return
+      }
+      const wasReposted = isReposted
+      setIsReposted(!wasReposted)
+      setRepostsCount((c) => (wasReposted ? Math.max(0, c - 1) : c + 1))
+      if (!wasReposted) {
+        trackEvent.share(user.id, reel.id, 'reel')
+        toast.success('Reposted')
+      } else {
+        toast.success('Removed repost')
+      }
+    } catch {
+      toast.error('Failed to update repost')
+    }
+  }, [user, toggleRepost, isReposted, reel.id])
+
   const handleVideoAreaTap = useCallback(() => {
     tapCountRef.current += 1
     if (tapCountRef.current === 1) {
@@ -375,6 +404,21 @@ const ReelShortsSlide: React.FC<ReelShortsSlideProps> = ({
             />
           </span>
           <span className={`${labelClass} tabular-nums`}>{formatShortCount(savesCount)}</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => void handleRepostButton()}
+          disabled={interactionLoading}
+          className="flex flex-col items-center gap-0.5 disabled:opacity-60 lg:gap-1"
+          aria-label={isReposted ? 'Undo repost' : 'Repost'}
+        >
+          <span className={actionCircleClass}>
+            <Repeat2
+              className={`${iconSize} ${isReposted ? 'text-emerald-600' : ''}`}
+              strokeWidth={2}
+            />
+          </span>
+          <span className={`${labelClass} tabular-nums`}>{formatShortCount(repostsCount)}</span>
         </button>
         <button
           type="button"

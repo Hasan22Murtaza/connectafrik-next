@@ -48,7 +48,53 @@ export async function GET(request: NextRequest) {
 
     const paged = suggestions.slice(from, toExclusive)
     const hasMore = suggestions.length > toExclusive
-    const data = await withBannerImages(supabase, paged)
+    const withBanners = await withBannerImages(supabase, paged)
+
+    const mutualPreviewByUserId = new Map<
+      string,
+      Array<{ user_id: string; username: string; full_name: string; avatar_url: string | null }>
+    >()
+
+    await Promise.all(
+      withBanners.map(async (suggestion) => {
+        const otherUserId = suggestion.id || suggestion.user_id
+        const mutualCount = Number(
+          (suggestion as { mutual_friends_count?: number }).mutual_friends_count ?? 0
+        )
+        if (typeof otherUserId !== 'string' || mutualCount <= 0) {
+          if (typeof otherUserId === 'string') mutualPreviewByUserId.set(otherUserId, [])
+          return
+        }
+
+        const { data: mutuals } = await supabase.rpc('get_mutual_friends', {
+          user1_id: user.id,
+          user2_id: otherUserId,
+          limit_count: 3,
+        })
+
+        mutualPreviewByUserId.set(
+          otherUserId,
+          (mutuals || []).slice(0, 3).map((m: any) => ({
+            user_id: m.user_id,
+            username: m.username,
+            full_name: m.full_name,
+            avatar_url: m.avatar_url ?? null,
+          }))
+        )
+      })
+    )
+
+    const data = withBanners.map((suggestion) => {
+      const otherUserId = suggestion.id || suggestion.user_id
+      return {
+        ...suggestion,
+        mutual_friends:
+          typeof otherUserId === 'string'
+            ? mutualPreviewByUserId.get(otherUserId) ?? []
+            : [],
+      }
+    })
+
     return jsonResponse({ data, page, pageSize: limit, hasMore })
   } catch (error: any) {
     if (error.message === 'Unauthorized' || error.message === 'Missing Authorization header') {

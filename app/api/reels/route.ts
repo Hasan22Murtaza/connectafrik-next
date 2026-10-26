@@ -7,6 +7,26 @@ const REEL_SELECT = `
   profiles:profiles!reels_author_id_fkey(username, full_name, avatar_url)
 `
 
+const REEL_SELECT_LOCATION = `
+  *,
+  profiles:profiles!reels_author_id_fkey!inner(username, full_name, avatar_url, country)
+`
+
+async function authorIdsMatchingCountry(
+  supabase: ReturnType<typeof createServiceClient>,
+  authorIds: string[],
+  country: string
+): Promise<{ ids: string[]; error: string | null }> {
+  if (authorIds.length === 0) return { ids: [], error: null }
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('id')
+    .in('id', authorIds)
+    .ilike('country', `%${country}%`)
+  if (error) return { ids: [], error: error.message }
+  return { ids: (data ?? []).map((r: { id: string }) => r.id), error: null }
+}
+
 export async function GET(request: NextRequest) {
   try {
     const supabase = createServiceClient()
@@ -39,6 +59,8 @@ export async function GET(request: NextRequest) {
     const tagsParam = searchParams.get('tags')
     const tags = tagsParam ? tagsParam.split(',').map((t) => t.trim()).filter(Boolean) : undefined
     const search = searchParams.get('search') || undefined
+    const country = searchParams.get('country')?.trim() || undefined
+    // lat / lng / radius_km accepted for parity with marketplace; author coords not stored yet
     const sortFieldExplicit = searchParams.has('sort_field')
     let sort_field = searchParams.get('sort_field') || 'created_at'
     const sort_order = searchParams.get('sort_order') || 'desc'
@@ -51,6 +73,7 @@ export async function GET(request: NextRequest) {
     const page = Number.isNaN(parsedPage) ? 0 : Math.max(parsedPage, 0)
     const from = page * limit
     const to = from + limit - 1
+    const reelSelect = country ? REEL_SELECT_LOCATION : REEL_SELECT
 
     if (feed === 'mine' && !userId) {
       return jsonResponse({ data: [], page, pageSize: limit, hasMore: false })
@@ -65,14 +88,22 @@ export async function GET(request: NextRequest) {
         .select('following_id')
         .eq('follower_id', userId)
       if (followsErr) return errorResponse(followsErr.message, 400)
-      const followingIds = [...new Set((followsRows ?? []).map((r: { following_id: string }) => r.following_id))]
+      let followingIds = [...new Set((followsRows ?? []).map((r: { following_id: string }) => r.following_id))]
       if (followingIds.length === 0) {
         return jsonResponse({ data: [], page, pageSize: limit, hasMore: false })
+      }
+      if (country) {
+        const matched = await authorIdsMatchingCountry(supabase, followingIds, country)
+        if (matched.error) return errorResponse(matched.error, 400)
+        followingIds = matched.ids
+        if (followingIds.length === 0) {
+          return jsonResponse({ data: [], page, pageSize: limit, hasMore: false })
+        }
       }
 
       let fq = supabase
         .from('reels')
-        .select(REEL_SELECT, { count: 'exact' })
+        .select(reelSelect, { count: 'exact' })
         .eq('is_deleted', false)
         .eq('is_public', true)
         .in('author_id', followingIds)
@@ -83,6 +114,7 @@ export async function GET(request: NextRequest) {
       if (max_duration != null && max_duration !== '') fq = fq.lte('duration', parseInt(max_duration, 10))
       if (tags && tags.length > 0) fq = fq.overlaps('tags', tags)
       if (search) fq = fq.or(`title.ilike.%${search}%,description.ilike.%${search}%`)
+      if (country) fq = fq.ilike('profiles.country', `%${country}%`)
 
       fq = fq.order(sort_field, { ascending: sort_order === 'asc' }).range(from, to)
       const { data: fData, error: fError } = await fq
@@ -91,6 +123,7 @@ export async function GET(request: NextRequest) {
       let followingSet = new Set<string>()
       let savedSet = new Set<string>()
       let likedSet = new Set<string>()
+      let repostedSet = new Set<string>()
       let sharedSet = new Set<string>()
       let viewedSet = new Set<string>()
       if (userId && reels.length > 0) {
@@ -105,14 +138,16 @@ export async function GET(request: NextRequest) {
           if (followsData) followingSet = new Set(followsData.map((f: { following_id: string }) => f.following_id))
         }
         if (reelIds.length > 0) {
-          const [savesData, likesData, sharesData, viewsData] = await Promise.all([
+          const [savesData, likesData, repostsData, sharesData, viewsData] = await Promise.all([
             supabase.from('reel_saves').select('reel_id').eq('user_id', userId).in('reel_id', reelIds),
             supabase.from('reel_likes').select('reel_id').eq('user_id', userId).in('reel_id', reelIds),
+            supabase.from('reel_reposts').select('reel_id').eq('user_id', userId).in('reel_id', reelIds),
             supabase.from('reel_shares').select('reel_id').eq('user_id', userId).in('reel_id', reelIds),
             supabase.from('reel_views').select('reel_id').eq('user_id', userId).in('reel_id', reelIds),
           ])
           if (savesData.data) savedSet = new Set(savesData.data.map((s: { reel_id: string }) => s.reel_id))
           if (likesData.data) likedSet = new Set(likesData.data.map((s: { reel_id: string }) => s.reel_id))
+          if (repostsData.data) repostedSet = new Set(repostsData.data.map((s: { reel_id: string }) => s.reel_id))
           if (sharesData.data) sharedSet = new Set(sharesData.data.map((s: { reel_id: string }) => s.reel_id))
           if (viewsData.data) viewedSet = new Set(viewsData.data.map((s: { reel_id: string }) => s.reel_id))
         }
@@ -122,6 +157,7 @@ export async function GET(request: NextRequest) {
         is_following: userId && userId !== reel.author_id ? followingSet.has(reel.author_id as string) : false,
         is_saved: userId ? savedSet.has(reel.id as string) : false,
         is_liked: userId ? likedSet.has(reel.id as string) : false,
+        is_reposted: userId ? repostedSet.has(reel.id as string) : false,
         is_shared: userId ? sharedSet.has(reel.id as string) : false,
         is_viewed: userId ? viewedSet.has(reel.id as string) : false,
       }))
@@ -130,7 +166,7 @@ export async function GET(request: NextRequest) {
 
     const viewingOwnReels = !!(userId && author_id && author_id === userId)
 
-    let query = supabase.from('reels').select(REEL_SELECT, { count: 'exact' }).eq('is_deleted', false)
+    let query = supabase.from('reels').select(reelSelect, { count: 'exact' }).eq('is_deleted', false)
 
     if (!viewingOwnReels) {
       query = query.eq('is_public', true)
@@ -143,6 +179,7 @@ export async function GET(request: NextRequest) {
     if (max_duration != null && max_duration !== '') query = query.lte('duration', parseInt(max_duration, 10))
     if (tags && tags.length > 0) query = query.overlaps('tags', tags)
     if (search) query = query.or(`title.ilike.%${search}%,description.ilike.%${search}%`)
+    if (country) query = query.ilike('profiles.country', `%${country}%`)
 
     query = query.order(sort_field, { ascending: sort_order === 'asc' }).range(from, to)
 
@@ -155,6 +192,7 @@ export async function GET(request: NextRequest) {
     let followingSet = new Set<string>()
     let savedSet = new Set<string>()
     let likedSet = new Set<string>()
+    let repostedSet = new Set<string>()
     let sharedSet = new Set<string>()
     let viewedSet = new Set<string>()
     if (userId && reels.length > 0) {
@@ -171,14 +209,16 @@ export async function GET(request: NextRequest) {
         }
       }
       if (reelIds.length > 0) {
-        const [savesData, likesData, sharesData, viewsData] = await Promise.all([
+        const [savesData, likesData, repostsData, sharesData, viewsData] = await Promise.all([
           supabase.from('reel_saves').select('reel_id').eq('user_id', userId).in('reel_id', reelIds),
           supabase.from('reel_likes').select('reel_id').eq('user_id', userId).in('reel_id', reelIds),
+          supabase.from('reel_reposts').select('reel_id').eq('user_id', userId).in('reel_id', reelIds),
           supabase.from('reel_shares').select('reel_id').eq('user_id', userId).in('reel_id', reelIds),
           supabase.from('reel_views').select('reel_id').eq('user_id', userId).in('reel_id', reelIds),
         ])
         if (savesData.data) savedSet = new Set(savesData.data.map((s: any) => s.reel_id))
         if (likesData.data) likedSet = new Set(likesData.data.map((s: any) => s.reel_id))
+        if (repostsData.data) repostedSet = new Set(repostsData.data.map((s: any) => s.reel_id))
         if (sharesData.data) sharedSet = new Set(sharesData.data.map((s: any) => s.reel_id))
         if (viewsData.data) viewedSet = new Set(viewsData.data.map((s: any) => s.reel_id))
       }
@@ -189,6 +229,7 @@ export async function GET(request: NextRequest) {
       is_following: userId && userId !== reel.author_id ? followingSet.has(reel.author_id) : false,
       is_saved: userId ? savedSet.has(reel.id) : false,
       is_liked: userId ? likedSet.has(reel.id) : false,
+      is_reposted: userId ? repostedSet.has(reel.id) : false,
       is_shared: userId ? sharedSet.has(reel.id) : false,
       is_viewed: userId ? viewedSet.has(reel.id) : false,
     }))

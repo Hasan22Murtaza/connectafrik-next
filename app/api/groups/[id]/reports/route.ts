@@ -33,7 +33,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
     const { searchParams } = new URL(request.url)
     const page = parseInt(searchParams.get('page') || '0', 10)
-    const limit = Math.min(Math.max(parseInt(searchParams.get('limit') || '50', 10) || 50, 1), 100)
+    const limit = Math.min(Math.max(parseInt(searchParams.get('limit') || '20', 10) || 20, 1), 100)
     const from = page * limit
     const to = from + limit - 1
     const status = searchParams.get('status') || 'pending'

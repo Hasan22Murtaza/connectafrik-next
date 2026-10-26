@@ -27,7 +27,6 @@ import PostsTab from './components/PostsTab'
 import AboutTab from './components/AboutTab'
 import PhotosTab from './components/PhotosTab'
 import FriendsTab from './components/FriendsTab'
-import ReelsTab from './components/ReelsTab'
 import FriendsSidebar, { type FriendsSection } from '@/features/social/components/FriendsSidebar'
 
 interface PostWithAuthor {
@@ -41,7 +40,7 @@ interface PostWithAuthor {
   isLiked?: boolean
 }
 
-type TabId = 'posts' | 'about' | 'photos' | 'friends' | 'reels'
+type TabId = 'posts' | 'about' | 'photos' | 'friends'
 type FriendStatus = 'none' | 'pending_sent' | 'pending_received' | 'friends'
 type UserProfileResponse = Omit<UserProfileWithVisibility, 'followers_count'> & {
   followers_count?: number | null
@@ -77,7 +76,6 @@ const TABS: { id: TabId; label: string }[] = [
   { id: 'about', label: 'About' },
   { id: 'photos', label: 'Photos' },
   { id: 'friends', label: 'Friends' },
-  { id: 'reels', label: 'Reels' },
 ]
 
 const fmt = (n: number) => {
@@ -197,18 +195,15 @@ const UserProfilePage: React.FC = () => {
   const [posts, setPosts] = useState<PostWithAuthor[]>([])
   const [sidebarPhotos, setSidebarPhotos] = useState<{ url: string; postId: string }[]>([])
   const [tabPhotos, setTabPhotos] = useState<{ url: string; postId: string }[]>([])
-  const [tabReels, setTabReels] = useState<{ url: string; postId: string; content: string; author: PostWithAuthor['author'] }[]>([])
   const [aboutForTab, setAboutForTab] = useState<UserProfileWithVisibility | null>(null)
   const [mutualFriends, setMutualFriends] = useState<MutualFriend[]>([])
   const [mutualFriendsCount, setMutualFriendsCount] = useState(0)
   const [loading, setLoading] = useState(true)
   const [postsTabLoading, setPostsTabLoading] = useState(false)
   const [photosTabLoading, setPhotosTabLoading] = useState(false)
-  const [reelsTabLoading, setReelsTabLoading] = useState(false)
   const [friendsTabLoading, setFriendsTabLoading] = useState(false)
   const [postsTabFetched, setPostsTabFetched] = useState(false)
   const [photosTabFetched, setPhotosTabFetched] = useState(false)
-  const [reelsTabFetched, setReelsTabFetched] = useState(false)
   const [friendsTabFetched, setFriendsTabFetched] = useState(false)
   const [aboutTabFetched, setAboutTabFetched] = useState(false)
   const [isFollowing, setIsFollowing] = useState(false)
@@ -260,14 +255,12 @@ const UserProfilePage: React.FC = () => {
     setPosts([])
     setSidebarPhotos([])
     setTabPhotos([])
-    setTabReels([])
     setAboutForTab(null)
     setUserFriends([])
     setFriendshipStatus('none')
     setFriendRequestId(null)
     setPostsTabFetched(false)
     setPhotosTabFetched(false)
-    setReelsTabFetched(false)
     setFriendsTabFetched(false)
     setAboutTabFetched(false)
   }, [profileIdentifier, profile?.id])
@@ -367,32 +360,6 @@ const UserProfilePage: React.FC = () => {
       return () => { cancelled = true }
     }
 
-    if (activeTab === 'reels') {
-      if (reelsTabFetched) return
-      let cancelled = false
-        ; (async () => {
-          setReelsTabLoading(true)
-          try {
-            const res = await apiClient.get<{
-              data: { url: string; postId: string; content: string; author: PostWithAuthor['author'] }[]
-            }>(`/api/users/${identifierApiPath}/reels`, { postLimit: 200 })
-            if (!cancelled) {
-              setTabReels(res.data || [])
-              setReelsTabFetched(true)
-            }
-          } catch (e) {
-            console.error(e)
-            if (!cancelled) {
-              setTabReels([])
-              setReelsTabFetched(true)
-            }
-          } finally {
-            if (!cancelled) setReelsTabLoading(false)
-          }
-        })()
-      return () => { cancelled = true }
-    }
-
     if (activeTab === 'friends') {
       if (friendsTabFetched) return
       let cancelled = false
@@ -436,7 +403,7 @@ const UserProfilePage: React.FC = () => {
         })()
       return () => { cancelled = true }
     }
-  }, [activeTab, profileIdentifier, identifierApiPath, profile, user?.id, isMutual, postsTabFetched, photosTabFetched, reelsTabFetched, friendsTabFetched, aboutTabFetched])
+  }, [activeTab, profileIdentifier, identifierApiPath, profile, user?.id, isMutual, postsTabFetched, photosTabFetched, friendsTabFetched, aboutTabFetched])
 
   const fetchUserProfile = async () => {
     try {
@@ -613,7 +580,6 @@ const UserProfilePage: React.FC = () => {
       setPosts((p) => p.filter((x) => x.id !== postId))
       setSidebarPhotos((prev) => prev.filter((x) => x.postId !== postId))
       setTabPhotos((prev) => prev.filter((x) => x.postId !== postId))
-      setTabReels((prev) => prev.filter((x) => x.postId !== postId))
       toast.success('Post deleted')
     }
     catch { toast.error('Failed to delete post') }
@@ -844,7 +810,7 @@ const UserProfilePage: React.FC = () => {
 
         <div className="mt-3 sm:mt-4 w-full flex flex-col lg:flex-row gap-0 sm:gap-4">
 
-          <div className={`w-full lg:w-[300px] flex-shrink-0 space-y-2 sm:space-y-4 lg:sticky lg:top-20 lg:self-start ${activeTab === 'posts' ? 'hidden lg:block' : activeTab === 'about' || activeTab === 'photos' || activeTab === 'friends' || activeTab === 'reels' ? 'hidden lg:block' : ''}`}>
+          <div className={`w-full lg:w-[300px] flex-shrink-0 space-y-2 sm:space-y-4 lg:sticky lg:top-20 lg:self-start ${activeTab === 'posts' ? 'hidden lg:block' : activeTab === 'about' || activeTab === 'photos' || activeTab === 'friends' ? 'hidden lg:block' : ''}`}>
             <div className="bg-surface sm:rounded-2xl shadow-card p-4">
               <h2 className="text-base sm:text-lg font-semibold text-content mb-3">Personal details</h2>
               {profile.bio && <p className="text-sm text-content leading-relaxed mb-3  line-clamp-4">{profile.bio}</p>}
@@ -945,16 +911,6 @@ const UserProfilePage: React.FC = () => {
                 </div>
               ) : (
                 <FriendsTab friends={userFriends} isOwnProfile={Boolean(isOwnProfile)} />
-              )
-            )}
-
-            {activeTab === 'reels' && (
-              reelsTabLoading && !reelsTabFetched ? (
-                <div className="bg-surface sm:rounded-2xl shadow-card py-20 flex justify-center">
-                  <Spinner className="w-8 h-8 text-[#F97316]" />
-                </div>
-              ) : (
-                <ReelsTab videos={tabReels} isOwnProfile={Boolean(isOwnProfile)} />
               )
             )}
           </div>

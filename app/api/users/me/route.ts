@@ -18,7 +18,8 @@ function isPlainObject(v: unknown): v is Record<string, unknown> {
 }
 
 /**
- * GET /api/users/me — full `profiles` row for the authenticated user (settings, marketplace bank fields, etc.).
+ * GET /api/users/me — full `profiles` row for the authenticated user (settings, marketplace bank fields, etc.),
+ * plus live posts / reels / saved / friends counts.
  */
 export async function GET(_request: NextRequest) {
   try {
@@ -30,7 +31,55 @@ export async function GET(_request: NextRequest) {
     if (error) return errorResponse(error.message, 400)
     if (!data) return errorResponse('Profile not found', 404)
 
-    return jsonResponse({ data })
+    const [
+      postsCountRes,
+      reelsCountRes,
+      savedPostsCountRes,
+      savedReelsCountRes,
+      friendsCountRes,
+    ] = await Promise.all([
+      serviceClient
+        .from('posts')
+        .select('id', { count: 'exact', head: true })
+        .eq('author_id', user.id)
+        .eq('is_deleted', false),
+      serviceClient
+        .from('reels')
+        .select('id', { count: 'exact', head: true })
+        .eq('author_id', user.id)
+        .eq('is_deleted', false),
+      serviceClient
+        .from('post_saves')
+        .select('post_id', { count: 'exact', head: true })
+        .eq('user_id', user.id),
+      serviceClient
+        .from('reel_saves')
+        .select('reel_id', { count: 'exact', head: true })
+        .eq('user_id', user.id),
+      serviceClient
+        .from('friend_requests')
+        .select('id', { count: 'exact', head: true })
+        .eq('status', 'accepted')
+        .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`),
+    ])
+
+    const posts_count = postsCountRes.count ?? 0
+    const reels_count = reelsCountRes.count ?? 0
+    const saved_posts_count = savedPostsCountRes.count ?? 0
+    const saved_reels_count = savedReelsCountRes.count ?? 0
+    const friends_count = friendsCountRes.count ?? 0
+
+    return jsonResponse({
+      data: {
+        ...data,
+        posts_count,
+        reels_count,
+        saved_posts_count,
+        saved_reels_count,
+        saved_count: saved_posts_count + saved_reels_count,
+        friends_count,
+      },
+    })
   } catch (error: any) {
     if (error?.message === 'Unauthorized' || error?.message === 'Missing Authorization header') {
       return unauthorizedResponse()

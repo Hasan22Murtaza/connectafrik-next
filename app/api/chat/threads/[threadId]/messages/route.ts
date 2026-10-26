@@ -132,9 +132,9 @@ export async function GET(request: NextRequest, context: RouteContext) {
     if (lockedDenial) return lockedDenial
 
     const { searchParams } = new URL(request.url)
-    const parsedLimit = parseInt(searchParams.get('limit') || '50', 10)
+    const parsedLimit = parseInt(searchParams.get('limit') || '20', 10)
     const parsedPage = parseInt(searchParams.get('page') || '0', 10)
-    const limit = Number.isNaN(parsedLimit) ? 50 : Math.min(Math.max(parsedLimit, 1), 100)
+    const limit = Number.isNaN(parsedLimit) ? 20 : Math.min(Math.max(parsedLimit, 1), 100)
     const page = Number.isNaN(parsedPage) ? 0 : Math.max(parsedPage, 0)
     const from = page * limit
     const to = from + limit - 1

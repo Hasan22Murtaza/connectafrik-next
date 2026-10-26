@@ -10,7 +10,7 @@ import { ReelCard } from '@/features/social/components/ReelCard'
 import { ReelsNav } from '@/features/social/components/ReelsNav'
 import { ReelsMainTabs } from '@/features/social/components/ReelsBrowseHeader'
 
-type Mode = 'saved' | 'liked'
+type Mode = 'saved' | 'liked' | 'reposted'
 
 type Props = {
   mode: Mode
@@ -20,6 +20,12 @@ type ListPayload = {
   data: Reel[]
   hasMore?: boolean
   page?: number
+}
+
+const MODE_CONFIG: Record<Mode, { endpoint: string; emptyCopy: string }> = {
+  saved: { endpoint: '/api/reels/saved', emptyCopy: 'No saved reels yet.' },
+  liked: { endpoint: '/api/reels/liked', emptyCopy: 'No liked reels yet.' },
+  reposted: { endpoint: '/api/reels/reposted', emptyCopy: 'No reposted reels yet.' },
 }
 
 export function ReelsLibraryGrid({ mode }: Props) {
@@ -32,9 +38,7 @@ export function ReelsLibraryGrid({ mode }: Props) {
   const sentinelRef = useRef<HTMLDivElement>(null)
   const fetchingRef = useRef(false)
 
-  const endpoint = mode === 'saved' ? '/api/reels/saved' : '/api/reels/liked'
-  const emptyCopy =
-    mode === 'saved' ? 'No saved reels yet.' : 'No liked reels yet.'
+  const { endpoint, emptyCopy } = MODE_CONFIG[mode]
 
   const loadPage = useCallback(
     async (nextPage: number, replace: boolean) => {
@@ -43,7 +47,7 @@ export function ReelsLibraryGrid({ mode }: Props) {
       try {
         if (replace) setLoading(true)
         setError(null)
-        const res = await apiClient.get<ListPayload>(endpoint, { page: nextPage, limit: 24 })
+        const res = await apiClient.get<ListPayload>(endpoint, { page: nextPage, limit: 20 })
         const chunk = res.data || []
         setReels((prev) => (replace ? chunk : [...prev, ...chunk]))
         setHasMore(Boolean(res.hasMore))

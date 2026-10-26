@@ -82,6 +82,13 @@ export interface Profile {
   data_download_requested?: boolean
   /** Chat translate target. `off` is “My language (default)” and leaves messages as written. */
   message_translation_language?: MessageTranslationLanguageCode
+  /** Live counts from GET /api/users/me */
+  posts_count?: number
+  reels_count?: number
+  saved_posts_count?: number
+  saved_reels_count?: number
+  saved_count?: number
+  friends_count?: number
 }
 
 export interface UserProfile {
@@ -105,6 +112,11 @@ export interface UserProfile {
   followers_count: number
   following_count: number
   posts_count: number
+  reels_count?: number
+  saved_posts_count?: number
+  saved_reels_count?: number
+  saved_count?: number
+  friends_count?: number
   created_at: string
 }
 

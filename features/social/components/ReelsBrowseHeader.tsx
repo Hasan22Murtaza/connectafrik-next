@@ -8,6 +8,7 @@ import {
   Bookmark,
   Compass,
   Heart,
+  Repeat2,
   Users,
 } from '@/shared/icons'
 
@@ -53,6 +54,7 @@ export function ReelsMainTabs({
     pathname.startsWith('/reels/explore')
   const followingActive = feed === 'following' || pathname.startsWith('/reels/following')
   const savedActive = pathname.startsWith('/reels/saved')
+  const repostedActive = pathname.startsWith('/reels/reposted')
   const likedActive = pathname.startsWith('/reels/liked')
   const analyticsActive = pathname.startsWith('/reels/analytics')
 
@@ -64,6 +66,7 @@ export function ReelsMainTabs({
       <TabLink active={forYouActive} href="/reels/foryou" label="For you" icon={Compass} />
       <TabLink active={followingActive} href="/reels/following" label="Following" icon={Users} />
       <TabLink href="/reels/saved" label="Saved" icon={Bookmark} active={savedActive} />
+      <TabLink href="/reels/reposted" label="Reposted" icon={Repeat2} active={repostedActive} />
       <TabLink href="/reels/liked" label="Liked" icon={Heart} active={likedActive} />
       <TabLink href="/reels/analytics" label="Analytics" icon={BarChart3} active={analyticsActive} />
     </nav>

@@ -24,13 +24,16 @@ export async function GET(
 
     if (error || !reel) return errorResponse('Reel not found', 404)
 
-    let interaction_state: { isLiked: boolean; isSaved: boolean; isFollowing: boolean; hasViewed: boolean } | undefined
+    let interaction_state:
+      | { isLiked: boolean; isSaved: boolean; isReposted: boolean; isFollowing: boolean; hasViewed: boolean }
+      | undefined
 
     try {
       const { user } = await getAuthenticatedUser(request)
-      const [likeRes, saveRes, followRes, viewRes] = await Promise.all([
+      const [likeRes, saveRes, repostRes, followRes, viewRes] = await Promise.all([
         supabase.from('reel_likes').select('id').eq('reel_id', id).eq('user_id', user.id).maybeSingle(),
         supabase.from('reel_saves').select('id').eq('reel_id', id).eq('user_id', user.id).maybeSingle(),
+        supabase.from('reel_reposts').select('id').eq('reel_id', id).eq('user_id', user.id).maybeSingle(),
         reel.author_id
           ? supabase.from('follows').select('id').eq('follower_id', user.id).eq('following_id', reel.author_id).maybeSingle()
           : Promise.resolve({ data: null }),
@@ -39,6 +42,7 @@ export async function GET(
       interaction_state = {
         isLiked: !!likeRes.data,
         isSaved: !!saveRes.data,
+        isReposted: !!repostRes.data,
         isFollowing: !!followRes.data,
         hasViewed: !!viewRes.data,
       }
@@ -46,7 +50,15 @@ export async function GET(
       interaction_state = undefined
     }
 
-    return jsonResponse({ data: { ...reel, interaction_state } })
+    return jsonResponse({
+      data: {
+        ...reel,
+        is_liked: interaction_state?.isLiked ?? false,
+        is_saved: interaction_state?.isSaved ?? false,
+        is_reposted: interaction_state?.isReposted ?? false,
+        interaction_state,
+      },
+    })
   } catch (error: unknown) {
     const err = error as { message?: string }
     return errorResponse(err.message || 'Failed to fetch reel', 500)

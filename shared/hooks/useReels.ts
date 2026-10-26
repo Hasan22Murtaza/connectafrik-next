@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { apiClient } from '@/lib/api-client'
 import { useAuth } from '@/contexts/AuthContext'
+import { useProfile } from '@/shared/hooks/useProfile'
 import {
   Reel,
   CreateReelData,
@@ -16,12 +17,29 @@ export type UseReelsOptions = {
   enabled?: boolean
 }
 
+function withViewerLocationFilter(
+  filters: ReelFilters,
+  profile: { country?: string | null } | null | undefined
+): ReelFilters {
+  if (filters.country || filters.lat != null || filters.lng != null) return filters
+  const country = profile?.country?.trim()
+  if (!country) return filters
+  return { ...filters, country }
+}
+
 export const useReels = (
   filters: ReelFilters = {},
   sortOptions: ReelSortOptions = { field: 'created_at', order: 'desc' },
   options?: UseReelsOptions
 ) => {
   const enabled = options?.enabled !== false
+  const { profile } = useProfile()
+  const resolvedFilters = useMemo(
+    () => withViewerLocationFilter(filters, profile),
+    // Intentionally stringify so inline filter objects from callers stay stable.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [JSON.stringify(filters), profile?.country]
+  )
   const [reels, setReels] = useState<Reel[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -51,6 +69,19 @@ export const useReels = (
       if (currentFilters?.max_duration != null) params.max_duration = currentFilters.max_duration
       if (currentFilters?.tags?.length) params.tags = currentFilters.tags.join(',')
       if (currentFilters?.search) params.search = currentFilters.search
+      if (currentFilters?.country) params.country = currentFilters.country
+      if (
+        currentFilters?.lat != null &&
+        currentFilters?.lng != null &&
+        Number.isFinite(currentFilters.lat) &&
+        Number.isFinite(currentFilters.lng)
+      ) {
+        params.lat = currentFilters.lat
+        params.lng = currentFilters.lng
+        if (currentFilters.radius_km != null && Number.isFinite(currentFilters.radius_km)) {
+          params.radius_km = currentFilters.radius_km
+        }
+      }
 
       const res = await apiClient.get<{ data: Reel[] }>('/api/reels', params)
       const newReels = res?.data ?? []
@@ -74,14 +105,14 @@ export const useReels = (
   const loadMore = useCallback(() => {
     if (!enabled) return
     if (!loading && hasMore) {
-      fetchReels(page + 1, true, filters, sortOptions)
+      fetchReels(page + 1, true, resolvedFilters, sortOptions)
     }
-  }, [enabled, loading, hasMore, page, fetchReels, filters, sortOptions])
+  }, [enabled, loading, hasMore, page, fetchReels, resolvedFilters, sortOptions])
 
   const refresh = useCallback(() => {
     if (!enabled) return
-    fetchReels(0, false, filters, sortOptions)
-  }, [enabled, fetchReels, filters, sortOptions])
+    fetchReels(0, false, resolvedFilters, sortOptions)
+  }, [enabled, fetchReels, resolvedFilters, sortOptions])
 
   useEffect(() => {
     if (!enabled) {
@@ -92,8 +123,8 @@ export const useReels = (
       setPage(0)
       return
     }
-    fetchReels(0, false, filters, sortOptions)
-  }, [enabled, fetchReels, JSON.stringify(filters), JSON.stringify(sortOptions)])
+    fetchReels(0, false, resolvedFilters, sortOptions)
+  }, [enabled, fetchReels, JSON.stringify(resolvedFilters), JSON.stringify(sortOptions)])
 
   return {
     reels,
@@ -116,6 +147,7 @@ export const useReel = (reelId: string) => {
   const [interactionState, setInteractionState] = useState<ReelInteractionState>({
     isLiked: false,
     isSaved: false,
+    isReposted: false,
     isFollowing: false,
     hasViewed: false
   })
@@ -315,6 +347,27 @@ export const useReelInteractions = (reelId: string) => {
     }
   }, [user, reelId])
 
+  const toggleRepost = useCallback(async () => {
+    if (!user) {
+      throw new Error('User must be logged in to repost a reel')
+    }
+
+    try {
+      setLoading(true)
+      setError(null)
+
+      await apiClient.post<{ data: { reposted: boolean } }>(`/api/reels/${reelId}/repost`)
+      return { success: true, error: null }
+    } catch (err) {
+      console.error('Error toggling reel repost:', err)
+      const errorMessage = err instanceof Error ? err.message : 'Failed to toggle repost'
+      setError(errorMessage)
+      return { success: false, error: errorMessage }
+    } finally {
+      setLoading(false)
+    }
+  }, [user, reelId])
+
   const recordView = useCallback(async (viewDuration?: number, completionRate?: number) => {
     if (!user) return
 
@@ -352,6 +405,7 @@ export const useReelInteractions = (reelId: string) => {
   return {
     toggleLike,
     toggleSave,
+    toggleRepost,
     recordView,
     shareReel,
     loading,
