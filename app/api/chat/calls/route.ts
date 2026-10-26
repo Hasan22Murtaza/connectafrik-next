@@ -52,6 +52,18 @@ type CallRoster = {
   allIds: Set<string>
 }
 
+function sanitizeCallSearch(raw: string): string {
+  return raw.trim().replace(/[%_,.()\\]/g, '').slice(0, 64)
+}
+
+type CallTypeFilter = 'all' | 'audio' | 'video'
+
+function parseCallTypeFilter(raw: string | null): CallTypeFilter {
+  const v = (raw || 'all').trim().toLowerCase()
+  if (v === 'audio' || v === 'video') return v
+  return 'all'
+}
+
 /** WhatsApp-style chronological call log: one row per call session (paginated). */
 export async function GET(request: NextRequest) {
   try {
@@ -65,6 +77,8 @@ export async function GET(request: NextRequest) {
     const from = page * limit
     // Inclusive range: fetch limit+1 to detect hasMore without an extra count query.
     const to = from + limit
+    const typeFilter = parseCallTypeFilter(searchParams.get('type') || searchParams.get('call_type'))
+    const search = sanitizeCallSearch(searchParams.get('search') || searchParams.get('q') || '')
 
     const { data: participantRows } = await serviceClient
       .from('chat_participants')
@@ -76,11 +90,43 @@ export async function GET(request: NextRequest) {
     if (threadIds.length === 0) {
       return jsonResponse({
         data: [],
-        meta: { page, pageSize: limit, hasMore: false },
+        meta: { page, pageSize: limit, hasMore: false, type: typeFilter, search: search || undefined },
       })
     }
 
-    const { data: sessionRows, error } = await serviceClient
+    // Restrict to sessions involving people whose name/username match the query.
+    let searchThreadIds: string[] | null = null
+    let searchUserIds: string[] | null = null
+    if (search) {
+      const { data: matchedProfiles } = await serviceClient
+        .from('profiles')
+        .select('id')
+        .or(`username.ilike.%${search}%,full_name.ilike.%${search}%`)
+        .neq('id', user.id)
+        .limit(100)
+
+      searchUserIds = [...new Set((matchedProfiles || []).map((p: { id: string }) => p.id).filter(Boolean))]
+      if (searchUserIds.length === 0) {
+        return jsonResponse({
+          data: [],
+          meta: { page, pageSize: limit, hasMore: false, type: typeFilter, search },
+        })
+      }
+
+      const { data: matchedParticipantRows } = await serviceClient
+        .from('chat_participants')
+        .select('thread_id')
+        .in('user_id', searchUserIds)
+        .in('thread_id', threadIds)
+
+      searchThreadIds = [
+        ...new Set(
+          (matchedParticipantRows || []).map((p: { thread_id: string }) => p.thread_id).filter(Boolean)
+        ),
+      ]
+    }
+
+    let sessionsQuery = serviceClient
       .from('call_sessions')
       .select(
         'id, thread_id, status, call_type, metadata, started_at, ended_at, duration_seconds, updated_at, created_at, created_by, call_id, participants'
@@ -88,6 +134,22 @@ export async function GET(request: NextRequest) {
       .in('thread_id', threadIds)
       .order('updated_at', { ascending: false })
       .range(from, to)
+
+    if (typeFilter === 'audio' || typeFilter === 'video') {
+      sessionsQuery = sessionsQuery.eq('call_type', typeFilter)
+    }
+
+    if (search && searchUserIds && searchUserIds.length > 0) {
+      const orParts: string[] = [`created_by.in.(${searchUserIds.join(',')})`]
+      if (searchThreadIds && searchThreadIds.length > 0) {
+        orParts.push(`thread_id.in.(${searchThreadIds.join(',')})`)
+      }
+      // uuid[] overlap with matched contacts (covers mid-call invitees not on the thread yet).
+      orParts.push(`participants.ov.{${searchUserIds.join(',')}}`)
+      sessionsQuery = sessionsQuery.or(orParts.join(','))
+    }
+
+    const { data: sessionRows, error } = await sessionsQuery
 
     if (error) return errorResponse(error.message, 400)
 
@@ -98,7 +160,7 @@ export async function GET(request: NextRequest) {
     if (pageRows.length === 0) {
       return jsonResponse({
         data: [],
-        meta: { page, pageSize: limit, hasMore },
+        meta: { page, pageSize: limit, hasMore, type: typeFilter, search: search || undefined },
       })
     }
 
@@ -329,6 +391,8 @@ export async function GET(request: NextRequest) {
         page,
         pageSize: limit,
         hasMore,
+        type: typeFilter,
+        search: search || undefined,
       },
     })
   } catch (error: any) {

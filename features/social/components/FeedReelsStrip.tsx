@@ -5,11 +5,12 @@ import Link from 'next/link'
 import { Clapperboard, ChevronLeft, ChevronRight, MoreHorizontal, MoreVertical, Play } from '@/shared/icons'
 import { useReels } from '@/shared/hooks/useReels'
 import type { Reel } from '@/shared/types/reels'
+import { reelsFeedHref } from '@/lib/reels/feedHref'
 
 const THUMB_WIDTH = 'w-[118px] sm:w-[132px]'
 
-function ReelThumb({ reel, isFirst }: { reel: Reel; isFirst: boolean }) {
-  const href = `/reels/explore/feed?start=${encodeURIComponent(reel.id)}`
+function ReelThumb({ reel }: { reel: Reel; isFirst?: boolean }) {
+  const href = reelsFeedHref({ start: reel.id, feed: 'explore' })
   const videoRef = useRef<HTMLVideoElement>(null)
   const [isPlaying, setIsPlaying] = useState(false)
   const hasVideo = Boolean(reel.video_url?.trim())
@@ -23,19 +24,11 @@ function ReelThumb({ reel, isFirst }: { reel: Reel; isFirst: boolean }) {
     v.addEventListener('play', onPlay)
     v.addEventListener('pause', onPause)
 
-    if (isFirst) {
-      const tryPlay = () => {
-        v.play().catch(() => setIsPlaying(false))
-      }
-      if (v.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) tryPlay()
-      else v.addEventListener('canplay', tryPlay, { once: true })
-    }
-
     return () => {
       v.removeEventListener('play', onPlay)
       v.removeEventListener('pause', onPause)
     }
-  }, [hasVideo, isFirst, reel.id])
+  }, [hasVideo, reel.id])
 
   const handleEnter = useCallback(() => {
     const v = videoRef.current
@@ -46,15 +39,13 @@ function ReelThumb({ reel, isFirst }: { reel: Reel; isFirst: boolean }) {
   const handleLeave = useCallback(() => {
     const v = videoRef.current
     if (!v || !hasVideo) return
-    if (!isFirst) {
-      v.pause()
-      try {
-        v.currentTime = 0
-      } catch {
-        /* ignore */
-      }
+    v.pause()
+    try {
+      v.currentTime = 0
+    } catch {
+      /* ignore */
     }
-  }, [hasVideo, isFirst])
+  }, [hasVideo])
 
   const showPlayIcon = !hasVideo || !isPlaying
 
@@ -73,7 +64,7 @@ function ReelThumb({ reel, isFirst }: { reel: Reel; isFirst: boolean }) {
           muted
           loop
           playsInline
-          preload={isFirst ? 'auto' : 'metadata'}
+          preload="metadata"
         />
       ) : reel.thumbnail_url ? (
         <img
@@ -206,7 +197,7 @@ export const FeedReelsStrip: React.FC = () => {
           className="flex gap-3 overflow-x-auto scrollbar-hide scroll-smooth px-4 pt-1 pb-3"
         >
           {displayReels.map((reel, index) => (
-            <ReelThumb key={reel.id} reel={reel} isFirst={index === 0} />
+            <ReelThumb key={reel.id} reel={reel} />
           ))}
         </div>
       </div>

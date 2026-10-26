@@ -288,6 +288,8 @@ export default function CallsPageView() {
   const [selectedGroupKey, setSelectedGroupKey] = useState<string | null>(null)
   const [startingCallKey, setStartingCallKey] = useState<string | null>(null)
   const [search, setSearch] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
+  const [typeFilter, setTypeFilter] = useState<'all' | 'audio' | 'video'>('all')
   const recentCallEntriesRef = useRef(recentCallEntries)
   recentCallEntriesRef.current = recentCallEntries
   const listScrollRef = useRef<HTMLDivElement>(null)
@@ -295,6 +297,11 @@ export default function CallsPageView() {
   const callsHasMoreRef = useRef(true)
   const callsLoadingMoreRef = useRef(false)
   const initialLoadDoneRef = useRef(false)
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search.trim()), 300)
+    return () => clearTimeout(t)
+  }, [search])
 
   useEffect(() => {
     markCallsViewed()
@@ -355,7 +362,8 @@ export default function CallsPageView() {
       const { entries, hasMore } = await supabaseMessagingService.getRecentCalls(
         currentUser.id,
         PAGE_SIZE,
-        nextPage
+        nextPage,
+        { type: typeFilter, search: debouncedSearch || undefined }
       )
       const existingIds = new Set(recentCallEntriesRef.current.map((c) => c.session_id))
       const deduped = entries.filter((c) => !existingIds.has(c.session_id))
@@ -370,7 +378,7 @@ export default function CallsPageView() {
       callsLoadingMoreRef.current = false
       setCallsLoadingMore(false)
     }
-  }, [currentUser?.id, mergeCallEntries])
+  }, [currentUser?.id, mergeCallEntries, typeFilter, debouncedSearch])
 
   useEffect(() => {
     let cancelled = false
@@ -379,13 +387,16 @@ export default function CallsPageView() {
         setRecentCallsLoading(false)
         return
       }
-      setRecentCallsLoading(recentCallEntriesRef.current.length === 0)
+      setRecentCallsLoading(true)
       initialLoadDoneRef.current = false
+      setSelectedGroupKey(null)
+      setRecentCallEntries([])
       try {
         const { entries, hasMore } = await supabaseMessagingService.getRecentCalls(
           currentUser.id,
           PAGE_SIZE,
-          0
+          0,
+          { type: typeFilter, search: debouncedSearch || undefined }
         )
         if (cancelled) return
         setRecentCallEntries(
@@ -405,7 +416,7 @@ export default function CallsPageView() {
     return () => {
       cancelled = true
     }
-  }, [currentUser?.id, setRecentCallEntries])
+  }, [currentUser?.id, setRecentCallEntries, typeFilter, debouncedSearch])
 
   // When contacts are grouped, the list often fits on one screen — keep fetching
   // until the list overflows or there are no more pages.
@@ -551,15 +562,11 @@ export default function CallsPageView() {
     )
   }, [sortedRecentCalls])
 
-  const filteredGroups = useMemo(() => {
-    const q = search.trim().toLowerCase()
-    if (!q) return contactGroups
-    return contactGroups.filter((g) => g.name.toLowerCase().includes(q))
-  }, [contactGroups, search])
+  const filteredGroups = contactGroups
 
   const selectedGroup = useMemo(
-    () => contactGroups.find((g) => g.key === selectedGroupKey) ?? null,
-    [contactGroups, selectedGroupKey]
+    () => filteredGroups.find((g) => g.key === selectedGroupKey) ?? null,
+    [filteredGroups, selectedGroupKey]
   )
 
   const selectedCallsByDay = useMemo(() => {
@@ -664,8 +671,43 @@ export default function CallsPageView() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search name or username"
-            className="w-full rounded-full border-0 bg-surface py-2 pl-9 pr-3 text-sm text-content placeholder:text-content-secondary outline-none ring-1 ring-border-subtle focus:ring-primary-300"
+            className="w-full rounded-full border-0 bg-surface py-2 pl-9 pr-9 text-sm text-content placeholder:text-content-secondary outline-none ring-1 ring-border-subtle focus:ring-primary-300"
           />
+          {search ? (
+            <button
+              type="button"
+              onClick={() => setSearch('')}
+              aria-label="Clear search"
+              className="absolute right-2.5 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-content-tertiary transition hover:bg-surface-hover hover:text-content"
+            >
+              <X className="h-4 w-4" aria-hidden />
+            </button>
+          ) : null}
+        </div>
+        <div className="mt-2 flex items-center gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {(
+            [
+              { key: 'all', label: 'All' },
+              { key: 'audio', label: 'Audio' },
+              { key: 'video', label: 'Video' },
+            ] as const
+          ).map((chip) => {
+            const active = typeFilter === chip.key
+            return (
+              <button
+                key={chip.key}
+                type="button"
+                onClick={() => setTypeFilter(chip.key)}
+                className={`inline-flex shrink-0 items-center rounded-full px-3.5 py-1.5 text-sm font-medium transition ${
+                  active
+                    ? 'bg-primary-100 text-primary-800 dark:bg-primary-900/40 dark:text-primary-200'
+                    : 'border border-border text-content-secondary hover:bg-surface-hover'
+                }`}
+              >
+                {chip.label}
+              </button>
+            )
+          })}
         </div>
       </div>
 
@@ -683,9 +725,13 @@ export default function CallsPageView() {
             <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-primary-50 text-primary-600">
               <Phone className="h-6 w-6" strokeWidth={1.5} />
             </div>
-            <p className="text-sm font-medium text-content">No calls yet</p>
+            <p className="text-sm font-medium text-content">
+              {debouncedSearch || typeFilter !== 'all' ? 'No matching calls' : 'No calls yet'}
+            </p>
             <p className="mt-1 text-xs text-content-secondary">
-              Your call history will show up here.
+              {debouncedSearch || typeFilter !== 'all'
+                ? 'Try a different name, username, or call type.'
+                : 'Your call history will show up here.'}
             </p>
           </div>
         ) : (

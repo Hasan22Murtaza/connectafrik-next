@@ -9,6 +9,7 @@ import { Reel } from '@/shared/types/reels'
 import { ReelCard } from '@/features/social/components/ReelCard'
 import { ReelsNav } from '@/features/social/components/ReelsNav'
 import { ReelsMainTabs } from '@/features/social/components/ReelsBrowseHeader'
+import { reelsFeedHref } from '@/lib/reels/feedHref'
 
 type Mode = 'saved' | 'liked' | 'reposted'
 
@@ -89,7 +90,7 @@ export function ReelsLibraryGrid({ mode }: Props) {
   const gridClass =
     'columns-2 gap-2.5 sm:columns-3 sm:gap-3 lg:columns-4 xl:columns-5 [column-fill:_balance]'
 
-  const feedHref = (id: string) => `/reels/${id}`
+  const feedHref = (id: string) => reelsFeedHref({ start: id, feed: mode })
 
   return (
     <div className="relative mx-auto w-full max-w-[1600px]  min-h-[calc(100dvh-4.5rem)] bg-white pb-[calc(5.5rem+env(safe-area-inset-bottom))] text-content lg:pb-10">

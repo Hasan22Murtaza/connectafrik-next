@@ -1,8 +1,8 @@
 'use client'
 
-import { useEffect, useRef, useState, type Ref } from 'react'
+import { useCallback, useEffect, useRef, useState, type Ref } from 'react'
 import Link from 'next/link'
-import { Heart, Play, Video } from '@/shared/icons'
+import { Eye, Heart, Video } from '@/shared/icons'
 import { Reel } from '@/shared/types/reels'
 
 /** Preview speed on explore/list grids (faster than real-time). */
@@ -12,13 +12,6 @@ function formatShortCount(num: number): string {
   if (num >= 1_000_000) return `${(num / 1_000_000).toFixed(1).replace(/\.0$/, '')}M`
   if (num >= 1_000) return `${(num / 1_000).toFixed(1).replace(/\.0$/, '')}K`
   return String(num)
-}
-
-function formatDuration(seconds: number): string {
-  const s = Math.max(0, Math.floor(seconds || 0))
-  const m = Math.floor(s / 60)
-  const r = s % 60
-  return `${m}:${r.toString().padStart(2, '0')}`
 }
 
 const TILE_ASPECTS = [
@@ -42,10 +35,11 @@ export function ReelCard({ reel, index = 0, href, onClick, className = '' }: Pro
   const aspect = TILE_ASPECTS[index % TILE_ASPECTS.length]
   const cardRef = useRef<HTMLElement | null>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
-  const [inView, setInView] = useState(false)
   const [loadVideo, setLoadVideo] = useState(false)
+  const [hovering, setHovering] = useState(false)
   const hasVideo = Boolean(reel.video_url?.trim())
 
+  // Prefetch video element when near viewport so hover can start quickly
   useEffect(() => {
     const el = cardRef.current
     if (!el || !hasVideo) return
@@ -53,12 +47,9 @@ export function ReelCard({ reel, index = 0, href, onClick, className = '' }: Pro
     const io = new IntersectionObserver(
       (entries) => {
         const entry = entries[0]
-        if (!entry) return
-        const visible = entry.isIntersecting
-        setInView(visible)
-        if (visible) setLoadVideo(true)
+        if (entry?.isIntersecting) setLoadVideo(true)
       },
-      { threshold: 0.35, rootMargin: '120px 0px' }
+      { threshold: 0.2, rootMargin: '160px 0px' }
     )
 
     io.observe(el)
@@ -87,13 +78,18 @@ export function ReelCard({ reel, index = 0, href, onClick, className = '' }: Pro
       void v.play().catch(() => {})
     }
 
-    if (inView) {
+    if (hovering) {
       if (v.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) tryPlay()
       else v.addEventListener('canplay', tryPlay, { once: true })
       v.addEventListener('playing', applyRate)
       v.addEventListener('ratechange', applyRate)
     } else {
       v.pause()
+      try {
+        v.currentTime = 0
+      } catch {
+        /* ignore seek errors before metadata */
+      }
     }
 
     return () => {
@@ -101,7 +97,17 @@ export function ReelCard({ reel, index = 0, href, onClick, className = '' }: Pro
       v.removeEventListener('playing', applyRate)
       v.removeEventListener('ratechange', applyRate)
     }
-  }, [inView, loadVideo, reel.video_url])
+  }, [hovering, loadVideo, reel.video_url])
+
+  const onEnter = useCallback(() => {
+    if (!hasVideo) return
+    setLoadVideo(true)
+    setHovering(true)
+  }, [hasVideo])
+
+  const onLeave = useCallback(() => {
+    setHovering(false)
+  }, [])
 
   const media = hasVideo && loadVideo ? (
     <video
@@ -112,7 +118,6 @@ export function ReelCard({ reel, index = 0, href, onClick, className = '' }: Pro
       muted
       loop
       playsInline
-      autoPlay
       preload="metadata"
       disablePictureInPicture
       disableRemotePlayback
@@ -136,8 +141,8 @@ export function ReelCard({ reel, index = 0, href, onClick, className = '' }: Pro
       {media}
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent" />
       <div className="absolute bottom-2 left-2 flex items-center gap-1 text-[11px] font-semibold text-white drop-shadow-sm sm:text-xs">
-        <Play className="h-3 w-3 fill-white" strokeWidth={0} aria-hidden />
-        <span className="tabular-nums">{formatDuration(reel.duration)}</span>
+        <Eye className="h-3 w-3" strokeWidth={2} aria-hidden />
+        <span className="tabular-nums">{formatShortCount(reel.views_count ?? 0)}</span>
       </div>
       <div className="absolute bottom-2 right-2 flex items-center gap-1 text-[11px] font-semibold text-white drop-shadow-sm sm:text-xs">
         <Heart className="h-3 w-3" strokeWidth={2} aria-hidden />
@@ -155,6 +160,10 @@ export function ReelCard({ reel, index = 0, href, onClick, className = '' }: Pro
         href={href}
         scroll={false}
         className={baseClass}
+        onMouseEnter={onEnter}
+        onMouseLeave={onLeave}
+        onFocus={onEnter}
+        onBlur={onLeave}
       >
         {inner}
       </Link>
@@ -167,6 +176,10 @@ export function ReelCard({ reel, index = 0, href, onClick, className = '' }: Pro
       type="button"
       onClick={onClick}
       className={baseClass}
+      onMouseEnter={onEnter}
+      onMouseLeave={onLeave}
+      onFocus={onEnter}
+      onBlur={onLeave}
     >
       {inner}
     </button>

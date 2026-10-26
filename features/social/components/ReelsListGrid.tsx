@@ -10,19 +10,10 @@ import { REEL_CATEGORIES, ReelCategory, ReelFeedType } from '@/shared/types/reel
 import { ReelCard } from '@/features/social/components/ReelCard'
 import { ReelsNav } from '@/features/social/components/ReelsNav'
 import { ReelsBrowseHeader } from '@/features/social/components/ReelsBrowseHeader'
+import { reelsFeedHref } from '@/lib/reels/feedHref'
 
 type Props = {
   feed: Extract<ReelFeedType, 'foryou' | 'following' | 'explore'>
-}
-
-function feedListPath(feed: Props['feed']) {
-  if (feed === 'following') return '/reels/following'
-  if (feed === 'explore') return '/reels/explore'
-  return '/reels/foryou'
-}
-
-function feedWatchPath(feed: Props['feed']) {
-  return `${feedListPath(feed)}/feed`
 }
 
 function ListBody({ feed }: Props) {
@@ -81,12 +72,8 @@ function ListBody({ feed }: Props) {
   )
 
   const feedHrefFor = useCallback(
-    (reelId: string) => {
-      const p = new URLSearchParams()
-      if (exploreCategory) p.set('category', exploreCategory)
-      p.set('start', reelId)
-      return `${feedWatchPath(feed)}?${p.toString()}`
-    },
+    (reelId: string) =>
+      reelsFeedHref({ start: reelId, feed, category: exploreCategory }),
     [feed, exploreCategory]
   )
 

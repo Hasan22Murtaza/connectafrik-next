@@ -1414,15 +1414,23 @@ export const supabaseMessagingService = {
   async getRecentCalls(
     currentUserId: string,
     limit = 10,
-    page = 0
+    page = 0,
+    options?: { type?: 'all' | 'audio' | 'video'; search?: string }
   ): Promise<{ entries: RecentCallEntry[]; hasMore: boolean; page: number }> {
     if (!currentUserId) return { entries: [], hasMore: false, page }
 
     try {
+      const type = options?.type && options.type !== 'all' ? options.type : undefined
+      const search = options?.search?.trim() || undefined
       const res = await apiClient.get<{
         data: any[]
         meta?: { page: number; pageSize: number; hasMore: boolean }
-      }>('/api/chat/calls', { limit, page })
+      }>('/api/chat/calls', {
+        limit,
+        page,
+        ...(type ? { type } : {}),
+        ...(search ? { search } : {}),
+      })
       const list = Array.isArray(res?.data) ? res.data : []
       const hasMore =
         typeof res?.meta?.hasMore === 'boolean' ? res.meta.hasMore : list.length >= limit

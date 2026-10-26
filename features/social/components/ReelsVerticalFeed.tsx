@@ -90,8 +90,13 @@ export function ReelsVerticalFeed({
 
   const reelsEnabled = useMemo(() => {
     if (!enabled) return false
-    if (feed === 'following' && !user?.id) return false
-    if (feed === 'mine' && !user?.id) return false
+    const needsAuth =
+      feed === 'following' ||
+      feed === 'mine' ||
+      feed === 'saved' ||
+      feed === 'liked' ||
+      feed === 'reposted'
+    if (needsAuth && !user?.id) return false
     return true
   }, [enabled, feed, user?.id])
 

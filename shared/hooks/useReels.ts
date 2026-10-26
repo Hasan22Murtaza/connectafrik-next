@@ -54,16 +54,31 @@ export const useReels = (
 
       const sortField = currentSortOptions?.field || 'created_at'
       const sortOrder = currentSortOptions?.order || 'desc'
+      const feed = currentFilters?.feed
+      const dedicatedFeed =
+        feed === 'foryou'
+          ? '/api/reels/foryou'
+          : feed === 'following'
+            ? '/api/reels/following'
+            : feed === 'saved'
+              ? '/api/reels/saved'
+              : feed === 'liked'
+                ? '/api/reels/liked'
+                : feed === 'reposted'
+                  ? '/api/reels/reposted'
+                  : null
+      const endpoint = dedicatedFeed ?? '/api/reels'
       const params: Record<string, string | number | boolean | undefined> = {
         limit: pageSize,
         page: pageNum,
         sort_field: sortField,
         sort_order: sortOrder,
       }
-      if (currentFilters?.feed) params.feed = currentFilters.feed
+      // Dedicated feed routes do not need ?feed=; keep it for explore/mine on /api/reels
+      if (feed && !dedicatedFeed) params.feed = feed
       if (currentFilters?.category) params.category = currentFilters.category
       if (currentFilters?.author_id && currentFilters?.feed !== 'mine') params.author_id = currentFilters.author_id
-      if (currentFilters?.following_only) params.following = true
+      if (currentFilters?.following_only && !dedicatedFeed) params.following = true
       if (currentFilters?.is_featured) params.is_featured = true
       if (currentFilters?.min_duration != null) params.min_duration = currentFilters.min_duration
       if (currentFilters?.max_duration != null) params.max_duration = currentFilters.max_duration
@@ -83,7 +98,7 @@ export const useReels = (
         }
       }
 
-      const res = await apiClient.get<{ data: Reel[] }>('/api/reels', params)
+      const res = await apiClient.get<{ data: Reel[] }>(endpoint, params)
       const newReels = res?.data ?? []
 
       if (append) {
@@ -535,11 +550,11 @@ export const useReelStats = (enabled: boolean = true) => {
     try {
       setLoading(true)
       setError(null)
-      const res = await apiClient.get<{ data: ReelStats }>('/api/reels/stats')
+      const res = await apiClient.get<{ data: ReelStats }>('/api/reels/analytics')
       setStats(res?.data ?? null)
     } catch (err) {
-      console.error('Error fetching reel stats:', err)
-      setError(err instanceof Error ? err.message : 'Failed to fetch reel stats')
+      console.error('Error fetching reel analytics:', err)
+      setError(err instanceof Error ? err.message : 'Failed to fetch reel analytics')
     } finally {
       setLoading(false)
     }

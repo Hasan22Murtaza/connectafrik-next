@@ -150,15 +150,49 @@ export interface UpdateReelData {
   is_public?: boolean
 }
 
+export interface ReelAnalyticsTopReel {
+  id: string
+  title: string
+  thumbnail_url?: string | null
+  video_url?: string | null
+  duration: number
+  category?: string | null
+  likes_count: number
+  comments_count: number
+  shares_count: number
+  views_count: number
+  saves_count?: number
+  engagement_score: number
+  created_at: string
+  is_public?: boolean
+}
+
 export interface ReelStats {
   total_reels: number
   total_views: number
   total_likes: number
   total_comments: number
   total_shares: number
+  total_saves?: number
   avg_engagement: number
+  engagement_rate?: number
+  engagement_mix?: {
+    likes: number
+    comments: number
+    shares: number
+    saves: number
+  }
+  by_category?: Record<string, number>
+  top_reels?: ReelAnalyticsTopReel[]
 }
-export type ReelFeedType = 'foryou' | 'explore' | 'following' | 'mine'
+export type ReelFeedType =
+  | 'foryou'
+  | 'explore'
+  | 'following'
+  | 'mine'
+  | 'saved'
+  | 'liked'
+  | 'reposted'
 
 export interface ReelFilters {
   category?: string
