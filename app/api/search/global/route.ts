@@ -99,14 +99,11 @@ export async function GET(request: NextRequest) {
 
     const postAuthorIds = [...new Set(posts.map((p: { author_id: string }) => p.author_id))]
     const postRels = await getRelationships(user.id, postAuthorIds, supabase)
-    const visiblePosts = posts.filter((p: {
-      author_id: string
-      visibility?: string | null
-      author?: { post_visibility?: string | null } | null
-    }) => {
+    const visiblePosts = posts.filter((p) => {
+      const author = Array.isArray(p.author) ? p.author[0] : p.author
       const rel = postRels.get(p.author_id)
       const fallback = postVisibilityFromProfileDefault(
-        p.author?.post_visibility ?? rel?.settings.post_visibility
+        author?.post_visibility ?? rel?.settings.post_visibility
       )
       return canViewPostByVisibility(
         user.id,
