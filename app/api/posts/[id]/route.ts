@@ -108,9 +108,11 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     }
 
     if (updates.visibility !== undefined) {
-      if (!['public', 'private', 'only_me'].includes(updates.visibility)) {
-        return errorResponse('Invalid visibility. Use public, private, or only_me', 400)
+      if (!['public', 'friends', 'only_me', 'private'].includes(updates.visibility)) {
+        return errorResponse('Invalid visibility. Use public, friends, or only_me', 400)
       }
+      // Normalize legacy "private" → "friends"
+      if (updates.visibility === 'private') updates.visibility = 'friends'
     }
 
     if (updates.background_id !== undefined) {

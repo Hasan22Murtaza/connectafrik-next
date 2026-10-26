@@ -34,7 +34,7 @@ export interface PostSubmitData {
   location?: string
   /** Text-only feed posts: preset id from `POST_BACKGROUND_PRESETS`, or null to clear */
   background_id?: string | null
-  /** Who can see this post: public | private (friends) | only_me */
+  /** Who can see this post: public | friends | only_me */
   visibility?: PostVisibility
   /** Facebook-style feeling: { emoji, label } */
   feeling?: PostFeeling | null
@@ -59,7 +59,7 @@ export interface EditPostData {
 
 const VISIBILITY_ICONS = {
   public: Globe,
-  private: Users,
+  friends: Users,
   only_me: Lock,
 } as const
 

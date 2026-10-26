@@ -62,7 +62,7 @@ interface Post {
     full_name: string;
     avatar_url: string | null;
   }>;
-  visibility?: "public" | "private" | "only_me";
+  visibility?: "public" | "friends" | "only_me";
   likes_count: number;
   comments_count: number;
   shares_count: number;
@@ -125,7 +125,7 @@ interface PostCardProps {
     media_type?: string
     tags?: string[]
     background_id?: string | null
-    visibility?: 'public' | 'private' | 'only_me'
+    visibility?: 'public' | 'friends' | 'only_me'
     feeling?: { emoji: string; label: string } | null
     tagged_users?: Array<{ id: string; username: string; full_name: string; avatar_url: string | null }>
   }) => void;
@@ -520,7 +520,7 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
           media_type?: string;
           tags?: string[];
           background_id?: string | null;
-          visibility?: "public" | "private" | "only_me";
+          visibility?: "public" | "friends" | "only_me";
           feeling?: { emoji: string; label: string } | null;
           tagged_users?: Array<{
             id: string;

@@ -25,7 +25,7 @@ export interface Post {
   media_urls: string[] | null
   tags?: string[] | null
   location?: string | null
-  /** Who can see this post: public | private (friends) | only_me */
+  /** Who can see this post: public | friends | only_me */
   visibility?: PostVisibility
   /** Preset id for text-only decorative backgrounds */
   background_id?: string | null

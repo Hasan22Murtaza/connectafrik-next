@@ -7,7 +7,7 @@ export const POST_VISIBILITY_OPTIONS: {
   label: string
 }[] = [
   { value: 'public', label: 'Public' },
-  { value: 'private', label: 'Private' },
+  { value: 'friends', label: 'Friends' },
   { value: 'only_me', label: 'Only me' },
 ]
 
@@ -15,7 +15,7 @@ export const POST_VISIBILITY_OPTIONS: {
 export function postVisibilityFromProfileDefault(
   level: ProfileVisibilityLevel | string | null | undefined
 ): PostVisibility {
-  if (level === 'friends') return 'private'
+  if (level === 'friends') return 'friends'
   if (level === 'private' || level === 'none') return 'only_me'
   return 'public'
 }
@@ -24,9 +24,10 @@ export function normalizePostVisibility(
   value: string | null | undefined,
   fallback: PostVisibility = 'public'
 ): PostVisibility {
-  if (value === 'public' || value === 'private' || value === 'only_me') return value
+  if (value === 'public' || value === 'friends' || value === 'only_me') return value
   if (value === 'everyone') return 'public'
-  if (value === 'friends') return 'private'
+  // Legacy post audience value (renamed to friends)
+  if (value === 'private') return 'friends'
   if (value === 'none') return 'only_me'
   return fallback
 }
@@ -119,7 +120,7 @@ export function canViewPost(
 
 /**
  * Whether viewer can see a specific post by its per-post visibility
- * (public | private = friends | only_me).
+ * (public | friends | only_me).
  */
 export function canViewPostByVisibility(
   viewerId: string | null,
@@ -133,7 +134,7 @@ export function canViewPostByVisibility(
   const level = normalizePostVisibility(visibility)
   if (level === 'only_me') return false
   if (level === 'public') return true
-  if (level === 'private') return Boolean(viewerId) && isMutual
+  if (level === 'friends') return Boolean(viewerId) && isMutual
   return false
 }
 

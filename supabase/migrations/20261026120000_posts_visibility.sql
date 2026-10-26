@@ -1,4 +1,4 @@
--- Per-post audience: public | private (friends) | only_me
+-- Per-post audience: public | friends | only_me
 
 ALTER TABLE public.posts
   ADD COLUMN IF NOT EXISTS visibility text NOT NULL DEFAULT 'public';
@@ -15,11 +15,11 @@ ALTER TABLE public.posts
 
 ALTER TABLE public.posts
   ADD CONSTRAINT posts_visibility_check CHECK (
-    visibility = ANY (ARRAY['public'::text, 'private'::text, 'only_me'::text])
+    visibility = ANY (ARRAY['public'::text, 'friends'::text, 'only_me'::text])
   );
 
 COMMENT ON COLUMN public.posts.visibility IS
-  'Who can see this post: public (everyone), private (friends), only_me (author only).';
+  'Who can see this post: public (everyone), friends, only_me (author only).';
 
 CREATE INDEX IF NOT EXISTS idx_posts_visibility
   ON public.posts USING btree (visibility)
@@ -46,7 +46,7 @@ AS $$
           AND CASE COALESCE(
             NULLIF(p.visibility, ''),
             CASE COALESCE((SELECT pr.post_visibility FROM public.profiles pr WHERE pr.id = p.author_id), 'public')
-              WHEN 'friends' THEN 'private'
+              WHEN 'friends' THEN 'friends'
               WHEN 'private' THEN 'only_me'
               WHEN 'none' THEN 'only_me'
               ELSE 'public'
@@ -54,8 +54,9 @@ AS $$
           )
             WHEN 'public' THEN true
             WHEN 'everyone' THEN true
-            WHEN 'private' THEN viewer IS NOT NULL AND public.privacy_are_friends(viewer, p.author_id)
             WHEN 'friends' THEN viewer IS NOT NULL AND public.privacy_are_friends(viewer, p.author_id)
+            -- Legacy value before rename private → friends
+            WHEN 'private' THEN viewer IS NOT NULL AND public.privacy_are_friends(viewer, p.author_id)
             WHEN 'only_me' THEN false
             ELSE false
           END

@@ -7,8 +7,8 @@ export interface User {
   full_name?: string
 }
 
-/** Per-post audience (DB: public | private | only_me) */
-export type PostVisibility = 'public' | 'private' | 'only_me'
+/** Per-post audience (DB: public | friends | only_me) */
+export type PostVisibility = 'public' | 'friends' | 'only_me'
 
 export interface Post {
   id: string
@@ -16,7 +16,7 @@ export interface Post {
   category: 'politics' | 'culture' | 'general'
   author_id: string
   media_urls?: string[]
-  /** Who can see this post: public, private (friends), only_me */
+  /** Who can see this post: public, friends, only_me */
   visibility?: PostVisibility
   likes_count: number
   comments_count: number
