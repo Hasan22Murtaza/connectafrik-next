@@ -16,8 +16,6 @@ import {
 
 const VALID_FILTERS: AdminUserFilter[] = [
   'all',
-  'sellers',
-  'buyers',
   'verified',
   'unverified',
   'active',

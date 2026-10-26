@@ -2,22 +2,22 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
-import dynamic from "next/dynamic";
 import {
   LayoutDashboard,
-  Shield,
-  DollarSign,
-  Package,
-  AlertTriangle,
-  TrendingUp,
-  Wallet,
+  Users,
+  Flag,
+  MessageSquare,
   ArrowRight,
+  UserPlus,
+  Activity,
+  BadgeCheck,
   Inbox,
+  Clock,
+  CheckCircle2,
 } from '@/shared/icons';
 import toast from "react-hot-toast";
 import { AdminLoading } from "@/features/admin/components/AdminLoading";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
-import { AdminStatusBadge } from "@/features/admin/components/AdminStatusBadge";
 import { AdminStatCard } from "@/features/admin/components/AdminStatCard";
 import { AdminMotion } from "@/features/admin/components/AdminMotion";
 import { AdminEmptyState } from "@/features/admin/components/AdminEmptyState";
@@ -30,93 +30,99 @@ import {
   AdminTableHeadCell,
   AdminTableRow,
 } from "@/features/admin/components/AdminTable";
-import { AdminChartSkeleton } from "@/features/admin/components/skeletons/AdminShimmerLoaders";
 import { useAdminAuth } from "@/features/admin/hooks/useAdminAuth";
 import { AP } from "@/features/admin/constants/adminLayout";
 import {
-  getAdminDashboard,
-  AdminDashboardSummary,
+  AdminUserStats,
+  listAdminUsers,
 } from "@/features/marketplace/services/adminService";
-
-const AdminBarChart = dynamic(
-  () => import("@/features/admin/components/AdminChart").then((m) => m.AdminBarChart),
-  { loading: () => <AdminChartSkeleton />, ssr: false }
-);
-
-const AdminDonutChart = dynamic(
-  () => import("@/features/admin/components/AdminChart").then((m) => m.AdminDonutChart),
-  { loading: () => <AdminChartSkeleton />, ssr: false }
-);
-
-function CurrencyBreakdown({
-  title,
-  data,
-  delay = 0,
-}: {
-  title: string;
-  data: Record<string, number>;
-  delay?: number;
-}) {
-  const entries = Object.entries(data);
-  if (entries.length === 0) return null;
-
-  return (
-    <AdminMotion delay={delay} className={`${AP.card} ${AP.cardPadding} ${AP.cardHover}`}>
-      <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-4">
-        {title}
-      </h3>
-      <div className="space-y-3">
-        {entries.map(([currency, amount]) => (
-          <div key={currency} className="flex justify-between items-center text-sm">
-            <span className="text-gray-600 font-medium">{currency}</span>
-            <span className="font-bold text-gray-900 tabular-nums">
-              {amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-            </span>
-          </div>
-        ))}
-      </div>
-    </AdminMotion>
-  );
-}
+import { listAdminReportGroups } from "@/features/social/services/reportService";
+import { listAdminFeedback } from "@/features/feedback/services/feedbackService";
+import type { PostReportGroup, PostReportStats } from "@/lib/reports/types";
+import type { FeedbackStats, FeedbackWithUser } from "@/lib/feedback/types";
 
 const QUICK_LINKS = [
   {
-    href: "/admin/orders",
-    label: "Manage orders",
-    description: "Filter, view, and refund orders",
-    icon: Package,
+    href: "/admin/users",
+    label: "Manage users",
+    description: "Search, suspend, or review members",
+    icon: Users,
     iconColor: "text-blue-600",
     iconBg: "bg-blue-50",
   },
   {
-    href: "/admin/payouts",
-    label: "Process payouts",
-    description: "Review pending seller transfers",
-    icon: Wallet,
-    iconColor: "text-emerald-600",
-    iconBg: "bg-emerald-50",
-  },
-  {
-    href: "/admin/disputes",
-    label: "Resolve disputes",
-    description: "Review buyer-seller cases",
-    icon: Shield,
+    href: "/admin/reports",
+    label: "Moderate reports",
+    description: "Review flagged posts and take action",
+    icon: Flag,
     iconColor: "text-orange-600",
     iconBg: "bg-orange-50",
   },
+  {
+    href: "/admin/feedback",
+    label: "Triage feedback",
+    description: "Bugs, ideas, and support requests",
+    icon: MessageSquare,
+    iconColor: "text-emerald-600",
+    iconBg: "bg-emerald-50",
+  },
 ] as const;
+
+interface DashboardData {
+  users: AdminUserStats;
+  reports: PostReportStats;
+  feedback: FeedbackStats;
+  recentReports: PostReportGroup[];
+  recentFeedback: FeedbackWithUser[];
+}
+
+function formatDate(dateString: string | null | undefined) {
+  if (!dateString) return "—";
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(dateString));
+}
 
 export default function AdminDashboardPage() {
   const { isReady, authLoading } = useAdminAuth("/admin/dashboard");
-  const [summary, setSummary] = useState<AdminDashboardSummary | null>(null);
+  const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
   const loadDashboard = React.useCallback(() => {
     setLoading(true);
     setError(false);
-    getAdminDashboard()
-      .then(setSummary)
+
+    Promise.all([
+      listAdminUsers({ page: 0, limit: 1, include_stats: true }),
+      listAdminReportGroups({
+        status: "all",
+        page: 0,
+        limit: 5,
+        include_stats: true,
+      }),
+      listAdminFeedback({
+        status: "all",
+        page: 0,
+        limit: 5,
+        include_stats: true,
+      }),
+    ])
+      .then(([usersResult, reportsResult, feedbackResult]) => {
+        if (!usersResult.stats) {
+          throw new Error("Missing user stats");
+        }
+        setData({
+          users: usersResult.stats,
+          reports: reportsResult.stats,
+          feedback: feedbackResult.stats,
+          recentReports: reportsResult.items,
+          recentFeedback: feedbackResult.items,
+        });
+      })
       .catch(() => {
         setError(true);
         toast.error("Admin access required or dashboard unavailable");
@@ -129,33 +135,35 @@ export default function AdminDashboardPage() {
     loadDashboard();
   }, [isReady, loadDashboard]);
 
-  if (authLoading || (loading && !summary)) {
+  if (authLoading || (loading && !data)) {
     return <AdminLoading variant="dashboard" />;
   }
 
-  if (error || !summary) {
+  if (error || !data) {
     return (
       <div className="max-w-6xl mx-auto">
         <AdminErrorState
           title="Dashboard unavailable"
-          message="We couldn't load marketplace metrics. Verify your admin access and try again."
+          message="We couldn't load platform metrics. Verify your admin access and try again."
           onRetry={loadDashboard}
         />
       </div>
     );
   }
 
-  const revenue = summary.revenue as Record<string, number> | null;
+  const openReports = data.reports.pending + data.reports.under_review;
+  const openFeedback = data.feedback.new + data.feedback.under_review;
 
   return (
     <div className="max-w-6xl mx-auto">
       <AdminPageHeader
-        title="Marketplace Dashboard"
+        title="Dashboard"
+        description="Overview of members, moderation, and feedback across CribsTalk."
         icon={LayoutDashboard}
         action={
-          <Link href="/admin/disputes" className={AP.btnPrimary}>
-            <Shield className="w-4 h-4" aria-hidden="true" />
-            Dispute queue ({summary.open_disputes})
+          <Link href="/admin/reports" className={AP.btnPrimary}>
+            <Flag className="w-4 h-4" aria-hidden="true" />
+            Report queue ({openReports})
           </Link>
         }
       />
@@ -195,177 +203,210 @@ export default function AdminDashboardPage() {
       <div className={`${AP.statsGrid} mb-6 sm:mb-8`}>
         <AdminMotion delay={0}>
           <AdminStatCard
-            label="Total orders"
-            value={summary.total_orders.toLocaleString()}
-            icon={Package}
+            label="Total members"
+            value={data.users.total_users.toLocaleString()}
+            icon={Users}
             iconBg="bg-blue-50"
             iconColor="text-blue-600"
           />
         </AdminMotion>
         <AdminMotion delay={60}>
           <AdminStatCard
-            label="Total payouts"
-            value={summary.total_payouts.toLocaleString()}
-            icon={DollarSign}
+            label="New today"
+            value={data.users.new_users_today.toLocaleString()}
+            icon={UserPlus}
             iconBg="bg-emerald-50"
             iconColor="text-emerald-600"
           />
         </AdminMotion>
         <AdminMotion delay={120}>
           <AdminStatCard
-            label="Open disputes"
-            value={summary.open_disputes}
-            icon={Shield}
+            label="Active (30 days)"
+            value={data.users.active_users.toLocaleString()}
+            icon={Activity}
             iconBg="bg-orange-50"
             iconColor="text-orange-600"
-            highlight={summary.open_disputes > 0}
-            footnote={
-              summary.dispute_sla_breaches > 0
-                ? `${summary.dispute_sla_breaches} SLA breach${summary.dispute_sla_breaches !== 1 ? "es" : ""}`
-                : undefined
-            }
-            footnoteVariant="danger"
           />
         </AdminMotion>
         <AdminMotion delay={180}>
           <AdminStatCard
-            label="Chargebacks"
-            value={summary.open_chargebacks}
-            icon={AlertTriangle}
-            iconBg="bg-red-50"
-            iconColor="text-red-600"
-            highlight={summary.open_chargebacks > 0}
+            label="Verified"
+            value={data.users.verified_users.toLocaleString()}
+            icon={BadgeCheck}
+            iconBg="bg-indigo-50"
+            iconColor="text-indigo-600"
           />
         </AdminMotion>
       </div>
 
-      {revenue && (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-6 sm:mb-8">
-          <AdminMotion delay={0}>
-            <div className={`${AP.card} ${AP.cardPadding} ${AP.cardHover}`}>
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
-                Total GMV
-              </p>
-              <p className="text-2xl font-bold text-gray-900 tabular-nums">
-                {Number(revenue.total_gmv ?? 0).toLocaleString()}
-              </p>
-            </div>
-          </AdminMotion>
-          <AdminMotion delay={60}>
-            <div className={`${AP.card} ${AP.cardPadding} ${AP.cardHover}`}>
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
-                Commission revenue
-              </p>
-              <p className="text-2xl font-bold text-emerald-600 tabular-nums">
-                {Number(revenue.total_commission_revenue ?? 0).toLocaleString()}
-              </p>
-            </div>
-          </AdminMotion>
-          <AdminMotion delay={120}>
-            <div className={`${AP.card} ${AP.cardPadding} ${AP.cardHover}`}>
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
-                Pending revenue
-              </p>
-              <p className="text-2xl font-bold text-amber-600 tabular-nums">
-                {Number(revenue.pending_revenue ?? 0).toLocaleString()}
-              </p>
-            </div>
-          </AdminMotion>
-        </div>
-      )}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6 sm:mb-8">
+        <AdminMotion delay={0}>
+          <AdminStatCard
+            label="Open reports"
+            value={openReports}
+            icon={Flag}
+            iconBg="bg-orange-50"
+            iconColor="text-orange-600"
+            highlight={openReports > 0}
+          />
+        </AdminMotion>
+        <AdminMotion delay={60}>
+          <AdminStatCard
+            label="Resolved reports"
+            value={data.reports.resolved}
+            icon={CheckCircle2}
+            iconBg="bg-emerald-50"
+            iconColor="text-emerald-600"
+          />
+        </AdminMotion>
+        <AdminMotion delay={120}>
+          <AdminStatCard
+            label="Open feedback"
+            value={openFeedback}
+            icon={Inbox}
+            iconBg="bg-sky-50"
+            iconColor="text-sky-600"
+            highlight={openFeedback > 0}
+          />
+        </AdminMotion>
+        <AdminMotion delay={180}>
+          <AdminStatCard
+            label="New this week"
+            value={data.users.new_users_this_week.toLocaleString()}
+            icon={Clock}
+            iconBg="bg-violet-50"
+            iconColor="text-violet-600"
+          />
+        </AdminMotion>
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6 sm:mb-8">
         <AdminMotion delay={0}>
-          <AdminBarChart title="Orders by status" data={summary.orders_by_status} />
+          <AdminTableCard
+            title={
+              <span className="flex items-center gap-2">
+                <Flag className="w-4 h-4 text-orange-600" aria-hidden="true" />
+                Recent reports
+              </span>
+            }
+            action={
+              <Link
+                href="/admin/reports"
+                className="text-xs font-medium text-primary-600 hover:text-orange-500 transition-colors"
+              >
+                View all →
+              </Link>
+            }
+          >
+            {data.recentReports.length === 0 ? (
+              <AdminEmptyState
+                icon={Flag}
+                title="No reports yet"
+                description="Flagged posts will appear here for moderation."
+              />
+            ) : (
+              <div className={AP.tableWrap}>
+                <table className={AP.table}>
+                  <AdminTableHead>
+                    <AdminTableHeadCell>Post</AdminTableHeadCell>
+                    <AdminTableHeadCell>Reports</AdminTableHeadCell>
+                    <AdminTableHeadCell>Status</AdminTableHeadCell>
+                    <AdminTableHeadCell>Updated</AdminTableHeadCell>
+                  </AdminTableHead>
+                  <AdminTableBody>
+                    {data.recentReports.map((group) => (
+                      <AdminTableRow key={group.post_id}>
+                        <AdminTableCell>
+                          <Link
+                            href={`/admin/reports/${group.post_id}`}
+                            className="text-primary-600 hover:text-orange-500 font-medium text-sm transition-colors line-clamp-1"
+                          >
+                            {group.post?.content?.trim()
+                              ? group.post.content.length > 48
+                                ? `${group.post.content.slice(0, 48).trimEnd()}…`
+                                : group.post.content
+                              : `Post ${group.post_id.slice(0, 8)}…`}
+                          </Link>
+                        </AdminTableCell>
+                        <AdminTableCell className="tabular-nums">
+                          {group.report_count}
+                        </AdminTableCell>
+                        <AdminTableCell className="capitalize text-xs text-gray-600">
+                          {group.status.replace(/_/g, " ")}
+                        </AdminTableCell>
+                        <AdminTableCell className="text-gray-500 whitespace-nowrap">
+                          {formatDate(group.last_reported_at)}
+                        </AdminTableCell>
+                      </AdminTableRow>
+                    ))}
+                  </AdminTableBody>
+                </table>
+              </div>
+            )}
+          </AdminTableCard>
         </AdminMotion>
+
         <AdminMotion delay={80}>
-          <AdminDonutChart title="Payouts by status" data={summary.payouts_by_status} />
+          <AdminTableCard
+            title={
+              <span className="flex items-center gap-2">
+                <MessageSquare className="w-4 h-4 text-emerald-600" aria-hidden="true" />
+                Recent feedback
+              </span>
+            }
+            action={
+              <Link
+                href="/admin/feedback"
+                className="text-xs font-medium text-primary-600 hover:text-orange-500 transition-colors"
+              >
+                View all →
+              </Link>
+            }
+          >
+            {data.recentFeedback.length === 0 ? (
+              <AdminEmptyState
+                icon={MessageSquare}
+                title="No feedback yet"
+                description="User feedback will appear here as it comes in."
+              />
+            ) : (
+              <div className={AP.tableWrap}>
+                <table className={AP.table}>
+                  <AdminTableHead>
+                    <AdminTableHeadCell>Subject</AdminTableHeadCell>
+                    <AdminTableHeadCell>Type</AdminTableHeadCell>
+                    <AdminTableHeadCell>Status</AdminTableHeadCell>
+                    <AdminTableHeadCell>Submitted</AdminTableHeadCell>
+                  </AdminTableHead>
+                  <AdminTableBody>
+                    {data.recentFeedback.map((item) => (
+                      <AdminTableRow key={item.id}>
+                        <AdminTableCell>
+                          <Link
+                            href={`/admin/feedback/${item.id}`}
+                            className="text-primary-600 hover:text-orange-500 font-medium text-sm transition-colors line-clamp-1"
+                          >
+                            {item.title || item.message.slice(0, 48)}
+                          </Link>
+                        </AdminTableCell>
+                        <AdminTableCell className="capitalize text-xs text-gray-600">
+                          {item.feedback_type.replace(/_/g, " ")}
+                        </AdminTableCell>
+                        <AdminTableCell className="capitalize text-xs text-gray-600">
+                          {item.status.replace(/_/g, " ")}
+                        </AdminTableCell>
+                        <AdminTableCell className="text-gray-500 whitespace-nowrap">
+                          {formatDate(item.created_at)}
+                        </AdminTableCell>
+                      </AdminTableRow>
+                    ))}
+                  </AdminTableBody>
+                </table>
+              </div>
+            )}
+          </AdminTableCard>
         </AdminMotion>
       </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4 mb-6 sm:mb-8">
-        <CurrencyBreakdown title="GMV by currency" data={summary.gmv_by_currency} delay={0} />
-        <CurrencyBreakdown
-          title="Held payouts (seller net)"
-          data={summary.escrow_by_currency}
-          delay={60}
-        />
-        <CurrencyBreakdown
-          title="Refunds by currency"
-          data={summary.refunds_by_currency}
-          delay={120}
-        />
-      </div>
-
-      <AdminMotion delay={100}>
-        <AdminTableCard
-          title={
-            <span className="flex items-center gap-2">
-              <TrendingUp className="w-4 h-4 text-primary-600" aria-hidden="true" />
-              Recent orders
-            </span>
-          }
-          action={
-            <Link
-              href="/admin/orders"
-              className="text-xs font-medium text-primary-600 hover:text-orange-500 transition-colors"
-            >
-              View all →
-            </Link>
-          }
-        >
-          {summary.recent_orders.length === 0 ? (
-            <AdminEmptyState
-              icon={Inbox}
-              title="No recent orders"
-              description="Orders will appear here as they come in."
-              action={
-                <Link href="/admin/orders" className={AP.btnSecondary}>
-                  Browse all orders
-                </Link>
-              }
-            />
-          ) : (
-            <div className={AP.tableWrap}>
-              <table className={AP.table}>
-                <AdminTableHead>
-                  <AdminTableHeadCell>Order</AdminTableHeadCell>
-                  <AdminTableHeadCell>Amount</AdminTableHeadCell>
-                  <AdminTableHeadCell>Status</AdminTableHeadCell>
-                  <AdminTableHeadCell>Payout hold</AdminTableHeadCell>
-                  <AdminTableHeadCell>Payout</AdminTableHeadCell>
-                </AdminTableHead>
-                <AdminTableBody>
-                  {summary.recent_orders.map((order) => (
-                    <AdminTableRow key={order.id}>
-                      <AdminTableCell>
-                        <Link
-                          href="/marketplace"
-                          className="text-primary-600 hover:text-orange-500 font-mono text-xs font-medium transition-colors"
-                        >
-                          {order.id.slice(0, 8)}…
-                        </Link>
-                      </AdminTableCell>
-                      <AdminTableCell className="tabular-nums whitespace-nowrap">
-                        {order.currency} {Number(order.total_amount).toLocaleString()}
-                      </AdminTableCell>
-                      <AdminTableCell>
-                        <AdminStatusBadge status={order.status} />
-                      </AdminTableCell>
-                      <AdminTableCell>
-                        <AdminStatusBadge status={order.escrow_status} />
-                      </AdminTableCell>
-                      <AdminTableCell>
-                        <AdminStatusBadge status={order.payout_status} />
-                      </AdminTableCell>
-                    </AdminTableRow>
-                  ))}
-                </AdminTableBody>
-              </table>
-            </div>
-          )}
-        </AdminTableCard>
-      </AdminMotion>
     </div>
   );
 }

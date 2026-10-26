@@ -7,25 +7,19 @@ import {
   ArrowLeft,
   BadgeCheck,
   ExternalLink,
-  Globe,
   Mail,
   MapPin,
   Phone,
   RefreshCw,
   ShieldOff,
-  ShoppingBag,
-  Star,
-  Store,
   Trash2,
   User,
   UserX,
-  Wallet,
 } from '@/shared/icons';
 import toast from "react-hot-toast";
 import { AdminErrorState } from "@/features/admin/components/AdminErrorState";
 import { AdminLoading } from "@/features/admin/components/AdminLoading";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
-import { AdminStatCard } from "@/features/admin/components/AdminStatCard";
 import { AdminStatusBadge } from "@/features/admin/components/AdminStatusBadge";
 import { useAdminAuth } from "@/features/admin/hooks/useAdminAuth";
 import { AP } from "@/features/admin/constants/adminLayout";
@@ -61,16 +55,6 @@ function formatDate(dateString: string | null | undefined) {
     hour: "2-digit",
     minute: "2-digit",
   }).format(new Date(dateString));
-}
-
-function accountTypeLabel(type: AdminUserDetail["account_type"]) {
-  const labels: Record<AdminUserDetail["account_type"], string> = {
-    buyer: "Buyer",
-    seller: "Seller",
-    both: "Buyer & Seller",
-    none: "Member",
-  };
-  return labels[type];
 }
 
 export default function AdminUserDetailPage() {
@@ -156,7 +140,6 @@ export default function AdminUserDetailPage() {
     );
   }
 
-  const isSeller = user.account_type === "seller" || user.account_type === "both";
   const location = [user.address, user.city, user.state, user.country]
     .filter(Boolean)
     .join(", ");
@@ -221,13 +204,6 @@ export default function AdminUserDetailPage() {
             <p className="text-sm text-gray-500 mb-3">@{user.username}</p>
 
             <div className="flex flex-wrap items-center justify-center gap-2 mb-4">
-              <AdminStatusBadge status={user.account_type} />
-              {isSeller && (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-violet-50 text-violet-700 text-xs font-semibold">
-                  <Store className="w-3 h-3" aria-hidden="true" />
-                  Seller
-                </span>
-              )}
               {user.is_verified && (
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 text-xs font-semibold">
                   <BadgeCheck className="w-3 h-3" aria-hidden="true" />
@@ -276,11 +252,7 @@ export default function AdminUserDetailPage() {
           <div className={`${AP.card} ${AP.cardPadding}`}>
             <h3 className="text-sm font-semibold text-gray-900 mb-3">Account Details</h3>
             <DetailRow label="User ID" value={<span className="font-mono text-xs">{user.id}</span>} />
-            <DetailRow label="Account type" value={accountTypeLabel(user.account_type)} />
             <DetailRow label="Platform role" value={user.platform_role} />
-            {user.seller_tier && (
-              <DetailRow label="Seller tier" value={user.seller_tier} />
-            )}
             <DetailRow
               label="Verification"
               value={
@@ -298,94 +270,6 @@ export default function AdminUserDetailPage() {
           </div>
         </div>
       </div>
-
-      <div className={`${AP.statsGrid} mb-6`}>
-        <AdminStatCard
-          label="Total Orders"
-          value={user.total_orders.toLocaleString()}
-          icon={ShoppingBag}
-          iconColor="text-blue-600"
-          iconBg="bg-blue-50"
-        />
-        <AdminStatCard
-          label="Total Reviews"
-          value={user.total_reviews.toLocaleString()}
-          icon={Star}
-          iconColor="text-amber-600"
-          iconBg="bg-amber-50"
-        />
-        <AdminStatCard
-          label="Transactions"
-          value={user.total_transactions.toLocaleString()}
-          icon={Globe}
-          iconColor="text-teal-600"
-          iconBg="bg-teal-50"
-        />
-        {isSeller && user.seller_stats && (
-          <AdminStatCard
-            label="Total Listings"
-            value={user.seller_stats.total_listings.toLocaleString()}
-            icon={Store}
-            iconColor="text-violet-600"
-            iconBg="bg-violet-50"
-          />
-        )}
-      </div>
-
-      {isSeller && user.seller_stats && (
-        <div className={`${AP.card} ${AP.cardPadding} mb-6`}>
-          <h3 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
-            <Store className="w-4 h-4 text-violet-600" aria-hidden="true" />
-            Seller Performance
-          </h3>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-            <div>
-              <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Listings</p>
-              <p className="text-xl font-bold text-gray-900">
-                {user.seller_stats.total_listings}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Active</p>
-              <p className="text-xl font-bold text-gray-900">
-                {user.seller_stats.active_listings}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Sold Items</p>
-              <p className="text-xl font-bold text-gray-900">
-                {user.seller_stats.sold_items}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Avg. Rating</p>
-              <p className="text-xl font-bold text-gray-900 flex items-center gap-1">
-                {user.seller_stats.average_rating != null ? (
-                  <>
-                    <Star className="w-4 h-4 text-amber-500 fill-amber-500" aria-hidden="true" />
-                    {user.seller_stats.average_rating.toFixed(1)}
-                  </>
-                ) : (
-                  "—"
-                )}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-500 uppercase tracking-wide mb-1 flex items-center gap-1">
-                <Wallet className="w-3 h-3" aria-hidden="true" />
-                Earnings
-              </p>
-              <p className="text-xl font-bold text-gray-900">
-                {user.seller_stats.total_earnings != null
-                  ? user.seller_stats.total_earnings.toLocaleString(undefined, {
-                      minimumFractionDigits: 2,
-                    })
-                  : "—"}
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
 
       <div className={`${AP.card} ${AP.cardPadding} border-red-100`}>
         <h3 className="text-sm font-semibold text-red-700 mb-1 flex items-center gap-2">
@@ -459,13 +343,7 @@ export default function AdminUserDetailPage() {
                       : "bg-green-600 hover:bg-green-700"
                 }`}
               >
-                {actionLoading
-                  ? "Processing..."
-                  : confirmAction === "delete"
-                    ? "Delete permanently"
-                    : confirmAction === "suspend"
-                      ? "Suspend"
-                      : "Reactivate"}
+                {actionLoading ? "Processing..." : "Confirm"}
               </button>
               <button
                 type="button"

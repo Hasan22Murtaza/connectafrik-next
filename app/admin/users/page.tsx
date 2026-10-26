@@ -11,8 +11,6 @@ import {
   Eye,
   RefreshCw,
   Search,
-  ShoppingBag,
-  Store,
   UserCheck,
   UserPlus,
   Users,
@@ -49,8 +47,6 @@ const LIMIT = 20;
 
 const FILTER_OPTIONS: { value: AdminUserFilter; label: string }[] = [
   { value: "all", label: "All Users" },
-  { value: "sellers", label: "Sellers Only" },
-  { value: "buyers", label: "Buyers Only" },
   { value: "verified", label: "Verified" },
   { value: "unverified", label: "Unverified" },
   { value: "active", label: "Active" },
@@ -93,27 +89,6 @@ function UserAvatar({ user }: { user: AdminUserListItem }) {
   return (
     <div className="w-9 h-9 rounded-full bg-primary-50 flex items-center justify-center ring-2 ring-white shadow-sm">
       <span className="text-sm font-semibold text-primary-600">{initials}</span>
-    </div>
-  );
-}
-
-function AccountTypeBadge({ type }: { type: AdminUserListItem["account_type"] }) {
-  const labels: Record<AdminUserListItem["account_type"], string> = {
-    buyer: "Buyer",
-    seller: "Seller",
-    both: "Buyer & Seller",
-    none: "Member",
-  };
-
-  return (
-    <div className="flex items-center gap-1.5 flex-wrap">
-      <AdminStatusBadge status={type} />
-      {(type === "seller" || type === "both") && (
-        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-violet-50 text-violet-700 text-[10px] font-semibold uppercase tracking-wide">
-          <Store className="w-3 h-3" aria-hidden="true" />
-          Seller
-        </span>
-      )}
     </div>
   );
 }
@@ -264,7 +239,7 @@ export default function AdminUsersPage() {
     <div className="max-w-6xl mx-auto">
       <AdminPageHeader
         title="Users"
-        description="Manage registered members, sellers, and buyers"
+        description="Manage CribsTalk members and account access"
         icon={Users}
         action={
           <button
@@ -282,9 +257,9 @@ export default function AdminUsersPage() {
         }
       />
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4 mb-6">
         {statsLoading ? (
-          Array.from({ length: 7 }).map((_, i) => (
+          Array.from({ length: 5 }).map((_, i) => (
             <div
               key={i}
               className={`${AP.card} ${AP.cardPadding} animate-pulse`}
@@ -298,26 +273,11 @@ export default function AdminUsersPage() {
         ) : stats ? (
           <>
             <AdminStatCard
-              label="Total Registered"
+              label="Total Members"
               value={stats.total_users.toLocaleString()}
               icon={Users}
               iconColor="text-blue-600"
               iconBg="bg-blue-50"
-            />
-            <AdminStatCard
-              label="Total Buyers"
-              value={stats.total_buyers.toLocaleString()}
-              icon={ShoppingBag}
-              iconColor="text-sky-600"
-              iconBg="bg-sky-50"
-            />
-            <AdminStatCard
-              label="Total Sellers"
-              value={stats.total_sellers.toLocaleString()}
-              icon={Store}
-              iconColor="text-violet-600"
-              iconBg="bg-violet-50"
-              highlight
             />
             <AdminStatCard
               label="New Today"
@@ -394,7 +354,7 @@ export default function AdminUsersPage() {
       </div>
 
       {loading ? (
-        <AdminTableSkeleton rows={10} cols={9} />
+        <AdminTableSkeleton rows={10} cols={8} />
       ) : (
         <div className={`${AP.card} overflow-hidden`}>
           {users.length === 0 ? (
@@ -422,7 +382,6 @@ export default function AdminUsersPage() {
                   ))}
                   <AdminTableHeadCell>Email</AdminTableHeadCell>
                   <AdminTableHeadCell>User ID</AdminTableHeadCell>
-                  <AdminTableHeadCell>Account Type</AdminTableHeadCell>
                   <AdminTableHeadCell>Verification</AdminTableHeadCell>
                   <AdminTableHeadCell>Status</AdminTableHeadCell>
                   <AdminTableHeadCell>Actions</AdminTableHeadCell>
@@ -455,15 +414,6 @@ export default function AdminUsersPage() {
                       </AdminTableCell>
                       <AdminTableCell className="font-mono text-xs text-gray-500">
                         {user.id.slice(0, 8)}…
-                      </AdminTableCell>
-                      <AdminTableCell>
-                        <AccountTypeBadge type={user.account_type} />
-                        {(user.account_type === "seller" || user.account_type === "both") && (
-                          <p className="text-[11px] text-gray-400 mt-1">
-                            {user.listings_count} listing
-                            {user.listings_count !== 1 ? "s" : ""}
-                          </p>
-                        )}
                       </AdminTableCell>
                       <AdminTableCell>
                         <AdminStatusBadge

@@ -34,11 +34,11 @@ export function AdminHeader() {
           className="flex items-center gap-2.5 shrink-0 group"
         >
           <Image
-            src="/assets/images/logo_2.png"
+            src="/assets/favicon-2.png"
             alt="CribsTalk"
-            width={56}
-            height={56}
-            className="w-11 h-11 sm:w-14 sm:h-14 object-contain transition-transform duration-200 group-hover:scale-105"
+            width={40}
+            height={40}
+            className="w-9 h-9 sm:w-10 sm:h-10 object-contain transition-transform duration-200 group-hover:scale-105"
             priority
           />
           <div className="hidden sm:block">

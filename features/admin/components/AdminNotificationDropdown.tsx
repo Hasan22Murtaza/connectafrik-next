@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Bell, Shield, Package, Wallet } from '@/shared/icons';
+import { Bell, Flag, MessageSquare, Users } from '@/shared/icons';
+
 interface AdminNotification {
   id: string;
   title: string;
@@ -16,28 +17,28 @@ interface AdminNotification {
 const DEFAULT_NOTIFICATIONS: AdminNotification[] = [
   {
     id: "1",
-    title: "Open disputes",
-    description: "Review cases awaiting admin resolution",
-    href: "/admin/disputes",
-    icon: Shield,
+    title: "Pending reports",
+    description: "Review flagged posts awaiting moderation",
+    href: "/admin/reports",
+    icon: Flag,
     time: "Live",
     unread: true,
   },
   {
     id: "2",
-    title: "Pending payouts",
-    description: "Seller transfers waiting for processing",
-    href: "/admin/payouts",
-    icon: Wallet,
+    title: "New feedback",
+    description: "User suggestions and bug reports to triage",
+    href: "/admin/feedback",
+    icon: MessageSquare,
     time: "Queue",
     unread: true,
   },
   {
     id: "3",
-    title: "Recent orders",
-    description: "Monitor payout hold and payout status",
-    href: "/admin/orders",
-    icon: Package,
+    title: "Manage users",
+    description: "Search, suspend, or review member accounts",
+    href: "/admin/users",
+    icon: Users,
     time: "Today",
   },
 ];

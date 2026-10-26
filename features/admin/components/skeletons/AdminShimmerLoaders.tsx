@@ -195,113 +195,14 @@ export function AdminDashboardSkeleton() {
       <div className="mb-6">
         <AdminStatsGridSkeleton count={4} />
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
-        {Array.from({ length: 3 }).map((_, i) => (
-          <div key={i} className={`${AP.card} ${AP.cardPadding}`}>
-            <ShimmerBlock className="h-3 w-24 mb-3" />
-            <div className="space-y-2">
-              <div className="flex justify-between"><ShimmerBlock className="h-4 w-12" /><ShimmerBlock className="h-4 w-16" /></div>
-              <div className="flex justify-between"><ShimmerBlock className="h-4 w-12" /><ShimmerBlock className="h-4 w-16" /></div>
-            </div>
-          </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <AdminStatCardSkeleton key={i} />
         ))}
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-        <AdminChartSkeleton />
-        <AdminChartSkeleton />
-      </div>
-      <AdminTableSkeleton rows={5} cols={5} />
-    </div>
-  );
-}
-
-export function AdminOrdersPageSkeleton() {
-  return (
-    <div className="max-w-6xl mx-auto" aria-busy="true" aria-label="Loading orders">
-      <AdminPageHeaderSkeleton />
-      <div className={`${AP.card} ${AP.cardPadding} mb-4 flex flex-wrap gap-3`}>
-        <ShimmerBlock className="h-10 w-40 rounded-xl" />
-        <ShimmerBlock className="h-10 w-40 rounded-xl" />
-        <ShimmerBlock className="h-4 w-24 self-end" />
-      </div>
-      <AdminTableSkeleton rows={8} cols={8} />
-    </div>
-  );
-}
-
-export function AdminPayoutsPageSkeleton() {
-  return (
-    <div className="max-w-6xl mx-auto" aria-busy="true" aria-label="Loading payouts">
-      <AdminPageHeaderSkeleton />
-      <AdminTableSkeleton rows={3} cols={6} />
-      <div className={`${AP.card} ${AP.cardPadding} mb-4 mt-6 flex gap-3`}>
-        <ShimmerBlock className="h-10 w-40 rounded-xl" />
-        <ShimmerBlock className="h-4 w-24 self-end" />
-      </div>
-      <AdminTableSkeleton rows={8} cols={9} />
-    </div>
-  );
-}
-
-export function AdminOrderDetailSkeleton() {
-  return (
-    <div className="max-w-6xl mx-auto" aria-busy="true" aria-label="Loading order">
-      <AdminPageHeaderSkeleton />
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="lg:col-span-2 space-y-4">
-          <div className={`${AP.card} ${AP.cardPadding} space-y-3`}>
-            <ShimmerBlock className="h-5 w-40" />
-            <div className="flex gap-4">
-              <ShimmerBlock className="w-20 h-20 rounded-xl shrink-0" />
-              <div className="flex-1 space-y-2">
-                <ShimmerBlock className="h-5 w-3/4" />
-                <ShimmerBlock className="h-4 w-1/2" />
-                <ShimmerBlock className="h-4 w-1/3" />
-              </div>
-            </div>
-          </div>
-          {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className={`${AP.card} ${AP.cardPadding} space-y-2`}>
-              <ShimmerBlock className="h-5 w-36" />
-              <ShimmerBlock className="h-4 w-full" />
-              <ShimmerBlock className="h-4 w-5/6" />
-              <ShimmerBlock className="h-4 w-2/3" />
-            </div>
-          ))}
-        </div>
-        <div className="space-y-4">
-          {Array.from({ length: 2 }).map((_, i) => (
-            <div key={i} className={`${AP.card} ${AP.cardPadding} space-y-2`}>
-              <ShimmerBlock className="h-5 w-28" />
-              <ShimmerBlock className="h-4 w-full" />
-              <ShimmerBlock className="h-4 w-4/5" />
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-export function AdminDisputesPageSkeleton() {
-  return (
-    <div className="max-w-6xl mx-auto" aria-busy="true" aria-label="Loading disputes">
-      <AdminPageHeaderSkeleton />
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <AdminListSkeleton items={6} />
-        <div className="lg:col-span-2">
-          <div className={`${AP.card} p-6 space-y-4`}>
-            <ShimmerBlock className="h-6 w-48" />
-            <ShimmerBlock className="h-4 w-64" />
-            <ShimmerBlock className="h-20 w-full rounded-xl" />
-            <ShimmerBlock className="h-24 w-full rounded-xl" />
-            <div className="flex gap-2 pt-2">
-              <ShimmerBlock className="h-10 w-36 rounded-xl" />
-              <ShimmerBlock className="h-10 w-32 rounded-xl" />
-              <ShimmerBlock className="h-10 w-40 rounded-xl" />
-            </div>
-          </div>
-        </div>
+        <AdminTableSkeleton rows={5} cols={4} />
+        <AdminTableSkeleton rows={5} cols={4} />
       </div>
     </div>
   );
@@ -312,7 +213,7 @@ export function AdminUsersPageSkeleton() {
     <div className="max-w-6xl mx-auto" aria-busy="true" aria-label="Loading users">
       <AdminPageHeaderSkeleton />
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
-        {Array.from({ length: 7 }).map((_, i) => (
+        {Array.from({ length: 5 }).map((_, i) => (
           <AdminStatCardSkeleton key={i} />
         ))}
       </div>
