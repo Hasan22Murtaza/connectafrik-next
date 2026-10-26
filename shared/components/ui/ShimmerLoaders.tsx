@@ -588,6 +588,37 @@ export function FriendsGridShimmer({ count = 8 }: { count?: number }) {
   );
 }
 
+export function FriendProfileCardsShimmer({
+  count = 8,
+  className = "grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4",
+}: {
+  count?: number;
+  className?: string;
+}) {
+  return (
+    <div className={`${className} w-full min-w-0`}>
+      {Array.from({ length: count }).map((_, index) => (
+        <div
+          key={index}
+          className="flex h-full flex-col overflow-hidden rounded-2xl border border-black/5 bg-white shadow-sm dark:border-white/10 dark:bg-surface"
+        >
+          <div className="aspect-[1.8/1] w-full animate-shimmer" />
+          <div className="relative z-10 -mt-7 ml-4 h-14 w-14 shrink-0 rounded-full border-[3px] border-white bg-surface-tertiary animate-shimmer dark:border-surface" />
+          <div className="flex flex-1 flex-col px-4 pb-4 pt-2">
+            <div className="h-4 w-3/4 animate-shimmer rounded" />
+            <div className="mt-2 h-3 w-1/2 animate-shimmer rounded" />
+            <div className="mt-4 h-3 w-2/3 animate-shimmer rounded" />
+            <div className="mt-auto space-y-2 pt-5">
+              <div className="h-10 w-full animate-shimmer rounded-full" />
+              <div className="h-10 w-full animate-shimmer rounded-full" />
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 /** Full-page shimmer for marketplace product detail loading. */
 export function ProductDetailPageShimmer() {
   return (

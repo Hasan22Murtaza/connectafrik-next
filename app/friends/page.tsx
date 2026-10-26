@@ -3,7 +3,11 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { useProductionChat } from "@/contexts/ProductionChatContext";
 import { apiClient } from "@/lib/api-client";
-import { FriendsGridShimmer, useShimmerCount } from "@/shared/components/ui/ShimmerLoaders";
+import {
+  FriendProfileCardsShimmer,
+  FriendsGridShimmer,
+  useShimmerCount,
+} from "@/shared/components/ui/ShimmerLoaders";
 import { Friend, FriendRequest } from "@/shared/types";
 import FriendsSidebar, { type FriendsSection } from "@/features/social/components/FriendsSidebar";
 import FriendProfileCard from "@/features/social/components/FriendProfileCard";
@@ -14,7 +18,8 @@ import {
   Gift,
   PartyPopper,
   Search,
-  Users
+  Users,
+  X,
 } from '@/shared/icons';
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -207,10 +212,12 @@ function SuggestionCard({
   suggestion,
   sending,
   onSend,
+  onDismiss,
 }: {
   suggestion: FriendSuggestion;
   sending: boolean;
   onSend: () => void;
+  onDismiss: () => void;
 }) {
   const relationshipText = suggestion.mutual_friends_count > 0
     ? `${suggestion.mutual_friends_count} mutual ${suggestion.mutual_friends_count === 1 ? "friend" : "friends"}`
@@ -224,6 +231,17 @@ function SuggestionCard({
       avatarUrl={suggestion.avatar_url}
       bannerImage={suggestion.banner_image}
       relationshipText={relationshipText}
+      coverAction={
+        <button
+          type="button"
+          onClick={onDismiss}
+          aria-label={`Remove ${suggestion.full_name} from suggestions`}
+          title="Remove suggestion"
+          className="flex h-8 w-8 items-center justify-center rounded-full bg-black/55 text-white opacity-0 transition-[opacity,background-color] group-hover:opacity-100 hover:bg-black/75 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+        >
+          <X className="h-4 w-4" aria-hidden="true" />
+        </button>
+      }
     >
       <button
         type="button"
@@ -570,6 +588,10 @@ const FriendsPageContent: React.FC = () => {
     }
   };
 
+  const handleDismissSuggestion = (userId: string) => {
+    setSuggestions((current) => current.filter((suggestion) => suggestion.user_id !== userId));
+  };
+
   const handleStartBirthdayChat = async (friend: Friend) => {
     if (!user) return;
 
@@ -713,10 +735,10 @@ const FriendsPageContent: React.FC = () => {
 
                   {requestsView === "pending" ? (
                     sentLoading ? (
-                      <FriendsGridShimmer count={shimmerCount * 2} />
+                      <FriendProfileCardsShimmer count={shimmerCount * 2} />
                     ) : sentRequests.length > 0 ? (
                       <>
-                        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 2xl:grid-cols-6 gap-4">
+                        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                           {sentRequests.slice(0, requestsDisplayLimit).map((request) => (
                             <SentRequestCard
                               key={request.id}
@@ -750,10 +772,10 @@ const FriendsPageContent: React.FC = () => {
                       </div>
                     )
                   ) : loading ? (
-                    <FriendsGridShimmer count={shimmerCount * 2} />
+                    <FriendProfileCardsShimmer count={shimmerCount * 2} />
                   ) : requests.length > 0 ? (
                     <>
-                      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 2xl:grid-cols-6 gap-4">
+                      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                         {requests.slice(0, requestsDisplayLimit).map((request) => (
                           <ReceivedRequestCard
                             key={request.id}
@@ -801,16 +823,17 @@ const FriendsPageContent: React.FC = () => {
 
                 {/* Suggestions Grid */}
                 {suggestionsLoading ? (
-                  <FriendsGridShimmer count={shimmerCount * 2} />
+                  <FriendProfileCardsShimmer count={shimmerCount * 2} />
                 ) : suggestions.length > 0 ? (
                   <>
-                    <div className="grid grid-cols-2 gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
+                    <div className="grid grid-cols-2 gap-4 sm:grid-cols-2 lg:grid-cols-4">
                       {suggestions.slice(0, suggestionsDisplayLimit).map((suggestion) => (
                         <SuggestionCard
                           key={suggestion.user_id}
                           suggestion={suggestion}
                           sending={sendingRequests.has(suggestion.user_id)}
                           onSend={() => handleSendFriendRequest(suggestion.user_id)}
+                          onDismiss={() => handleDismissSuggestion(suggestion.user_id)}
                         />
                       ))}
                     </div>
@@ -858,9 +881,9 @@ const FriendsPageContent: React.FC = () => {
 
               {requestsView === "pending" ? (
                 sentLoading ? (
-                  <FriendsGridShimmer count={shimmerCount * 2} />
+                  <FriendProfileCardsShimmer count={shimmerCount * 2} />
                 ) : sentRequests.length > 0 ? (
-                  <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 2xl:grid-cols-6 gap-4">
+                  <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     {sentRequests.map((request) => (
                       <SentRequestCard
                         key={request.id}
@@ -882,9 +905,9 @@ const FriendsPageContent: React.FC = () => {
                   </div>
                 )
               ) : loading ? (
-                <FriendsGridShimmer count={shimmerCount * 2} />
+                <FriendProfileCardsShimmer count={shimmerCount * 2} />
               ) : requests.length > 0 ? (
-                <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 2xl:grid-cols-6 gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                   {requests.map((request) => (
                     <ReceivedRequestCard
                       key={request.id}
@@ -923,9 +946,9 @@ const FriendsPageContent: React.FC = () => {
 
               {/* Friends Grid */}
               {friendsLoading ? (
-                <FriendsGridShimmer count={shimmerCount * 2} />
+                <FriendProfileCardsShimmer count={shimmerCount * 2} />
               ) : filteredFriends.length > 0 ? (
-                <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                   {filteredFriends.map((friend) => (
                     <FriendProfileCard
                       key={friend.id}
@@ -978,15 +1001,16 @@ const FriendsPageContent: React.FC = () => {
 
               {/* Suggestions Grid */}
               {suggestionsLoading ? (
-                <FriendsGridShimmer count={shimmerCount * 2} />
+                <FriendProfileCardsShimmer count={shimmerCount * 2} />
               ) : filteredSuggestions.length > 0 ? (
-                <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                   {filteredSuggestions.map((suggestion) => (
                     <SuggestionCard
                       key={suggestion.user_id}
                       suggestion={suggestion}
                       sending={sendingRequests.has(suggestion.user_id)}
                       onSend={() => handleSendFriendRequest(suggestion.user_id)}
+                      onDismiss={() => handleDismissSuggestion(suggestion.user_id)}
                     />
                   ))}
                 </div>
@@ -1237,7 +1261,7 @@ function FriendsPageFallback() {
           </div>
         </aside>
         <div className="flex-1 max-w-full py-3 sm:py-6 px-4">
-          <FriendsGridShimmer count={8} />
+          <FriendProfileCardsShimmer count={8} />
         </div>
       </div>
     </div>
