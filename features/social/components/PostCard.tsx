@@ -35,6 +35,8 @@ import { FeedPostVideo } from "@/features/social/components/FeedPostVideo";
 import { PostDetailVideo } from "@/features/social/components/PostDetailVideo";
 import { PostLocationCheckIn } from "@/features/social/components/PostLocationCheckIn";
 import { parsePostLocation } from "@/features/social/utils/postLocation";
+import { sanitizePostFeeling } from "@/features/social/utils/postFeeling";
+import { formatTaggedPeoplePhrase } from "@/features/social/utils/postTaggedUsers";
 interface Post {
   id: string;
   content: string;
@@ -53,6 +55,13 @@ interface Post {
   media_type?: string | null;
   background_id?: string | null;
   location?: string | null;
+  feeling?: { emoji: string; label: string } | null;
+  tagged_users?: Array<{
+    id: string;
+    username: string;
+    full_name: string;
+    avatar_url: string | null;
+  }>;
   visibility?: "public" | "private" | "only_me";
   likes_count: number;
   comments_count: number;
@@ -109,7 +118,17 @@ interface PostCardProps {
   onComment: (postId: string) => void;
   onShare: (postId: string) => void;
   onDelete?: (postId: string) => void;
-  onEdit?: (postId: string, updates: { content: string; category: 'politics' | 'culture' | 'general'; media_urls?: string[]; media_type?: string; tags?: string[]; background_id?: string | null }) => void;
+  onEdit?: (postId: string, updates: {
+    content: string
+    category: 'politics' | 'culture' | 'general'
+    media_urls?: string[]
+    media_type?: string
+    tags?: string[]
+    background_id?: string | null
+    visibility?: 'public' | 'private' | 'only_me'
+    feeling?: { emoji: string; label: string } | null
+    tagged_users?: Array<{ id: string; username: string; full_name: string; avatar_url: string | null }>
+  }) => void;
   onEmojiReaction?: (postId: string, emoji: string) => void | boolean | Promise<void | boolean>;
   showEmojiPicker?: boolean;
   postReactions?: { [emoji: string]: string[] };
@@ -265,9 +284,13 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
   };
 
   const parsedLocation = parsePostLocation(post.location);
+  const postFeeling = sanitizePostFeeling(post.feeling);
+  const taggedUsers = Array.isArray(post.tagged_users) ? post.tagged_users : [];
+  const taggedPeoplePhrase = formatTaggedPeoplePhrase(taggedUsers);
   const hasPostMedia = !!(post.media_urls && post.media_urls.length > 0);
   const showLocationCheckIn =
     !!parsedLocation && !hasPostMedia && !post.reposted_post;
+  const showFeelingOrPeopleHeader = !showLocationCheckIn && (!!postFeeling || taggedUsers.length > 0);
 
   const cardBackgroundPreset = getPostBackgroundPreset(post.background_id);
   const useLegacyShortCard = !cardBackgroundPreset && isShortTextPost();
@@ -484,6 +507,8 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
         location: postData.location || null,
         background_id: postData.background_id ?? null,
         visibility: postData.visibility,
+        feeling: postData.feeling ?? null,
+        tagged_user_ids: postData.tagged_user_ids ?? [],
         updated_at: new Date().toISOString(),
       };
 
@@ -496,6 +521,13 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
           tags?: string[];
           background_id?: string | null;
           visibility?: "public" | "private" | "only_me";
+          feeling?: { emoji: string; label: string } | null;
+          tagged_users?: Array<{
+            id: string;
+            username: string;
+            full_name: string;
+            avatar_url: string | null;
+          }>;
         };
       }>(`/api/posts/${post.id}`, updatePayload);
 
@@ -508,6 +540,8 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
           tags: response.data.tags,
           background_id: response.data.background_id ?? null,
           visibility: response.data.visibility ?? postData.visibility,
+          feeling: response.data.feeling ?? null,
+          tagged_users: response.data.tagged_users ?? [],
         });
       }
 
@@ -886,6 +920,41 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
                     <Globe className="w-3.5 h-3.5 shrink-0" aria-label="Public" />
                   </div>
                 </>
+              ) : showFeelingOrPeopleHeader ? (
+                <>
+                  <div className="min-w-0 text-sm sm:text-[15px] text-content leading-snug !no-underline">
+                    <span className="font-semibold">{post.author.full_name}</span>
+                    {postFeeling ? (
+                      <>
+                        <span className="text-content-secondary"> is feeling </span>
+                        <span className="font-semibold">
+                          {postFeeling.label} {postFeeling.emoji}
+                        </span>
+                      </>
+                    ) : null}
+                    {taggedPeoplePhrase ? (
+                      <span className="text-content-secondary">
+                        {' '}
+                        {taggedPeoplePhrase}
+                      </span>
+                    ) : null}
+                  </div>
+                  <div className="flex items-center gap-1.5 mt-0.5 flex-wrap text-content-secondary text-xs sm:text-sm">
+                    <time dateTime={post.created_at}>
+                      {formatDistanceToNow(new Date(post.created_at), {
+                        addSuffix: true,
+                      })}
+                    </time>
+                    <span aria-hidden>·</span>
+                    <span className="truncate">@{post.author.username}</span>
+                    {isDetail && (
+                      <>
+                        <span aria-hidden>·</span>
+                        <Globe className="w-3.5 h-3.5 shrink-0" aria-label="Public" />
+                      </>
+                    )}
+                  </div>
+                </>
               ) : (
                 <>
                   <div className="flex items-center space-x-2 flex-wrap">
@@ -1213,6 +1282,8 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
             location: post.location ?? undefined,
             background_id: post.background_id ?? null,
             visibility: post.visibility,
+            feeling: post.feeling ?? null,
+            tagged_users: post.tagged_users ?? [],
           }}
           onSubmit={handleSaveEdit}
           onCancel={handleCancelEdit}

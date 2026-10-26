@@ -3,6 +3,11 @@ import { createClient } from '@supabase/supabase-js'
 import { getAuthenticatedUser, createServiceClient } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
 import { sanitizePostBackgroundId } from '@/features/social/constants/postBackgrounds'
+import { sanitizePostFeeling } from '@/features/social/utils/postFeeling'
+import {
+  replacePostTaggedUsers,
+  sanitizeTaggedUserIds,
+} from '@/features/social/utils/postTaggedUsers'
 import { POST_SELECT, formatPostsForClient } from '../format-posts-response'
 
 type RouteContext = { params: Promise<{ id: string }> }
@@ -94,7 +99,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       return errorResponse('Post not found or you are not the author', 404)
     }
 
-    const allowedFields = ['content', 'category', 'media_urls', 'media_type', 'tags', 'location', 'background_id', 'visibility']
+    const allowedFields = ['content', 'category', 'media_urls', 'media_type', 'tags', 'location', 'background_id', 'visibility', 'feeling']
     const updates: Record<string, any> = {}
     for (const key of allowedFields) {
       if (body[key] !== undefined) {
@@ -112,6 +117,10 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       updates.background_id = sanitizePostBackgroundId(updates.background_id)
     }
 
+    if (updates.feeling !== undefined) {
+      updates.feeling = sanitizePostFeeling(updates.feeling)
+    }
+
     const mergedUrls = updates.media_urls !== undefined ? updates.media_urls : (existing.media_urls || [])
     const mergedType = updates.media_type !== undefined ? updates.media_type : (existing.media_type || 'none')
     const effectiveHasMedia =
@@ -122,24 +131,74 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       updates.background_id = null
     }
 
-    if (Object.keys(updates).length === 0) {
+    const hasTaggedUsersUpdate = body.tagged_user_ids !== undefined
+    let resolvedTaggedIds: string[] | null = null
+    if (hasTaggedUsersUpdate) {
+      resolvedTaggedIds = await sanitizeTaggedUserIds(supabase, user.id, body.tagged_user_ids)
+    }
+
+    if (Object.keys(updates).length === 0 && !hasTaggedUsersUpdate) {
       return errorResponse('No valid fields to update', 400)
     }
 
-    const { data: post, error } = await supabase
-      .from('posts')
-      .update(updates)
-      .eq('id', postId)
-      .eq('author_id', user.id)
-      .select(POST_SELECT)
-      .single()
+    let post = existing as any
+    if (Object.keys(updates).length > 0) {
+      const { data: updated, error } = await supabase
+        .from('posts')
+        .update(updates)
+        .eq('id', postId)
+        .eq('author_id', user.id)
+        .select(POST_SELECT)
+        .single()
 
-    if (error) {
-      return errorResponse(error.message, 400)
+      if (error) {
+        return errorResponse(error.message, 400)
+      }
+
+      if (!updated) {
+        return errorResponse('Post not found or you are not the author', 404)
+      }
+      post = updated
+    } else {
+      const { data: current, error } = await supabase
+        .from('posts')
+        .select(POST_SELECT)
+        .eq('id', postId)
+        .eq('author_id', user.id)
+        .single()
+      if (error || !current) {
+        return errorResponse('Post not found or you are not the author', 404)
+      }
+      post = current
     }
 
-    if (!post) {
-      return errorResponse('Post not found or you are not the author', 404)
+    let taggedUsers: {
+      id: string
+      username: string
+      full_name: string
+      avatar_url: string | null
+    }[] = []
+    if (resolvedTaggedIds) {
+      try {
+        await replacePostTaggedUsers(supabase, postId, resolvedTaggedIds)
+        if (resolvedTaggedIds.length > 0) {
+          const { data: profiles } = await supabase
+            .from('profiles')
+            .select('id, username, full_name, avatar_url')
+            .in('id', resolvedTaggedIds)
+          taggedUsers = (profiles || []).map((p) => ({
+            id: p.id,
+            username: p.username,
+            full_name: p.full_name,
+            avatar_url: p.avatar_url ?? null,
+          }))
+        }
+      } catch (tagErr: any) {
+        return errorResponse(tagErr?.message || 'Failed to update tagged people', 400)
+      }
+    } else {
+      const formatted = await formatPostsForClient(supabase, user.id, [post])
+      taggedUsers = formatted[0]?.tagged_users ?? []
     }
 
     return jsonResponse({
@@ -160,6 +219,8 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         views_count: post.views_count ?? 0,
         location: post.location,
         background_id: post.background_id ?? null,
+        feeling: post.feeling ?? null,
+        tagged_users: taggedUsers,
         created_at: post.created_at,
         author: post.author ? {
           id: post.author.id,

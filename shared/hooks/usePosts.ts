@@ -29,6 +29,13 @@ export interface Post {
   visibility?: PostVisibility
   /** Preset id for text-only decorative backgrounds */
   background_id?: string | null
+  feeling?: { emoji: string; label: string } | null
+  tagged_users?: Array<{
+    id: string
+    username: string
+    full_name: string
+    avatar_url: string | null
+  }>
   likes_count: number
   comments_count: number
   shares_count: number
@@ -164,6 +171,8 @@ export const usePosts = (category?: string, options?: UsePostsOptions) => {
     location?: string
     background_id?: string | null
     visibility?: PostVisibility
+    feeling?: { emoji: string; label: string } | null
+    tagged_user_ids?: string[]
   }) => {
     try {
       if (!user) throw new Error('User not authenticated')
@@ -301,7 +310,18 @@ export const usePosts = (category?: string, options?: UsePostsOptions) => {
     }
   }
 
-  const updatePost = (postId: string, updates: string | { content?: string; category?: 'politics' | 'culture' | 'general'; media_urls?: string[]; media_type?: string; tags?: string[]; location?: string; background_id?: string | null; visibility?: PostVisibility }) => {
+  const updatePost = (postId: string, updates: string | {
+    content?: string
+    category?: 'politics' | 'culture' | 'general'
+    media_urls?: string[]
+    media_type?: string
+    tags?: string[]
+    location?: string
+    background_id?: string | null
+    visibility?: PostVisibility
+    feeling?: { emoji: string; label: string } | null
+    tagged_users?: Array<{ id: string; username: string; full_name: string; avatar_url: string | null }>
+  }) => {
     setPosts(prev => prev.map(p => {
       if (p.id !== postId) return p
       if (typeof updates === 'string') {

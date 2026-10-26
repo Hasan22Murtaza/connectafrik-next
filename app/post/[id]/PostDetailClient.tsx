@@ -226,6 +226,8 @@ const PostDetailPage: React.FC = () => {
       media_type?: string
       tags?: string[]
       background_id?: string | null
+      feeling?: { emoji: string; label: string } | null
+      tagged_users?: Array<{ id: string; username: string; full_name: string; avatar_url: string | null }>
     }
   ) => {
     setPost((prev) => (prev && prev.id === id ? { ...prev, ...updates } : prev))

@@ -7,6 +7,8 @@ import {
   postVisibilityFromProfileDefault,
 } from '@/shared/utils/visibilityUtils'
 import { getRelationships } from '@/lib/privacy/access'
+import { sanitizePostFeeling } from '@/features/social/utils/postFeeling'
+import { loadTaggedUsersByPostIds } from '@/features/social/utils/postTaggedUsers'
 
 const LATEST_COMMENTS_PREVIEW = 3
 const MAX_REACTION_PREVIEW_USERS = 3
@@ -151,6 +153,7 @@ function mapEmbeddedRepostPost(row: any) {
     media_type: row.media_type,
     background_id: row.background_id ?? null,
     location: row.location,
+    feeling: sanitizePostFeeling(row.feeling),
     created_at: row.created_at,
     author: row.author
       ? {
@@ -410,7 +413,7 @@ export async function formatPostsForClient(
       .from('posts')
       .select(
         `
-        id, content, category, media_urls, media_type, background_id, location, created_at,
+        id, content, category, media_urls, media_type, background_id, location, feeling, created_at,
         author:profiles!posts_author_id_fkey(
           id, username, full_name, avatar_url, banner_image, country
         )
@@ -425,6 +428,11 @@ export async function formatPostsForClient(
       }
     }
   }
+
+  const taggedUsersByPostId = await loadTaggedUsersByPostIds(
+    supabase,
+    filtered.map((p: any) => p.id)
+  )
 
   return filtered.map((post: any) => {
     const rel = relationships.get(post.author_id)
@@ -463,6 +471,8 @@ export async function formatPostsForClient(
       shares_count: post.shares_count,
       views_count: post.views_count,
       location: post.location,
+      feeling: sanitizePostFeeling(post.feeling),
+      tagged_users: taggedUsersByPostId.get(post.id) ?? [],
       created_at: post.created_at,
       author: post.author
         ? {

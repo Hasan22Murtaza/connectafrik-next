@@ -169,7 +169,16 @@ const FeedPage: React.FC = () => {
     }
   }, [deletePost])
 
-  const handleEdit = useCallback((postId: string, updates: { content: string; category: 'politics' | 'culture' | 'general'; media_urls?: string[]; media_type?: string; tags?: string[]; background_id?: string | null }) => {
+  const handleEdit = useCallback((postId: string, updates: {
+    content: string
+    category: 'politics' | 'culture' | 'general'
+    media_urls?: string[]
+    media_type?: string
+    tags?: string[]
+    background_id?: string | null
+    feeling?: { emoji: string; label: string } | null
+    tagged_users?: Array<{ id: string; username: string; full_name: string; avatar_url: string | null }>
+  }) => {
     updatePost(postId, updates)
   }, [updatePost])
 

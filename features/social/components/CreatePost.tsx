@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react'
-import { MapPin, Send, X, Film, ChevronDown, Save, Loader2, Navigation, ArrowLeft, Search, Ban, Images, Globe, Users, Lock } from '@/shared/icons'
+import { MapPin, Send, X, Film, ChevronDown, Save, Loader2, Navigation, ArrowLeft, Search, Ban, Images, Globe, Users, Lock, Smile, UserPlus } from '@/shared/icons'
 import { useAuth } from '@/contexts/AuthContext'
 import { useProfile } from '@/shared/hooks/useProfile'
 import { useFileUpload } from '@/shared/hooks/useFileUpload'
@@ -9,6 +9,10 @@ import { CULTURE_SUBCATEGORIES, type CultureSubcategorySlug } from '@/shared/con
 import { POLITICS_SUBCATEGORIES, type PoliticsSubcategorySlug } from '@/shared/constants/politics'
 import { POST_BACKGROUND_PRESETS, getPostBackgroundPreset } from '@/features/social/constants/postBackgrounds'
 import { parsePostLocation, serializePostLocation } from '@/features/social/utils/postLocation'
+import { sanitizePostFeeling, type PostFeeling } from '@/features/social/utils/postFeeling'
+import { feelingSubtitle } from '@/features/social/constants/postFeelings'
+import PostFeelingPicker from '@/features/social/components/PostFeelingPicker'
+import PostPeopleTagPicker, { type TaggedPerson } from '@/features/social/components/PostPeopleTagPicker'
 import {
   POST_VISIBILITY_OPTIONS,
   normalizePostVisibility,
@@ -32,6 +36,10 @@ export interface PostSubmitData {
   background_id?: string | null
   /** Who can see this post: public | private (friends) | only_me */
   visibility?: PostVisibility
+  /** Facebook-style feeling: { emoji, label } */
+  feeling?: PostFeeling | null
+  /** Friend profile ids tagged on the post */
+  tagged_user_ids?: string[]
 }
 
 export interface EditPostData {
@@ -45,6 +53,8 @@ export interface EditPostData {
   location?: string
   background_id?: string | null
   visibility?: PostVisibility
+  feeling?: PostFeeling | null
+  tagged_users?: TaggedPerson[]
 }
 
 const VISIBILITY_ICONS = {
@@ -215,6 +225,14 @@ const CreatePost: React.FC<CreatePostProps> = ({
     )
   )
   const [showVisibilityMenu, setShowVisibilityMenu] = useState(false)
+  const [selectedFeeling, setSelectedFeeling] = useState<PostFeeling | null>(() =>
+    sanitizePostFeeling(editData?.feeling)
+  )
+  const [taggedPeople, setTaggedPeople] = useState<TaggedPerson[]>(() =>
+    Array.isArray(editData?.tagged_users) ? editData!.tagged_users! : []
+  )
+  const [showFeelingModal, setShowFeelingModal] = useState(false)
+  const [showPeopleTagModal, setShowPeopleTagModal] = useState(false)
 
   const contentRef = useRef<HTMLTextAreaElement>(null)
   const locationInputRef = useRef<HTMLInputElement>(null)
@@ -228,10 +246,11 @@ const CreatePost: React.FC<CreatePostProps> = ({
   const totalMediaCount = mediaFiles.length + existingImageUrls.length
   const hasMedia = totalMediaCount > 0 || !!videoUrl || existingVideoUrls.length > 0
   const hasLocation = !!selectedLocation
+  const hasFeeling = !!selectedFeeling
   const effectiveCategory = culturePageMode ? 'culture' : politicsPageMode ? 'politics' : category
-  /** Text-only posts need 10+ chars; photo/video or a check-in can omit caption. */
+  /** Text-only posts need 10+ chars; photo/video, check-in, or feeling can omit caption. */
   const isFormValid =
-    (hasMedia || hasLocation || content.trim().length >= 10) && !isSubmitting && !uploading
+    (hasMedia || hasLocation || hasFeeling || content.trim().length >= 10) && !isSubmitting && !uploading
   const hasActiveVideo = videoUrl !== '' || existingVideoUrls.length > 0
   const selectedBgPreset = selectedBackgroundId ? getPostBackgroundPreset(selectedBackgroundId) : null
   const selectedVisibility =
@@ -534,8 +553,8 @@ const CreatePost: React.FC<CreatePostProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     const trimmed = content.trim()
-    if (!hasMedia && !hasLocation && !trimmed) return
-    if (!hasMedia && !hasLocation && trimmed.length < 10) {
+    if (!hasMedia && !hasLocation && !hasFeeling && !trimmed) return
+    if (!hasMedia && !hasLocation && !hasFeeling && trimmed.length < 10) {
       return toast.error('Your post must be at least 10 characters long')
     }
     if (effectiveCategory === 'culture' && !cultureSubcategory) return toast.error('Please select a cultural category')
@@ -590,6 +609,8 @@ const CreatePost: React.FC<CreatePostProps> = ({
             })()
           : { content: text, visibility }),
         background_id: media_type === 'none' ? selectedBackgroundId : null,
+        feeling: selectedFeeling,
+        tagged_user_ids: taggedPeople.map((p) => p.id),
       }
 
       await onSubmit(payload)
@@ -609,6 +630,10 @@ const CreatePost: React.FC<CreatePostProps> = ({
         setShowLocationModal(false)
         setSelectedBackgroundId(null)
         setShowBackgroundModal(false)
+        setSelectedFeeling(null)
+        setTaggedPeople([])
+        setShowFeelingModal(false)
+        setShowPeopleTagModal(false)
       }
     } catch (error: any) {
       toast.error(error.message || 'Failed to save post')
@@ -1007,6 +1032,42 @@ const CreatePost: React.FC<CreatePostProps> = ({
           </div>
         )}
 
+        {(selectedFeeling || taggedPeople.length > 0) && (
+          <div className="px-3 sm:px-4 mt-2 flex flex-wrap gap-2">
+            {selectedFeeling ? (
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-900">
+                <span aria-hidden>{selectedFeeling.emoji}</span>
+                {feelingSubtitle(selectedFeeling.label, selectedFeeling.emoji)}
+                <button
+                  type="button"
+                  onClick={() => setSelectedFeeling(null)}
+                  className="ml-0.5 rounded-full p-0.5 text-amber-700/70 hover:bg-amber-100 hover:text-amber-900"
+                  aria-label="Remove feeling"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </span>
+            ) : null}
+            {taggedPeople.map((person) => (
+              <span
+                key={person.id}
+                className="inline-flex items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-800"
+              >
+                <UserPlus className="w-3.5 h-3.5 shrink-0" />
+                {person.full_name || person.username}
+                <button
+                  type="button"
+                  onClick={() => setTaggedPeople((prev) => prev.filter((p) => p.id !== person.id))}
+                  className="ml-0.5 rounded-full p-0.5 text-blue-700/70 hover:bg-blue-100 hover:text-blue-900"
+                  aria-label={`Remove ${person.full_name || person.username}`}
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+
         </div>
 
         <div className="mx-3 my-3 shrink-0 sm:mx-4">
@@ -1035,6 +1096,32 @@ const CreatePost: React.FC<CreatePostProps> = ({
               >
                 <span className="flex h-8 w-8 items-center justify-center rounded-full bg-violet-100">
                   <Film className="h-[18px] w-[18px] text-violet-600" strokeWidth={2} />
+                </span>
+              </button>
+              <button
+                type="button"
+                title="Tag people"
+                disabled={uploading || isSubmitting || !!groupPostEdit}
+                onClick={() => setShowPeopleTagModal(true)}
+                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-surface-hover disabled:opacity-40 ${
+                  taggedPeople.length > 0 ? 'ring-2 ring-blue-200' : ''
+                }`}
+              >
+                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100">
+                  <UserPlus className="h-[18px] w-[18px] text-blue-600" strokeWidth={2} />
+                </span>
+              </button>
+              <button
+                type="button"
+                title="Feeling"
+                disabled={uploading || isSubmitting || !!groupPostEdit}
+                onClick={() => setShowFeelingModal(true)}
+                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-surface-hover disabled:opacity-40 ${
+                  selectedFeeling ? 'ring-2 ring-amber-200' : ''
+                }`}
+              >
+                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-100">
+                  <Smile className="h-[18px] w-[18px] text-amber-600" strokeWidth={2} />
                 </span>
               </button>
               <button
@@ -1257,6 +1344,28 @@ const CreatePost: React.FC<CreatePostProps> = ({
             )}
           </div>
         </div>
+      )}
+
+      {showFeelingModal && (
+        <PostFeelingPicker
+          initial={selectedFeeling}
+          onClose={() => setShowFeelingModal(false)}
+          onDone={(feeling) => {
+            setSelectedFeeling(feeling)
+            setShowFeelingModal(false)
+          }}
+        />
+      )}
+
+      {showPeopleTagModal && (
+        <PostPeopleTagPicker
+          initial={taggedPeople}
+          onClose={() => setShowPeopleTagModal(false)}
+          onDone={(people) => {
+            setTaggedPeople(people)
+            setShowPeopleTagModal(false)
+          }}
+        />
       )}
       </div>
     </>
