@@ -319,10 +319,10 @@ const CreatePost: React.FC<CreatePostProps> = ({
   }, [hasMedia])
 
   useEffect(() => {
-    if (isEditMode || editData?.visibility) return
+    if (isEditMode) return
     if (!profile?.post_visibility) return
     setVisibility(postVisibilityFromProfileDefault(profile.post_visibility))
-  }, [isEditMode, editData?.visibility, profile?.post_visibility])
+  }, [isEditMode, profile?.post_visibility])
 
   useEffect(() => {
     if (!showVisibilityMenu) return
