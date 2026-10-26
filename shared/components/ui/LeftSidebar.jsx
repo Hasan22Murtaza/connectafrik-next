@@ -11,12 +11,17 @@ import {
   Settings,
   Home,
   Video,
-  Users,
-  User,
   Store,
   PanelLeft,
   Check,
+  UsersRound,
+  UserG
 } from "lucide-react";
+
+
+
+
+
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -30,11 +35,13 @@ const MODE_OPTIONS = [
   { id: "hover", label: "Expand on hover" },
 ];
 
+
+
 const shortcuts = [
   { name: "Feed", to: "/feed", icon: Home },
   { name: "Reels", to: "/reels", icon: Video },
-  { name: "Friends", to: "/friends", icon: User },
-  { name: "Groups", to: "/groups", icon: Users },
+  { name: "Friends", to: "/friends", icon: UsersRound },
+  { name: "Groups", to: "/groups", icon: UsersRound },
   { name: "Messages", to: "/chat", icon: MessageCircle, badgeKey: "chat" },
   { name: "Calls", to: "/calls", icon: Phone, badgeKey: "calls" },
   { name: "TradeHub", to: "/marketplace", icon: Store },
@@ -68,6 +75,7 @@ function readStoredMode() {
   }
   return "collapsed";
 }
+
 
 const LeftSidebar = () => {
   const pathname = usePathname();
@@ -174,7 +182,7 @@ const LeftSidebar = () => {
                     <span className="relative shrink-0">
                       <Icon
                         aria-hidden="true"
-                        className="h-[18px] w-[18px]"
+                        className="h-[18px] w-[18px] "
                         strokeWidth={1.75}
                       />
                       {badge && !showLabels && (

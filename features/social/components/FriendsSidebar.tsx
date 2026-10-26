@@ -30,7 +30,7 @@ const FriendsSidebar: React.FC<FriendsSidebarProps> = ({
   requestCount = 0,
   onSectionSelect,
 }) => (
-  <aside className="w-full shrink-0 md:w-50 px-3 py-4 border-r border-gray-200 h-full">
+  <aside className="w-full shrink-0 md:w-58 px-3 py-4 border-r border-gray-200 h-full">
     <div className="">
       <h2 className="mb-6 text-xl font-semibold text-content">Friends</h2>
       <nav className="space-y-1" aria-label="Friends navigation">

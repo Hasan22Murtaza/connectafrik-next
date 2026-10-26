@@ -2,6 +2,7 @@
 
 import React from 'react'
 import Link from 'next/link'
+import { useAuth } from '@/contexts/AuthContext'
 import { LogOut } from '@/shared/icons'
 import DisplayModeMenu from './DisplayModeMenu'
 
@@ -12,6 +13,8 @@ type UserMenuProps = {
 }
 
 const UserMenu: React.FC<UserMenuProps> = ({ isOpen, onSignOut, onClose }) => {
+  const { user } = useAuth()
+
   return (
     <div
       className={`absolute right-0 mt-2 w-56 bg-surface-elevated rounded-lg shadow-dropdown border border-border transition-all duration-200 ${
@@ -20,7 +23,7 @@ const UserMenu: React.FC<UserMenuProps> = ({ isOpen, onSignOut, onClose }) => {
     >
       <div className="p-1.5">
         <Link
-          href="/profile"
+          href={user ? `/user/${user.id}` : '/signin'}
           onClick={onClose}
           className="block px-4 py-2 text-sm text-content rounded-md hover:bg-surface-hover transition-colors"
         >

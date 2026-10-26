@@ -143,7 +143,7 @@ function SentRequestCard({
     <div className="bg-surface rounded-lg shadow-card overflow-hidden hover:shadow-md transition-shadow">
       <Link href={`/user/${userId}`} className="block cursor-pointer">
         <div className="w-full aspect-square bg-surface-secondary relative">
-         
+
           <div
             style={handleBackgroundColor(profile?.full_name)}
             className={`w-full h-full flex items-center justify-center text-4xl font-semibold text-primary-600  `}>
@@ -809,635 +809,678 @@ const FriendsPageContent: React.FC = () => {
                   <FriendsGridShimmer count={shimmerCount * 2} />
                 ) : suggestions.length > 0 ? (
                   <>
-                    <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
-                      {suggestions.slice(0, suggestionsDisplayLimit).map((suggestion) => (
-                        <div
-                          key={suggestion.user_id}
-                          className="bg-surface rounded-lg shadow-card overflow-hidden hover:shadow-md transition-shadow"
-                        >
-                          {/* Profile Image */}
-                          <Link href={`/user/${suggestion.user_id || ''}`} className="block cursor-pointer">
-                            <div className="w-full aspect-square bg-surface-secondary relative">
-                              <div
-                                style={handleBackgroundColor(suggestion.full_name)}
-                                className={`w-full h-full flex items-center justify-center text-4xl font-semibold text-primary-600  `}>
-                                {suggestion.full_name?.slice(0, 2)?.toUpperCase() || "U"}
-                              </div>
+                    <div className="grid grid-cols-2 gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
+                      {suggestions.slice(0, suggestionsDisplayLimit).map((suggestion) => {
+                        const fullName = suggestion.full_name || "Janet Afua Kpattey";
+                        const username = suggestion.username
+                          ? `@${suggestion.username.replace(/^@/, "")}`
+                          : "@user";
+                        const initials =
+                          suggestion.full_name?.trim().split(/\s+/).slice(0, 2).map((n) => n[0]).join("").toUpperCase() || "U";
 
-                              {suggestion.avatar_url && (
+                        return (
+                          <div
+                            key={suggestion.user_id}
+                            className="group relative overflow-hidden rounded-2xl border border-black/5 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl dark:border-white/10 dark:bg-surface"
+                          >
+                            {/* Cover image */}
+                            <Link
+                              href={`/user/${suggestion.user_id || ""}`}
+                              className="relative block aspect-[1.8/1] overflow-hidden bg-gradient-to-br from-orange-200 via-amber-100 to-orange-300"
+                            >
+                              {suggestion.banner_image ? (
                                 <img
-                                  src={suggestion.avatar_url}
-                                  alt={suggestion.full_name || "User"}
+                                  src={suggestion.banner_image}
+                                  alt=""
                                   onError={(e) => {
                                     e.currentTarget.style.display = "none";
                                   }}
-                                  className="absolute inset-0 w-full h-full object-cover"
+                                  className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                                />
+                              ) : (
+                                <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-orange-200 via-amber-100 to-orange-300">
+                                  <span className="text-4xl font-bold text-orange-700/40">
+                                    {initials}
+                                  </span>
+                                </div>
+                              )}
+                              <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
+                            </Link>
+
+                            {/* Avatar */}
+                            <div className="relative z-10 -mt-7 ml-4 flex h-14 w-14 items-center justify-center overflow-hidden rounded-full border-[3px] border-white bg-orange-100 shadow-md dark:border-surface">
+                              <span className="text-lg font-bold text-orange-700">
+                                {initials}
+                              </span>
+                              {suggestion.avatar_url && (
+                                <img
+                                  src={suggestion.avatar_url}
+                                  alt={fullName}
+                                  onError={(e) => {
+                                    e.currentTarget.style.display = "none";
+                                  }}
+                                  className="absolute inset-0 h-full w-full rounded-full object-cover"
                                 />
                               )}
                             </div>
-                          </Link>
 
-                          {/* Content */}
-                          <div className="p-4">
-                            <Link href={`/user/${suggestion.user_id || ''}`} className="block cursor-pointer">
-                              <h3 className="font-semibold text-content text-sm mb-1 line-clamp-1 hover:text-primary-600 transition-colors">
-                                {suggestion.full_name || "Unknown User"}
-                              </h3>
-                            </Link>
-
-                            {/* Mutual Friends */}
-                            {suggestion.mutual_friends_count > 0 && (
-                              <div className="flex items-center gap-1.5 text-xs text-content-secondary mb-4">
-                                {(suggestion.mutual_friends?.length ?? 0) > 0 && (
-                                  <div className="flex -space-x-1.5 shrink-0">
-                                    {suggestion.mutual_friends!.slice(0, 3).map((f) => (
-                                      <div
-                                        key={f.user_id}
-                                        className="w-5 h-5 rounded-full border border-white overflow-hidden bg-surface-tertiary"
-                                        title={f.full_name}
-                                      >
-                                        {f.avatar_url ? (
-                                          <img src={f.avatar_url} alt={f.full_name} className="w-full h-full object-cover" />
-                                        ) : (
-                                          <div className="w-full h-full flex items-center justify-center">
-                                            <span className="text-[8px] font-semibold text-content-secondary">
-                                              {f.full_name?.charAt(0)?.toUpperCase() || "?"}
-                                            </span>
-                                          </div>
-                                        )}
-                                      </div>
-                                    ))}
-                                  </div>
-                                )}
-                                <span>{suggestion.mutual_friends_count} mutual {suggestion.mutual_friends_count === 1 ? 'friend' : 'friends'}</span>
-                              </div>
-                            )}
-
-                            {/* Action Button */}
-                            <button
-                              onClick={() => handleSendFriendRequest(suggestion.user_id)}
-                              disabled={sendingRequests.has(suggestion.user_id)}
-                              className="w-full btn-sm-primary text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                              {sendingRequests.has(suggestion.user_id) ? "Sending..." : "Link up"}
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                    {suggestions.length > suggestionsDisplayLimit && (
-                      <div className="flex justify-center mt-6">
-                        <button
-                          onClick={() => setSuggestionsDisplayLimit(prev => prev + 20)}
-                          className="flex items-center space-x-1 text-primary-600 hover:text-orange-700 font-medium"
-                        >
-                          <span>See more</span>
-                          <ChevronDown className="w-4 h-4" />
-                        </button>
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <div className="text-center py-12 bg-surface rounded-lg">
-                    <Users className="w-16 h-16 text-content-tertiary mx-auto mb-4" />
-                    <h3 className="text-lg font-medium text-content mb-2">
-                      No suggestions available
-                    </h3>
-                    <p className="text-content-secondary">
-                      We couldn't find any friend suggestions at the moment.
-                    </p>
-                  </div>
-                )}
-              </div>
-            </div>
-          ) : activeSection === "requests" ? (
-            <div>
-              {/* Header */}
-              <div className="flex items-center justify-between mb-2">
-                <h2 className="sm:text-2xl font-semibold text-content text-lg">Friend Requests</h2>
-                <button className="text-primary-600 hover:text-orange-700 font-medium hover:underline duration-300 " onClick={() => selectSection("home")}>
-                  See all
-                </button>
-              </div>
-
-              <RequestsViewTabs
-                view={requestsView}
-                onChange={setRequestsView}
-                receivedCount={requests.length}
-                pendingCount={sentRequests.length}
-              />
-
-              {requestsView === "pending" ? (
-                sentLoading ? (
-                  <FriendsGridShimmer count={shimmerCount * 2} />
-                ) : sentRequests.length > 0 ? (
-                  <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 2xl:grid-cols-6 gap-4">
-                    {sentRequests.map((request) => (
-                      <SentRequestCard
-                        key={request.id}
-                        request={request}
-                        cancelling={cancellingRequests.has(request.id)}
-                        onCancel={() => handleCancelSentRequest(request.id)}
-                      />
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-12 bg-surface rounded-lg">
-                    <Clock className="w-16 h-16 text-content-tertiary mx-auto mb-4" />
-                    <h3 className="text-lg font-medium text-content mb-2">
-                      No pending requests
-                    </h3>
-                    <p className="text-content-secondary">
-                      Friend requests you send will appear here.
-                    </p>
-                  </div>
-                )
-              ) : loading ? (
-                <FriendsGridShimmer count={shimmerCount * 2} />
-              ) : requests.length > 0 ? (
-                <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 2xl:grid-cols-6 gap-4">
-                  {requests.map((request) => (
-                    <div
-                      key={request.id}
-                      className="bg-surface rounded-lg shadow-card overflow-hidden hover:shadow-md transition-shadow"
-                    >
-                      {/* Profile Image */}
-                      <Link href={`/user/${request.requester_id || ''}`} className="block cursor-pointer">
-                        <div className="w-full aspect-square bg-surface-secondary relative">
-                          {request.requester?.avatar_url ? (
-                            <img
-                              src={request.requester.avatar_url}
-                              alt={request.requester.full_name}
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <div
-                              style={handleBackgroundColor(request.requester?.full_name)}
-                              className={`w-full h-full flex items-center justify-center text-4xl font-semibold text-primary-600  `}>
-                              {request.requester?.full_name?.slice(0, 2)?.toUpperCase() || "U"}
-                            </div>
-                          )}
-                        </div>
-                      </Link>
-
-                      {/* Content */}
-                      <div className="p-3">
-                        <Link href={`/user/${request.requester_id || ''}`} className="block cursor-pointer">
-                          <h3 className="font-semibold text-content text-sm mb-1 line-clamp-1 hover:text-primary-600 transition-colors">
-                            {request.requester?.full_name || "Unknown User"}
-                          </h3>
-                        </Link>
-
-                        {/* Mutual Friends */}
-                        {request.mutualFriendsCount !== undefined && request.mutualFriendsCount > 0 && (
-                          <div className="flex items-center space-x-1.5 mb-2 text-xs text-content-secondary ">
-
-                            <span>{request.mutualFriendsCount} mutual {request.mutualFriendsCount === 1 ? 'friend' : 'friends'}</span>
-                          </div>
-                        )}
-
-                        {/* Action Buttons */}
-                        <div className="flex gap-2 items-center">
-                          <button
-                            onClick={() => handleAcceptRequest(request.id)}
-                            className="w-full btn-sm-primary text-sm"
-                          >
-                            Confirm
-                          </button>
-                          <button
-                            onClick={() => handleDeclineRequest(request.id)}
-                            className="w-full btn-secondary text-sm"
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-12 bg-surface rounded-lg">
-                  <Clock className="w-16 h-16 text-content-tertiary mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-content mb-2">
-                    No friend requests
-                  </h3>
-                  <p className="text-content-secondary">You&apos;re all caught up!</p>
-                </div>
-              )}
-            </div>
-          ) : activeSection === "all" ? (
-            <div>
-              {/* Header */}
-              <div className="flex items-center justify-between mb-6 flex-wrap gap-2">
-                <h2 className="sm:text-2xl font-semibold text-content text-lg">All Friends</h2>
-                <div className="relative max-w-full w-sm ">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-content-secondary w-5 h-5" />
-                  <input
-                    type="text"
-                    placeholder="Search friends..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full px-3 py-2.5 pl-9 bg-surface-input hover:bg-surface-hover focus-visible:bg-surface-hover border border-border rounded-full focus:border-orange-500 focus:ring-2 focus:ring-orange-200 focus:outline-none transition-colors text-sm text-content placeholder:text-content-tertiary"
-                  />
-                </div>
-              </div>
-
-              {/* Friends Grid */}
-              {friendsLoading ? (
-                <FriendsGridShimmer count={shimmerCount * 2} />
-              ) : filteredFriends.length > 0 ? (
-                <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
-                  {filteredFriends.map((friend) => (
-                    <div
-                      key={friend.id}
-                      className="bg-surface rounded-lg shadow-card overflow-hidden hover:shadow-md transition-shadow"
-                    >
-                      {/* Profile Image */}
-                      <Link href={`/user/${friend.id || ''}`} className="block cursor-pointer">
-                        <div className="w-full aspect-square bg-surface-secondary relative">
-                          {friend.avatar_url ? (
-                            <img
-                              src={friend.avatar_url}
-                              alt={friend.full_name}
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center text-4xl font-bold text-primary-600 bg-primary-100">
-                              {friend.full_name?.charAt(0) || "U"}
-                            </div>
-                          )}
-                        </div>
-                      </Link>
-
-                      {/* Content */}
-                      <div className="p-4">
-                        <Link href={`/user/${friend.id || ''}`} className="block cursor-pointer">
-                          <h3 className="font-semibold text-content text-sm mb-1 line-clamp-1 hover:text-primary-600 transition-colors">
-                            {friend.full_name || "Unknown User"}
-                          </h3>
-                        </Link>
-                        <p className="text-xs text-content-secondary mb-1 line-clamp-1">
-                          @{friend.username}
-                        </p>
-                        {friend.country && (
-                          <p className="text-xs text-content-tertiary mb-4 line-clamp-1">
-                            {friend.country}
-                          </p>
-                        )}
-
-                        {/* Action Button */}
-                        <button
-                          onClick={() => router.push(`/user/${friend.id}`)}
-                          className="w-full btn-sm-primary text-sm"
-                        >
-                          View Profile
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-12 bg-surface rounded-lg">
-                  <Users className="w-16 h-16 text-content-tertiary mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-content mb-2">
-                    {searchTerm ? "No friends found" : "No friends yet"}
-                  </h3>
-                  <p className="text-content-secondary">
-                    {searchTerm
-                      ? "Try a different search term"
-                      : "Start connecting with people in the community!"}
-                  </p>
-                </div>
-              )}
-            </div>
-          ) : activeSection === "suggestions" ? (
-            <div>
-              {/* Header */}
-              <div className="flex items-center justify-between mb-6 flex-wrap gap-2 ">
-                <h2 className="sm:text-2xl font-semibold text-content text-lg">Suggestions</h2>
-                <div className="relative max-w-full w-sm">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-content-secondary w-5 h-5" />
-                  <input
-                    type="text"
-                    placeholder="Search suggestions..."
-                    value={suggestionsSearchTerm}
-                    onChange={(e) => setSuggestionsSearchTerm(e.target.value)}
-                    className="w-full px-3 py-2.5 pl-9 bg-surface-input hover:bg-surface-hover focus-visible:bg-surface-hover border border-border rounded-full focus:border-orange-500 focus:ring-2 focus:ring-orange-200 focus:outline-none transition-colors text-sm text-content placeholder:text-content-tertiary"
-                  />
-                </div>
-              </div>
-
-              {/* Suggestions Grid */}
-              {suggestionsLoading ? (
-                <FriendsGridShimmer count={shimmerCount * 2} />
-              ) : filteredSuggestions.length > 0 ? (
-                <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
-                  {filteredSuggestions.map((suggestion) => (
-                    <div
-                      key={suggestion.user_id}
-                      className="bg-surface rounded-lg shadow-card overflow-hidden hover:shadow-md transition-shadow"
-                    >
-                      {/* Profile Image */}
-                      <Link href={`/user/${suggestion.user_id || ''}`} className="block cursor-pointer">
-                        <div className="w-full aspect-square bg-surface-secondary relative">
-                          <div
-                            style={handleBackgroundColor(suggestion.full_name)}
-                            className={`w-full h-full flex items-center justify-center text-4xl font-semibold text-primary-600  `}>
-                            {suggestion.full_name?.slice(0, 2)?.toUpperCase() || "U"}
-                          </div>
-
-                          {suggestion.avatar_url && (
-                            <img
-                              src={suggestion.avatar_url}
-                              alt={suggestion.full_name || "User"}
-                              onError={(e) => {
-                                e.currentTarget.style.display = "none";
-                              }}
-                              className="absolute inset-0 w-full h-full object-cover"
-                            />
-                          )}
-                        </div>
-                      </Link>
-
-                      {/* Content */}
-                      <div className="p-4">
-                        <Link href={`/user/${suggestion.user_id || ''}`} className="block cursor-pointer">
-                          <h3 className="font-semibold text-content text-sm mb-1 line-clamp-1 hover:text-primary-600 transition-colors">
-                            {suggestion.full_name || "Unknown User"}
-                          </h3>
-                        </Link>
-
-                        {/* Mutual Friends */}
-                        {suggestion.mutual_friends_count > 0 && (
-                          <div className="flex items-center gap-1.5 text-xs text-content-secondary mb-4">
-                            {(suggestion.mutual_friends?.length ?? 0) > 0 && (
-                              <div className="flex -space-x-1.5 shrink-0">
-                                {suggestion.mutual_friends!.slice(0, 3).map((f) => (
-                                  <div
-                                    key={f.user_id}
-                                    className="w-5 h-5 rounded-full border border-white overflow-hidden bg-surface-tertiary"
-                                    title={f.full_name}
-                                  >
-                                    {f.avatar_url ? (
-                                      <img src={f.avatar_url} alt={f.full_name} className="w-full h-full object-cover" />
-                                    ) : (
-                                      <div className="w-full h-full flex items-center justify-center">
-                                        <span className="text-[8px] font-semibold text-content-secondary">
-                                          {f.full_name?.charAt(0)?.toUpperCase() || "?"}
-                                        </span>
-                                      </div>
-                                    )}
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                            <span>{suggestion.mutual_friends_count} mutual {suggestion.mutual_friends_count === 1 ? 'friend' : 'friends'}</span>
-                          </div>
-                        )}
-
-                        {/* Action Button */}
-                        <button
-                          onClick={() => handleSendFriendRequest(suggestion.user_id)}
-                          disabled={sendingRequests.has(suggestion.user_id)}
-                          className="w-full btn-sm-primary text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          {sendingRequests.has(suggestion.user_id) ? "Sending..." : "Link up"}
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-12 bg-surface rounded-lg">
-                  <Users className="w-16 h-16 text-content-tertiary mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-content mb-2">
-                    {suggestionsSearchTerm ? "No suggestions found" : "No suggestions available"}
-                  </h3>
-                  <p className="text-content-secondary">
-                    {suggestionsSearchTerm
-                      ? "Try a different search term"
-                      : "We couldn't find any friend suggestions at the moment."}
-                  </p>
-                </div>
-              )}
-            </div>
-          ) : activeSection === "birthdays" ? (
-            <div>
-              <h2 className="sm:text-2xl font-semibold text-content text-lg mb-6">Birthdays</h2>
-
-              {birthdaysLoading ? (
-                <FriendsGridShimmer count={shimmerCount} />
-              ) : allBirthdayFriends.length > 0 ? (
-                <div className="space-y-8">
-                  {/* Today's Birthdays */}
-                  {birthdayFriends.today.length > 0 && (
-                    <div>
-                      <div className="flex items-center space-x-2 mb-4">
-                        <PartyPopper className="w-5 h-5 text-orange-500" />
-                        <h3 className="text-lg font-semibold text-content">
-                          Today's Birthdays
-                        </h3>
-                      </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {birthdayFriends.today
-                          .slice(0, birthdayDisplayLimit)
-                          .map((friend) => (
-                            <div
-                              key={friend.id}
-                              className="bg-gradient-to-r from-orange-50 to-yellow-50 border border-orange-200 rounded-xl p-4 flex items-center space-x-4 hover:shadow-md transition-shadow"
-                            >
-                              <Link href={`/user/${friend.id || ""}`} className="shrink-0">
-                                {friend.avatar_url ? (
-                                  <img
-                                    src={friend.avatar_url}
-                                    alt={friend.full_name}
-                                    className="w-14 h-14 rounded-full object-cover ring-2 ring-orange-300"
-                                  />
-                                ) : (
-                                  <div className="w-14 h-14 rounded-full flex items-center justify-center text-xl font-bold text-primary-600 bg-orange-100 ring-2 ring-orange-300">
-                                    {friend.full_name?.charAt(0) || "U"}
-                                  </div>
-                                )}
+                            {/* User details */}
+                            <div className="px-4 pb-4 pt-2">
+                              <Link href={`/user/${suggestion.user_id || ""}`}>
+                                <h3 className="truncate text-sm font-bold text-content transition-colors hover:text-orange-500">
+                                  {fullName}
+                                </h3>
                               </Link>
-                              <div className="flex-1 min-w-0">
-                                <Link href={`/user/${friend.id || ""}`}>
-                                  <h4 className="font-semibold text-content truncate hover:text-primary-600 transition-colors">
-                                    {friend.full_name}
-                                  </h4>
-                                </Link>
-                                <p className="text-sm text-primary-600 font-medium flex items-center space-x-1">
-                                  <Cake className="w-4 h-4" />
-                                  <span>Birthday today!</span>
-                                </p>
+
+                              <p className="mt-0.5 truncate text-xs text-content-secondary">
+                                {username}
+                              </p>
+
+                              {/* Mutual friends */}
+                              <div className="mt-3 mb-4 flex min-h-5 items-center gap-2">
+                                <div className="flex -space-x-1.5">
+                                  <span className="h-4 w-4 rounded-full border-2 border-white bg-gray-200 dark:border-surface" />
+                                  <span className="h-4 w-4 rounded-full border-2 border-white bg-orange-300 dark:border-surface" />
+                                </div>
+                                <span className="text-xs text-content-secondary">
+                                  {suggestion.mutual_friends_count > 0
+                                    ? `${suggestion.mutual_friends_count} mutual ${suggestion.mutual_friends_count === 1 ? "friend" : "friends"}`
+                                    : "Suggested for you"}
+                                </span>
                               </div>
-                              <button
-                                onClick={() => handleStartBirthdayChat(friend)}
-                                className="shrink-0 btn-sm-primary text-sm"
-                              >
-                                Send Wish
-                              </button>
-                            </div>
-                          ))}
-                      </div>
+
+                      {/* Link up */}
+                      <button
+                        type="button"
+                        onClick={() => handleSendFriendRequest(suggestion.user_id)}
+                        disabled={sendingRequests.has(suggestion.user_id)}
+                        className="flex w-full items-center justify-center gap-2 rounded-full bg-[#ff6900] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-[#e85f00] hover:shadow-md active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {sendingRequests.has(suggestion.user_id) ? (
+                          "Sending..."
+                        ) : (
+                          <>
+                            <svg
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              className="h-4 w-4"
+                              aria-hidden="true"
+                            >
+                              <path d="M16 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                              <circle cx="10" cy="7" r="4" />
+                              <path d="M20 8v6m-3-3h6" />
+                            </svg>
+                            Link up
+                          </>
+                        )}
+                      </button>
+
+                      {/* View profile */}
+                      <Link
+                        href={`/user/${suggestion.user_id || ""}`}
+                        className="mt-2.5 flex w-full items-center justify-center rounded-full bg-[#eef2ff] px-4 py-2.5 text-sm font-medium text-slate-700 transition-colors hover:bg-[#e0e7ff] dark:bg-white/10 dark:text-content dark:hover:bg-white/15"
+                      >
+                        View Profile
+                      </Link>
                     </div>
-                  )}
-
-                  {/* This Month */}
-                  {(() => {
-                    const todayCount = birthdayFriends.today.length;
-                    const remaining = birthdayDisplayLimit - todayCount;
-                    if (remaining <= 0 || birthdayFriends.thisMonth.length === 0) return null;
-                    const visibleThisMonth = birthdayFriends.thisMonth.slice(0, remaining);
-                    return (
-                      <div>
-                        <div className="flex items-center space-x-2 mb-4">
-                          <Gift className="w-5 h-5 text-orange-500" />
-                          <h3 className="text-lg font-semibold text-content">Later This Month</h3>
-                        </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                          {visibleThisMonth.map((friend) => {
-                            const parts = String(friend.birthday).split("-");
-                            const bMonth = parseInt(parts[1], 10);
-                            const bDay = parseInt(parts[2], 10);
-                            const monthName = new Date(2000, bMonth - 1).toLocaleString("default", { month: "long" });
-                            const today = new Date();
-                            const next = new Date(today.getFullYear(), bMonth - 1, bDay);
-                            const diff = Math.ceil((next.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-                            return (
-                              <div
-                                key={friend.id}
-                                className="bg-surface border border-gray-200 rounded-xl p-4 flex items-center space-x-4 hover:shadow-md transition-shadow"
-                              >
-                                <Link href={`/user/${friend.id || ""}`} className="shrink-0">
-                                  {friend.avatar_url ? (
-                                    <img
-                                      src={friend.avatar_url}
-                                      alt={friend.full_name}
-                                      className="w-14 h-14 rounded-full object-cover"
-                                    />
-                                  ) : (
-                                    <div className="w-14 h-14 rounded-full flex items-center justify-center text-xl font-bold text-primary-600 bg-primary-100">
-                                      {friend.full_name?.charAt(0) || "U"}
-                                    </div>
-                                  )}
-                                </Link>
-                                <div className="flex-1 min-w-0">
-                                  <Link href={`/user/${friend.id || ""}`}>
-                                    <h4 className="font-semibold text-content truncate hover:text-primary-600 transition-colors">
-                                      {friend.full_name}
-                                    </h4>
-                                  </Link>
-                                  <p className="text-sm text-content-secondary">
-                                    {monthName} {bDay}
-                                  </p>
-                                </div>
-                                <div className="shrink-0 text-right">
-                                  <span className="text-xs font-medium text-content-tertiary">
-                                    {diff} day{diff === 1 ? "" : "s"}
-                                  </span>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Upcoming (next 30 days, excluding this month) */}
-                  {(() => {
-                    const consumed = birthdayFriends.today.length + birthdayFriends.thisMonth.length;
-                    const remaining = birthdayDisplayLimit - consumed;
-                    if (remaining <= 0 || birthdayFriends.upcoming.length === 0) return null;
-                    const visibleUpcoming = birthdayFriends.upcoming.slice(0, remaining);
-                    return (
-                      <div>
-                        <div className="flex items-center space-x-2 mb-4">
-                          <Cake className="w-5 h-5 text-content-secondary" />
-                          <h3 className="text-lg font-semibold text-content">Upcoming Birthdays</h3>
-                        </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                          {visibleUpcoming.map((friend) => {
-                            const parts = String(friend.birthday).split("-");
-                            const bMonth = parseInt(parts[1], 10);
-                            const bDay = parseInt(parts[2], 10);
-                            const monthName = new Date(2000, bMonth - 1).toLocaleString("default", { month: "long" });
-                            const today = new Date();
-                            const currentYear = today.getFullYear();
-                            let next = new Date(currentYear, bMonth - 1, bDay);
-                            if (next < today) next = new Date(currentYear + 1, bMonth - 1, bDay);
-                            const diff = Math.ceil((next.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-                            return (
-                              <div
-                                key={friend.id}
-                                className="bg-surface border border-gray-200 rounded-xl p-4 flex items-center space-x-4 hover:shadow-md transition-shadow"
-                              >
-                                <Link href={`/user/${friend.id || ""}`} className="shrink-0">
-                                  {friend.avatar_url ? (
-                                    <img
-                                      src={friend.avatar_url}
-                                      alt={friend.full_name}
-                                      className="w-14 h-14 rounded-full object-cover"
-                                    />
-                                  ) : (
-                                    <div className="w-14 h-14 rounded-full flex items-center justify-center text-xl font-bold text-primary-600 bg-primary-100">
-                                      {friend.full_name?.charAt(0) || "U"}
-                                    </div>
-                                  )}
-                                </Link>
-                                <div className="flex-1 min-w-0">
-                                  <Link href={`/user/${friend.id || ""}`}>
-                                    <h4 className="font-semibold text-content truncate hover:text-primary-600 transition-colors">
-                                      {friend.full_name}
-                                    </h4>
-                                  </Link>
-                                  <p className="text-sm text-content-secondary">
-                                    {monthName} {bDay}
-                                  </p>
-                                </div>
-                                <div className="shrink-0 text-right">
-                                  <span className="text-xs font-medium text-content-tertiary">
-                                    {diff} day{diff === 1 ? "" : "s"}
-                                  </span>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Infinite scroll sentinel */}
-                  {hasMoreBirthdays && (
-                    <div ref={birthdaySentinelRef} className="flex justify-center py-6">
-                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-orange-500" />
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="text-center py-12 bg-surface rounded-lg">
-                  <Gift className="w-16 h-16 text-content-tertiary mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-content mb-2">
-                    No upcoming birthdays
-                  </h3>
-                  <p className="text-content-secondary">
-                    None of your friends have birthdays coming up in the next 30 days.
-                  </p>
+                  </div>
+                );
+                      })}
+              </div>
+              {suggestions.length > suggestionsDisplayLimit && (
+                <div className="flex justify-center mt-6">
+                  <button
+                    onClick={() => setSuggestionsDisplayLimit(prev => prev + 20)}
+                    className="flex items-center space-x-1 text-primary-600 hover:text-orange-700 font-medium"
+                  >
+                    <span>See more</span>
+                    <ChevronDown className="w-4 h-4" />
+                  </button>
                 </div>
               )}
-            </div>
+            </>
           ) : (
-            <div>
-              <h2 className="text-2xl font-bold text-content mb-6">Custom Lists</h2>
-              <div className="bg-surface rounded-lg shadow-sm p-8 text-center">
-                <p className="text-content-secondary">Coming soon...</p>
-              </div>
+            <div className="text-center py-12 bg-surface rounded-lg">
+              <Users className="w-16 h-16 text-content-tertiary mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-content mb-2">
+                No suggestions available
+              </h3>
+              <p className="text-content-secondary">
+                We couldn't find any friend suggestions at the moment.
+              </p>
             </div>
           )}
         </div>
       </div>
+      ) : activeSection === "requests" ? (
+      <div>
+        {/* Header */}
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="sm:text-2xl font-semibold text-content text-lg">Friend Requests</h2>
+          <button className="text-primary-600 hover:text-orange-700 font-medium hover:underline duration-300 " onClick={() => selectSection("home")}>
+            See all
+          </button>
+        </div>
 
+        <RequestsViewTabs
+          view={requestsView}
+          onChange={setRequestsView}
+          receivedCount={requests.length}
+          pendingCount={sentRequests.length}
+        />
+
+        {requestsView === "pending" ? (
+          sentLoading ? (
+            <FriendsGridShimmer count={shimmerCount * 2} />
+          ) : sentRequests.length > 0 ? (
+            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 2xl:grid-cols-6 gap-4">
+              {sentRequests.map((request) => (
+                <SentRequestCard
+                  key={request.id}
+                  request={request}
+                  cancelling={cancellingRequests.has(request.id)}
+                  onCancel={() => handleCancelSentRequest(request.id)}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12 bg-surface rounded-lg">
+              <Clock className="w-16 h-16 text-content-tertiary mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-content mb-2">
+                No pending requests
+              </h3>
+              <p className="text-content-secondary">
+                Friend requests you send will appear here.
+              </p>
+            </div>
+          )
+        ) : loading ? (
+          <FriendsGridShimmer count={shimmerCount * 2} />
+        ) : requests.length > 0 ? (
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 2xl:grid-cols-6 gap-4">
+            {requests.map((request) => (
+              <div
+                key={request.id}
+                className="bg-surface rounded-lg shadow-card overflow-hidden hover:shadow-md transition-shadow"
+              >
+                {/* Profile Image */}
+                <Link href={`/user/${request.requester_id || ''}`} className="block cursor-pointer">
+                  <div className="w-full aspect-square bg-surface-secondary relative">
+                    {request.requester?.avatar_url ? (
+                      <img
+                        src={request.requester.avatar_url}
+                        alt={request.requester.full_name}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div
+                        style={handleBackgroundColor(request.requester?.full_name)}
+                        className={`w-full h-full flex items-center justify-center text-4xl font-semibold text-primary-600  `}>
+                        {request.requester?.full_name?.slice(0, 2)?.toUpperCase() || "U"}
+                      </div>
+                    )}
+                  </div>
+                </Link>
+
+                {/* Content */}
+                <div className="p-3">
+                  <Link href={`/user/${request.requester_id || ''}`} className="block cursor-pointer">
+                    <h3 className="font-semibold text-content text-sm mb-1 line-clamp-1 hover:text-primary-600 transition-colors">
+                      {request.requester?.full_name || "Unknown User"}
+                    </h3>
+                  </Link>
+
+                  {/* Mutual Friends */}
+                  {request.mutualFriendsCount !== undefined && request.mutualFriendsCount > 0 && (
+                    <div className="flex items-center space-x-1.5 mb-2 text-xs text-content-secondary ">
+
+                      <span>{request.mutualFriendsCount} mutual {request.mutualFriendsCount === 1 ? 'friend' : 'friends'}</span>
+                    </div>
+                  )}
+
+                  {/* Action Buttons */}
+                  <div className="flex gap-2 items-center">
+                    <button
+                      onClick={() => handleAcceptRequest(request.id)}
+                      className="w-full btn-sm-primary text-sm"
+                    >
+                      Confirm
+                    </button>
+                    <button
+                      onClick={() => handleDeclineRequest(request.id)}
+                      className="w-full btn-secondary text-sm"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-12 bg-surface rounded-lg">
+            <Clock className="w-16 h-16 text-content-tertiary mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-content mb-2">
+              No friend requests
+            </h3>
+            <p className="text-content-secondary">You&apos;re all caught up!</p>
+          </div>
+        )}
+      </div>
+      ) : activeSection === "all" ? (
+      <div>
+        {/* Header */}
+        <div className="flex items-center justify-between mb-6 flex-wrap gap-2">
+          <h2 className="sm:text-2xl font-semibold text-content text-lg">All Friends</h2>
+          <div className="relative max-w-full w-sm ">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-content-secondary w-5 h-5" />
+            <input
+              type="text"
+              placeholder="Search friends..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full px-3 py-2.5 pl-9 bg-surface-input hover:bg-surface-hover focus-visible:bg-surface-hover border border-border rounded-full focus:border-orange-500 focus:ring-2 focus:ring-orange-200 focus:outline-none transition-colors text-sm text-content placeholder:text-content-tertiary"
+            />
+          </div>
+        </div>
+
+        {/* Friends Grid */}
+        {friendsLoading ? (
+          <FriendsGridShimmer count={shimmerCount * 2} />
+        ) : filteredFriends.length > 0 ? (
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
+            {filteredFriends.map((friend) => (
+              <div
+                key={friend.id}
+                className="bg-surface rounded-lg shadow-card overflow-hidden hover:shadow-md transition-shadow"
+              >
+                {/* Profile Image */}
+                <Link href={`/user/${friend.id || ''}`} className="block cursor-pointer">
+                  <div className="w-full aspect-square bg-surface-secondary relative">
+                    {friend.avatar_url ? (
+                      <img
+                        src={friend.avatar_url}
+                        alt={friend.full_name}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-4xl font-bold text-primary-600 bg-primary-100">
+                        {friend.full_name?.charAt(0) || "U"}
+                      </div>
+                    )}
+                  </div>
+                </Link>
+
+                {/* Content */}
+                <div className="p-4">
+                  <Link href={`/user/${friend.id || ''}`} className="block cursor-pointer">
+                    <h3 className="font-semibold text-content text-sm mb-1 line-clamp-1 hover:text-primary-600 transition-colors">
+                      {friend.full_name || "Unknown User"}
+                    </h3>
+                  </Link>
+                  <p className="text-xs text-content-secondary mb-1 line-clamp-1">
+                    @{friend.username}
+                  </p>
+                  {friend.country && (
+                    <p className="text-xs text-content-tertiary mb-4 line-clamp-1">
+                      {friend.country}
+                    </p>
+                  )}
+
+                  {/* Action Button */}
+                  <button
+                    onClick={() => router.push(`/user/${friend.id}`)}
+                    className="w-full btn-sm-primary text-sm"
+                  >
+                    View Profile
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-12 bg-surface rounded-lg">
+            <Users className="w-16 h-16 text-content-tertiary mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-content mb-2">
+              {searchTerm ? "No friends found" : "No friends yet"}
+            </h3>
+            <p className="text-content-secondary">
+              {searchTerm
+                ? "Try a different search term"
+                : "Start connecting with people in the community!"}
+            </p>
+          </div>
+        )}
+      </div>
+      ) : activeSection === "suggestions" ? (
+      <div>
+        {/* Header */}
+        <div className="flex items-center justify-between mb-6 flex-wrap gap-2 ">
+          <h2 className="sm:text-2xl font-semibold text-content text-lg">Suggestions</h2>
+          <div className="relative max-w-full w-sm">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-content-secondary w-5 h-5" />
+            <input
+              type="text"
+              placeholder="Search suggestions..."
+              value={suggestionsSearchTerm}
+              onChange={(e) => setSuggestionsSearchTerm(e.target.value)}
+              className="w-full px-3 py-2.5 pl-9 bg-surface-input hover:bg-surface-hover focus-visible:bg-surface-hover border border-border rounded-full focus:border-orange-500 focus:ring-2 focus:ring-orange-200 focus:outline-none transition-colors text-sm text-content placeholder:text-content-tertiary"
+            />
+          </div>
+        </div>
+
+        {/* Suggestions Grid */}
+        {suggestionsLoading ? (
+          <FriendsGridShimmer count={shimmerCount * 2} />
+        ) : filteredSuggestions.length > 0 ? (
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
+            {filteredSuggestions.map((suggestion) => (
+              <div
+                key={suggestion.user_id}
+                className="bg-surface rounded-lg shadow-card overflow-hidden hover:shadow-md transition-shadow"
+              >
+                {/* Profile Image */}
+                <Link href={`/user/${suggestion.user_id || ''}`} className="block cursor-pointer">
+                  <div className="w-full aspect-square bg-surface-secondary relative">
+                    <div
+                      style={handleBackgroundColor(suggestion.full_name)}
+                      className={`w-full h-full flex items-center justify-center text-4xl font-semibold text-primary-600  `}>
+                      {suggestion.full_name?.slice(0, 2)?.toUpperCase() || "U"}
+                    </div>
+
+                    {suggestion.avatar_url && (
+                      <img
+                        src={suggestion.avatar_url}
+                        alt={suggestion.full_name || "User"}
+                        onError={(e) => {
+                          e.currentTarget.style.display = "none";
+                        }}
+                        className="absolute inset-0 w-full h-full object-cover"
+                      />
+                    )}
+                  </div>
+                </Link>
+
+                {/* Content */}
+                <div className="p-4">
+                  <Link href={`/user/${suggestion.user_id || ''}`} className="block cursor-pointer">
+                    <h3 className="font-semibold text-content text-sm mb-1 line-clamp-1 hover:text-primary-600 transition-colors">
+                      {suggestion.full_name || "Unknown User"}
+                    </h3>
+                  </Link>
+
+                  {/* Mutual Friends */}
+                  {suggestion.mutual_friends_count > 0 && (
+                    <div className="flex items-center gap-1.5 text-xs text-content-secondary mb-4">
+                      {(suggestion.mutual_friends?.length ?? 0) > 0 && (
+                        <div className="flex -space-x-1.5 shrink-0">
+                          {suggestion.mutual_friends!.slice(0, 3).map((f) => (
+                            <div
+                              key={f.user_id}
+                              className="w-5 h-5 rounded-full border border-white overflow-hidden bg-surface-tertiary"
+                              title={f.full_name}
+                            >
+                              {f.avatar_url ? (
+                                <img src={f.avatar_url} alt={f.full_name} className="w-full h-full object-cover" />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center">
+                                  <span className="text-[8px] font-semibold text-content-secondary">
+                                    {f.full_name?.charAt(0)?.toUpperCase() || "?"}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      <span>{suggestion.mutual_friends_count} mutual {suggestion.mutual_friends_count === 1 ? 'friend' : 'friends'}</span>
+                    </div>
+                  )}
+
+                  {/* Action Button */}
+                  <button
+                    onClick={() => handleSendFriendRequest(suggestion.user_id)}
+                    disabled={sendingRequests.has(suggestion.user_id)}
+                    className="w-full btn-sm-primary text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {sendingRequests.has(suggestion.user_id) ? "Sending..." : "Link up"}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-12 bg-surface rounded-lg">
+            <Users className="w-16 h-16 text-content-tertiary mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-content mb-2">
+              {suggestionsSearchTerm ? "No suggestions found" : "No suggestions available"}
+            </h3>
+            <p className="text-content-secondary">
+              {suggestionsSearchTerm
+                ? "Try a different search term"
+                : "We couldn't find any friend suggestions at the moment."}
+            </p>
+          </div>
+        )}
+      </div>
+      ) : activeSection === "birthdays" ? (
+      <div>
+        <h2 className="sm:text-2xl font-semibold text-content text-lg mb-6">Birthdays</h2>
+
+        {birthdaysLoading ? (
+          <FriendsGridShimmer count={shimmerCount} />
+        ) : allBirthdayFriends.length > 0 ? (
+          <div className="space-y-8">
+            {/* Today's Birthdays */}
+            {birthdayFriends.today.length > 0 && (
+              <div>
+                <div className="flex items-center space-x-2 mb-4">
+                  <PartyPopper className="w-5 h-5 text-orange-500" />
+                  <h3 className="text-lg font-semibold text-content">
+                    Today's Birthdays
+                  </h3>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {birthdayFriends.today
+                    .slice(0, birthdayDisplayLimit)
+                    .map((friend) => (
+                      <div
+                        key={friend.id}
+                        className="bg-gradient-to-r from-orange-50 to-yellow-50 border border-orange-200 rounded-xl p-4 flex items-center space-x-4 hover:shadow-md transition-shadow"
+                      >
+                        <Link href={`/user/${friend.id || ""}`} className="shrink-0">
+                          {friend.avatar_url ? (
+                            <img
+                              src={friend.avatar_url}
+                              alt={friend.full_name}
+                              className="w-14 h-14 rounded-full object-cover ring-2 ring-orange-300"
+                            />
+                          ) : (
+                            <div className="w-14 h-14 rounded-full flex items-center justify-center text-xl font-bold text-primary-600 bg-orange-100 ring-2 ring-orange-300">
+                              {friend.full_name?.charAt(0) || "U"}
+                            </div>
+                          )}
+                        </Link>
+                        <div className="flex-1 min-w-0">
+                          <Link href={`/user/${friend.id || ""}`}>
+                            <h4 className="font-semibold text-content truncate hover:text-primary-600 transition-colors">
+                              {friend.full_name}
+                            </h4>
+                          </Link>
+                          <p className="text-sm text-primary-600 font-medium flex items-center space-x-1">
+                            <Cake className="w-4 h-4" />
+                            <span>Birthday today!</span>
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => handleStartBirthdayChat(friend)}
+                          className="shrink-0 btn-sm-primary text-sm"
+                        >
+                          Send Wish
+                        </button>
+                      </div>
+                    ))}
+                </div>
+              </div>
+            )}
+
+            {/* This Month */}
+            {(() => {
+              const todayCount = birthdayFriends.today.length;
+              const remaining = birthdayDisplayLimit - todayCount;
+              if (remaining <= 0 || birthdayFriends.thisMonth.length === 0) return null;
+              const visibleThisMonth = birthdayFriends.thisMonth.slice(0, remaining);
+              return (
+                <div>
+                  <div className="flex items-center space-x-2 mb-4">
+                    <Gift className="w-5 h-5 text-orange-500" />
+                    <h3 className="text-lg font-semibold text-content">Later This Month</h3>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {visibleThisMonth.map((friend) => {
+                      const parts = String(friend.birthday).split("-");
+                      const bMonth = parseInt(parts[1], 10);
+                      const bDay = parseInt(parts[2], 10);
+                      const monthName = new Date(2000, bMonth - 1).toLocaleString("default", { month: "long" });
+                      const today = new Date();
+                      const next = new Date(today.getFullYear(), bMonth - 1, bDay);
+                      const diff = Math.ceil((next.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+                      return (
+                        <div
+                          key={friend.id}
+                          className="bg-surface border border-gray-200 rounded-xl p-4 flex items-center space-x-4 hover:shadow-md transition-shadow"
+                        >
+                          <Link href={`/user/${friend.id || ""}`} className="shrink-0">
+                            {friend.avatar_url ? (
+                              <img
+                                src={friend.avatar_url}
+                                alt={friend.full_name}
+                                className="w-14 h-14 rounded-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-14 h-14 rounded-full flex items-center justify-center text-xl font-bold text-primary-600 bg-primary-100">
+                                {friend.full_name?.charAt(0) || "U"}
+                              </div>
+                            )}
+                          </Link>
+                          <div className="flex-1 min-w-0">
+                            <Link href={`/user/${friend.id || ""}`}>
+                              <h4 className="font-semibold text-content truncate hover:text-primary-600 transition-colors">
+                                {friend.full_name}
+                              </h4>
+                            </Link>
+                            <p className="text-sm text-content-secondary">
+                              {monthName} {bDay}
+                            </p>
+                          </div>
+                          <div className="shrink-0 text-right">
+                            <span className="text-xs font-medium text-content-tertiary">
+                              {diff} day{diff === 1 ? "" : "s"}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Upcoming (next 30 days, excluding this month) */}
+            {(() => {
+              const consumed = birthdayFriends.today.length + birthdayFriends.thisMonth.length;
+              const remaining = birthdayDisplayLimit - consumed;
+              if (remaining <= 0 || birthdayFriends.upcoming.length === 0) return null;
+              const visibleUpcoming = birthdayFriends.upcoming.slice(0, remaining);
+              return (
+                <div>
+                  <div className="flex items-center space-x-2 mb-4">
+                    <Cake className="w-5 h-5 text-content-secondary" />
+                    <h3 className="text-lg font-semibold text-content">Upcoming Birthdays</h3>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {visibleUpcoming.map((friend) => {
+                      const parts = String(friend.birthday).split("-");
+                      const bMonth = parseInt(parts[1], 10);
+                      const bDay = parseInt(parts[2], 10);
+                      const monthName = new Date(2000, bMonth - 1).toLocaleString("default", { month: "long" });
+                      const today = new Date();
+                      const currentYear = today.getFullYear();
+                      let next = new Date(currentYear, bMonth - 1, bDay);
+                      if (next < today) next = new Date(currentYear + 1, bMonth - 1, bDay);
+                      const diff = Math.ceil((next.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+                      return (
+                        <div
+                          key={friend.id}
+                          className="bg-surface border border-gray-200 rounded-xl p-4 flex items-center space-x-4 hover:shadow-md transition-shadow"
+                        >
+                          <Link href={`/user/${friend.id || ""}`} className="shrink-0">
+                            {friend.avatar_url ? (
+                              <img
+                                src={friend.avatar_url}
+                                alt={friend.full_name}
+                                className="w-14 h-14 rounded-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-14 h-14 rounded-full flex items-center justify-center text-xl font-bold text-primary-600 bg-primary-100">
+                                {friend.full_name?.charAt(0) || "U"}
+                              </div>
+                            )}
+                          </Link>
+                          <div className="flex-1 min-w-0">
+                            <Link href={`/user/${friend.id || ""}`}>
+                              <h4 className="font-semibold text-content truncate hover:text-primary-600 transition-colors">
+                                {friend.full_name}
+                              </h4>
+                            </Link>
+                            <p className="text-sm text-content-secondary">
+                              {monthName} {bDay}
+                            </p>
+                          </div>
+                          <div className="shrink-0 text-right">
+                            <span className="text-xs font-medium text-content-tertiary">
+                              {diff} day{diff === 1 ? "" : "s"}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Infinite scroll sentinel */}
+            {hasMoreBirthdays && (
+              <div ref={birthdaySentinelRef} className="flex justify-center py-6">
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-orange-500" />
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="text-center py-12 bg-surface rounded-lg">
+            <Gift className="w-16 h-16 text-content-tertiary mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-content mb-2">
+              No upcoming birthdays
+            </h3>
+            <p className="text-content-secondary">
+              None of your friends have birthdays coming up in the next 30 days.
+            </p>
+          </div>
+        )}
+      </div>
+      ) : (
+      <div>
+        <h2 className="text-2xl font-bold text-content mb-6">Custom Lists</h2>
+        <div className="bg-surface rounded-lg shadow-sm p-8 text-center">
+          <p className="text-content-secondary">Coming soon...</p>
+        </div>
+      </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 };
