@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { apiClient, ApiError } from '@/lib/api-client'
-import type { ProfileVisibilityLevel } from '@/shared/types'
+import type { PostVisibility, ProfileVisibilityLevel } from '@/shared/types'
 
 const PAGE_SIZE = 10
 
@@ -25,6 +25,8 @@ export interface Post {
   media_urls: string[] | null
   tags?: string[] | null
   location?: string | null
+  /** Who can see this post: public | private (friends) | only_me */
+  visibility?: PostVisibility
   /** Preset id for text-only decorative backgrounds */
   background_id?: string | null
   likes_count: number
@@ -161,6 +163,7 @@ export const usePosts = (category?: string, options?: UsePostsOptions) => {
     tags?: string[]
     location?: string
     background_id?: string | null
+    visibility?: PostVisibility
   }) => {
     try {
       if (!user) throw new Error('User not authenticated')
@@ -298,7 +301,7 @@ export const usePosts = (category?: string, options?: UsePostsOptions) => {
     }
   }
 
-  const updatePost = (postId: string, updates: string | { content?: string; category?: 'politics' | 'culture' | 'general'; media_urls?: string[]; media_type?: string; tags?: string[]; location?: string; background_id?: string | null }) => {
+  const updatePost = (postId: string, updates: string | { content?: string; category?: 'politics' | 'culture' | 'general'; media_urls?: string[]; media_type?: string; tags?: string[]; location?: string; background_id?: string | null; visibility?: PostVisibility }) => {
     setPosts(prev => prev.map(p => {
       if (p.id !== postId) return p
       if (typeof updates === 'string') {

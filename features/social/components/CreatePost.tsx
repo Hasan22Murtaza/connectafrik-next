@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react'
-import { MapPin, Send, X, Film, ChevronDown, Save, Loader2, Navigation, ArrowLeft, Search, Ban, Images } from '@/shared/icons'
+import { MapPin, Send, X, Film, ChevronDown, Save, Loader2, Navigation, ArrowLeft, Search, Ban, Images, Globe, Users, Lock } from '@/shared/icons'
 import { useAuth } from '@/contexts/AuthContext'
 import { useProfile } from '@/shared/hooks/useProfile'
 import { useFileUpload } from '@/shared/hooks/useFileUpload'
@@ -9,6 +9,12 @@ import { CULTURE_SUBCATEGORIES, type CultureSubcategorySlug } from '@/shared/con
 import { POLITICS_SUBCATEGORIES, type PoliticsSubcategorySlug } from '@/shared/constants/politics'
 import { POST_BACKGROUND_PRESETS, getPostBackgroundPreset } from '@/features/social/constants/postBackgrounds'
 import { parsePostLocation, serializePostLocation } from '@/features/social/utils/postLocation'
+import {
+  POST_VISIBILITY_OPTIONS,
+  normalizePostVisibility,
+  postVisibilityFromProfileDefault,
+} from '@/shared/utils/visibilityUtils'
+import type { PostVisibility } from '@/shared/types'
 
 type MediaType = 'image' | 'video' | 'none'
 type Category = 'politics' | 'culture' | 'general'
@@ -24,6 +30,8 @@ export interface PostSubmitData {
   location?: string
   /** Text-only feed posts: preset id from `POST_BACKGROUND_PRESETS`, or null to clear */
   background_id?: string | null
+  /** Who can see this post: public | private (friends) | only_me */
+  visibility?: PostVisibility
 }
 
 export interface EditPostData {
@@ -36,7 +44,14 @@ export interface EditPostData {
   tags?: string[]
   location?: string
   background_id?: string | null
+  visibility?: PostVisibility
 }
+
+const VISIBILITY_ICONS = {
+  public: Globe,
+  private: Users,
+  only_me: Lock,
+} as const
 
 interface CreatePostProps {
   onSubmit: (postData: PostSubmitData) => void | Promise<void>
@@ -193,6 +208,13 @@ const CreatePost: React.FC<CreatePostProps> = ({
     return editData?.background_id ?? null
   })
   const [showBackgroundModal, setShowBackgroundModal] = useState(false)
+  const [visibility, setVisibility] = useState<PostVisibility>(() =>
+    normalizePostVisibility(
+      editData?.visibility,
+      postVisibilityFromProfileDefault(profile?.post_visibility)
+    )
+  )
+  const [showVisibilityMenu, setShowVisibilityMenu] = useState(false)
 
   const contentRef = useRef<HTMLTextAreaElement>(null)
   const locationInputRef = useRef<HTMLInputElement>(null)
@@ -212,12 +234,85 @@ const CreatePost: React.FC<CreatePostProps> = ({
     (hasMedia || hasLocation || content.trim().length >= 10) && !isSubmitting && !uploading
   const hasActiveVideo = videoUrl !== '' || existingVideoUrls.length > 0
   const selectedBgPreset = selectedBackgroundId ? getPostBackgroundPreset(selectedBackgroundId) : null
+  const selectedVisibility =
+    POST_VISIBILITY_OPTIONS.find((o) => o.value === visibility) ?? POST_VISIBILITY_OPTIONS[0]
+  const VisibilityIcon = VISIBILITY_ICONS[visibility] ?? Globe
   /** Full-screen Facebook-style shell when parent passes onCancel (feed, edit, culture, politics). */
   const useModalShell = typeof onCancel === 'function'
+
+  const visibilityPicker = !groupPostEdit ? (
+    <div className="relative mt-1.5">
+      <button
+        type="button"
+        onClick={() => setShowVisibilityMenu((v) => !v)}
+        className="inline-flex items-center gap-1.5 rounded-md border border-border bg-surface px-2 py-1 text-xs font-medium text-content-secondary transition-colors hover:bg-surface-hover"
+        aria-haspopup="listbox"
+        aria-expanded={showVisibilityMenu}
+      >
+        <VisibilityIcon className="h-3.5 w-3.5" />
+        {selectedVisibility.label}
+        <ChevronDown className={`h-3.5 w-3.5 transition-transform ${showVisibilityMenu ? 'rotate-180' : ''}`} />
+      </button>
+      {showVisibilityMenu && (
+        <>
+          <button
+            type="button"
+            className="fixed inset-0 z-40 cursor-default"
+            aria-label="Close visibility menu"
+            onClick={() => setShowVisibilityMenu(false)}
+          />
+          <div
+            role="listbox"
+            className="absolute left-0 top-full z-50 mt-1 min-w-[9rem] overflow-hidden rounded-xl border border-border bg-surface shadow-lg"
+          >
+            {POST_VISIBILITY_OPTIONS.map((option) => {
+              const Icon = VISIBILITY_ICONS[option.value]
+              const active = visibility === option.value
+              return (
+                <button
+                  key={option.value}
+                  type="button"
+                  role="option"
+                  aria-selected={active}
+                  onClick={() => {
+                    setVisibility(option.value)
+                    setShowVisibilityMenu(false)
+                  }}
+                  className={`flex w-full items-center gap-2.5 px-3 py-2.5 text-left transition-colors hover:bg-surface-hover ${
+                    active ? 'bg-orange-50/80' : ''
+                  }`}
+                >
+                  <Icon className={`h-4 w-4 shrink-0 ${active ? 'text-orange-600' : 'text-content-tertiary'}`} />
+                  <span className={`text-sm font-medium ${active ? 'text-orange-700' : 'text-content'}`}>
+                    {option.label}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+        </>
+      )}
+    </div>
+  ) : null
 
   useEffect(() => {
     if (hasMedia) setSelectedBackgroundId(null)
   }, [hasMedia])
+
+  useEffect(() => {
+    if (isEditMode || editData?.visibility) return
+    if (!profile?.post_visibility) return
+    setVisibility(postVisibilityFromProfileDefault(profile.post_visibility))
+  }, [isEditMode, editData?.visibility, profile?.post_visibility])
+
+  useEffect(() => {
+    if (!showVisibilityMenu) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowVisibilityMenu(false)
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [showVisibilityMenu])
 
   useEffect(() => {
     if (!useModalShell) return
@@ -493,7 +588,7 @@ const CreatePost: React.FC<CreatePostProps> = ({
               const split = splitGroupPostBody(text)
               return { title: split.title, content: split.content }
             })()
-          : { content: text }),
+          : { content: text, visibility }),
         background_id: media_type === 'none' ? selectedBackgroundId : null,
       }
 
@@ -610,7 +705,8 @@ const CreatePost: React.FC<CreatePostProps> = ({
                     </>
                   )}
                 </p>
-                  <p className="shrink-0 text-xs text-secondary">{profile?.username}</p>
+                <p className="shrink-0 text-xs text-secondary">{profile?.username}</p>
+                {visibilityPicker}
               </div>
             </div>
           </>
@@ -633,7 +729,9 @@ const CreatePost: React.FC<CreatePostProps> = ({
                   </>
                 )}
               </p>
-              <p className="text-xs text-content-tertiary leading-tight mt-0.5">{isEditMode ? 'Editing post' : 'Share with the community'}</p>
+              {visibilityPicker ?? (
+                <p className="text-xs text-content-tertiary leading-tight mt-0.5">{isEditMode ? 'Editing post' : 'Share with the community'}</p>
+              )}
             </div>
           </div>
         )}

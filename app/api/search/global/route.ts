@@ -2,7 +2,11 @@ import { NextRequest } from 'next/server'
 import { getAuthenticatedUser } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
 import { filterSearchableUserIds, getRelationships } from '@/lib/privacy/access'
-import { canViewPost } from '@/shared/utils/visibilityUtils'
+import {
+  canViewPostByVisibility,
+  normalizePostVisibility,
+  postVisibilityFromProfileDefault,
+} from '@/shared/utils/visibilityUtils'
 
 const DEFAULT_LIMIT = 5
 const MAX_LIMIT = 20
@@ -10,7 +14,7 @@ const MIN_QUERY_LENGTH = 2
 
 const USER_FIELDS = 'id, username, full_name, avatar_url, bio, follower_count'
 const POST_FIELDS =
-  'id, content, category, author_id, created_at, likes_count, comments_count, author:profiles!posts_author_id_fkey(id, username, full_name, avatar_url)'
+  'id, content, category, author_id, visibility, created_at, likes_count, comments_count, author:profiles!posts_author_id_fkey(id, username, full_name, avatar_url, post_visibility)'
 const GROUP_FIELDS = 'id, name, description, category, avatar_url, member_count, is_public, created_at'
 const PRODUCT_FIELDS =
   'id, title, description, price, currency, category, condition, images, views_count, saves_count, created_at, seller_id'
@@ -95,12 +99,19 @@ export async function GET(request: NextRequest) {
 
     const postAuthorIds = [...new Set(posts.map((p: { author_id: string }) => p.author_id))]
     const postRels = await getRelationships(user.id, postAuthorIds, supabase)
-    const visiblePosts = posts.filter((p: { author_id: string }) => {
+    const visiblePosts = posts.filter((p: {
+      author_id: string
+      visibility?: string | null
+      author?: { post_visibility?: string | null } | null
+    }) => {
       const rel = postRels.get(p.author_id)
-      return canViewPost(
+      const fallback = postVisibilityFromProfileDefault(
+        p.author?.post_visibility ?? rel?.settings.post_visibility
+      )
+      return canViewPostByVisibility(
         user.id,
         p.author_id,
-        rel?.settings.post_visibility ?? 'public',
+        normalizePostVisibility(p.visibility, fallback),
         rel?.isFriend ?? false,
         rel?.isBlocked ?? false
       )

@@ -60,6 +60,7 @@ export interface PublicPostSeo {
   tags: string[] | null
   media_urls: string[] | null
   media_type: string | null
+  visibility?: string | null
   created_at: string
   updated_at: string | null
   author_id: string

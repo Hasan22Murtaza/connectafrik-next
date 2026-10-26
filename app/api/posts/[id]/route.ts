@@ -94,11 +94,17 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       return errorResponse('Post not found or you are not the author', 404)
     }
 
-    const allowedFields = ['content', 'category', 'media_urls', 'media_type', 'tags', 'location', 'background_id']
+    const allowedFields = ['content', 'category', 'media_urls', 'media_type', 'tags', 'location', 'background_id', 'visibility']
     const updates: Record<string, any> = {}
     for (const key of allowedFields) {
       if (body[key] !== undefined) {
         updates[key] = body[key]
+      }
+    }
+
+    if (updates.visibility !== undefined) {
+      if (!['public', 'private', 'only_me'].includes(updates.visibility)) {
+        return errorResponse('Invalid visibility. Use public, private, or only_me', 400)
       }
     }
 
@@ -143,6 +149,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         content: post.content,
         category: post.category,
         tags: post.tags,
+        visibility: post.visibility ?? 'public',
         media_urls: post.media_urls,
         media_type: post.media_type,
         likes_count: post.likes_count ?? 0,

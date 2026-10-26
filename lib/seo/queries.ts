@@ -66,7 +66,7 @@ export const getPostSeoData = cache(async (id: string): Promise<PublicPostSeo | 
       .from('posts')
       .select(
         `
-        id, content, category, tags, media_urls, media_type, created_at, updated_at, author_id,
+        id, content, category, tags, media_urls, media_type, visibility, created_at, updated_at, author_id,
         author:profiles!posts_author_id_fkey(username, full_name, avatar_url, post_visibility)
       `
       )
@@ -78,6 +78,7 @@ export const getPostSeoData = cache(async (id: string): Promise<PublicPostSeo | 
     return {
       id: data.id,
       content: data.content ?? '',
+      visibility: (data as { visibility?: string | null }).visibility ?? null,
       category: data.category ?? null,
       tags: data.tags ?? null,
       media_urls: data.media_urls ?? null,

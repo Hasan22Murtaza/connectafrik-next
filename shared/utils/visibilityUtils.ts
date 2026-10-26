@@ -1,6 +1,35 @@
-import type { Profile, ProfileVisibilityLevel } from '@/shared/types'
+import type { PostVisibility, Profile, ProfileVisibilityLevel } from '@/shared/types'
 
 export const PRIVACY_DENIED_CODE = 'PRIVACY_DENIED'
+
+export const POST_VISIBILITY_OPTIONS: {
+  value: PostVisibility
+  label: string
+}[] = [
+  { value: 'public', label: 'Public' },
+  { value: 'private', label: 'Private' },
+  { value: 'only_me', label: 'Only me' },
+]
+
+/** Map profile default post_visibility → per-post visibility values */
+export function postVisibilityFromProfileDefault(
+  level: ProfileVisibilityLevel | string | null | undefined
+): PostVisibility {
+  if (level === 'friends') return 'private'
+  if (level === 'private' || level === 'none') return 'only_me'
+  return 'public'
+}
+
+export function normalizePostVisibility(
+  value: string | null | undefined,
+  fallback: PostVisibility = 'public'
+): PostVisibility {
+  if (value === 'public' || value === 'private' || value === 'only_me') return value
+  if (value === 'everyone') return 'public'
+  if (value === 'friends') return 'private'
+  if (value === 'none') return 'only_me'
+  return fallback
+}
 
 export const PRIVACY_ERRORS = {
   blocked: 'You cannot interact with this user because of a block.',
@@ -75,7 +104,7 @@ export function canViewProfile(
 }
 
 /**
- * Whether viewer can see a post (post_visibility: public | friends | private).
+ * Whether viewer can see a post (profile default: public | friends | private).
  */
 export function canViewPost(
   viewerId: string | null,
@@ -86,6 +115,26 @@ export function canViewPost(
 ): boolean {
   if (isBlocked && viewerId !== authorId) return false
   return meetsLevel(viewerId, authorId, postVisibility, isMutual)
+}
+
+/**
+ * Whether viewer can see a specific post by its per-post visibility
+ * (public | private = friends | only_me).
+ */
+export function canViewPostByVisibility(
+  viewerId: string | null,
+  authorId: string,
+  visibility: PostVisibility | string | null | undefined = 'public',
+  isMutual: boolean,
+  isBlocked = false
+): boolean {
+  if (isBlocked && viewerId !== authorId) return false
+  if (viewerId === authorId) return true
+  const level = normalizePostVisibility(visibility)
+  if (level === 'only_me') return false
+  if (level === 'public') return true
+  if (level === 'private') return Boolean(viewerId) && isMutual
+  return false
 }
 
 /** Whether viewer can comment (allow_comments: everyone | friends | none) */

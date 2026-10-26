@@ -4,6 +4,11 @@ import { getAuthenticatedUser, getAccessTokenFromRequest } from '@/lib/supabase-
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
 import { POST_SELECT, formatPostsForClient } from './format-posts-response'
 import { sanitizePostBackgroundId } from '@/features/social/constants/postBackgrounds'
+import {
+  normalizePostVisibility,
+  postVisibilityFromProfileDefault,
+} from '@/shared/utils/visibilityUtils'
+import type { PostVisibility } from '@/shared/types'
 
 const PAGE_SIZE = 10
 
@@ -80,7 +85,7 @@ export async function POST(request: NextRequest) {
     const { user, supabase } = await getAuthenticatedUser(request)
     const body = await request.json()
 
-    const { content, category, media_type, media_urls, tags, location, background_id } = body
+    const { content, category, media_type, media_urls, tags, location, background_id, visibility } = body
 
     const urls = Array.isArray(media_urls) ? media_urls : []
     const mt = (media_type || (urls.length > 0 ? 'image' : 'none')) as string
@@ -98,6 +103,16 @@ export async function POST(request: NextRequest) {
     const isTextOnly = urls.length === 0 && mt === 'none'
     const resolvedBackgroundId = isTextOnly ? sanitizePostBackgroundId(background_id) : null
 
+    let resolvedVisibility: PostVisibility = normalizePostVisibility(visibility)
+    if (visibility == null || visibility === '') {
+      const { data: authorProfile } = await supabase
+        .from('profiles')
+        .select('post_visibility')
+        .eq('id', user.id)
+        .maybeSingle()
+      resolvedVisibility = postVisibilityFromProfileDefault(authorProfile?.post_visibility)
+    }
+
     const { data: post, error: insertError } = await supabase
       .from('posts')
       .insert({
@@ -108,6 +123,7 @@ export async function POST(request: NextRequest) {
         tags: tags || [],
         location: location || null,
         background_id: resolvedBackgroundId,
+        visibility: resolvedVisibility,
         author_id: user.id,
       })
       .select(POST_SELECT_SINGLE)
@@ -117,7 +133,9 @@ export async function POST(request: NextRequest) {
       return errorResponse(insertError.message, 400)
     }
 
-    notifyFollowersAndFriends(user, post, getAccessTokenFromRequest(request)).catch(() => {})
+    if (resolvedVisibility !== 'only_me') {
+      notifyFollowersAndFriends(user, post, getAccessTokenFromRequest(request)).catch(() => {})
+    }
 
     return jsonResponse({
       data: {
@@ -126,6 +144,7 @@ export async function POST(request: NextRequest) {
         content: post.content,
         category: post.category,
         tags: post.tags,
+        visibility: post.visibility ?? resolvedVisibility,
         background_id: post.background_id ?? null,
         media_urls: post.media_urls,
         media_type: post.media_type,

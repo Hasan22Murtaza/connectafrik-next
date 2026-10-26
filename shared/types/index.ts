@@ -7,12 +7,17 @@ export interface User {
   full_name?: string
 }
 
+/** Per-post audience (DB: public | private | only_me) */
+export type PostVisibility = 'public' | 'private' | 'only_me'
+
 export interface Post {
   id: string
   content: string
   category: 'politics' | 'culture' | 'general'
   author_id: string
   media_urls?: string[]
+  /** Who can see this post: public, private (friends), only_me */
+  visibility?: PostVisibility
   likes_count: number
   comments_count: number
   shares_count: number

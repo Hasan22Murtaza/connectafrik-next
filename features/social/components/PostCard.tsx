@@ -53,6 +53,7 @@ interface Post {
   media_type?: string | null;
   background_id?: string | null;
   location?: string | null;
+  visibility?: "public" | "private" | "only_me";
   likes_count: number;
   comments_count: number;
   shares_count: number;
@@ -482,6 +483,7 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
         media_urls: postData.media_urls ?? [],
         location: postData.location || null,
         background_id: postData.background_id ?? null,
+        visibility: postData.visibility,
         updated_at: new Date().toISOString(),
       };
 
@@ -493,6 +495,7 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
           media_type?: string;
           tags?: string[];
           background_id?: string | null;
+          visibility?: "public" | "private" | "only_me";
         };
       }>(`/api/posts/${post.id}`, updatePayload);
 
@@ -504,6 +507,7 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
           media_type: response.data.media_type,
           tags: response.data.tags,
           background_id: response.data.background_id ?? null,
+          visibility: response.data.visibility ?? postData.visibility,
         });
       }
 
@@ -1208,6 +1212,7 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
             media_urls: post.media_urls ?? undefined,
             location: post.location ?? undefined,
             background_id: post.background_id ?? null,
+            visibility: post.visibility,
           }}
           onSubmit={handleSaveEdit}
           onCancel={handleCancelEdit}

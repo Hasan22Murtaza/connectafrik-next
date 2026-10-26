@@ -1,5 +1,11 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { canComment, canFollow, canViewPost } from '@/shared/utils/visibilityUtils'
+import {
+  canComment,
+  canFollow,
+  canViewPostByVisibility,
+  normalizePostVisibility,
+  postVisibilityFromProfileDefault,
+} from '@/shared/utils/visibilityUtils'
 import { getRelationships } from '@/lib/privacy/access'
 
 const LATEST_COMMENTS_PREVIEW = 3
@@ -190,8 +196,11 @@ export async function formatPostsForClient(
 
   const filtered = scoped.filter((p: any) => {
     const rel = relationships.get(p.author_id)
-    const vis = p.author?.post_visibility ?? rel?.settings.post_visibility ?? 'public'
-    return canViewPost(userId, p.author_id, vis, rel?.isFriend ?? false, rel?.isBlocked ?? false)
+    const fallback = postVisibilityFromProfileDefault(
+      p.author?.post_visibility ?? rel?.settings.post_visibility
+    )
+    const vis = normalizePostVisibility(p.visibility, fallback)
+    return canViewPostByVisibility(userId, p.author_id, vis, rel?.isFriend ?? false, rel?.isBlocked ?? false)
   })
 
   let likedPostIds = new Set<string>()
@@ -433,12 +442,18 @@ export async function formatPostsForClient(
       ? Object.values(postReactions.groups).sort((a: any, b: any) => b.count - a.count)
       : []
 
+    const visibility = normalizePostVisibility(
+      post.visibility,
+      postVisibilityFromProfileDefault(post.author?.post_visibility ?? rel?.settings.post_visibility)
+    )
+
     return {
       id: post.id,
       author_id: post.author_id,
       content: post.content,
       category: post.category,
       tags: post.tags,
+      visibility,
       background_id: post.background_id ?? null,
       media_urls: post.media_urls,
       media_type: post.media_type,

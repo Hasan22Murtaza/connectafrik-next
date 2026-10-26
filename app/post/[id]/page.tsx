@@ -27,7 +27,7 @@ export default async function PostPage({ params }: PageProps) {
   const { id } = await params
   const post = await getPostSeoData(id)
   const jsonLd =
-    post && isPublicPostVisibility(post.author?.post_visibility)
+    post && isPublicPostVisibility(post.visibility ?? post.author?.post_visibility)
       ? generateJsonLd(getPostSeoInput(post))
       : null
 

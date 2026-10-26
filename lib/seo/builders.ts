@@ -25,7 +25,7 @@ export function getPostMetadata(post: PublicPostSeo): Metadata {
   const authorName = displayName(post.author)
   const snippet = truncatePlainText(post.content) || `A post by ${authorName} on CribsTalk`
   const title = snippet.length > 55 ? `${snippet.slice(0, 52).trimEnd()}…` : snippet
-  const indexable = isPublicPostVisibility(post.author?.post_visibility)
+  const indexable = isPublicPostVisibility(post.visibility ?? post.author?.post_visibility)
   const image = pickMediaImage(post.media_urls, post.media_type)
   const tags = (post.tags ?? []).filter(Boolean)
   const input: SeoInput = {
@@ -158,7 +158,7 @@ export function getPostSeoInput(post: PublicPostSeo): SeoInput {
     description: String(meta.description ?? ''),
     path: seoPaths.post(post.id),
     type: 'article',
-    indexable: isPublicPostVisibility(post.author?.post_visibility),
+    indexable: isPublicPostVisibility(post.visibility ?? post.author?.post_visibility),
     image: pickMediaImage(post.media_urls, post.media_type),
     author: { name: displayName(post.author), url: authorPath(post.author?.username) },
     publishedTime: post.created_at,
