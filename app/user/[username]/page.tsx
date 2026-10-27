@@ -28,6 +28,7 @@ import AboutTab from './components/AboutTab'
 import PhotosTab from './components/PhotosTab'
 import FriendsTab from './components/FriendsTab'
 import FriendsSidebar, { type FriendsSection } from '@/features/social/components/FriendsSidebar'
+import { CheckCheckIcon } from 'lucide-react'
 
 interface PostWithAuthor {
   id: string; content: string
@@ -675,102 +676,146 @@ const UserProfilePage: React.FC = () => {
 
       <main className="min-w-0 flex-1">
         <div className="mt-4">
-        <div className="bg-surface shadow-card rounded-2xl">
-          <div className="px-2 sm:px-6 pt-4 pb-3 sm:py-5 ">
-            <div className="flex flex-col items-center sm:flex-row sm:items-start gap-3 sm:gap-5">
-              <div className="flex-shrink-0">
-                <div className="rounded-full border-[3px] border-white">
-                  {profile.avatar_url ? (
-                    <Avatar
-                      src={profile.avatar_url}
-                      name={profile.full_name}
-                      size="lg"
-                    />
-                  ) : (
-                    <div className="flex h-28 w-28 items-center justify-center rounded-full bg-primary-100 text-xl font-semibold text-primary-600 ">
-                      {profile.full_name?.charAt(0).toUpperCase()}
-                    </div>
-                  )}
-                </div>
+          <div className="overflow-hidden rounded-2xl bg-surface shadow-card">
+            <div className="relative h-40 bg-gradient-to-br from-orange-200 via-amber-100 to-sky-100 sm:h-48">
+              <div className="absolute inset-0 overflow-hidden">
+                <img
+                  src={profile.banner_image || "/assets/images/no-cover.svg"}
+                  alt=""
+                  onError={(event) => {
+                    if (event.currentTarget.src.endsWith("/assets/images/no-cover.svg")) return;
+                    event.currentTarget.src = "/assets/images/no-cover.svg";
+                  }}
+                  className="h-full w-full object-cover"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent" />
               </div>
-
-              <div className="flex-1 min-w-0 text-center sm:text-left">
-                <div className="flex flex-wrap items-baseline gap-x-2 justify-center sm:justify-start">
-                  <h1 className="text-[22px] sm:text-[28px] lg:text-[32px] font-semibold text-content leading-tight">{profile.full_name}</h1>
-                  <div className="flex items-center gap-1">
-                    {profile.is_verified && (
-                      <div className="w-[18px] h-[18px] bg-blue-500 rounded-full flex items-center justify-center">
-                        <span className="text-white text-[9px] font-bold">{'\u2713'}</span>
-                      </div>
-                    )}
-                    <span className="text-content-secondary text-sm sm:text-base">@{profile.username}</span>
-                  </div>
-                </div>
-
-                
-
-                {user && user.id !== profile.id && visibleFields.followersList && mutualFriendsCount > 0 && (
-                  <div className="flex items-center justify-center sm:justify-start py-2.5 gap-2">
-                    <div className="flex -space-x-1.5">
-                      {mutualFriends.slice(0, 3).map((f) => (
-                        <div key={f.user_id} className="w-6 h-6 sm:w-7 sm:h-7 rounded-full border-2 border-white overflow-hidden">
-                          {f.avatar_url
-                            ? <img src={f.avatar_url} alt={f.full_name} className="w-full h-full object-cover" />
-                            : <div className="w-full h-full bg-surface-tertiary flex items-center justify-center"><span className="text-[9px] font-semibold text-content-secondary">{f.full_name.charAt(0).toUpperCase()}</span></div>
-                          }
-                        </div>
-                      ))}
-                    </div>
-                    <span className="font-medium text-content text-sm">{mutualFriendsCount} mutual {mutualFriendsCount === 1 ? 'friend' : 'friends'}</span>
-
+              <div className="absolute -bottom-8 left-4 z-10 h-[76px] w-[76px] overflow-hidden rounded-2xl border-2 border-white bg-surface shadow-card sm:left-5 sm:h-[88px] sm:w-[88px]">
+                {profile.avatar_url ? (
+                  <img src={profile.avatar_url} alt={profile.full_name} className="h-full w-full object-cover" />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center bg-primary-100 text-xl font-semibold text-primary-600">
+                    {profile.full_name?.charAt(0).toUpperCase()}
                   </div>
                 )}
-                 <div className="flex items-center justify-center sm:justify-start gap-2 ">
-                <div className="text-xs text-orange-500  bg-primary-50 border border-orange-500 rounded-full inline-block px-2 py-1">
-                  <span className="font-medium ">{fmt(profile.following_count)}</span> tapping in
-                </div>
-                <div className="text-xs text-green-500  bg-green-50 border border-green-500 rounded-full inline-block px-2 py-1 ">
-                  <span className="font-medium ">{fmt(profile.followers_count)}</span> tapped in
-                </div>
+              </div>
+
+               
+            </div>
+
+            <div className=" hidden flex-shrink-0 items-center gap-2 sm:flex float-end p-4">
+                  {isOwnProfile ? (
+                    <button onClick={() => router.push('/profile')} className={btnGray}>Edit Profile</button>
+                  ) : (
+                    <>
+                      {showMessageBtn && <button onClick={handleStartChat} className={btnGray}><MessageCircle className="h-4 w-4" />Message</button>}
+                      {showFollowBtn && (
+                        <button onClick={handleFollow} disabled={followLoading} className={`${btnBase} disabled:opacity-50 ${isFollowing ? 'bg-[#e4e6eb] text-content hover:bg-[#d8dadf]' : 'bg-[#F97316] text-white hover:bg-[#ea580c]'}`}>
+                          {followLoading ? <Spinner /> : isFollowing ? <UserCheck className="h-4 w-4" /> : <UserPlus className="h-4 w-4" />}
+                          {isFollowing ? 'Tapped In' : 'Tap In'}
+                        </button>
+                      )}
+                      {showFriendRequestBtn && (
+                        <button onClick={handleFriendRequest} disabled={friendLoading} className={`${btnBase} disabled:opacity-50 ${fb.cls}`}>
+                          {friendLoading ? <Spinner /> : <fb.icon className="h-4 w-4" />}{fb.label}
+                        </button>
+                      )}
+                    </>
+                  )}
+            </div>
+
+            <div className="px-4 pb-3 pt-10 sm:px-5 sm:pb-4">
+                <div className="min-w-0 text-center sm:text-left">
+                  <div className="flex flex-wrap items-center justify-center gap-x-2 sm:justify-start">
+                    <h1 className="text-[22px] font-semibold leading-tight text-content sm:text-[28px] lg:text-[32px]">{profile.full_name}</h1>
+                    {profile.is_verified && (
+                      <span className="flex h-[18px] w-[18px] items-center justify-center rounded-full bg-orange-500 text-[9px] font-bold text-white" aria-label="Verified">
+                        <CheckCheckIcon/>
+                      </span>
+                    )}
+                    <span className="text-sm text-content-secondary sm:text-base">@{profile.username}</span>
+
+                     {/* <div className="flex items-center justify-center gap-2 sm:justify-start"> */}
+                    <div className="inline-block rounded-xl border border-orange-500 bg-primary-50 px-2 py-1 text-xs text-orange-500">
+                      <span className="font-medium">{fmt(profile.following_count)}</span> tapping in
+                    </div>
+                    <div className="inline-block rounded-xl border border-green-500 bg-green-50 px-2 py-1 text-xs text-green-500">
+                      <span className="font-medium">{fmt(profile.followers_count)}</span> tapped in
+                    </div>
+                  {/* </div> */}
+                  </div>
+
+                    <p className='text-base text-truncate'>
+                      {profile.bio}
+                    </p>
+
+                  {user && user.id !== profile.id && visibleFields.followersList && mutualFriendsCount > 0 && (
+                    <div className="flex items-center justify-center gap-2 py-2.5 sm:justify-start">
+                      <div className="flex -space-x-1.5">
+                        {mutualFriends.slice(0, 3).map((f) => (
+                          <div key={f.user_id} className="h-6 w-6 overflow-hidden rounded-full border-2 border-white sm:h-7 sm:w-7">
+                            <img
+                              src={f.avatar_url || "/assets/images/profile-dp.svg"}
+                              alt={f.full_name}
+                              onError={(event) => {
+                                if (event.currentTarget.src.endsWith("/assets/images/profile-dp.svg")) return;
+                                event.currentTarget.src = "/assets/images/profile-dp.svg";
+                              }}
+                              className="h-full w-full object-cover"
+                            />
+                          </div>
+                        ))}
+                      </div>
+                      <span className="text-sm font-medium text-content">{mutualFriendsCount} mutual {mutualFriendsCount === 1 ? 'friend' : 'friends'}</span>
+                    </div>
+                  )}
+
+                 
+
+                  <div className="mt-2 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-xs text-content-secondary sm:justify-start">
+                    {visibleFields.country && profile.country && <span>{profile.country}</span>}
+                    {visibleFields.location && profileLivesInLine && (
+                      <span>Lives in {profileLivesInLine}</span>
+                    )}
+                    {(visibleFields.country && profile.country || visibleFields.location && profileLivesInLine) && (
+                      <span aria-hidden="true">·</span>
+                    )}
+                    <span suppressHydrationWarning>
+                      Joined {formatDistanceToNow(new Date(profile.created_at), { addSuffix: true })}
+                    </span>
+                  </div>
                 </div>
 
-                {/* {profile.bio && <p className="mt-2 text-[14px] sm:text-[15px] text-content leading-snug line-clamp-1 sm:line-clamp-3 max-w-xl">{profile.bio}</p>} */}
-
-
+              <div className="mt-3 flex items-center gap-1.5 sm:hidden">
+                {isOwnProfile ? (
+                  <button onClick={() => router.push('/profile')} className="inline-flex h-9 items-center justify-center gap-1.5 whitespace-nowrap rounded-md bg-[#e4e6eb] px-2 py-2 text-[13px] font-semibold text-content transition active:bg-[#d8dadf]">Edit Profile</button>
+                ) : (
+                  <>
+                    {showMessageBtn && (
+                      <button onClick={handleStartChat} className="inline-flex items-center justify-center gap-1.5 rounded-md bg-[#e4e6eb] px-2 py-2 text-[13px] font-semibold text-content transition active:bg-[#d8dadf]">
+                        <MessageCircle className="h-3.5 w-3.5" />
+                        Message
+                      </button>
+                    )}
+                    {showFollowBtn && (
+                      <button onClick={handleFollow} disabled={followLoading} className={`inline-flex items-center justify-center gap-1.5 rounded-md px-2 py-2 text-[13px] font-semibold transition disabled:opacity-50 ${isFollowing ? 'bg-[#e4e6eb] text-content active:bg-[#d8dadf]' : 'bg-[#F97316] text-white active:bg-[#ea580c]'}`}>
+                        {followLoading ? <Spinner className="h-3.5 w-3.5" /> : isFollowing ? <UserCheck className="h-3.5 w-3.5" /> : <UserPlus className="h-3.5 w-3.5" />}
+                        {isFollowing ? 'Tapped In' : 'Tap In'}
+                      </button>
+                    )}
+                    {showFriendRequestBtn && (
+                      <button onClick={handleFriendRequest} disabled={friendLoading} className={`inline-flex items-center justify-center gap-1.5 rounded-md px-2 py-2 text-[13px] font-semibold transition disabled:opacity-50 ${fb.cls}`}>
+                        {friendLoading ? <Spinner className="h-3.5 w-3.5" /> : <fb.icon className="h-3.5 w-3.5" />}{fb.label}
+                      </button>
+                    )}
+                  </>
+                )}
               </div>
             </div>
-
-            <div className="flex items-center gap-1.5 mt-3 sm:hidden">
-              {isOwnProfile ? (
-                <button onClick={() => router.push('/profile')} className=" px-2 py-2 inline-flex items-center justify-center gap-1.5 h-9 rounded-md text-[13px] font-semibold whitespace-nowrap bg-[#e4e6eb] text-content active:bg-[#d8dadf] transition">Edit Profile</button>
-              ) : (
-                <>
-                  {showMessageBtn && (
-                    <button onClick={handleStartChat} className=" px-2 py-2 inline-flex items-center justify-center gap-1.5  rounded-md text-[13px] font-semibold  bg-[#e4e6eb] text-content active:bg-[#d8dadf] transition">
-                      <MessageCircle className="w-3.5 h-3.5" />
-                      Message
-                    </button>
-                  )}
-                  {showFollowBtn && (
-                    <button onClick={handleFollow} disabled={followLoading} className={` px-2 py-2 inline-flex items-center justify-center gap-1.5  rounded-md text-[13px] font-semibold  disabled:opacity-50 transition ${isFollowing ? 'bg-[#e4e6eb] text-content active:bg-[#d8dadf]' : 'bg-[#F97316] text-white active:bg-[#ea580c]'}`}>
-                      {followLoading ? <Spinner className="w-3.5 h-3.5" /> : isFollowing ? <UserCheck className="w-3.5 h-3.5" /> : <UserPlus className="w-3.5 h-3.5" />}
-                      {isFollowing ? 'Tapped In' : 'Tap In'}
-                    </button>
-                  )}
-                  {showFriendRequestBtn && (
-                    <button onClick={handleFriendRequest} disabled={friendLoading} className={`px-2 py-2  inline-flex items-center justify-center gap-1.5  rounded-md text-[13px] font-semibold  disabled:opacity-50 transition ${fb.cls}`}>
-                      {friendLoading ? <Spinner className="w-3.5 h-3.5" /> : <fb.icon className="w-3.5 h-3.5" />}{fb.label}
-                    </button>
-                  )}
-
-                </>
-              )}
-            </div>
-          </div>
 
           <hr className="border-border" />
 
-          <div className="flex items-center justify-between px-1 sm:px-4">
+          <div className="flex items-center px-1 sm:px-4">
             <div className="flex items-center overflow-x-auto scrollbar-hide flex-1">
               {TABS.map((tab) => (
                 <button
@@ -782,28 +827,6 @@ const UserProfilePage: React.FC = () => {
                   {tab.label}
                 </button>
               ))}
-            </div>
-
-            <div className="hidden sm:flex items-center gap-2 flex-shrink-0 py-1.5">
-              {isOwnProfile ? (
-                <button onClick={() => router.push('/profile')} className={btnGray}>Edit Profile</button>
-              ) : (
-                <>
-                  {showMessageBtn && <button onClick={handleStartChat} className={btnGray}><MessageCircle className="w-4 h-4" />Message</button>}
-                  {showFollowBtn && (
-                    <button onClick={handleFollow} disabled={followLoading} className={`${btnBase} disabled:opacity-50 ${isFollowing ? 'bg-[#e4e6eb] text-content hover:bg-[#d8dadf]' : 'bg-[#F97316] text-white hover:bg-[#ea580c]'}`}>
-                      {followLoading ? <Spinner /> : isFollowing ? <UserCheck className="w-4 h-4" /> : <UserPlus className="w-4 h-4" />}
-                      {isFollowing ? 'Tapped In' : 'Tap In'}
-                    </button>
-                  )}
-                  {showFriendRequestBtn && (
-                    <button onClick={handleFriendRequest} disabled={friendLoading} className={`${btnBase} disabled:opacity-50 ${fb.cls}`}>
-                      {friendLoading ? <Spinner /> : <fb.icon className="w-4 h-4" />}{fb.label}
-                    </button>
-                  )}
-
-                </>
-              )}
             </div>
           </div>
         </div>
@@ -834,10 +857,15 @@ const UserProfilePage: React.FC = () => {
                   {mutualFriends.slice(0, 6).map((f) => (
                     <button key={f.user_id} onClick={() => router.push(`/user/${f.user_id}`)} className="text-left group focus:outline-none">
                       <div className="aspect-square rounded-lg overflow-hidden bg-surface-secondary">
-                        {f.avatar_url
-                          ? <img src={f.avatar_url} alt={f.full_name} className="w-full h-full object-cover group-hover:brightness-95 transition" />
-                          : <div className="w-full h-full flex items-center justify-center bg-surface-tertiary group-hover:bg-surface-tertiary transition"><span className="text-lg font-semibold text-content-secondary">{f.full_name.charAt(0).toUpperCase()}</span></div>
-                        }
+                        <img
+                          src={f.avatar_url || "/assets/images/profile-dp.svg"}
+                          alt={f.full_name}
+                          onError={(event) => {
+                            if (event.currentTarget.src.endsWith("/assets/images/profile-dp.svg")) return;
+                            event.currentTarget.src = "/assets/images/profile-dp.svg";
+                          }}
+                          className="h-full w-full object-cover transition group-hover:brightness-95"
+                        />
                       </div>
                       <p className="text-[12px] sm:text-[13px] font-medium text-content truncate mt-1 group-hover:underline">{f.full_name}</p>
                     </button>
