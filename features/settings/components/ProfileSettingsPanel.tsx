@@ -1,10 +1,11 @@
 'use client'
 
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { Camera, Image, Loader2, User, X } from '@/shared/icons'
+import { Camera, Image, Loader2, Trash2, User, X } from '@/shared/icons'
 import { useProfile } from '@/shared/hooks/useProfile'
 import { useFileUpload } from '@/shared/hooks/useFileUpload'
 import { LocationSearch } from '@/shared/components/ui/LocationSearch'
+import { useConfirmDialog } from '@/shared/components/ui/ConfirmDialog'
 import { profileLocationFromDb } from '@/shared/types/location'
 import toast from 'react-hot-toast'
 import {
@@ -44,13 +45,15 @@ const emptyForm: ProfileFormState = {
 
 export function ProfileSettingsPanel() {
   const { profile, loading, updateProfile } = useProfile()
-  const { uploadFile } = useFileUpload()
+  const { uploadFile, deleteFile } = useFileUpload()
+  const { confirm, dialog } = useConfirmDialog()
   const avatarRef = useRef<HTMLInputElement>(null)
   const bannerRef = useRef<HTMLInputElement>(null)
 
   const [form, setForm] = useState<ProfileFormState>(emptyForm)
   const [saved, setSaved] = useState<ProfileFormState>(emptyForm)
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false)
+  const [isDeletingAvatar, setIsDeletingAvatar] = useState(false)
   const [isUploadingBanner, setIsUploadingBanner] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
 
@@ -127,6 +130,38 @@ export function ProfileSettingsPanel() {
     }
   }
 
+  const handleRemoveAvatar = async () => {
+    const avatarUrl = profile?.avatar_url
+    if (!avatarUrl) return
+
+    const confirmed = await confirm({
+      title: 'Delete profile photo?',
+      message: 'Your profile photo will be removed.',
+      confirmLabel: 'Delete photo',
+      variant: 'danger',
+    })
+    if (!confirmed) return
+
+    setIsDeletingAvatar(true)
+    try {
+      const { error } = await updateProfile({ avatar_url: null })
+      if (error) {
+        toast.error(error)
+        return
+      }
+
+      toast.success('Profile photo removed')
+      const fileDeleted = await deleteFile(avatarUrl, 'user-avatars')
+      if (!fileDeleted) {
+        toast.error('Profile photo removed, but its image file could not be deleted')
+      }
+    } catch {
+      toast.error('Failed to remove profile photo')
+    } finally {
+      setIsDeletingAvatar(false)
+    }
+  }
+
   const handleBannerUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     e.target.value = ''
@@ -189,18 +224,17 @@ export function ProfileSettingsPanel() {
         accept="image/*"
         onChange={handleAvatarUpload}
         className="hidden"
-        disabled={isUploadingAvatar}
+        disabled={isUploadingAvatar || isDeletingAvatar}
       />
 
       {/* Profile preview — banner + avatar as one composition */}
       <SettingsCard className="overflow-hidden">
         <div className="relative">
           <div
-            className={`group/banner relative h-36 overflow-hidden sm:h-44 ${
-              profile?.banner_image
+            className={`group/banner relative h-36 overflow-hidden sm:h-44 ${profile?.banner_image
                 ? 'bg-surface-secondary'
                 : 'bg-[linear-gradient(135deg,color-mix(in_srgb,var(--primary-200)_55%,transparent),color-mix(in_srgb,var(--primary-50)_80%,var(--surface-secondary)),color-mix(in_srgb,var(--primary-100)_40%,transparent))]'
-            }`}
+              }`}
           >
             {profile?.banner_image ? (
               <img
@@ -275,7 +309,7 @@ export function ProfileSettingsPanel() {
                     <Camera className="h-4 w-4" />
                   </button>
 
-                  {isUploadingAvatar ? (
+                  {isUploadingAvatar || isDeletingAvatar ? (
                     <div className="absolute inset-0 z-[5] flex items-center justify-center rounded-full bg-black/45">
                       <Loader2 className="h-7 w-7 animate-spin text-white" />
                     </div>
@@ -293,16 +327,32 @@ export function ProfileSettingsPanel() {
                   )}
                 </div>
               </div>
-
-              <button
-                type="button"
-                onClick={() => avatarRef.current?.click()}
-                disabled={isUploadingAvatar}
-                className="btn-secondary mx-auto min-h-11 shrink-0 rounded-[14px] px-4 sm:mx-0"
-              >
-                <Camera className="h-4 w-4" />
-                <span>Change photo</span>
-              </button>
+              <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
+                <button
+                  type="button"
+                  onClick={() => avatarRef.current?.click()}
+                  disabled={isUploadingAvatar || isDeletingAvatar}
+                  className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 !rounded-[14px] btn-secondary  px-4 text-sm font-semibold  transition-colors "
+                >
+                  <Camera className="h-4 w-4" />
+                  <span >Change photo</span>
+                </button>
+                {profile?.avatar_url ? (
+                  <button
+                    type="button"
+                    onClick={handleRemoveAvatar}
+                    disabled={isUploadingAvatar || isDeletingAvatar}
+                    className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-[14px] border border-red-300 bg-surface px-4 text-sm font-semibold text-danger transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60 dark:hover:bg-red-950/40"
+                  >
+                    {isDeletingAvatar ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Trash2 className="h-4 w-4" />
+                    )}
+                    <span>{isDeletingAvatar ? 'Deleting…' : 'Delete photo'}</span>
+                  </button>
+                ) : null}
+              </div>
             </div>
 
           </div>
@@ -401,6 +451,7 @@ export function ProfileSettingsPanel() {
       </SettingsCard>
 
       <SettingsSaveBar dirty={dirty} saving={isSaving} onSave={handleSave} />
+      {dialog}
     </div>
   )
 }
