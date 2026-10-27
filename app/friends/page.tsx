@@ -262,7 +262,7 @@ function SuggestionCard({
       username={suggestion.username}
       avatarUrl={suggestion.avatar_url}
       bannerImage={suggestion.banner_image}
-      // location={suggestion?.country}
+      location={suggestion.country ?? undefined}
       relationshipText={relationshipText}
       mutualFriends={suggestion.mutual_friends ?? []}
       coverAction={
