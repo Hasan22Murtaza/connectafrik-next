@@ -3,16 +3,28 @@
 import { useMemo, useState } from "react";
 import { AP } from "../constants/adminLayout";
 
+/** Brand-aligned chart palette: orange primary + green accents + neutrals. */
 const CHART_COLORS = [
-  "bg-primary-500",
-  "bg-blue-500",
-  "bg-emerald-500",
+  "bg-primary-600",
+  "bg-[var(--african-green)]",
+  "bg-primary-400",
+  "bg-gray-700",
+  "bg-primary-300",
+  "bg-[var(--african-green-light)]",
+  "bg-gray-400",
   "bg-amber-500",
-  "bg-purple-500",
-  "bg-rose-500",
-  "bg-cyan-500",
-  "bg-indigo-500",
 ];
+
+const COLOR_HEX: Record<string, string> = {
+  "bg-primary-600": "#ea580c",
+  "bg-[var(--african-green)]": "#16a34a",
+  "bg-primary-400": "#fb923c",
+  "bg-gray-700": "#374151",
+  "bg-primary-300": "#fdba74",
+  "bg-[var(--african-green-light)]": "#22c55e",
+  "bg-gray-400": "#9ca3af",
+  "bg-amber-500": "#f59e0b",
+};
 
 interface AdminBarChartProps {
   title: string;
@@ -43,17 +55,17 @@ export function AdminBarChart({
   if (entries.length === 0) {
     return (
       <div className={`${AP.card} ${AP.cardPadding}`}>
-        <h3 className="text-sm font-semibold text-gray-900 mb-4">{title}</h3>
-        <p className="text-sm text-gray-400 text-center py-12">{emptyLabel}</p>
+        <h3 className="mb-4 text-sm font-medium text-gray-900">{title}</h3>
+        <p className="py-12 text-center text-sm text-gray-400">{emptyLabel}</p>
       </div>
     );
   }
 
   return (
-    <div className={`${AP.card} ${AP.cardPadding} ${AP.cardHover}`}>
-      <h3 className="text-sm font-semibold text-gray-900 mb-4">{title}</h3>
+    <div className={`${AP.card} ${AP.cardPadding}`}>
+      <h3 className="mb-4 text-sm font-medium text-gray-900">{title}</h3>
       <div
-        className="flex items-end gap-2 sm:gap-3 h-44"
+        className="flex h-44 items-end gap-2 sm:gap-3"
         role="img"
         aria-label={`${title} bar chart`}
       >
@@ -64,7 +76,7 @@ export function AdminBarChart({
             <button
               key={label}
               type="button"
-              className="flex-1 min-w-0 flex flex-col items-center gap-2 group focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 rounded-lg"
+              className="group flex min-w-0 flex-1 flex-col items-center gap-2 rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40"
               onMouseEnter={() => setActiveIndex(i)}
               onMouseLeave={() => setActiveIndex(null)}
               onFocus={() => setActiveIndex(i)}
@@ -72,21 +84,21 @@ export function AdminBarChart({
               aria-label={`${label}: ${value}`}
             >
               <span
-                className={`text-xs font-semibold text-gray-700 transition-opacity duration-200 ${
-                  isActive ? "opacity-100" : "opacity-0 sm:opacity-0 group-hover:opacity-100"
+                className={`text-xs font-medium text-gray-700 transition-opacity ${
+                  isActive ? "opacity-100" : "opacity-0 group-hover:opacity-100"
                 }`}
               >
                 {value.toLocaleString()}
               </span>
-              <div className="w-full flex items-end h-32">
+              <div className="flex h-32 w-full items-end">
                 <div
-                  className={`w-full rounded-t-lg transition-all duration-300 ease-out ${CHART_COLORS[i % CHART_COLORS.length]} ${
-                    isActive ? "opacity-100 scale-y-105" : "opacity-80 group-hover:opacity-100"
+                  className={`w-full rounded-t-md transition-opacity ${CHART_COLORS[i % CHART_COLORS.length]} ${
+                    isActive ? "opacity-100" : "opacity-85 group-hover:opacity-100"
                   }`}
                   style={{ height: `${height}%` }}
                 />
               </div>
-              <span className="text-[10px] sm:text-xs text-gray-500 capitalize truncate w-full text-center leading-tight">
+              <span className="w-full truncate text-center text-[10px] leading-tight text-gray-500 capitalize sm:text-xs">
                 {label.replace(/_/g, " ")}
               </span>
             </button>
@@ -115,8 +127,8 @@ export function AdminDonutChart({ title, data }: AdminDonutChartProps) {
   if (entries.length === 0 || total === 0) {
     return (
       <div className={`${AP.card} ${AP.cardPadding}`}>
-        <h3 className="text-sm font-semibold text-gray-900 mb-4">{title}</h3>
-        <p className="text-sm text-gray-400 text-center py-12">No data available</p>
+        <h3 className="mb-4 text-sm font-medium text-gray-900">{title}</h3>
+        <p className="py-12 text-center text-sm text-gray-400">No data available</p>
       </div>
     );
   }
@@ -130,48 +142,34 @@ export function AdminDonutChart({ title, data }: AdminDonutChartProps) {
   });
 
   const gradient = segments
-    .map((s) => {
-      const colorMap: Record<string, string> = {
-        "bg-primary-500": "#f97316",
-        "bg-blue-500": "#3b82f6",
-        "bg-emerald-500": "#10b981",
-        "bg-amber-500": "#f59e0b",
-        "bg-purple-500": "#a855f7",
-        "bg-rose-500": "#f43f5e",
-        "bg-cyan-500": "#06b6d4",
-        "bg-indigo-500": "#6366f1",
-      };
-      return `${colorMap[s.color] ?? "#9ca3af"} ${s.start}% ${s.start + s.pct}%`;
-    })
+    .map((s) => `${COLOR_HEX[s.color] ?? "#9ca3af"} ${s.start}% ${s.start + s.pct}%`)
     .join(", ");
 
   return (
-    <div className={`${AP.card} ${AP.cardPadding} ${AP.cardHover}`}>
-      <h3 className="text-sm font-semibold text-gray-900 mb-4">{title}</h3>
-      <div className="flex flex-col sm:flex-row items-center gap-6">
+    <div className={`${AP.card} ${AP.cardPadding}`}>
+      <h3 className="mb-4 text-sm font-medium text-gray-900">{title}</h3>
+      <div className="flex flex-col items-center gap-6 sm:flex-row">
         <div
-          className="relative w-36 h-36 rounded-full shrink-0"
-          style={{
-            background: `conic-gradient(${gradient})`,
-          }}
+          className="relative h-36 w-36 shrink-0 rounded-full"
+          style={{ background: `conic-gradient(${gradient})` }}
           role="img"
           aria-label={`${title} distribution chart`}
         >
-          <div className="absolute inset-4 bg-white rounded-full flex flex-col items-center justify-center shadow-inner">
-            <span className="text-2xl font-bold text-gray-900">{total}</span>
+          <div className="absolute inset-4 flex flex-col items-center justify-center rounded-full bg-white">
+            <span className="text-2xl font-semibold text-gray-900">{total}</span>
             <span className="text-xs text-gray-500">Total</span>
           </div>
         </div>
-        <ul className="flex-1 space-y-2 w-full min-w-0">
+        <ul className="min-w-0 w-full flex-1 space-y-2">
           {segments.map((s) => (
             <li key={s.label} className="flex items-center justify-between gap-2 text-sm">
-              <span className="flex items-center gap-2 min-w-0">
-                <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${s.color}`} />
-                <span className="text-gray-600 capitalize truncate">
+              <span className="flex min-w-0 items-center gap-2">
+                <span className={`h-2.5 w-2.5 shrink-0 rounded-sm ${s.color}`} />
+                <span className="truncate capitalize text-gray-600">
                   {s.label.replace(/_/g, " ")}
                 </span>
               </span>
-              <span className="font-medium text-gray-900 shrink-0">
+              <span className="shrink-0 font-medium text-gray-900">
                 {s.value} ({s.pct.toFixed(0)}%)
               </span>
             </li>

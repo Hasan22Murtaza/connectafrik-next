@@ -31,6 +31,16 @@ import { useAdminAuth } from '@/features/admin/hooks/useAdminAuth'
 import { AP } from '@/features/admin/constants/adminLayout'
 import { listAdminReportGroups } from '@/features/social/services/reportService'
 import {
+  AdminAuditActionsCard,
+  AdminRecentContentCard,
+} from '@/features/admin/components/AdminMonitoringSections'
+import { AdminDonutChart } from '@/features/admin/components/AdminChart'
+import {
+  fetchMonitoringSnapshot,
+  type MonitoringAdminAction,
+  type MonitoringContentRow,
+} from '@/features/admin/services/monitoringService'
+import {
   POST_REPORT_REASON_LABELS,
   POST_REPORT_REASON_OPTIONS,
   POST_REPORT_STATUS_LABELS,
@@ -110,25 +120,38 @@ export default function AdminReportsPage() {
   const [authorInput, setAuthorInput] = useState('')
   const [search, setSearch] = useState('')
   const [searchInput, setSearchInput] = useState('')
+  const [highPriority, setHighPriority] = useState(0)
+  const [reportReasons, setReportReasons] = useState<Record<string, number>>({})
+  const [recentContent, setRecentContent] = useState<MonitoringContentRow[]>([])
+  const [adminActions, setAdminActions] = useState<MonitoringAdminAction[]>([])
 
   const loadReports = useCallback(async () => {
     try {
       setLoading(true)
-      const result = await listAdminReportGroups({
-        status,
-        reason,
-        search: search || undefined,
-        date_from: dateFrom || undefined,
-        date_to: dateTo ? `${dateTo}T23:59:59.999Z` : undefined,
-        author: author.trim() || undefined,
-        min_reports: Number(minReports) || 1,
-        page,
-        limit: LIMIT,
-        include_stats: true,
-      })
+      const [result, monitoring] = await Promise.all([
+        listAdminReportGroups({
+          status,
+          reason,
+          search: search || undefined,
+          date_from: dateFrom || undefined,
+          date_to: dateTo ? `${dateTo}T23:59:59.999Z` : undefined,
+          author: author.trim() || undefined,
+          min_reports: Number(minReports) || 1,
+          page,
+          limit: LIMIT,
+          include_stats: true,
+        }),
+        fetchMonitoringSnapshot({ range: '7d' }).catch(() => null),
+      ])
       setItems(result.items)
       setTotal(result.total)
       setStats(result.stats || emptyStats)
+      if (monitoring) {
+        setHighPriority(monitoring.kpis.high_priority_reports)
+        setReportReasons(monitoring.report_reasons)
+        setRecentContent(monitoring.recent_content)
+        setAdminActions(monitoring.admin_actions)
+      }
     } catch {
       toast.error('Unable to load reports — admin access required')
       setItems([])
@@ -170,36 +193,36 @@ export default function AdminReportsPage() {
         }
       />
 
-      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3 sm:gap-4 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4 mb-6">
         <AdminStatCard label="Total" value={stats.total} icon={Inbox} />
         <AdminStatCard
           label="Pending"
           value={stats.pending}
           icon={Clock}
-          iconColor="text-amber-600"
-          iconBg="bg-amber-50"
           highlight={stats.pending > 0}
         />
         <AdminStatCard
           label="Under Review"
           value={stats.under_review}
           icon={Eye}
-          iconColor="text-orange-600"
-          iconBg="bg-orange-50"
+        />
+        <AdminStatCard
+          label="High priority"
+          value={highPriority}
+          icon={Flag}
+          highlight={highPriority > 0}
+          footnote="Child safety / harmful"
+          footnoteVariant={highPriority > 0 ? 'danger' : 'default'}
         />
         <AdminStatCard
           label="Resolved"
           value={stats.resolved}
           icon={CheckCircle2}
-          iconColor="text-emerald-600"
-          iconBg="bg-emerald-50"
         />
         <AdminStatCard
           label="Dismissed"
           value={stats.dismissed}
           icon={XCircle}
-          iconColor="text-gray-600"
-          iconBg="bg-gray-100"
         />
       </div>
 
@@ -448,6 +471,13 @@ export default function AdminReportsPage() {
           </>
         )}
       </AdminMotion>
+
+      <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-2 mb-6">
+        <AdminDonutChart title="Report reasons (7 days)" data={reportReasons} />
+        <AdminAuditActionsCard actions={adminActions} />
+      </div>
+
+      <AdminRecentContentCard items={recentContent} />
     </div>
   )
 }

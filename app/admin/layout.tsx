@@ -1,5 +1,5 @@
 import { AdminHeader } from "@/features/admin/components/AdminHeader";
-import { AdminMobileNav, AdminSidebar } from "@/features/admin/components/AdminSidebar";
+import { AdminSidebar } from "@/features/admin/components/AdminSidebar";
 import { AdminShellProvider } from "@/features/admin/context/AdminShellContext";
 import { AP } from "@/features/admin/constants/adminLayout";
 import { getNoIndexMetadata } from "@/lib/seo";
@@ -14,11 +14,12 @@ export default function AdminLayout({
   return (
     <AdminShellProvider>
       <div className={AP.page}>
-        <AdminHeader />
-        <AdminMobileNav />
         <div className={AP.shell}>
           <AdminSidebar />
-          <main className={`${AP.main} min-h-[calc(100vh-4rem)]`}>{children}</main>
+          <div className="relative z-0 flex min-h-screen min-w-0 flex-1 flex-col overflow-x-hidden bg-white">
+            <AdminHeader />
+            <main className={AP.main}>{children}</main>
+          </div>
         </div>
       </div>
     </AdminShellProvider>

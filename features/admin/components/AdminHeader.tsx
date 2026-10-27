@@ -1,10 +1,7 @@
 "use client";
 
-import Link from "next/link";
-import Image from "next/image";
-import { Menu, X } from '@/shared/icons';
+import { Menu, X } from "@/shared/icons";
 import { AdminSearch } from "./AdminSearch";
-import { AdminNotificationDropdown } from "./AdminNotificationDropdown";
 import { AdminUserMenu } from "./AdminUserMenu";
 import { useAdminShell } from "../context/AdminShellContext";
 import { AP } from "../constants/adminLayout";
@@ -18,7 +15,7 @@ export function AdminHeader() {
         <button
           type="button"
           onClick={toggleMobileNav}
-          className="lg:hidden p-2 -ml-1 rounded-xl text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+          className="lg:hidden -ml-1 rounded-md p-2 text-gray-600 hover:bg-gray-100 hover:text-gray-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-400"
           aria-label={mobileNavOpen ? "Close navigation menu" : "Open navigation menu"}
           aria-expanded={mobileNavOpen}
         >
@@ -29,30 +26,11 @@ export function AdminHeader() {
           )}
         </button>
 
-        <Link
-          href="/admin/dashboard"
-          className="flex items-center gap-2.5 shrink-0 group"
-        >
-          <Image
-            src="/assets/favicon-2.png"
-            alt="CribsTalk"
-            width={40}
-            height={40}
-            className="w-9 h-9 sm:w-10 sm:h-10 object-contain transition-transform duration-200 group-hover:scale-105"
-            priority
-          />
-          <div className="hidden sm:block">
-            <span className="text-sm font-bold text-gray-900 leading-tight block">
-              CribsTalk
-            </span>
-            <span className="text-xs text-gray-500">Admin Panel</span>
-          </div>
-        </Link>
+        <div className="lg:hidden text-sm font-semibold text-gray-900">CribsTalk Admin</div>
 
         <AdminSearch />
 
-        <div className="flex items-center gap-1 sm:gap-2 ml-auto shrink-0">
-          <AdminNotificationDropdown />
+        <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-2">
           <AdminUserMenu />
         </div>
       </div>

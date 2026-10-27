@@ -2,8 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { ChevronDown, LogOut, User, LayoutDashboard } from '@/shared/icons';
+import { ChevronDown, LogOut, User, LayoutDashboard } from "@/shared/icons";
 import { useAuth } from "@/contexts/AuthContext";
+
 export function AdminUserMenu() {
   const { user, signOut } = useAuth();
   const [open, setOpen] = useState(false);
@@ -44,19 +45,19 @@ export function AdminUserMenu() {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-2 pl-1 pr-2 py-1 rounded-xl hover:bg-gray-100 transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+        className="flex items-center gap-2 rounded-md py-1 pl-1 pr-2 hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-400"
         aria-label="User menu"
         aria-expanded={open}
         aria-haspopup="true"
       >
-        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary-500 to-orange-600 flex items-center justify-center text-white text-xs font-bold shadow-sm">
+        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary-600 text-xs font-semibold text-white">
           {initials}
         </div>
-        <span className="hidden md:block text-sm font-medium text-gray-700 max-w-[140px] truncate">
+        <span className="hidden max-w-[140px] truncate text-sm font-medium text-gray-700 md:block">
           {email}
         </span>
         <ChevronDown
-          className={`w-4 h-4 text-gray-400 hidden md:block transition-transform duration-200 ${
+          className={`hidden h-4 w-4 text-gray-400 transition-transform md:block ${
             open ? "rotate-180" : ""
           }`}
           aria-hidden="true"
@@ -65,11 +66,11 @@ export function AdminUserMenu() {
 
       {open && (
         <div
-          className="absolute right-0 mt-2 w-56 bg-white/95 backdrop-blur-xl rounded-xl border border-gray-100 shadow-xl shadow-gray-200/50 overflow-hidden z-50"
+          className="absolute right-0 z-50 mt-1.5 w-56 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg"
           role="menu"
         >
-          <div className="px-4 py-3 border-b border-gray-100">
-            <p className="text-sm font-semibold text-gray-900 truncate">{email}</p>
+          <div className="border-b border-gray-100 px-3 py-2.5">
+            <p className="truncate text-sm font-medium text-gray-900">{email}</p>
             <p className="text-xs text-gray-500">Administrator</p>
           </div>
           <ul className="py-1">
@@ -77,10 +78,10 @@ export function AdminUserMenu() {
               <Link
                 href="/admin/dashboard"
                 onClick={() => setOpen(false)}
-                className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                className="flex items-center gap-2.5 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
                 role="menuitem"
               >
-                <LayoutDashboard className="w-4 h-4 text-gray-500" aria-hidden="true" />
+                <LayoutDashboard className="h-4 w-4 text-gray-500" aria-hidden="true" />
                 Dashboard
               </Link>
             </li>
@@ -88,10 +89,10 @@ export function AdminUserMenu() {
               <Link
                 href="/feed"
                 onClick={() => setOpen(false)}
-                className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                className="flex items-center gap-2.5 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
                 role="menuitem"
               >
-                <User className="w-4 h-4 text-gray-500" aria-hidden="true" />
+                <User className="h-4 w-4 text-gray-500" aria-hidden="true" />
                 Back to app
               </Link>
             </li>
@@ -100,11 +101,11 @@ export function AdminUserMenu() {
             <button
               type="button"
               onClick={handleSignOut}
-              className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors"
+              className="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-red-600 hover:bg-red-50"
               role="menuitem"
             >
-              <LogOut className="w-4 h-4" aria-hidden="true" />
-              Sign out
+              <LogOut className="h-4 w-4" aria-hidden="true" />
+              Log out
             </button>
           </div>
         </div>
