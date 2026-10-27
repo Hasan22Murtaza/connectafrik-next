@@ -1,6 +1,13 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
+interface MutualFriendPreview {
+  user_id: string;
+  username?: string | null;
+  full_name?: string | null;
+  avatar_url?: string | null;
+}
+
 interface FriendProfileCardProps {
   userId: string;
   fullName?: string | null;
@@ -8,6 +15,8 @@ interface FriendProfileCardProps {
   avatarUrl?: string | null;
   bannerImage?: string | null;
   relationshipText?: string;
+  location?: string;
+  mutualFriends?: MutualFriendPreview[];
   className?: string;
   coverAction?: ReactNode;
   children?: ReactNode;
@@ -20,6 +29,8 @@ export default function FriendProfileCard({
   avatarUrl,
   bannerImage,
   relationshipText,
+  location,
+  mutualFriends = [],
   className = "",
   coverAction,
   children,
@@ -52,6 +63,7 @@ export default function FriendProfileCard({
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
       </Link>
+
       {coverAction && (
         <div className="absolute right-2 top-2 z-10">{coverAction}</div>
       )}
@@ -76,16 +88,64 @@ export default function FriendProfileCard({
             {displayName}
           </h3>
         </Link>
-        {username && (
-          <p className="mt-0.5 truncate text-xs text-content-secondary">
-            @{username.replace(/^@/, "")}
-          </p>
+
+        {(username || location) && (
+          <div className="mt-0.5 mb-3 flex min-w-0 items-center gap-1 truncate text-xs text-content-secondary">
+            {username && (
+              <span className="truncate">
+                @{username.replace(/^@/, "")}
+              </span>
+            )}
+
+            {username && location && <span>·</span>}
+
+            {location && (
+              <span className="truncate">
+                {location}
+              </span>
+            )}
+          </div>
         )}
-        {relationshipText && (
-          <p className="mt-3 mb-4 min-h-5 truncate text-xs text-content-secondary">
-            {relationshipText}
-          </p>
+
+
+        {(relationshipText || mutualFriends.length > 0) && (
+          <div className="mb-2 flex min-h-7 items-center gap-2">
+            {mutualFriends.length > 0 && (
+              <div className="flex shrink-0 -space-x-2">
+                {mutualFriends.slice(0, 3).map((friend, index) => {
+                  const friendName = friend.full_name || friend.username || "Mutual friend";
+                  const fallbackAvatar = "/assets/images/profile-dp.svg";
+
+                  return (
+                    <Link
+                      key={friend.user_id}
+                      href={`/user/${friend.user_id}`}
+                      aria-label={`View ${friendName}'s profile`}
+                      className="relative flex h-7 w-7 items-center justify-center overflow-hidden rounded-full border-2 border-white bg-orange-100 text-[10px] font-semibold text-orange-700 shadow-sm dark:border-surface"
+                      style={{ zIndex: 3 - index }}
+                    >
+                      <img
+                        src={friend.avatar_url || fallbackAvatar}
+                        alt={friendName}
+                        onError={(event) => {
+                          if (event.currentTarget.src.endsWith(fallbackAvatar)) return;
+                          event.currentTarget.src = fallbackAvatar;
+                        }}
+                        className="absolute inset-0 h-full w-full object-cover"
+                      />
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
+            {relationshipText && (
+              <p className="min-w-0 truncate text-xs text-content-secondary">
+                {relationshipText}
+              </p>
+            )}
+          </div>
         )}
+
         {children && <div className="mt-auto">{children}</div>}
       </div>
     </article>

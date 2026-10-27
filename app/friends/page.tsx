@@ -11,6 +11,8 @@ import {
 import { Friend, FriendRequest } from "@/shared/types";
 import FriendsSidebar, { type FriendsSection } from "@/features/social/components/FriendsSidebar";
 import FriendProfileCard from "@/features/social/components/FriendProfileCard";
+import { friendRequestService } from "@/features/social/services/friendRequestService";
+import { useConfirmDialog } from "@/shared/components/ui/ConfirmDialog";
 import {
   Cake,
   ChevronDown,
@@ -63,6 +65,7 @@ type SentFriendRequest = {
     full_name: string;
     avatar_url?: string | null;
     banner_image?: string | null;
+    country?: string | null;
   } | null;
 };
 
@@ -72,6 +75,7 @@ type FriendSuggestion = {
   full_name: string;
   avatar_url: string | null;
   banner_image?: string | null;
+  country?: string | null;
   mutual_friends_count: number;
   mutual_friends?: Array<{
     user_id: string;
@@ -152,15 +156,26 @@ function SentRequestCard({
       username={profile?.username}
       avatarUrl={profile?.avatar_url}
       bannerImage={profile?.banner_image}
-      relationshipText="Request sent"
+      // location={profile?.country}
+      relationshipText=""
+
     >
-      <button
-        onClick={onCancel}
-        disabled={cancelling}
-        className="w-full rounded-full border border-border px-4 py-2.5 text-sm font-semibold text-content-secondary transition-colors hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        {cancelling ? "Cancelling..." : "Cancel request"}
-      </button>
+      <div className="flex flex-col gap-2">
+        <Link
+          href={`/user/${userId}`}
+          className="flex w-full items-center justify-center rounded-full bg-[#ff6900] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#e85f00]"
+        >
+          View Profile
+        </Link>
+        <button
+          type="button"
+          onClick={onCancel}
+          disabled={cancelling}
+          className="w-full rounded-full border border-border px-4 py-2.5 text-sm font-semibold text-content-secondary transition-colors hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {cancelling ? "Cancelling..." : "Cancel request"}
+        </button>
+      </div>
     </FriendProfileCard>
   );
 }
@@ -175,6 +190,7 @@ function ReceivedRequestCard({
   onDecline: () => void;
 }) {
   const profile = request.requester;
+  console.log("profile data", profile)
   const relationshipText = request.mutualFriendsCount
     ? `${request.mutualFriendsCount} mutual ${request.mutualFriendsCount === 1 ? "friend" : "friends"}`
     : "Wants to connect with you";
@@ -186,20 +202,23 @@ function ReceivedRequestCard({
       username={profile?.username}
       avatarUrl={profile?.avatar_url}
       bannerImage={profile?.banner_image}
+      location={profile?.country}
       relationshipText={relationshipText}
+      // mutualFriends={profile?.mutual_friends ?? []}
+
     >
-      <div className="flex gap-2">
+      <div className="flex gap-2 flex-col">
         <button
           type="button"
           onClick={onAccept}
-          className="flex-1 rounded-full bg-[#ff6900] px-3 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#e85f00]"
+          className="flex-1  rounded-full bg-[#ff6900] px-3 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#e85f00]"
         >
           Confirm
         </button>
         <button
           type="button"
           onClick={onDecline}
-          className="flex-1 rounded-full border border-border px-3 py-2.5 text-sm font-semibold text-content-secondary transition-colors hover:bg-surface-hover"
+          className="flex-1  rounded-full border border-border px-3 py-2.5 text-sm font-semibold text-content-secondary transition-colors hover:bg-surface-hover"
         >
           Delete
         </button>
@@ -230,7 +249,9 @@ function SuggestionCard({
       username={suggestion.username}
       avatarUrl={suggestion.avatar_url}
       bannerImage={suggestion.banner_image}
+      // location={suggestion?.country}
       relationshipText={relationshipText}
+      mutualFriends={suggestion.mutual_friends ?? []}
       coverAction={
         <button
           type="button"
@@ -272,6 +293,7 @@ const FriendsPageContent: React.FC = () => {
   const [sentLoading, setSentLoading] = useState(false);
   const [requestsView, setRequestsView] = useState<RequestsView>("received");
   const [cancellingRequests, setCancellingRequests] = useState<Set<string>>(new Set());
+  const [removingFriends, setRemovingFriends] = useState<Set<string>>(new Set());
   const [suggestions, setSuggestions] = useState<FriendSuggestion[]>([]);
   const [loading, setLoading] = useState(true);
   const [friendsLoading, setFriendsLoading] = useState(false);
@@ -289,6 +311,7 @@ const FriendsPageContent: React.FC = () => {
   const [birthdaysLoading, setBirthdaysLoading] = useState(false);
   const birthdaySentinelRef = useRef<HTMLDivElement>(null);
   const shimmerCount = useShimmerCount();
+  const { confirm, dialog: confirmDialog } = useConfirmDialog();
 
   // Categories for Birthdays tab (data loaded from /api/friends/birthdays when tab is opened)
   const birthdayFriends = useMemo(() => {
@@ -572,6 +595,30 @@ const FriendsPageContent: React.FC = () => {
         return next;
       });
     }
+  };
+
+  const handleRemoveFriend = async (friend: Friend) => {
+    const confirmed = await confirm({
+      title: "Remove friend",
+      message: `Are you sure you want to remove ${friend.full_name} from your friends?`,
+      confirmLabel: "Remove friend",
+      variant: "danger",
+    });
+    if (!confirmed) return;
+
+    setRemovingFriends((current) => new Set(current).add(friend.id));
+    const result = await friendRequestService.removeFriend(friend.id);
+    if (result.success) {
+      setFriends((current) => current.filter((currentFriend) => currentFriend.id !== friend.id));
+      toast.success(`${friend.full_name} removed from your friends`);
+    } else {
+      toast.error(result.error || "Failed to remove friend");
+    }
+    setRemovingFriends((current) => {
+      const next = new Set(current);
+      next.delete(friend.id);
+      return next;
+    });
   };
 
   const fetchSuggestions = async () => {
@@ -957,7 +1004,8 @@ const FriendsPageContent: React.FC = () => {
                       username={friend.username}
                       avatarUrl={friend.avatar_url}
                       bannerImage={friend.banner_image}
-                      relationshipText={friend.country}
+                      // relationshipText={friend?.mutual_friends_count}
+                      location={friend.country}
                     >
                       <Link
                         href={`/user/${friend.id}`}
@@ -965,6 +1013,14 @@ const FriendsPageContent: React.FC = () => {
                       >
                         View Profile
                       </Link>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveFriend(friend)}
+                        disabled={removingFriends.has(friend.id)}
+                        className="mt-2 w-full rounded-full border border-border px-4 py-2.5 text-sm font-semibold text-content-secondary transition-colors hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {removingFriends.has(friend.id) ? "Removing..." : "Remove friend"}
+                      </button>
                     </FriendProfileCard>
                   ))}
                 </div>
@@ -1244,6 +1300,7 @@ const FriendsPageContent: React.FC = () => {
           )}
         </div>
       </div>
+      {confirmDialog}
     </div>
   );
 };

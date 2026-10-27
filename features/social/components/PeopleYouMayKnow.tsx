@@ -13,6 +13,7 @@ interface Recommendation {
   full_name: string;
   avatar_url: string | null;
   banner_image?: string | null;
+  country?: string | null;
   mutual_friends_count: number;
   mutual_friends?: Array<{
     user_id: string;
@@ -195,11 +196,13 @@ export const PeopleYouMayKnow: React.FC = () => {
                 username={rec.username}
                 avatarUrl={rec.avatar_url}
                 bannerImage={rec.banner_image}
+                location={rec.country}
                 relationshipText={
                   rec.mutual_friends_count > 0
                     ? `${rec.mutual_friends_count} mutual ${rec.mutual_friends_count === 1 ? 'friend' : 'friends'}`
                     : 'Suggested for you'
                 }
+                mutualFriends={rec.mutual_friends ?? []}
                 className="w-[220px] shrink-0"
                 coverAction={
                   <button
