@@ -1,3 +1,5 @@
+"use client";
+
 import MessageStatusIndicator from "@/features/chat/components/MessageStatusIndicator";
 import type {
   ChatHeaderOptionsMenuItem,

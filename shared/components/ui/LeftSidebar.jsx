@@ -6,22 +6,17 @@ import { useHeaderInboxCounts } from "@/shared/hooks/useHeaderInboxCounts";
 import { UserRoundGroup } from "@/shared/icons";
 import {
   Bookmark,
+  Check,
+  Home,
   MessageCircle,
   MessageSquareText,
+  PanelLeft,
   Phone,
   Settings,
-  Home,
-  Video,
   Store,
-  PanelLeft,
-  Check,
   UsersRound,
+  Video,
 } from "lucide-react";
-
-
-
-
-
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -34,8 +29,6 @@ const MODE_OPTIONS = [
   { id: "collapsed", label: "Collapsed" },
   { id: "hover", label: "Expand on hover" },
 ];
-
-
 
 const shortcuts = [
   { name: "Feed", to: "/feed", icon: Home },
@@ -59,7 +52,10 @@ function isPathActive(pathname, to) {
   if (!to) return false;
   if (pathname === to) return true;
   if (to !== "/" && pathname.startsWith(`${to}/`)) return true;
-  if (to === "/settings" && (pathname === "/profile" || pathname.startsWith("/profile/"))) {
+  if (
+    to === "/settings" &&
+    (pathname === "/profile" || pathname.startsWith("/profile/"))
+  ) {
     return true;
   }
   return false;
@@ -75,7 +71,6 @@ function readStoredMode() {
   }
   return "collapsed";
 }
-
 
 const LeftSidebar = () => {
   const pathname = usePathname();
@@ -131,17 +126,17 @@ const LeftSidebar = () => {
   const hoverExpanded = mode === "hover" && hovered;
   const showLabels = mode === "expanded" || hoverExpanded;
 
-  // Always reserve space in the flex row (never position:absolute the flex item).
-  // Hover mode keeps a collapsed rail and only overlays the wide panel.
-  const railClass =
-    mode === "expanded" ? "w-50" : "w-14";
+  // Collapsed rail ~56px; expanded panel ~224px (matches reference)
+  const railClass = mode === "expanded" ? "w-56" : "w-14";
 
   const itemClass = (isActive) =>
-    `group relative flex w-full items-center gap-3 rounded-md px-2.5 py-2 text-sm font-medium transition-colors duration-150 ${
+    [
+      "group relative flex w-full items-center rounded-lg text-[15px] font-medium transition-colors duration-150",
+      showLabels ? "gap-3 px-3 py-2.5" : "justify-center px-2 py-2.5",
       isActive
-        ? "bg-surface-tertiary text-content"
-        : "text-content-secondary hover:bg-surface-hover hover:text-content"
-    } ${showLabels ? "" : "justify-center"}`;
+        ? "bg-[#f0f2f5] text-[#050505]"
+        : "text-[#65676b] hover:bg-[#f2f2f2] hover:text-[#050505]",
+    ].join(" ");
 
   return (
     <aside
@@ -155,7 +150,7 @@ const LeftSidebar = () => {
       }}
     >
       <div
-        className={`flex h-full flex-col border-r border-border-subtle bg-background ${
+        className={`flex h-full flex-col border-r border-[#e4e6eb] bg-white ${
           hoverExpanded
             ? "absolute inset-y-0 left-0 z-40 w-56 shadow-lg"
             : "relative w-full"
@@ -182,7 +177,7 @@ const LeftSidebar = () => {
                     <span className="relative shrink-0">
                       <Icon
                         aria-hidden="true"
-                        className="h-[18px] w-[18px] "
+                        className="h-[22px] w-[22px]"
                         strokeWidth={1.75}
                       />
                       {badge && !showLabels && (
@@ -210,19 +205,24 @@ const LeftSidebar = () => {
 
         <div
           ref={controlRef}
-          className="relative shrink-0 border-t border-border-subtle p-2"
+          className="relative shrink-0 border-t border-[#e4e6eb] p-2"
         >
           <button
             type="button"
             onClick={() => setControlOpen((o) => !o)}
-            className={`flex w-full items-center gap-3 rounded-md px-2.5 py-2 text-sm font-medium text-content-secondary transition-colors hover:bg-surface-hover hover:text-content ${
-              showLabels ? "" : "justify-center"
-            }`}
+            className={[
+              "flex w-full items-center rounded-lg text-[15px] font-medium text-[#65676b] transition-colors hover:bg-[#f2f2f2] hover:text-[#050505]",
+              showLabels ? "gap-3 px-3 py-2.5" : "justify-center px-2 py-2.5",
+            ].join(" ")}
             aria-expanded={controlOpen}
             aria-haspopup="dialog"
             title={!showLabels ? "Sidebar control" : undefined}
           >
-            <PanelLeft className="h-[18px] w-[18px] shrink-0" strokeWidth={1.75} aria-hidden />
+            <PanelLeft
+              className="h-[22px] w-[22px] shrink-0"
+              strokeWidth={1.75}
+              aria-hidden
+            />
             {showLabels && <span className="truncate">Sidebar control</span>}
           </button>
 
@@ -230,9 +230,9 @@ const LeftSidebar = () => {
             <div
               role="dialog"
               aria-label="Sidebar control"
-              className="absolute bottom-full left-2 z-50 mb-2 w-48 rounded-lg border border-border-subtle bg-surface p-1.5 shadow-lg"
+              className="absolute bottom-full left-2 z-50 mb-2 w-48 rounded-lg border border-[#e4e6eb] bg-white p-1.5 shadow-lg"
             >
-              <p className="px-2.5 py-1.5 text-xs font-semibold text-content">
+              <p className="px-2.5 py-1.5 text-xs font-semibold text-[#050505]">
                 Sidebar control
               </p>
               <ul className="space-y-0.5" role="listbox" aria-label="Sidebar width">
@@ -245,13 +245,13 @@ const LeftSidebar = () => {
                         onClick={() => persistMode(opt.id)}
                         className={`flex w-full items-center justify-between rounded-md px-2.5 py-2 text-left text-sm transition-colors ${
                           selected
-                            ? "bg-surface-tertiary text-content"
-                            : "text-content-secondary hover:bg-surface-hover hover:text-content"
+                            ? "bg-[#f0f2f5] text-[#050505]"
+                            : "text-[#65676b] hover:bg-[#f2f2f2] hover:text-[#050505]"
                         }`}
                       >
                         <span>{opt.label}</span>
                         {selected && (
-                          <Check className="h-4 w-4 text-content" aria-hidden />
+                          <Check className="h-4 w-4 text-[#050505]" aria-hidden />
                         )}
                       </button>
                     </li>

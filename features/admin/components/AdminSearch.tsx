@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Search, ArrowRight } from '@/shared/icons';
-import { ADMIN_NAV_LINKS } from "../constants/adminNavigation";
+import { Search, ArrowRight } from "@/shared/icons";
+import { ADMIN_SEARCHABLE_LINKS } from "../constants/adminNavigation";
 import { AP } from "../constants/adminLayout";
 
 export function AdminSearch() {
@@ -15,10 +15,10 @@ export function AdminSearch() {
   const containerRef = useRef<HTMLDivElement>(null);
 
   const results = query.trim()
-    ? ADMIN_NAV_LINKS.filter((link) =>
+    ? ADMIN_SEARCHABLE_LINKS.filter((link) =>
         link.label.toLowerCase().includes(query.toLowerCase())
       )
-    : ADMIN_NAV_LINKS;
+    : ADMIN_SEARCHABLE_LINKS;
 
   const navigate = useCallback(
     (href: string) => {
@@ -61,12 +61,12 @@ export function AdminSearch() {
   };
 
   return (
-    <div className="relative flex-1 max-w-md hidden sm:block" ref={containerRef}>
+    <div className="relative mx-auto hidden max-w-md flex-1 sm:block" ref={containerRef}>
       <label htmlFor="admin-search" className="sr-only">
         Search admin pages
       </label>
       <Search
-        className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none"
+        className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400"
         aria-hidden="true"
       />
       <input
@@ -80,7 +80,7 @@ export function AdminSearch() {
         }}
         onFocus={() => setOpen(true)}
         onKeyDown={handleKeyDown}
-        placeholder="Search admin pages..."
+        placeholder="Search admin…"
         className={AP.searchInput}
         autoComplete="off"
         role="combobox"
@@ -96,25 +96,27 @@ export function AdminSearch() {
       {open && results.length > 0 && (
         <ul
           id="admin-search-results"
-          className="absolute left-0 right-0 mt-2 bg-white/95 backdrop-blur-xl rounded-xl border border-gray-100 shadow-xl shadow-gray-200/50 overflow-hidden z-50"
+          className="absolute left-0 right-0 z-50 mt-1.5 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg"
           role="listbox"
         >
           {results.map((link, i) => {
             const Icon = link.icon;
             return (
-              <li key={link.href} role="option" aria-selected={i === activeIndex}>
+              <li key={`${link.href}-${link.label}`} role="option" aria-selected={i === activeIndex}>
                 <button
                   id={`admin-search-result-${i}`}
                   type="button"
                   onClick={() => navigate(link.href)}
                   onMouseEnter={() => setActiveIndex(i)}
-                  className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm text-left transition-colors ${
-                    i === activeIndex ? "bg-primary-50 text-orange-500" : "text-gray-700 hover:bg-gray-50"
+                  className={`flex w-full items-center gap-3 px-3 py-2.5 text-left text-sm transition-colors ${
+                    i === activeIndex
+                      ? "bg-primary-50 text-primary-700"
+                      : "text-gray-700 hover:bg-gray-50"
                   }`}
                 >
-                  <Icon className="w-4 h-4 shrink-0" aria-hidden="true" />
+                  <Icon className="h-4 w-4 shrink-0 text-gray-500" aria-hidden="true" />
                   <span className="flex-1 font-medium">{link.label}</span>
-                  <ArrowRight className="w-3.5 h-3.5 opacity-40" aria-hidden="true" />
+                  <ArrowRight className="h-3.5 w-3.5 opacity-40" aria-hidden="true" />
                 </button>
               </li>
             );

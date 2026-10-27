@@ -1,5 +1,6 @@
 import {
   AdminDashboardSkeleton,
+  AdminMonitoringSkeleton,
   AdminSidebarSkeleton,
   AdminTableSkeleton,
   AdminUserDetailSkeleton,
@@ -8,6 +9,7 @@ import {
 
 type AdminLoadingVariant =
   | "dashboard"
+  | "monitoring"
   | "users"
   | "user-detail"
   | "table"
@@ -15,6 +17,7 @@ type AdminLoadingVariant =
 
 const VARIANT_MAP: Record<AdminLoadingVariant, React.ReactNode> = {
   dashboard: <AdminDashboardSkeleton />,
+  monitoring: <AdminMonitoringSkeleton />,
   users: <AdminUsersPageSkeleton />,
   "user-detail": <AdminUserDetailSkeleton />,
   table: <AdminTableSkeleton />,

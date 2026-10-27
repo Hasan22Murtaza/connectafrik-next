@@ -151,21 +151,21 @@ const Header: React.FC<HeaderProps> = ({
                 : "flex w-full items-center justify-between gap-4"
             }
           >
-            <div className="flex items-center flex-1">
+            <div className="flex items-center flex-1 min-w-0 gap-3 sm:gap-4">
               {/* Logo - Pinned to left */}
-              <Link href="/" className="flex-shrink-0 " aria-label="CribsTalk home">
+              <Link href="/" className="flex-shrink-0" aria-label="CribsTalk home">
                 <img src="/assets/images/logo_2.png" alt="CribsTalk" className="sm:w-40 w-32" />
               </Link>
 
               {/* Search Bar - Only when logged in; hidden on mobile, visible on tablet+ */}
               {user && (
-                <div className="hidden md:flex  max-w-md  w-full">
+                <div className="hidden md:flex max-w-[min(100%,28rem)] w-full min-w-0">
                   <div className="relative w-full" ref={searchContainerRef}>
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-content-tertiary w-4 h-4 z-10" />
+                    <Search className="pointer-events-none absolute left-3.5 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-content-tertiary" />
                     <input
                       type="text"
                       placeholder="Search CribsTalk..."
-                      className="w-full px-3 py-2.5 pl-9 bg-surface-input hover:bg-surface-hover focus-visible:bg-surface-hover border border-border rounded-full focus:border-orange-500 focus:ring-2 focus:ring-orange-200 focus:outline-none transition-colors text-sm text-content placeholder:text-content-tertiary"
+                      className="w-full rounded-full border border-border-subtle bg-surface-secondary py-2.5 pl-10 pr-4 text-sm text-content placeholder:text-content-tertiary transition-colors hover:bg-surface-hover focus:border-border focus:bg-surface focus:outline-none focus:ring-2 focus:ring-primary/20"
                       value={searchTerm}
                       onChange={(e) => handleSearchChange(e.target.value)}
                       onFocus={() => {

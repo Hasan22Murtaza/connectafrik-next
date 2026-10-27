@@ -265,9 +265,9 @@ export default function AdminUsersPage() {
               className={`${AP.card} ${AP.cardPadding} animate-pulse`}
               aria-hidden="true"
             >
-              <div className="h-10 w-10 bg-gray-100 rounded-xl mb-3" />
-              <div className="h-3 w-20 bg-gray-100 rounded mb-2" />
-              <div className="h-8 w-16 bg-gray-100 rounded" />
+              <div className="mb-3 h-3 w-20 rounded bg-gray-100" />
+              <div className="h-8 w-16 rounded bg-gray-100" />
+              <div className="mt-2 h-3 w-24 rounded bg-gray-100" />
             </div>
           ))
         ) : stats ? (
@@ -276,37 +276,27 @@ export default function AdminUsersPage() {
               label="Total Members"
               value={stats.total_users.toLocaleString()}
               icon={Users}
-              iconColor="text-blue-600"
-              iconBg="bg-blue-50"
             />
             <AdminStatCard
               label="New Today"
               value={stats.new_users_today.toLocaleString()}
               icon={UserPlus}
-              iconColor="text-emerald-600"
-              iconBg="bg-emerald-50"
             />
             <AdminStatCard
               label="New This Week"
               value={stats.new_users_this_week.toLocaleString()}
               icon={UserCheck}
-              iconColor="text-teal-600"
-              iconBg="bg-teal-50"
             />
             <AdminStatCard
               label="Active Users"
               value={stats.active_users.toLocaleString()}
               icon={Activity}
-              iconColor="text-orange-600"
-              iconBg="bg-orange-50"
               footnote="Last 30 days"
             />
             <AdminStatCard
               label="Verified Users"
               value={stats.verified_users.toLocaleString()}
               icon={BadgeCheck}
-              iconColor="text-indigo-600"
-              iconBg="bg-indigo-50"
             />
           </>
         ) : null}
@@ -337,10 +327,10 @@ export default function AdminUsersPage() {
                 setFilter(opt.value);
                 setPage(0);
               }}
-              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200 ${
+              className={`rounded-md border px-3 py-1.5 text-xs font-medium transition-colors ${
                 filter === opt.value
-                  ? "bg-primary-600 text-white shadow-sm shadow-primary-600/20"
-                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                  ? "border-primary-600 bg-primary-600 text-white"
+                  : "border-gray-200 bg-white text-gray-700 hover:bg-primary-50"
               }`}
             >
               {opt.label}
