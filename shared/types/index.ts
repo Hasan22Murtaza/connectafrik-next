@@ -153,6 +153,8 @@ export interface Friend {
   bio?: string
   friendship_date?: string
   birthday?: string
+  mutual_friends_count?: number
+  mutual_friends?: MutualFriend[]
 }
 
 export interface FriendRequest {
@@ -170,6 +172,9 @@ export interface FriendRequest {
     banner_image?: string | null
     country?: string
   }
+  mutualFriendsCount?: number
+  mutual_friends_count?: number
+  mutual_friends?: MutualFriend[]
 }
 
 export interface Comment {

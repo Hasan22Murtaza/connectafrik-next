@@ -1,7 +1,66 @@
 import { NextRequest } from 'next/server'
 import { getAuthenticatedUser } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
+import { getRelationships } from '@/lib/privacy'
+import { getVisibleProfileFields } from '@/shared/utils/visibilityUtils'
+import { getProfileLocationDisplayLine } from '@/shared/types/location'
 import { withBannerImages } from '../_shared/withBannerImages'
+
+type ProfileLocationRow = {
+  id: string
+  address: string | null
+  city: string | null
+  state: string | null
+  zipcode: string | null
+  country: string | null
+}
+
+/** Attach a display `location` (and `country` when that field is public). */
+async function withLocations<T extends { id?: string; user_id?: string }>(
+  supabase: Parameters<typeof withBannerImages>[0],
+  viewerId: string,
+  rows: T[]
+): Promise<Array<T & { location: string | null; country: string | null }>> {
+  const ids = [
+    ...new Set(
+      rows
+        .map((row) => row.id || row.user_id)
+        .filter((id): id is string => typeof id === 'string')
+    ),
+  ]
+
+  const locationById = new Map<string, ProfileLocationRow>()
+  if (ids.length > 0) {
+    const { data } = await supabase
+      .from('profiles')
+      .select('id, address, city, state, zipcode, country')
+      .in('id', ids)
+    for (const row of data || []) {
+      locationById.set(row.id as string, row as ProfileLocationRow)
+    }
+  }
+
+  const relationships = await getRelationships(viewerId, ids, supabase)
+
+  return rows.map((row) => {
+    const id = row.id || row.user_id
+    const profile = id ? locationById.get(id) : undefined
+    const rel = id ? relationships.get(id) : undefined
+    const fields = rel
+      ? getVisibleProfileFields(rel.settings, rel.isSelf, rel.isFriend, rel.isBlocked)
+      : { location: false, country: false }
+
+    const country = fields.country ? profile?.country?.trim() || null : null
+    let location: string | null = null
+    if (profile && fields.location) {
+      location = getProfileLocationDisplayLine(profile) || null
+    } else if (country) {
+      location = country
+    }
+
+    return { ...row, location, country }
+  })
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -48,7 +107,11 @@ export async function GET(request: NextRequest) {
 
     const paged = suggestions.slice(from, toExclusive)
     const hasMore = suggestions.length > toExclusive
-    const withBanners = await withBannerImages(supabase, paged)
+    const withBanners = await withLocations(
+      supabase,
+      user.id,
+      await withBannerImages(supabase, paged)
+    )
 
     const mutualPreviewByUserId = new Map<
       string,

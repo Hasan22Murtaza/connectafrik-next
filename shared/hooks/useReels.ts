@@ -1,7 +1,6 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { apiClient } from '@/lib/api-client'
 import { useAuth } from '@/contexts/AuthContext'
-import { useProfile } from '@/shared/hooks/useProfile'
 import {
   Reel,
   CreateReelData,
@@ -17,29 +16,12 @@ export type UseReelsOptions = {
   enabled?: boolean
 }
 
-function withViewerLocationFilter(
-  filters: ReelFilters,
-  profile: { country?: string | null } | null | undefined
-): ReelFilters {
-  if (filters.country || filters.lat != null || filters.lng != null) return filters
-  const country = profile?.country?.trim()
-  if (!country) return filters
-  return { ...filters, country }
-}
-
 export const useReels = (
   filters: ReelFilters = {},
   sortOptions: ReelSortOptions = { field: 'created_at', order: 'desc' },
   options?: UseReelsOptions
 ) => {
   const enabled = options?.enabled !== false
-  const { profile } = useProfile()
-  const resolvedFilters = useMemo(
-    () => withViewerLocationFilter(filters, profile),
-    // Intentionally stringify so inline filter objects from callers stay stable.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [JSON.stringify(filters), profile?.country]
-  )
   const [reels, setReels] = useState<Reel[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -120,14 +102,14 @@ export const useReels = (
   const loadMore = useCallback(() => {
     if (!enabled) return
     if (!loading && hasMore) {
-      fetchReels(page + 1, true, resolvedFilters, sortOptions)
+      fetchReels(page + 1, true, filters, sortOptions)
     }
-  }, [enabled, loading, hasMore, page, fetchReels, resolvedFilters, sortOptions])
+  }, [enabled, loading, hasMore, page, fetchReels, filters, sortOptions])
 
   const refresh = useCallback(() => {
     if (!enabled) return
-    fetchReels(0, false, resolvedFilters, sortOptions)
-  }, [enabled, fetchReels, resolvedFilters, sortOptions])
+    fetchReels(0, false, filters, sortOptions)
+  }, [enabled, fetchReels, filters, sortOptions])
 
   useEffect(() => {
     if (!enabled) {
@@ -138,8 +120,8 @@ export const useReels = (
       setPage(0)
       return
     }
-    fetchReels(0, false, resolvedFilters, sortOptions)
-  }, [enabled, fetchReels, JSON.stringify(resolvedFilters), JSON.stringify(sortOptions)])
+    fetchReels(0, false, filters, sortOptions)
+  }, [enabled, fetchReels, JSON.stringify(filters), JSON.stringify(sortOptions)])
 
   return {
     reels,

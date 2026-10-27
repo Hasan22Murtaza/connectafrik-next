@@ -42,18 +42,47 @@ export async function GET(request: NextRequest) {
     const profileMap = new Map((profiles || []).map((p: any) => [p.id, p]))
 
     const mutualCounts: Record<string, number> = {}
+    const mutualFriendsById = new Map<
+      string,
+      Array<{ user_id: string; username: string; full_name: string; avatar_url: string | null }>
+    >()
+
     await Promise.all(
       senderIds.map(async (senderId) => {
         const { data: count } = await supabase.rpc('get_mutual_friends_count', {
           user1_id: user.id,
           user2_id: senderId,
         })
-        mutualCounts[senderId] = count ?? 0
+        const mutualCount = Number(count ?? 0)
+        mutualCounts[senderId] = mutualCount
+
+        if (mutualCount <= 0) {
+          mutualFriendsById.set(senderId, [])
+          return
+        }
+
+        const { data: mutuals } = await supabase.rpc('get_mutual_friends', {
+          user1_id: user.id,
+          user2_id: senderId,
+          limit_count: 3,
+        })
+
+        mutualFriendsById.set(
+          senderId,
+          (mutuals || []).slice(0, 3).map((m: any) => ({
+            user_id: m.user_id,
+            username: m.username,
+            full_name: m.full_name,
+            avatar_url: m.avatar_url ?? null,
+          }))
+        )
       })
     )
 
     const result = rows.map((r: any) => {
       const profile = profileMap.get(r.sender_id)
+      const mutualFriends = mutualFriendsById.get(r.sender_id) ?? []
+      const mutualFriendsCount = mutualCounts[r.sender_id] ?? 0
       return {
         ...r,
         requester: profile
@@ -70,7 +99,9 @@ export async function GET(request: NextRequest) {
               last_seen: profile.last_seen,
             }
           : null,
-        mutualFriendsCount: mutualCounts[r.sender_id] ?? 0,
+        mutualFriendsCount,
+        mutual_friends_count: mutualFriendsCount,
+        mutual_friends: mutualFriends,
       }
     })
 

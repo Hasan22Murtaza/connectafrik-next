@@ -54,6 +54,13 @@ type Section = FriendsSection;
 type RequestsView = "received" | "pending";
 const FRIENDS_SECTIONS: Section[] = ["home", "requests", "suggestions", "all", "birthdays"];
 
+type MutualFriendPreview = {
+  user_id: string;
+  username: string;
+  full_name: string;
+  avatar_url: string | null;
+};
+
 type SentFriendRequest = {
   id: string;
   sender_id: string;
@@ -67,6 +74,9 @@ type SentFriendRequest = {
     banner_image?: string | null;
     country?: string | null;
   } | null;
+  mutualFriendsCount?: number;
+  mutual_friends_count?: number;
+  mutual_friends?: MutualFriendPreview[];
 };
 
 type FriendSuggestion = {
@@ -75,6 +85,7 @@ type FriendSuggestion = {
   full_name: string;
   avatar_url: string | null;
   banner_image?: string | null;
+  location?: string | null;
   country?: string | null;
   mutual_friends_count: number;
   mutual_friends?: Array<{
@@ -148,6 +159,10 @@ function SentRequestCard({
 }) {
   const profile = request.receiver;
   const userId = request.receiver_id || profile?.id || "";
+  const mutualCount = request.mutual_friends_count ?? request.mutualFriendsCount ?? 0;
+  const relationshipText = mutualCount > 0
+    ? `${mutualCount} mutual ${mutualCount === 1 ? "friend" : "friends"}`
+    : "Request pending";
 
   return (
     <FriendProfileCard
@@ -156,9 +171,8 @@ function SentRequestCard({
       username={profile?.username}
       avatarUrl={profile?.avatar_url}
       bannerImage={profile?.banner_image}
-      // location={profile?.country}
-      relationshipText=""
-
+      relationshipText={relationshipText}
+      mutualFriends={request.mutual_friends ?? []}
     >
       <div className="flex flex-col gap-2">
         <Link
@@ -185,14 +199,14 @@ function ReceivedRequestCard({
   onAccept,
   onDecline,
 }: {
-  request: FriendRequest & { mutualFriendsCount?: number };
+  request: FriendRequest;
   onAccept: () => void;
   onDecline: () => void;
 }) {
   const profile = request.requester;
-  console.log("profile data", profile)
-  const relationshipText = request.mutualFriendsCount
-    ? `${request.mutualFriendsCount} mutual ${request.mutualFriendsCount === 1 ? "friend" : "friends"}`
+  const mutualCount = request.mutual_friends_count ?? request.mutualFriendsCount ?? 0;
+  const relationshipText = mutualCount > 0
+    ? `${mutualCount} mutual ${mutualCount === 1 ? "friend" : "friends"}`
     : "Wants to connect with you";
 
   return (
@@ -204,8 +218,7 @@ function ReceivedRequestCard({
       bannerImage={profile?.banner_image}
       location={profile?.country}
       relationshipText={relationshipText}
-      // mutualFriends={profile?.mutual_friends ?? []}
-
+      mutualFriends={request.mutual_friends ?? []}
     >
       <div className="flex gap-2 flex-col">
         <button
@@ -288,7 +301,7 @@ const FriendsPageContent: React.FC = () => {
   const searchParams = useSearchParams();
   const { startChatWithMembers, openThread } = useProductionChat();
   const [friends, setFriends] = useState<Friend[]>([]);
-  const [requests, setRequests] = useState<(FriendRequest & { mutualFriendsCount?: number })[]>([]);
+  const [requests, setRequests] = useState<FriendRequest[]>([]);
   const [sentRequests, setSentRequests] = useState<SentFriendRequest[]>([]);
   const [sentLoading, setSentLoading] = useState(false);
   const [requestsView, setRequestsView] = useState<RequestsView>("received");
@@ -1004,8 +1017,13 @@ const FriendsPageContent: React.FC = () => {
                       username={friend.username}
                       avatarUrl={friend.avatar_url}
                       bannerImage={friend.banner_image}
-                      // relationshipText={friend?.mutual_friends_count}
                       location={friend.country}
+                      relationshipText={
+                        (friend.mutual_friends_count ?? 0) > 0
+                          ? `${friend.mutual_friends_count} mutual ${friend.mutual_friends_count === 1 ? "friend" : "friends"}`
+                          : undefined
+                      }
+                      mutualFriends={friend.mutual_friends ?? []}
                     >
                       <Link
                         href={`/user/${friend.id}`}
