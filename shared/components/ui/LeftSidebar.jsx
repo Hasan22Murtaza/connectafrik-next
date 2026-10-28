@@ -13,7 +13,7 @@ import {
   PanelLeft,
   Phone,
   Settings,
-  Store,
+  Handbag,
   UsersRound,
   Video,
 } from "lucide-react";
@@ -38,7 +38,7 @@ const shortcuts = [
   { name: "Groups", to: "/groups", icon: UserRoundGroup },
   { name: "Messages", to: "/chat", icon: MessageCircle, badgeKey: "chat" },
   { name: "Calls", to: "/calls", icon: Phone, badgeKey: "calls" },
-  { name: "TradeHub", to: "/marketplace", icon: Store },
+  { name: "TradeHub", to: "/marketplace", icon: Handbag },
   { name: "Saved", to: "/saved", icon: Bookmark },
   { name: "Feedback", to: "/feedback", icon: MessageSquareText },
   { name: "Settings", to: "/settings", icon: Settings },
