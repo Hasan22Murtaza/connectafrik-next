@@ -283,7 +283,7 @@ export function ProfileSettingsPanel() {
 
           <div className="relative px-4 pb-5 pt-0 sm:px-5">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-              <div className="flex flex-col items-center gap-3 sm:flex-row sm:items-end sm:gap-4">
+              <div className="flex gap-3">
                 <div className="-mt-12 relative h-[104px] w-[104px] shrink-0 sm:-mt-14 sm:h-[120px] sm:w-[120px]">
                   <div className="h-full w-full overflow-hidden rounded-full border-[4px] border-surface bg-surface-secondary shadow-sm">
                     {profile?.avatar_url ? (
@@ -327,7 +327,7 @@ export function ProfileSettingsPanel() {
                   )}
                 </div>
               </div>
-              <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
+              <div className="flex  items-center justify-center gap-2 sm:justify-start">
                 <button
                   type="button"
                   onClick={() => avatarRef.current?.click()}

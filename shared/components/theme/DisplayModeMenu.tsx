@@ -37,7 +37,7 @@ const DisplayModeMenu: React.FC<DisplayModeMenuProps> = ({
       className={
         variant === 'inline'
           ? 'px-2 pb-2'
-          : 'absolute right-full top-0 mr-1 w-52 bg-surface-elevated rounded-lg shadow-dropdown border border-border py-1 z-50'
+          : 'absolute left-1/2 -translate-x-1/2  bottom-14 w-52 bg-surface-elevated rounded-lg shadow-dropdown border border-border py-1 z-50'
       }
       role="menu"
     >

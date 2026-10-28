@@ -83,6 +83,8 @@ export interface Profile {
   /** Chat translate target. `off` is “My language (default)” and leaves messages as written. */
   message_translation_language?: MessageTranslationLanguageCode
   /** Live counts from GET /api/users/me */
+  follower_count?: number
+  following_count?: number
   posts_count?: number
   reels_count?: number
   saved_posts_count?: number

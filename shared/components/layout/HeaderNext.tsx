@@ -392,7 +392,7 @@ const Header: React.FC<HeaderProps> = ({
               <li className="relative">
                 <Link
                   href="/chat"
-                  className={`flex items-center justify-center py-2 px-3 transition-colors ${pathname === "/friends"
+                  className={`flex items-center justify-center py-2 px-3 transition-colors ${pathname === "/chat"
                     ? "text-primary-600"
                     : "text-gray-500 hover:text-primary-600"
                     }`}
