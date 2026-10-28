@@ -182,7 +182,11 @@ function NavContent({
           <div
             role="dialog"
             aria-label="Sidebar control"
-            className="absolute bottom-full left-2 z-50 mb-2 w-48 rounded-lg border border-[#e4e6eb] bg-white p-1.5 shadow-lg"
+            className={`absolute z-50 w-48 rounded-lg border border-[#e4e6eb] bg-white p-1.5 shadow-lg ${
+              showLabels
+                ? "bottom-full left-2 mb-2"
+                : "bottom-0 left-full ml-2"
+            }`}
           >
             <p className="px-2.5 py-1.5 text-xs font-semibold text-[#050505]">
               Sidebar control
@@ -261,8 +265,8 @@ export function AdminSidebar() {
         <div
           className={`flex h-full min-w-0 flex-col bg-white ${
             hoverExpanded
-              ? "absolute inset-y-0 left-0 z-30 w-56 border-r border-[#e4e6eb] bg-white shadow-lg"
-              : "relative w-full overflow-x-clip"
+              ? "absolute inset-y-0 left-0 z-30 w-56 overflow-visible border-r border-[#e4e6eb] bg-white shadow-lg"
+              : "relative w-full overflow-visible"
           }`}
         >
           <NavContent
