@@ -149,7 +149,7 @@ const Header: React.FC<HeaderProps> = ({
           <div
             className={
               user
-                ? "flex items-center h-14 sm:h-16 justify-between gap-2 w-full"
+                ? "relative flex items-center h-14 sm:h-16 justify-between gap-2 w-full"
                 : "flex w-full items-center justify-between gap-4"
             }
           >
@@ -179,12 +179,14 @@ const Header: React.FC<HeaderProps> = ({
 
                     {/* Search Results Dropdown */}
                     {showSearchResults && (
+                    <div className="absolute top-full left-0 right-0 mt-2 bg-surface-elevated rounded-lg shadow-dropdown border border-border max-h-[600px] overflow-y-auto z-50 md:block">
                       <SearchResultsDropdown
                         results={searchResults}
                         isSearching={isSearching}
                         searchTerm={searchTerm}
                         onClose={() => setShowSearchResults(false)}
                       />
+                      </div>
                     )}
                   </div>
                 </div>
@@ -195,12 +197,12 @@ const Header: React.FC<HeaderProps> = ({
             {user ? (
               <>
                 {/* Notifications & Messaging */}
-                <div className="flex items-center space-x-2 sm:space-x-2 border-border-subtle w-65 xl:w-80 2xl:w-[24rem] justify-end">
+                <div className="relative flex items-center space-x-2 sm:space-x-2 border-border-subtle">
                   <div className="group relative flex items-center">
                     <input
                       type="text"
                       placeholder="Search CribsTalk..."
-                      className="peer absolute top-10 right-0 w-0 rounded-full border-0 bg-surface py-2.5 px-3 opacity-0 outline-none transition-all duration-300 focus:w-62 focus:border focus:border-gray-300 focus:opacity-100 focus:ring-1 focus:ring-primary"
+                      className="peer absolute top-8 right-0 w-0 rounded-full border-0 bg-surface py-2 px-3 opacity-0 outline-none transition-all duration-300 focus:w-62 focus:border focus:border-gray-300 focus:opacity-100 focus:ring-1 focus:ring-primary"
                       value={searchTerm}
                       onChange={(e) => handleSearchChange(e.target.value)}
                       onFocus={() => {
@@ -221,15 +223,9 @@ const Header: React.FC<HeaderProps> = ({
                       <Search className="h-5 w-5" />
                     </button>
 
-                    {showSearchResults && (
-                      <SearchResultsDropdown
-                        results={searchResults}
-                        isSearching={isSearching}
-                        searchTerm={searchTerm}
-                        onClose={() => setShowSearchResults(false)}
-                      />
-                    )}
+                  
                   </div>
+                 
 
 
                   <div className="relative">
@@ -322,6 +318,17 @@ const Header: React.FC<HeaderProps> = ({
                 </button>
               </div>
             )}
+
+ {(user && showSearchResults) && (
+                    <div className="absolute top-22  left-0 right-0 mt-2 bg-surface-elevated rounded-lg shadow-dropdown border border-border max-h-[600px] overflow-y-auto z-50 md:block mx-4">
+                      <SearchResultsDropdown
+                        results={searchResults}
+                        isSearching={isSearching}
+                        searchTerm={searchTerm}
+                        onClose={() => setShowSearchResults(false)}
+                      />
+                      </div>
+                    )}
           </div>
         </div>
 

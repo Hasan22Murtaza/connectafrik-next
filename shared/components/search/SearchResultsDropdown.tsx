@@ -205,7 +205,7 @@ const SearchResultsDropdown: React.FC<SearchResultsDropdownProps> = ({
   }
 
   return (
-    <div className="absolute top-full left-0 right-0 mt-2 bg-surface-elevated rounded-lg shadow-dropdown border border-border max-h-[600px] overflow-y-auto z-50 md:block">
+    <div className="">
       {isSearching ? (
         <LoadingState />
       ) : results ? (
