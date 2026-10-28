@@ -26,6 +26,8 @@ import { usePathname, useRouter } from "next/navigation";
 import React, { useEffect, useRef, useState } from "react";
 import { FaBars } from "react-icons/fa";
 import MobileSideDrawer from "../ui/MobileSideDrawer";
+import PlayMedia from "@/shared/icons/PlayMedia";
+import { Handbag } from "lucide-react";
 
 interface HeaderProps {
   searchTerm?: string;
@@ -187,17 +189,6 @@ const Header: React.FC<HeaderProps> = ({
                   </div>
                 </div>
               )}
-
-              {/* Mobile Search Button - Visible only on mobile when logged in */}
-              {user && (
-                <button
-                  onClick={() => setShowMobileSearch(true)}
-                  className="md:hidden p-2 text-content-secondary hover:text-primary-600 transition-colors"
-                  aria-label="Open search"
-                >
-                  <Search className="w-5 h-5" />
-                </button>
-              )}
             </div>
 
             {/* Navigation and User Menu - Pinned to right */}
@@ -205,21 +196,41 @@ const Header: React.FC<HeaderProps> = ({
               <>
                 {/* Notifications & Messaging */}
                 <div className="flex items-center space-x-2 sm:space-x-2 border-border-subtle w-65 xl:w-80 2xl:w-[24rem] justify-end">
+                  <div className="group relative flex items-center">
+                    <input
+                      type="text"
+                      placeholder="Search CribsTalk..."
+                      className="peer absolute top-10 right-0 w-0 rounded-full border-0 bg-surface py-2.5 px-3 opacity-0 outline-none transition-all duration-300 focus:w-62 focus:border focus:border-gray-300 focus:opacity-100 focus:ring-1 focus:ring-primary"
+                      value={searchTerm}
+                      onChange={(e) => handleSearchChange(e.target.value)}
+                      onFocus={() => {
+                        if (searchTerm.trim().length >= 2 && searchResults) {
+                          setShowSearchResults(true);
+                        }
+                      }}
+                    />
 
-                  <div className="relative">
                     <button
-                      onClick={() => router.push("/chat")}
-                      className="relative p-1 sm:p-1.5 lg:p-2 text-content-tertiary hover:text-primary-600 transition-colors"
+                      type="button"
+                      onClick={(e) => {
+                        e.currentTarget.parentElement?.querySelector("input")?.focus();
+                      }}
+                      className="relative z-10 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-content-secondary hover:bg-surface-secondary"
+                      aria-label="Search"
                     >
-                      <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5" />
-                      {unreadMessages > 0 && (
-                        <span className="absolute -top-1 -right-1 w-4 h-4 sm:w-5 sm:h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-medium">
-                          {unreadMessages > 99 ? "99+" : unreadMessages}
-                        </span>
-                      )}
+                      <Search className="h-5 w-5" />
                     </button>
 
+                    {showSearchResults && (
+                      <SearchResultsDropdown
+                        results={searchResults}
+                        isSearching={isSearching}
+                        searchTerm={searchTerm}
+                        onClose={() => setShowSearchResults(false)}
+                      />
+                    )}
                   </div>
+
 
                   <div className="relative">
                     <button
@@ -365,21 +376,27 @@ const Header: React.FC<HeaderProps> = ({
                     : "text-gray-500 hover:text-primary-600"
                     }`}
                 >
-                  <Video className="w-6 h-6" />
+                  <PlayMedia className="w-6 h-6" />
                 </Link>
               </li>
 
-              {/* TradeHub */}
-              <li>
+
+              {/* chat */}
+              <li className="relative">
                 <Link
-                  href="/marketplace"
-                  className={`flex items-center justify-center py-2 px-3 transition-colors ${pathname === "/marketplace"
+                  href="/chat"
+                  className={`flex items-center justify-center py-2 px-3 transition-colors ${pathname === "/friends"
                     ? "text-primary-600"
                     : "text-gray-500 hover:text-primary-600"
                     }`}
                 >
-                  <Store className="w-6 h-6" />
+                  <MessageCircle className="w-6 h-6" />
                 </Link>
+                {unreadMessages > 0 && (
+                  <span className="absolute -top-1 -right-1 w-4 h-4 sm:w-5 sm:h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-medium">
+                    {unreadMessages > 99 ? "99+" : unreadMessages}
+                  </span>
+                )}
               </li>
 
               {/* Friends */}
@@ -400,18 +417,19 @@ const Header: React.FC<HeaderProps> = ({
                 )}
               </li>
 
-              {/* Groups */}
+              {/* TradeHub */}
               <li>
                 <Link
-                  href="/groups"
-                  className={`flex items-center justify-center py-2 px-3 transition-colors ${pathname === "/groups"
+                  href="/marketplace"
+                  className={`flex items-center justify-center py-2 px-3 transition-colors ${pathname === "/marketplace"
                     ? "text-primary-600"
                     : "text-gray-500 hover:text-primary-600"
                     }`}
                 >
-                  <Users className="w-6 h-6" />
+                  <Handbag className="w-6 h-6" />
                 </Link>
               </li>
+
             </ul>
           </nav>
         </div>
