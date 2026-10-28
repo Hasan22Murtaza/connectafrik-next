@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import PlayMedia from "@/shared/icons/PlayMedia";
 
 const STORAGE_KEY = "connectafrik.sidebar-mode";
 
@@ -32,7 +33,7 @@ const MODE_OPTIONS = [
 
 const shortcuts = [
   { name: "Feed", to: "/feed", icon: Home },
-  { name: "Reels", to: "/reels", icon: Video },
+  { name: "Reels", to: "/reels", icon: PlayMedia },
   { name: "Friends", to: "/friends", icon: UsersRound },
   { name: "Groups", to: "/groups", icon: UserRoundGroup },
   { name: "Messages", to: "/chat", icon: MessageCircle, badgeKey: "chat" },
