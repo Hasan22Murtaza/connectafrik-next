@@ -717,7 +717,7 @@ const FriendsPageContent: React.FC = () => {
     <div className="min-h-screen sm:p-0 p-2">
       <div className="flex gap-4 sm:pb-0 pb-18 md:min-h-[calc(100dvh-4rem)]">
         {/* Left Sidebar */}
-        <aside className="sticky top-[73px] hidden h-[calc(100dvh-73px)]  shrink-0 self-start overflow-y-auto  bg-background  md:block">
+        <aside className="fixed top-[73px] hidden h-[calc(100dvh-73px)]  shrink-0 self-start overflow-y-auto  bg-background  md:block">
           <FriendsSidebar
             activeSection={activeSection}
             requestCount={requests.length}
@@ -726,7 +726,7 @@ const FriendsPageContent: React.FC = () => {
         </aside>
 
         {/* Main Content */}
-        <div className="flex-1 max-w-full py-3 sm:py-6  pr-4 ">
+        <div className="flex-1 max-w-full py-3 sm:py-6 pr-4 md:ml-64">
           <div className="flex gap-2 sm:hidden overflow-x-auto w-full pb-5  scrollbar-hide">
             {/* We use inline-flex + min-w-fit to prevent shrinking */}
             <button

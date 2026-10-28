@@ -179,13 +179,13 @@ const Header: React.FC<HeaderProps> = ({
 
                     {/* Search Results Dropdown */}
                     {showSearchResults && (
-                    <div className="absolute top-full left-0 right-0 mt-2 bg-surface-elevated rounded-lg shadow-dropdown border border-border max-h-[600px] overflow-y-auto z-50 md:block">
-                      <SearchResultsDropdown
-                        results={searchResults}
-                        isSearching={isSearching}
-                        searchTerm={searchTerm}
-                        onClose={() => setShowSearchResults(false)}
-                      />
+                      <div className="absolute top-full left-0 right-0 mt-2 bg-surface-elevated rounded-lg shadow-dropdown border border-border max-h-[600px] overflow-y-auto z-50 md:block">
+                        <SearchResultsDropdown
+                          results={searchResults}
+                          isSearching={isSearching}
+                          searchTerm={searchTerm}
+                          onClose={() => setShowSearchResults(false)}
+                        />
                       </div>
                     )}
                   </div>
@@ -198,7 +198,7 @@ const Header: React.FC<HeaderProps> = ({
               <>
                 {/* Notifications & Messaging */}
                 <div className="relative flex items-center space-x-2 sm:space-x-2 border-border-subtle">
-                  <div className="group relative flex items-center">
+                  <div className="group relative flex items-center sm:hidden ">
                     <input
                       type="text"
                       placeholder="Search CribsTalk..."
@@ -223,9 +223,9 @@ const Header: React.FC<HeaderProps> = ({
                       <Search className="h-5 w-5" />
                     </button>
 
-                  
+
                   </div>
-                 
+
 
 
                   <div className="relative">
@@ -319,16 +319,16 @@ const Header: React.FC<HeaderProps> = ({
               </div>
             )}
 
- {(user && showSearchResults) && (
-                    <div className="absolute top-22  left-0 right-0 mt-2 bg-surface-elevated rounded-lg shadow-dropdown border border-border max-h-[600px] overflow-y-auto z-50 md:block mx-4">
-                      <SearchResultsDropdown
-                        results={searchResults}
-                        isSearching={isSearching}
-                        searchTerm={searchTerm}
-                        onClose={() => setShowSearchResults(false)}
-                      />
-                      </div>
-                    )}
+            {(user && showSearchResults) && (
+              <div className="absolute top-22  left-0 right-0 mt-2 bg-surface-elevated rounded-lg shadow-dropdown border border-border max-h-[600px] overflow-y-auto z-50 md:block mx-4">
+                <SearchResultsDropdown
+                  results={searchResults}
+                  isSearching={isSearching}
+                  searchTerm={searchTerm}
+                  onClose={() => setShowSearchResults(false)}
+                />
+              </div>
+            )}
           </div>
         </div>
 

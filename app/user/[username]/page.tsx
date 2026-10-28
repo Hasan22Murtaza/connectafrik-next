@@ -113,14 +113,14 @@ const ProfileSkeleton = ({
 }: {
   onSectionSelect: (section: FriendsSection) => void;
 }) => (
-  <div className="mx-auto flex min-h-screen w-full max-w-screen-2xl gap-4 px-4 pb-20 sm:gap-6 sm:pb-8">
-    <aside className="sticky top-[73px] hidden h-[calc(100dvh-73px)]  shrink-0 self-start overflow-y-auto  bg-background py-4 md:block">
+  <div className="mx-auto flex min-h-screen gap-6 px-4 pb-20 sm:pb-8">
+    <aside className="fixed top-[73px] hidden h-[calc(100dvh-73px)]  shrink-0 self-start overflow-y-auto  bg-background py-4 md:block">
       <FriendsSidebar
         onSectionSelect={onSectionSelect}
       />
     </aside>
-    <main className="min-w-0 flex-1">
-      <div className="mt-4 w-full">
+    <main className="flex-1 max-w-full py-3 sm:py-6 pr-4 md:ml-64">
+      <div className="mt-4">
         <div className="overflow-hidden rounded-2xl bg-surface shadow-card">
           <div className="relative h-32 animate-shimmer sm:h-48 lg:h-56">
             <div className="absolute -bottom-8 left-4 z-10 h-[76px] w-[76px] rounded-2xl border-2 border-white bg-surface-tertiary shadow-card sm:left-5 sm:h-[88px] sm:w-[88px]" />
@@ -683,13 +683,13 @@ const UserProfilePage: React.FC = () => {
   return (
     <div className="mx-auto flex min-h-screen gap-6 px-4 pb-20 sm:pb-8">
       {/* Left Sidebar */}
-      <aside className="sticky top-[73px] hidden h-[calc(100dvh-73px)]  shrink-0 self-start overflow-y-auto  bg-background  py-4 md:block">
+      <aside className="fixed top-[73px]  hidden h-[calc(100dvh-73px)]  shrink-0 self-start overflow-y-auto  bg-background  py-4 md:block">
         <FriendsSidebar
           onSectionSelect={navigateToFriendsSection}
         />
       </aside>
 
-      <main className="min-w-0 flex-1">
+      <main className="flex-1 max-w-full py-3 sm:py-6 pr-4 md:ml-64">
         <div className="mt-4">
           <div className="overflow-hidden rounded-2xl bg-surface shadow-card">
             <div className="relative h-32 bg-gradient-to-br from-orange-200 via-amber-100 to-sky-100 sm:h-48 lg:h-56">
@@ -780,10 +780,10 @@ const UserProfilePage: React.FC = () => {
                   <span className="break-all text-sm text-content-secondary sm:text-base">@{profile.username}</span>
                   <div className="flex gap-2 items-center  w-full">
                     <div className="inline-block rounded-xl border border-orange-500 bg-primary-50 px-2 py-1 text-xs text-orange-500 shrink-0">
-                      <span className="font-medium">{fmt(profile.following_count)}</span> tapping in
+                      <span className="font-medium">{fmt(profile.following_count)}</span> Tapping In
                     </div>
                     <div className="inline-block rounded-xl border border-green-500 bg-green-50 px-2 py-1 text-xs text-green-500 shrink-0">
-                      <span className="font-medium">{fmt(profile.followers_count)}</span> tapped in
+                      <span className="font-medium">{fmt(profile.followers_count)}</span> Tapped In
                     </div>
                   </div>
                 </div>
