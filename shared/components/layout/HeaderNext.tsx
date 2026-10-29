@@ -320,7 +320,7 @@ const Header: React.FC<HeaderProps> = ({
             )}
 
             {(user && showSearchResults) && (
-              <div className="absolute top-22  left-0 right-0 mt-2 bg-surface-elevated rounded-lg shadow-dropdown border border-border max-h-[600px] overflow-y-auto z-50 md:block mx-4">
+              <div className="absolute top-22 sm:hidden left-0 right-0 mt-2 bg-surface-elevated rounded-lg shadow-dropdown border border-border max-h-[600px] overflow-y-auto z-50  mx-4">
                 <SearchResultsDropdown
                   results={searchResults}
                   isSearching={isSearching}
