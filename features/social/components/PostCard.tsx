@@ -796,11 +796,10 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
       <div className="mb-2">
         <p className="text-content leading-relaxed  break-words text-sm sm:text-base">
           {plainVisibleContent}
-        </p>
-        {showPlainReadToggle && (
+          {showPlainReadToggle && (
           <button
             type="button"
-            className="mt-1 text-sm font-semibold text-content-secondary hover:text-content"
+            className="mt-1 text-sm font-semibold text-orange-500 hover:underline"
             onClick={(e) => {
               e.stopPropagation();
               setIsContentExpanded((v) => !v);
@@ -809,6 +808,8 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
             {isContentExpanded ? "Read less" : "Read more"}
           </button>
         )}
+        </p>
+        
       </div>
     );
   };
