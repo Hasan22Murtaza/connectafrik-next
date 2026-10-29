@@ -292,7 +292,7 @@ const FeedPage: React.FC = () => {
             ) : null}
             {reelsAfterIndex !== null && index === reelsAfterIndex ? (
               <div className="pt-1">
-                <FeedReelsStrip />
+                {/* <FeedReelsStrip /> */}
               </div>
             ) : null}
           </React.Fragment>

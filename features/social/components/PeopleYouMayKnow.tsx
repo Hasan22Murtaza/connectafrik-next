@@ -232,11 +232,11 @@ export const PeopleYouMayKnow: React.FC = () => {
                   )}
                 </button>
                 <Link
-                        href={`/user/${rec?.user_id}`}
-                        className="mt-2.5 flex w-full items-center justify-center rounded-full bg-[#eef2ff] px-4 py-2.5 text-sm font-medium text-slate-700 transition-colors hover:bg-[#e0e7ff] dark:bg-white/10 dark:text-content dark:hover:bg-white/15"
-                      >
-                        View Profile
-                      </Link>
+                  href={`/user/${rec?.user_id}`}
+                  className="mt-2.5 flex w-full items-center justify-center rounded-full bg-[#eef2ff] px-4 py-2.5 text-sm font-medium text-slate-700 transition-colors hover:bg-[#e0e7ff] dark:bg-white/10 dark:text-content dark:hover:bg-white/15"
+                >
+                  View Profile
+                </Link>
               </FriendProfileCard>
             ))}
           </div>
