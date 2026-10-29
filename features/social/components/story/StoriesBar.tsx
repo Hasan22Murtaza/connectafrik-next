@@ -213,7 +213,7 @@ const CreateStoryCard: React.FC<CreateStoryCardProps> = React.memo(({ userStorie
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
       >
-        <div className="relative w-[90px] sm:w-[112px] h-[160px] sm:h-[180px] rounded-xl overflow-hidden  hover:shadow-lg transition-shadow">
+        <div className="relative w-[90px] sm:w-[112px] h-[160px] sm:h-[180px] rounded-[22px] overflow-hidden  hover:shadow-lg transition-shadow">
           <button onClick={onView} className="absolute inset-0 cursor-pointer">
             {isTextStory ? (
               <div

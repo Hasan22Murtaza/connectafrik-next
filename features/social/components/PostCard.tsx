@@ -1317,11 +1317,6 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
             const blockBg = preset ? preset.css : legacyGradientForPostId(post.id);
             const contentText = (post.content || "").trim();
             const longBody = contentText.length > 150;
-            const showStyledReadToggle = !isDetail && longBody;
-            const styledVisibleContent =
-              isDetail || isContentExpanded || !showStyledReadToggle
-                ? post.content
-                : `${contentText.slice(0, 150).trimEnd()}…`;
             const minH = preset ? (longBody ? "min-h-[120px]" : "min-h-[220px]") : "min-h-[250px]";
             const pad = preset && longBody ? "p-6 sm:p-8" : "p-8";
             const textClass = preset
@@ -1337,20 +1332,9 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
               >
                 <div className={preset && longBody ? "w-full" : "text-center w-full"}>
                   <p className={textClass}>
-                    {styledVisibleContent}
+                    {post.content}
                   </p>
-                  {showStyledReadToggle && (
-                    <button
-                      type="button"
-                      className={readToggleClass}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setIsContentExpanded((v) => !v);
-                      }}
-                    >
-                      {isContentExpanded ? "Read less" : "Read more"}
-                    </button>
-                  )}
+                 
                 </div>
               </div>
             );
