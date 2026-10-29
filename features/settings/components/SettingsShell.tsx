@@ -2,7 +2,7 @@
 
 import React from 'react'
 import Link from 'next/link'
-import { SETTINGS_NAV } from '../nav'
+import { getSettingsNav, type SettingsNavItem } from '../nav'
 import type { SettingsTab } from '../types'
 
 type SettingsShellProps = {
@@ -10,11 +10,19 @@ type SettingsShellProps = {
   title: string
   description: string
   children: React.ReactNode
+  navItems?: SettingsNavItem[]
 }
 
-export function SettingsShell({ activeTab, title, description, children }: SettingsShellProps) {
+export function SettingsShell({
+  activeTab,
+  title,
+  description,
+  children,
+  navItems,
+}: SettingsShellProps) {
   const isHub = activeTab === 'hub'
   const sidebarActive: SettingsTab = isHub ? 'profile' : activeTab
+  const nav = navItems ?? getSettingsNav()
 
   return (
     <div className="flex min-h-[calc(100dvh-4.5rem)] bg-background sm:mb-0 mb-10">
@@ -28,7 +36,7 @@ export function SettingsShell({ activeTab, title, description, children }: Setti
             <p className="mb-1 px-2 pt-1 text-[11px] font-semibold uppercase tracking-wide text-content-tertiary">
               Account
             </p>
-            {SETTINGS_NAV.map((item) => {
+            {nav.map((item) => {
               const Icon = item.icon
               const active = sidebarActive === item.id
               return (
@@ -69,7 +77,7 @@ export function SettingsShell({ activeTab, title, description, children }: Setti
               className="flex gap-1 overflow-x-auto border-b border-border-subtle pb-px scrollbar-none"
               aria-label="Settings sections"
             >
-              {SETTINGS_NAV.map((item) => {
+              {nav.map((item) => {
                 const Icon = item.icon
                 const active = sidebarActive === item.id
                 return (

@@ -577,7 +577,7 @@ const FriendsPageContent: React.FC = () => {
       fetchFriends();
     } catch (error: any) {
       console.error("Error accepting request:", error);
-      toast.error("Failed to accept request");
+      toast.error(error?.message || "Failed to accept request");
     }
   };
 

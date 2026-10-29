@@ -5,6 +5,7 @@ import { createNotification } from '@/lib/notifications/createNotification'
 import { notificationService } from '@/shared/services/notificationService'
 import { sendFriendRequestAcceptedEmail } from '@/shared/services/emailService'
 import { lookupNotificationEmailRecipient } from '@/lib/emails/recipients'
+import { checkParentalRestriction, parentalDecisionResponse, recordActivityEvent } from '@/lib/family'
 
 export async function GET(
   request: NextRequest,
@@ -76,6 +77,14 @@ export async function PATCH(
       return errorResponse('Request already responded to', 400)
     }
 
+    // Parental friend-request approval: only blocks accepting, not decline/block.
+    // Users without family / without this control keep existing behavior.
+    if (status === 'accepted') {
+      const parental = await checkParentalRestriction(supabase, user.id, 'friend_request_accept')
+      const parentalDenied = parentalDecisionResponse(parental)
+      if (parentalDenied) return parentalDenied
+    }
+
     const { data: updated, error: updateError } = await supabase
       .from('friend_requests')
       .update({ status, updated_at: new Date().toISOString() })
@@ -85,6 +94,16 @@ export async function PATCH(
 
     if (updateError) {
       return errorResponse(updateError.message, 400)
+    }
+
+    if (status === 'accepted') {
+      try {
+        await recordActivityEvent(supabase, user.id, 'friend_added', 1, {
+          friend_request_id: row.id,
+        })
+      } catch {
+        // non-fatal
+      }
     }
 
     // Notify the original sender — same notifications.insert shape as post_create

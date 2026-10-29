@@ -63,7 +63,15 @@ export async function GET(request: NextRequest) {
       userId = auth.user.id
       supabase = auth.supabase
     } catch {
+      // Unauthenticated browse remains available (existing behavior)
       supabase = createClient(supabaseUrl, supabaseAnonKey)
+    }
+
+    if (userId && supabase) {
+      const { checkParentalRestriction, parentalDecisionResponse } = await import('@/lib/family')
+      const parental = await checkParentalRestriction(supabase, userId, 'marketplace')
+      const parentalDenied = parentalDecisionResponse(parental)
+      if (parentalDenied) return parentalDenied
     }
 
     let query = supabase
@@ -219,6 +227,11 @@ export async function POST(request: NextRequest) {
   try {
     const { user, supabase } = await getAuthenticatedUser(request)
     const body = await request.json()
+
+    const { checkParentalRestriction, parentalDecisionResponse } = await import('@/lib/family')
+    const parental = await checkParentalRestriction(supabase, user.id, 'marketplace')
+    const parentalDenied = parentalDecisionResponse(parental)
+    if (parentalDenied) return parentalDenied
 
     const { data: profile, error: profileError } = await supabase
       .from('profiles')

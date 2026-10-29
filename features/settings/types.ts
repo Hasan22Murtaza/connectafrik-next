@@ -1,4 +1,10 @@
-export type SettingsTab = 'profile' | 'privacy' | 'notifications' | 'security' | 'devices'
+export type SettingsTab =
+  | 'profile'
+  | 'privacy'
+  | 'notifications'
+  | 'security'
+  | 'devices'
+  | 'family'
 
 export const SETTINGS_TABS: SettingsTab[] = [
   'profile',
@@ -6,6 +12,7 @@ export const SETTINGS_TABS: SettingsTab[] = [
   'notifications',
   'security',
   'devices',
+  'family',
 ]
 
 export function isSettingsTab(value: string | null): value is SettingsTab {
@@ -14,7 +21,8 @@ export function isSettingsTab(value: string | null): value is SettingsTab {
     value === 'privacy' ||
     value === 'notifications' ||
     value === 'security' ||
-    value === 'devices'
+    value === 'devices' ||
+    value === 'family'
   )
 }
 

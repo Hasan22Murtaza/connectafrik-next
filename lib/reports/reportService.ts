@@ -217,6 +217,37 @@ export async function createPostReport(
     console.error('Failed to send report received email:', emailError)
   }
 
+  // Soft signal for parents if the post author is a managed child/teen.
+  // Does not change report moderation flow for users without a family.
+  try {
+    const { createSafetyAlertForUser } = await import('@/lib/family/alerts')
+    const alertType =
+      input.reason === 'sexual_content' || input.reason === 'child_abuse'
+        ? 'sexual_content'
+        : input.reason === 'harmful_or_dangerous'
+          ? 'dangerous_content'
+          : input.reason === 'hateful_or_abusive'
+            ? 'harassment'
+            : 'reported_content'
+    await createSafetyAlertForUser(client, {
+      userId: post.author_id,
+      alertType,
+      severity: input.reason === 'child_abuse' ? 'high' : 'medium',
+      title: 'Content on this account was reported',
+      description: `A post was reported for: ${POST_REPORT_REASON_LABELS[input.reason]}. This is a signal for review, not an automatic finding.`,
+      source: 'post_reports',
+      relatedUserId: input.reported_by,
+      relatedContentId: input.post_id,
+    })
+    const { recordActivityEvent } = await import('@/lib/family/activity')
+    await recordActivityEvent(client, post.author_id, 'report', 1, {
+      post_id: input.post_id,
+      reason: input.reason,
+    })
+  } catch (familyError) {
+    console.error('Failed to create family safety alert from report:', familyError)
+  }
+
   return report
 }
 

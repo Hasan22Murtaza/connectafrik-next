@@ -12,7 +12,7 @@ import { CHAT_THREAD_MARKED_READ_EVENT } from '@/features/chat/threadReadEvents'
 import { toCallSessionStatusMessageType } from '@/features/chat/services/callSessionRealtime'
 import { useAuth } from './AuthContext'
 import { supabase } from '@/lib/supabase'
-import { apiClient, ApiError, isChatLockedError } from '@/lib/api-client'
+import { apiClient, ApiError, isChatLockedError, isParentalRestrictedError } from '@/lib/api-client'
 import { useChatLock } from '@/contexts/ChatLockContext'
 import {
   CHAT_LOCK_CHANGED_EVENT,
@@ -672,6 +672,14 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
     } catch (error) {
       console.error('Error sending message:', error)
       removeOptimisticBySendId(clientSendId)
+      if (isParentalRestrictedError(error)) {
+        toast.error(
+          error instanceof Error && error.message
+            ? error.message
+            : 'This action is restricted by your parent.'
+        )
+        return
+      }
       if (error instanceof ApiError && (error.status === 404 || error.status === 403)) {
         toast.error('You can no longer send messages in this chat')
         return

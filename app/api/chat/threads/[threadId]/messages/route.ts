@@ -285,6 +285,17 @@ export async function POST(request: NextRequest, context: RouteContext) {
     const messageDenied = privacyDecisionResponse(messageDecision)
     if (messageDenied) return messageDenied
 
+    const { checkParentalRestriction, parentalDecisionResponse, recordActivityEvent } = await import(
+      '@/lib/family'
+    )
+    const parental = await checkParentalRestriction(serviceClient, user.id, 'messaging')
+    const parentalDenied = parentalDecisionResponse(parental)
+    if (parentalDenied) return parentalDenied
+    // Screen-time gate (only when enabled for managed child/teen)
+    const screenGate = await checkParentalRestriction(serviceClient, user.id, 'screen_time')
+    const screenDenied = parentalDecisionResponse(screenGate)
+    if (screenDenied) return screenDenied
+
     let safeContent = typeof content === 'string' ? content : ''
     const e2eeVersionRaw = body.e2ee_version === 2 || body.e2ee_version === '2'
       ? 2
@@ -571,6 +582,12 @@ export async function POST(request: NextRequest, context: RouteContext) {
       attachments: attData || [],
       reactions: [],
     })
+
+    try {
+      await recordActivityEvent(serviceClient, user.id, 'message_sent', 1, { thread_id: threadId })
+    } catch {
+      // non-fatal — do not affect messaging
+    }
 
     return jsonResponse({ data: result }, 201)
   } catch (error: any) {
