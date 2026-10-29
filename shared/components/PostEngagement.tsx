@@ -214,8 +214,8 @@ const PostEngagement: React.FC<PostEngagementProps> = ({
               onClick={(e) => {
                 e.stopPropagation()
                 void applyReaction(
-                  userReaction ? null : 'like',
-                  userReactionKind ? KIND_TO_EMOJI[userReactionKind] : KIND_TO_EMOJI.like
+                  userReaction ? null : 'love',
+                  userReactionKind ? KIND_TO_EMOJI[userReactionKind] : KIND_TO_EMOJI.love
                 )
               }}
               className={`flex h-8 items-center justify-center gap-1.5 rounded-full bg-[#f3f4fb] px-3 text-sm font-medium transition-colors duration-150 ${

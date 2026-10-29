@@ -680,7 +680,7 @@ const CreatePost: React.FC<CreatePostProps> = ({
       <div
         className={
           useModalShell
-            ? 'fixed bottom-0 left-0 right-0 z-[10051] flex min-h-0 max-h-[92dvh] flex-col overflow-hidden rounded-xl  bg-surface shadow-[0_-8px_40px_rgba(0,0,0,0.18)] sm:bottom-auto sm:left-1/2 sm:right-auto sm:top-1/2 sm:max-h-[min(88vh,720px)] sm:w-full sm:max-w-[500px] sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-xl sm:shadow-2xl'
+            ? 'fixed bottom-0 left-0 right-0 z-[10051] flex min-h-0 max-h-[92dvh] flex-col overflow-hidden rounded-xl  bg-surface shadow-[0_-8px_40px_rgba(0,0,0,0.18)] sm:bottom-auto sm:left-1/2 sm:right-auto sm:top-1/2 sm:max-h-[min(88vh,720px)] sm:w-full sm:max-w-[650px] sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-xl sm:shadow-2xl'
             : 'relative overflow-visible rounded-xl border border-border-subtle bg-surface shadow-sm'
         }
         {...(useModalShell ? { 'data-edit-modal': '' } : {})}

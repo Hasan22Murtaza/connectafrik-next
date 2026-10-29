@@ -229,6 +229,7 @@ const UserProfilePage: React.FC = () => {
   const [showCommentsFor, setShowCommentsFor] = useState<string | null>(null)
   const [shareModalState, setShareModalState] = useState<{ open: boolean; postId: string | null }>({ open: false, postId: null })
   const [activeTab, setActiveTab] = useState<TabId>('posts')
+  const [bioExpanded, setBioExpanded] = useState(false)
   const [userFriends, setUserFriends] = useState<any[]>([])
   const [friendshipStatus, setFriendshipStatus] = useState<FriendStatus>('none')
   const [friendRequestId, setFriendRequestId] = useState<string | null>(null)
@@ -279,6 +280,7 @@ const UserProfilePage: React.FC = () => {
     setPhotosTabFetched(false)
     setFriendsTabFetched(false)
     setAboutTabFetched(false)
+    setBioExpanded(false)
   }, [profileIdentifier, profile?.id])
 
   useEffect(() => {
@@ -745,11 +747,11 @@ const UserProfilePage: React.FC = () => {
                       onClick={handleFollow}
                       disabled={followLoading}
                       aria-label={isFollowing ? 'Tapped in' : 'Tap in'}
-                      title={isFollowing ? 'Tapped in' : 'Tap in'}
+                      title={isFollowing ? 'UnTap in' : 'Tap in'}
                       className={`${btnBase} w-9 px-0 sm:w-auto sm:px-4 disabled:opacity-50 ${isFollowing ? 'bg-[#e4e6eb] text-content hover:bg-[#d8dadf]' : 'bg-[#F97316] text-white hover:bg-[#ea580c]'}`}
                     >
                       {followLoading ? <Spinner /> : isFollowing ? <UserCheck className="h-4 w-4 shrink-0" /> : <UserPlus className="h-4 w-4 shrink-0" />}
-                      <span className="hidden sm:inline">{isFollowing ? 'Tapped In' : 'Tap In'}</span>
+                      <span className="hidden sm:inline">{isFollowing ? 'UnTap In' : 'Tap In'}</span>
                     </button>
                   )}
                   {showFriendRequestBtn && (
@@ -789,9 +791,22 @@ const UserProfilePage: React.FC = () => {
                 </div>
 
                 {profile.bio && (
-                  <p className="mt-1 line-clamp-2 max-w-2xl break-words text-sm text-content-secondary">
-                    {profile.bio}
-                  </p>
+                  <div className="mt-1 max-w-2xl">
+                    <p className="break-words text-sm text-content-secondary">
+                      {bioExpanded || profile.bio.length <= 120
+                        ? profile.bio
+                        : `${profile.bio.slice(0, 220).trimEnd()}...`}{' '}
+                    {profile.bio.length > 120 && (
+                      <button
+                        type="button"
+                        onClick={() => setBioExpanded((expanded) => !expanded)}
+                        className="whitespace-nowrap text-sm font-medium text-primary-600 underline-offset-2 transition-colors hover:text-primary-700 hover:underline focus:outline-none focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-primary-500"
+                      >
+                        {bioExpanded ? 'Read less' : 'Read more'}
+                      </button>
+                    )}
+                    </p>
+                  </div>
                 )}
 
 
@@ -856,8 +871,26 @@ const UserProfilePage: React.FC = () => {
             <div className={`w-full lg:w-[300px] flex-shrink-0 space-y-2 sm:space-y-4 lg:sticky lg:top-20 lg:self-start ${activeTab === 'posts' ? 'hidden lg:block' : activeTab === 'about' || activeTab === 'photos' || activeTab === 'friends' ? 'hidden lg:block' : ''}`}>
               <div className="bg-surface sm:rounded-2xl shadow-card p-4">
                 <h2 className="text-base sm:text-lg font-semibold text-content mb-3">Personal details</h2>
-                {profile.bio && <p className="text-sm text-content leading-relaxed mb-3  line-clamp-4">{profile.bio}</p>}
-                <div className="space-y-2.5">
+                {profile.bio && (
+                  <div className="mt-1 max-w-2xl">
+                    <p className="break-words text-sm text-content-secondary">
+                      {bioExpanded || profile.bio.length <= 120
+                        ? profile.bio
+                        : `${profile.bio.slice(0, 120).trimEnd()}...`}{' '}
+                    {profile.bio.length > 120 && (
+                      <button
+                        type="button"
+                        onClick={() => setBioExpanded((expanded) => !expanded)}
+                        className="whitespace-nowrap text-sm font-medium text-primary-600 underline-offset-2 transition-colors hover:text-primary-700 hover:underline focus:outline-none focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-primary-500"
+                      >
+                        {bioExpanded ? 'Read less' : 'Read more'}
+                      </button>
+                    )}
+                    </p>
+                  </div>
+                )}
+
+                <div className="space-y-2.5 pt-2">
                   {visibleFields.country && profile.country && <DetailRow icon={MapPin}>From <span className="font-semibold">{profile.country}</span></DetailRow>}
                   {visibleFields.location && profileLivesInLine ? (
                     <DetailRow icon={MapPin}>

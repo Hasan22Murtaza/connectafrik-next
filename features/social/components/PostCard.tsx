@@ -15,6 +15,7 @@ import {
   EyeOff,
 } from '@/shared/icons';
 import { formatDistanceToNow } from "date-fns";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import {
@@ -36,7 +37,6 @@ import { PostDetailVideo } from "@/features/social/components/PostDetailVideo";
 import { PostLocationCheckIn } from "@/features/social/components/PostLocationCheckIn";
 import { parsePostLocation } from "@/features/social/utils/postLocation";
 import { sanitizePostFeeling } from "@/features/social/utils/postFeeling";
-import { formatTaggedPeoplePhrase } from "@/features/social/utils/postTaggedUsers";
 interface Post {
   id: string;
   content: string;
@@ -286,7 +286,6 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
   const parsedLocation = parsePostLocation(post.location);
   const postFeeling = sanitizePostFeeling(post.feeling);
   const taggedUsers = Array.isArray(post.tagged_users) ? post.tagged_users : [];
-  const taggedPeoplePhrase = formatTaggedPeoplePhrase(taggedUsers);
   const hasPostMedia = !!(post.media_urls && post.media_urls.length > 0);
   const showLocationCheckIn =
     !!parsedLocation && !hasPostMedia && !post.reposted_post;
@@ -795,7 +794,7 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
         : `${plainContent.slice(0, plainPreviewLen).trimEnd()}…`;
     return (
       <div className="mb-2">
-        <p className="text-content leading-relaxed whitespace-pre-wrap break-words text-sm sm:text-base">
+        <p className="text-content leading-relaxed  break-words text-sm sm:text-base">
           {plainVisibleContent}
         </p>
         {showPlainReadToggle && (
@@ -861,7 +860,7 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
         <div className="flex items-center space-x-3 flex-1 min-w-0">
           <button
             onClick={handleUserProfileClick}
-            className="flex items-center space-x-3 flex-1 min-w-0 !no-underline"
+            className="flex items-start space-x-3 flex-1 min-w-0 !no-underline"
             style={{ textDecoration: 'none' }}
           >
             {post.author.avatar_url ? (
@@ -887,7 +886,7 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
               </span>
             </div>
             
-            <div className="min-w-0 flex-1">
+            <div>
               {showLocationCheckIn && parsedLocation ? (
                 <>
                   <div className="flex min-w-0 items-baseline text-sm sm:text-[15px] text-content leading-snug !no-underline">
@@ -932,10 +931,29 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
                         </span>
                       </>
                     ) : null}
-                    {taggedPeoplePhrase ? (
+                    {taggedUsers.length > 0 ? (
                       <span className="text-content-secondary">
-                        {' '}
-                        {taggedPeoplePhrase}
+                        {" with "}
+                        {taggedUsers.map((taggedUser, index) => {
+                          const taggedName = taggedUser.full_name || taggedUser.username;
+                          const isLast = index === taggedUsers.length - 1;
+                          const isSecondToLast = index === taggedUsers.length - 2;
+
+                          return (
+                            <React.Fragment key={taggedUser.id}>
+                              <Link
+                                href={`/user/${taggedUser.id}`}
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                }}
+                                className="font-semibold text-primary-600 underline-offset-2 transition-colors hover:text-primary-700 hover:underline active:text-primary-800 focus:outline-none focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-primary-500"
+                              >
+                                {taggedName}
+                              </Link>
+                              {!isLast && (isSecondToLast ? " and " : ", ")}
+                            </React.Fragment>
+                          );
+                        })}
                       </span>
                     ) : null}
                   </div>
