@@ -237,7 +237,7 @@ export function SecuritySettingsPanel() {
     }
   }
 
-  if (loading && !profile) return <SettingsPanelSkeleton />
+  if (loading && !profile) return <SettingsPanelSkeleton variant="security" />
 
   return (
     <>

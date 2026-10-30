@@ -157,7 +157,7 @@ export function PrivacySettingsPanel() {
     }
   }
 
-  if (loading && !profile) return <SettingsPanelSkeleton />
+  if (loading && !profile) return <SettingsPanelSkeleton variant="privacy" />
 
   return (
     <div className="space-y-4">
