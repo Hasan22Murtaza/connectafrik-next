@@ -1,4 +1,4 @@
-export const POLICY_DATE = 'October 20, 2026'
+export const POLICY_DATE = 'October 30, 2026'
 
 export const POLICY_LINKS = [
   { href: '/terms', label: 'Terms of Service' },
