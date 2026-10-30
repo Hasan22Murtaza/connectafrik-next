@@ -311,7 +311,10 @@ export const useReelInteractions = (reelId: string) => {
       setLoading(true)
       setError(null)
 
-      await apiClient.post<{ data: { liked: boolean } }>(`/api/reels/${reelId}/like`)
+      await apiClient.post<{ data: { liked: boolean; reaction_type: string | null } }>(
+        `/api/reels/${reelId}/like`,
+        { reaction_type: 'love' }
+      )
       return { success: true, error: null }
     } catch (err) {
       console.error('Error toggling reel like:', err)

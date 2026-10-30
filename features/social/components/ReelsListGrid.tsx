@@ -82,7 +82,7 @@ function ListBody({ feed }: Props) {
 
   const exploreCategories =
     feed === 'explore' ? (
-      <div className="flex gap-2 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="flex gap-2 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden py-1">
         <button
           type="button"
           onClick={() => setCategory(null)}
@@ -185,7 +185,7 @@ function ListBody({ feed }: Props) {
 <Link
   href="/reels/create"
   aria-label="Create reel"
-  className="fixed left-[56vw] bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-[47] flex h-14 w-14 -translate-x-1/2 items-center justify-center rounded-full bg-[var(--african-orange)] text-white shadow-lg ring-2 ring-black/5 lg:bottom-8"
+  className="fixed hidden left-[54vw] bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-[47] lg:flex h-14 w-14 -translate-x-1/2 items-center justify-center rounded-full bg-[var(--african-orange)] text-white shadow-lg ring-2 ring-black/5 lg:bottom-8"
 >
   <Plus
     className="h-7 w-7 shrink-0"
