@@ -18,12 +18,14 @@ import type {
   FamilyMemberRole,
   ParentalControls,
   SafetyAlert,
+  ScreenTimeDailyHistory,
   ScreenTimeRules,
 } from '@/shared/types/family'
 import { ApiError } from '@/lib/api-client'
 import { useProfile } from '@/shared/hooks/useProfile'
 import { isAdultForFamily } from '@/lib/family/age'
 import { isManagedRole } from '@/lib/family/auth'
+import { ScreenTimeUsageChart } from '@/features/family/components/ScreenTimeUsageChart'
 
 type MemberView = 'list' | 'controls' | 'screen-time' | 'activity' | 'alerts' | 'friends'
 
@@ -58,6 +60,11 @@ export function FamilySettingsPanel() {
   const [controls, setControls] = useState<ParentalControls | null>(null)
   const [screenTime, setScreenTime] = useState<ScreenTimeRules | null>(null)
   const [usedMinutes, setUsedMinutes] = useState(0)
+  const [screenTimeHistory, setScreenTimeHistory] = useState<ScreenTimeDailyHistory | null>(
+    null
+  )
+  const [screenTimeRangeDays, setScreenTimeRangeDays] = useState(7)
+  const [screenTimeHistoryLoading, setScreenTimeHistoryLoading] = useState(false)
   const [activity, setActivity] = useState<ActivitySummary | null>(null)
   const [alerts, setAlerts] = useState<SafetyAlert[]>([])
   const [pendingFriends, setPendingFriends] = useState<
@@ -179,9 +186,10 @@ export function FamilySettingsPanel() {
       if (view === 'controls') {
         setControls(await familyService.getControls(member.id))
       } else if (view === 'screen-time') {
-        const data = await familyService.getScreenTime(member.id)
+        const data = await familyService.getScreenTime(member.id, screenTimeRangeDays)
         setScreenTime(data?.rules ?? null)
         setUsedMinutes(data?.used_minutes_today ?? 0)
+        setScreenTimeHistory(data?.history ?? null)
       } else if (view === 'activity') {
         setActivity(await familyService.getActivity(member.id, 7))
       } else if (view === 'alerts') {
@@ -223,6 +231,22 @@ export function FamilySettingsPanel() {
       toast.error(err instanceof ApiError ? err.message : 'Failed to save screen time')
     } finally {
       setSaving(false)
+    }
+  }
+
+  async function changeScreenTimeRange(days: number) {
+    if (!selectedMember || days === screenTimeRangeDays) return
+    setScreenTimeRangeDays(days)
+    setScreenTimeHistoryLoading(true)
+    try {
+      const data = await familyService.getScreenTime(selectedMember.id, days)
+      setScreenTimeHistory(data?.history ?? null)
+      setUsedMinutes(data?.used_minutes_today ?? usedMinutes)
+      if (data?.rules) setScreenTime(data.rules)
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : 'Failed to load usage history')
+    } finally {
+      setScreenTimeHistoryLoading(false)
     }
   }
 
@@ -476,6 +500,13 @@ export function FamilySettingsPanel() {
               <p className="text-sm text-content-secondary">
                 Used today: {formatMinutes(usedMinutes)}
               </p>
+              <ScreenTimeUsageChart
+                history={screenTimeHistory}
+                rangeDays={screenTimeRangeDays}
+                dailyLimitMinutes={screenTime.daily_limit_minutes}
+                loading={screenTimeHistoryLoading}
+                onRangeChange={(days) => void changeScreenTimeRange(days)}
+              />
               <SettingsToggleRow
                 title="Enable screen-time rules"
                 checked={screenTime.enabled}

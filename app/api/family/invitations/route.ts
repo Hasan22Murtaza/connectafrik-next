@@ -120,8 +120,26 @@ export async function POST(request: NextRequest) {
       }
       const existing = await getActiveMembership(service, inviteeUserId)
       if (existing) {
-        return errorResponse('That user already belongs to a family', 400)
+        return errorResponse(
+          existing.family_id === familyId
+            ? 'That user is already a member of this family'
+            : 'That user already belongs to a family',
+          400
+        )
       }
+
+      const { data: priorInFamily } = await service
+        .from('family_members')
+        .select('id, status')
+        .eq('family_id', familyId)
+        .eq('user_id', inviteeUserId)
+        .neq('status', 'removed')
+        .maybeSingle()
+
+      if (priorInFamily) {
+        return errorResponse('That user is already a member of this family', 400)
+      }
+
       if (!inviteeEmail) {
         try {
           const { data: authUser } = await service.auth.admin.getUserById(inviteeUserId)

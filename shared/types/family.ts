@@ -129,6 +129,22 @@ export interface ActivitySummary {
   safety_alerts: number
 }
 
+/** One calendar day of CribsTalk session usage (1 session_ping ≈ 1 minute). */
+export interface DailyScreenTimeUsage {
+  /** YYYY-MM-DD (UTC) */
+  date: string
+  minutes: number
+}
+
+export interface ScreenTimeDailyHistory {
+  days: number
+  period_start: string
+  period_end: string
+  total_minutes: number
+  average_minutes: number
+  daily: DailyScreenTimeUsage[]
+}
+
 export type ParentalRestrictionFeature =
   | 'messaging'
   | 'calling'

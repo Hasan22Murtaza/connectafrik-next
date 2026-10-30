@@ -4,6 +4,7 @@ import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-uti
 import { createNotification } from '@/lib/notifications/createNotification'
 import {
   FamilyAuthError,
+  buildDailySessionMinutes,
   evaluateScreenTime,
   getActiveMembership,
   isManagedRole,
@@ -64,11 +65,23 @@ export async function GET(
       return jsonResponse(null)
     }
 
+    const { searchParams } = new URL(request.url)
+    const historyDays = Math.min(
+      Math.max(parseInt(searchParams.get('days') || '7', 10) || 7, 1),
+      90
+    )
+
     const rules = await ensureScreenTimeRules(supabase, id)
     const usedMinutes = await sumSessionMinutesToday(supabase, id)
     const evaluation = evaluateScreenTime(rules, usedMinutes)
+    const history = await buildDailySessionMinutes(supabase, id, historyDays)
 
-    return jsonResponse({ rules, used_minutes_today: usedMinutes, evaluation })
+    return jsonResponse({
+      rules,
+      used_minutes_today: usedMinutes,
+      evaluation,
+      history,
+    })
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Failed to load screen time'
     if (message === 'Unauthorized' || message === 'Missing Authorization header') {

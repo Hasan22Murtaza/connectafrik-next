@@ -61,20 +61,60 @@ export async function POST(
     }
 
     const now = new Date().toISOString()
-    const { data: membership, error: memberError } = await service
+
+    // Soft-removed (or stale) rows still occupy (family_id, user_id); reactivate instead of insert.
+    const { data: priorMembership } = await service
       .from('family_members')
-      .insert({
-        family_id: invitation.family_id,
-        user_id: user.id,
-        role: invitation.role,
-        status: 'active',
-        joined_at: now,
-      })
       .select('*')
-      .single()
+      .eq('family_id', invitation.family_id)
+      .eq('user_id', user.id)
+      .maybeSingle()
+
+    if (priorMembership?.status === 'active') {
+      return errorResponse('You are already a member of this family', 400)
+    }
+
+    let membership = priorMembership
+    let memberError: { message: string } | null = null
+
+    if (priorMembership) {
+      const { data, error } = await service
+        .from('family_members')
+        .update({
+          role: invitation.role,
+          status: 'active',
+          joined_at: now,
+        })
+        .eq('id', priorMembership.id)
+        .select('*')
+        .single()
+      membership = data
+      memberError = error
+    } else {
+      const { data, error } = await service
+        .from('family_members')
+        .insert({
+          family_id: invitation.family_id,
+          user_id: user.id,
+          role: invitation.role,
+          status: 'active',
+          joined_at: now,
+        })
+        .select('*')
+        .single()
+      membership = data
+      memberError = error
+    }
 
     if (memberError || !membership) {
-      return errorResponse(memberError?.message || 'Failed to join family', 400)
+      const msg = memberError?.message || ''
+      if (msg.includes('family_members_family_user_unique')) {
+        return errorResponse('You are already a member of this family', 400)
+      }
+      if (msg.includes('idx_family_members_one_active_per_user')) {
+        return errorResponse('You already belong to a family', 400)
+      }
+      return errorResponse(msg || 'Failed to join family', 400)
     }
 
     await service

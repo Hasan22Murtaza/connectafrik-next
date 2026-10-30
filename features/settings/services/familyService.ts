@@ -7,6 +7,7 @@ import type {
   FamilyMemberRole,
   ParentalControls,
   SafetyAlert,
+  ScreenTimeDailyHistory,
   ScreenTimeRules,
 } from '@/shared/types/family'
 
@@ -97,12 +98,13 @@ export const familyService = {
   updateControls: (memberId: string, updates: Partial<ParentalControls>) =>
     apiClient.patch<ParentalControls>(`/api/family/members/${memberId}/controls`, updates),
 
-  getScreenTime: (memberId: string) =>
+  getScreenTime: (memberId: string, days = 7) =>
     apiClient.get<{
       rules: ScreenTimeRules
       used_minutes_today: number
       evaluation: { allowed: boolean; message?: string }
-    } | null>(`/api/family/members/${memberId}/screen-time`),
+      history: ScreenTimeDailyHistory
+    } | null>(`/api/family/members/${memberId}/screen-time`, { days }),
 
   updateScreenTime: (memberId: string, updates: Partial<ScreenTimeRules>) =>
     apiClient.patch<ScreenTimeRules>(`/api/family/members/${memberId}/screen-time`, updates),
