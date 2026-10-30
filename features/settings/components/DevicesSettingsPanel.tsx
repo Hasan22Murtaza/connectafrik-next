@@ -12,7 +12,7 @@ import {
 import toast from 'react-hot-toast'
 import { useConfirmDialog } from '@/shared/components/ui/ConfirmDialog'
 import { messageE2eeFlagOn } from '@/lib/message-e2ee/status'
-import { Divider, SettingsCard, SettingsSectionHeader } from './SettingsPrimitives'
+import { Divider, SettingsCard, SettingsPanelSkeleton, SettingsSectionHeader } from './SettingsPrimitives'
 
 type ListedAuthSession = {
   id: string
@@ -69,6 +69,10 @@ export function DevicesSettingsPanel() {
       cancelled = true
     }
   }, [])
+
+  if (sessionsLoading && authSessions.length === 0) {
+    return <SettingsPanelSkeleton variant="devices" />
+  }
 
   const handleRevokeAuthSession = async (sessionId: string) => {
     setRevokingSessionId(sessionId)

@@ -300,7 +300,7 @@ const GroupsPage: React.FC = () => {
   }, [shareModalState.postId, shareModalState.groupId]);
 
   return (
-    <div className="min-h-screen px-2 sm:px-6 py-5 w-full min-w-0">
+    <div className="min-h-screen  w-full min-w-0">
       <div>
         {/* Mobile Header */}
         <div className="lg:hidden mb-4">
@@ -374,9 +374,9 @@ const GroupsPage: React.FC = () => {
           </div>
         </div>
 
-        <div className="flex gap-4 ">
+        <div className="mx-auto flex min-h-screen gap-4">
           {/* Secondary Groups nav — sits beside the global icon rail */}
-          <aside className="sticky top-[73px] hidden h-[calc(100dvh-73px)]  shrink-0 self-start overflow-y-auto  bg-background  py-1 scrollbar-hover lg:block ">
+          <aside className="fixed top-[73px] px-4  hidden h-[calc(100dvh-73px)]  shrink-0 self-start overflow-y-auto  bg-background  py-4 md:block">
             <GroupsSidebar
               view={view}
               onViewChange={handleViewChange}
@@ -388,7 +388,7 @@ const GroupsPage: React.FC = () => {
 
 
           {/* Main Content */}
-          <div className="flex-1 min-w-0 ">
+          <div className="flex-1 max-w-full px-4 py-4  md:ml-74">
             {view === "feed" && (
               <div className="">
                 <h2 className="text-xl sm:text-2xl font-semibold text-content mb-4 sm:mb-6">

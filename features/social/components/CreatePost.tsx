@@ -98,6 +98,7 @@ const splitGroupPostBody = (text: string): { title: string; content: string } =>
 const VIDEO_REGEX = /\.(mp4|webm|ogg|mov)(\?|$)/i
 const MAX_FILES = 4
 const MAX_IMAGE_SIZE = 10 * 1024 * 1024
+const MAX_BACKGROUND_CHARACTERS = 250
 
 const CATEGORIES = [
   { value: 'general' as const, label: 'General', icon: '💬', active: 'bg-orange-50 border-orange-400 text-orange-500' },
@@ -217,6 +218,7 @@ const CreatePost: React.FC<CreatePostProps> = ({
     if (urls && urls.length > 0) return null
     return editData?.background_id ?? null
   })
+  const backgroundBeforeCharacterLimitRef = useRef<string | null>(null)
   const [showBackgroundModal, setShowBackgroundModal] = useState(false)
   const [visibility, setVisibility] = useState<PostVisibility>(() =>
     normalizePostVisibility(
@@ -317,6 +319,41 @@ const CreatePost: React.FC<CreatePostProps> = ({
   useEffect(() => {
     if (hasMedia) setSelectedBackgroundId(null)
   }, [hasMedia])
+
+  const handleContentChange = (nextContent: string) => {
+    setContent(nextContent)
+
+    if (nextContent.length > MAX_BACKGROUND_CHARACTERS) {
+      if (selectedBackgroundId) {
+        backgroundBeforeCharacterLimitRef.current = selectedBackgroundId
+        setSelectedBackgroundId(null)
+      }
+      return
+    }
+
+    if (!selectedBackgroundId && backgroundBeforeCharacterLimitRef.current && !hasMedia) {
+      setSelectedBackgroundId(backgroundBeforeCharacterLimitRef.current)
+      backgroundBeforeCharacterLimitRef.current = null
+    }
+  }
+
+  const handleBackgroundSelection = (backgroundId: string | null) => {
+    if (backgroundId === null) {
+      backgroundBeforeCharacterLimitRef.current = null
+      setSelectedBackgroundId(null)
+      setShowBackgroundModal(false)
+      return
+    }
+
+    if (content.length > MAX_BACKGROUND_CHARACTERS) {
+      toast.error(`Backgrounds are limited to ${MAX_BACKGROUND_CHARACTERS} characters`)
+      return
+    }
+
+    backgroundBeforeCharacterLimitRef.current = null
+    setSelectedBackgroundId(backgroundId)
+    setShowBackgroundModal(false)
+  }
 
   useEffect(() => {
     if (isEditMode) return
@@ -680,7 +717,7 @@ const CreatePost: React.FC<CreatePostProps> = ({
       <div
         className={
           useModalShell
-            ? 'fixed bottom-0 left-0 right-0 z-[10051] flex min-h-0 max-h-[92dvh] flex-col overflow-hidden rounded-xl  bg-surface shadow-[0_-8px_40px_rgba(0,0,0,0.18)] sm:bottom-auto sm:left-1/2 sm:right-auto sm:top-1/2 sm:max-h-[min(88vh,720px)] sm:w-full sm:max-w-[500px] sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-xl sm:shadow-2xl'
+            ? 'fixed bottom-0 left-0 right-0 z-[10051] flex min-h-0 max-h-[92dvh] flex-col overflow-hidden rounded-xl  bg-surface shadow-[0_-8px_40px_rgba(0,0,0,0.18)] sm:bottom-auto sm:left-1/2 sm:right-auto sm:top-1/2 sm:max-h-[min(88vh,720px)] sm:w-full sm:max-w-[650px] sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-xl sm:shadow-2xl'
             : 'relative overflow-visible rounded-xl border border-border-subtle bg-surface shadow-sm'
         }
         {...(useModalShell ? { 'data-edit-modal': '' } : {})}
@@ -823,7 +860,7 @@ const CreatePost: React.FC<CreatePostProps> = ({
               ref={contentRef}
               placeholder={`What's on your mind, ${firstName}?`}
               value={content}
-              onChange={(e) => { setContent(e.target.value); autoResize() }}
+              onChange={(e) => { handleContentChange(e.target.value); autoResize() }}
               className={`w-full text-sm sm:text-base border-0 focus:outline-none focus:ring-0 resize-none bg-transparent p-0 leading-relaxed ${
                 selectedBgPreset
                   ? `${selectedBgPreset.textClass} ${selectedBgPreset.placeholderClass}`
@@ -890,7 +927,7 @@ const CreatePost: React.FC<CreatePostProps> = ({
                       <button
                         type="button"
                         title="No background"
-                        onClick={() => { setSelectedBackgroundId(null); setShowBackgroundModal(false) }}
+                        onClick={() => handleBackgroundSelection(null)}
                         className={`flex aspect-square items-center justify-center rounded-xl border-2 bg-surface transition-transform active:scale-95 ${
                           selectedBackgroundId === null ? 'border-[var(--african-orange)] ring-2 ring-orange-200' : 'border-border'
                         }`}
@@ -902,7 +939,7 @@ const CreatePost: React.FC<CreatePostProps> = ({
                           key={p.id}
                           type="button"
                           title={p.label}
-                          onClick={() => { setSelectedBackgroundId(p.id); setShowBackgroundModal(false) }}
+                          onClick={() => handleBackgroundSelection(p.id)}
                           className={`aspect-square rounded-xl border-2 transition-transform active:scale-95 ${
                             selectedBackgroundId === p.id ? 'border-[var(--african-orange)] ring-2 ring-orange-200' : 'border-border-subtle'
                           }`}

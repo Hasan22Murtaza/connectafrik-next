@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import {
   UserPlus, UserCheck, MessageCircle, Phone, Video, MoreHorizontal, Edit,
-  MapPin, Calendar, Users,
+  MapPin, Calendar, Users, Eye, X,
 } from '@/shared/icons'
 import { useAuth } from '@/contexts/AuthContext'
 import { useProductionChat } from '@/contexts/ProductionChatContext'
@@ -13,7 +13,7 @@ import { friendRequestService } from '@/features/social/services/friendRequestSe
 import { apiClient } from '@/lib/api-client'
 import toast from 'react-hot-toast'
 import { formatDistanceToNow } from 'date-fns'
-import { UserProfileWithVisibility, MutualFriend } from '@/shared/types'
+import { UserProfileWithVisibility, MutualFriend, Friend } from '@/shared/types'
 import {
   canViewProfile, canComment, canFollow, canSendMessage,
   getVisibleProfileFields, type VisibleProfileFieldsInput,
@@ -28,7 +28,7 @@ import AboutTab from './components/AboutTab'
 import PhotosTab from './components/PhotosTab'
 import FriendsTab from './components/FriendsTab'
 import FriendsSidebar, { type FriendsSection } from '@/features/social/components/FriendsSidebar'
-import { CheckCheckIcon } from 'lucide-react'
+import { CheckCheckIcon, Fullscreen } from 'lucide-react'
 
 interface PostWithAuthor {
   id: string; content: string
@@ -229,10 +229,12 @@ const UserProfilePage: React.FC = () => {
   const [showCommentsFor, setShowCommentsFor] = useState<string | null>(null)
   const [shareModalState, setShareModalState] = useState<{ open: boolean; postId: string | null }>({ open: false, postId: null })
   const [activeTab, setActiveTab] = useState<TabId>('posts')
-  const [userFriends, setUserFriends] = useState<any[]>([])
+  const [bioExpanded, setBioExpanded] = useState(false)
+  const [userFriends, setUserFriends] = useState<Friend[]>([])
   const [friendshipStatus, setFriendshipStatus] = useState<FriendStatus>('none')
   const [friendRequestId, setFriendRequestId] = useState<string | null>(null)
   const [friendLoading, setFriendLoading] = useState(false)
+  const [bannerViewerOpen, setBannerViewerOpen] = useState(false)
 
   const profileLivesInLine = useMemo(() => {
     if (!profile) return ''
@@ -241,6 +243,22 @@ const UserProfilePage: React.FC = () => {
 
   useEffect(() => { if (profileIdentifier) fetchUserProfile() }, [profileIdentifier])
   useEffect(() => { if (profile && user && user.id !== profile.id) checkFollowStatus() }, [profile?.id, user?.id])
+
+  useEffect(() => {
+    if (!bannerViewerOpen) return
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setBannerViewerOpen(false)
+    }
+
+    document.body.style.overflow = 'hidden'
+    window.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      document.body.style.overflow = ''
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [bannerViewerOpen])
 
   const loadFriendshipStatus = useCallback(async (ownerId: string) => {
     if (!user?.id || user.id === ownerId) {
@@ -273,12 +291,15 @@ const UserProfilePage: React.FC = () => {
     setTabPhotos([])
     setAboutForTab(null)
     setUserFriends([])
+    setMutualFriends([])
+    setMutualFriendsCount(0)
     setFriendshipStatus('none')
     setFriendRequestId(null)
     setPostsTabFetched(false)
     setPhotosTabFetched(false)
     setFriendsTabFetched(false)
     setAboutTabFetched(false)
+    setBioExpanded(false)
   }, [profileIdentifier, profile?.id])
 
   useEffect(() => {
@@ -382,9 +403,11 @@ const UserProfilePage: React.FC = () => {
         ; (async () => {
           setFriendsTabLoading(true)
           try {
-            const res = await apiClient.get<{ data: any[] }>(`/api/users/${identifierApiPath}/friends`)
+            const friendsRes = await apiClient.get<{ data: Friend[] }>(
+              `/api/users/${identifierApiPath}/friends`
+            )
             if (!cancelled) {
-              setUserFriends(res.data || [])
+              setUserFriends(friendsRes.data || [])
               setFriendsTabFetched(true)
             }
           } catch (e) {
@@ -451,7 +474,6 @@ const UserProfilePage: React.FC = () => {
 
       if (user && !isOwn) {
         await checkFollowStatus()
-        await fetchMutualFriends(user.id, ownerId)
         await loadFriendshipStatus(ownerId)
       }
     } catch (error: any) {
@@ -460,13 +482,38 @@ const UserProfilePage: React.FC = () => {
     } finally { setLoading(false) }
   }
 
-  const fetchMutualFriends = async (_uid: string, tid: string) => {
-    try {
-      const res = await apiClient.get<{ count: number; data: MutualFriend[] }>(`/api/friends/mutual/${tid}`, { limit: 6 })
-      setMutualFriendsCount(res.count || 0)
-      setMutualFriends(res.data || [])
-    } catch (e) { console.error('Mutual friends error:', e) }
-  }
+  useEffect(() => {
+    if (!profile || !user || user.id === profile.id) {
+      setMutualFriends([])
+      setMutualFriendsCount(0)
+      return
+    }
+
+    const profileVisibility = profile.profile_visibility || 'public'
+    if (!canViewProfile(user.id, profile.id, profileVisibility, isMutual)) return
+
+    let cancelled = false
+    ;(async () => {
+      try {
+        const res = await apiClient.get<{ count: number; data: MutualFriend[] }>(
+          `/api/friends/mutual/${profile.id}`,
+          { limit: 50 }
+        )
+        if (!cancelled) {
+          setMutualFriendsCount(res.count || 0)
+          setMutualFriends(res.data || [])
+        }
+      } catch (error) {
+        console.error('Mutual friends error:', error)
+        if (!cancelled) {
+          setMutualFriends([])
+          setMutualFriendsCount(0)
+        }
+      }
+    })()
+
+    return () => { cancelled = true }
+  }, [profile?.id, profile?.profile_visibility, user?.id, isMutual])
 
   const checkFollowStatus = async () => {
     if (!user || !profile) return
@@ -692,7 +739,7 @@ const UserProfilePage: React.FC = () => {
       <main className="flex-1 max-w-full py-3 sm:py-6 pr-4 md:ml-64">
         <div className="mt-4">
           <div className="overflow-hidden rounded-2xl bg-surface shadow-card">
-            <div className="relative h-32 bg-gradient-to-br from-orange-200 via-amber-100 to-sky-100 sm:h-48 lg:h-56">
+            <div className="relative h-34 bg-gradient-to-br from-orange-200 via-amber-100 to-sky-100 sm:h-48 lg:h-56">
               <div className="absolute inset-0 overflow-hidden">
                 <img
                   src={profile.banner_image || "/assets/images/no-cover.svg"}
@@ -705,6 +752,15 @@ const UserProfilePage: React.FC = () => {
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent" />
               </div>
+              <button
+                type="button"
+                onClick={() => setBannerViewerOpen(true)}
+                aria-label="View cover photo"
+                title="View cover photo"
+                className="absolute right-3 top-3 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-black/45 text-gray-400 shadow-sm backdrop-blur-sm transition hover:bg-black/65 focus:outline-none focus:ring-2 focus:ring-gray-400"
+              >
+                <Fullscreen className="h-5 w-5" aria-hidden="true" />
+              </button>
               <div className="absolute -bottom-8 left-4 z-10 h-[76px] w-[76px] overflow-hidden rounded-2xl border-2 border-white bg-surface shadow-card sm:left-5 sm:h-[88px] sm:w-[88px]">
                 {profile.avatar_url ? (
                   <img src={profile.avatar_url} alt={profile.full_name} className="h-full w-full object-cover" />
@@ -745,11 +801,11 @@ const UserProfilePage: React.FC = () => {
                       onClick={handleFollow}
                       disabled={followLoading}
                       aria-label={isFollowing ? 'Tapped in' : 'Tap in'}
-                      title={isFollowing ? 'Tapped in' : 'Tap in'}
+                      title={isFollowing ? 'UnTap in' : 'Tap in'}
                       className={`${btnBase} w-9 px-0 sm:w-auto sm:px-4 disabled:opacity-50 ${isFollowing ? 'bg-[#e4e6eb] text-content hover:bg-[#d8dadf]' : 'bg-[#F97316] text-white hover:bg-[#ea580c]'}`}
                     >
                       {followLoading ? <Spinner /> : isFollowing ? <UserCheck className="h-4 w-4 shrink-0" /> : <UserPlus className="h-4 w-4 shrink-0" />}
-                      <span className="hidden sm:inline">{isFollowing ? 'Tapped In' : 'Tap In'}</span>
+                      <span className="hidden sm:inline">{isFollowing ? 'UnTap In' : 'Tap In'}</span>
                     </button>
                   )}
                   {showFriendRequestBtn && (
@@ -789,9 +845,22 @@ const UserProfilePage: React.FC = () => {
                 </div>
 
                 {profile.bio && (
-                  <p className="mt-1 line-clamp-2 max-w-2xl break-words text-sm text-content-secondary">
-                    {profile.bio}
-                  </p>
+                  <div className="mt-1 max-w-2xl">
+                    <p className="break-words text-sm text-content-secondary">
+                      {bioExpanded || profile.bio.length <= 120
+                        ? profile.bio
+                        : `${profile.bio.slice(0, 220).trimEnd()}...`}{' '}
+                    {profile.bio.length > 120 && (
+                      <button
+                        type="button"
+                        onClick={() => setBioExpanded((expanded) => !expanded)}
+                        className="whitespace-nowrap text-sm font-medium text-primary-600 underline-offset-2 transition-colors hover:text-primary-700 hover:underline focus:outline-none focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-primary-500"
+                      >
+                        {bioExpanded ? 'Read less' : 'Read more'}
+                      </button>
+                    )}
+                    </p>
+                  </div>
                 )}
 
 
@@ -856,8 +925,26 @@ const UserProfilePage: React.FC = () => {
             <div className={`w-full lg:w-[300px] flex-shrink-0 space-y-2 sm:space-y-4 lg:sticky lg:top-20 lg:self-start ${activeTab === 'posts' ? 'hidden lg:block' : activeTab === 'about' || activeTab === 'photos' || activeTab === 'friends' ? 'hidden lg:block' : ''}`}>
               <div className="bg-surface sm:rounded-2xl shadow-card p-4">
                 <h2 className="text-base sm:text-lg font-semibold text-content mb-3">Personal details</h2>
-                {profile.bio && <p className="text-sm text-content leading-relaxed mb-3  line-clamp-4">{profile.bio}</p>}
-                <div className="space-y-2.5">
+                {profile.bio && (
+                  <div className="mt-1 max-w-2xl">
+                    <p className="break-words text-sm text-content-secondary">
+                      {bioExpanded || profile.bio.length <= 120
+                        ? profile.bio
+                        : `${profile.bio.slice(0, 120).trimEnd()}...`}{' '}
+                    {profile.bio.length > 120 && (
+                      <button
+                        type="button"
+                        onClick={() => setBioExpanded((expanded) => !expanded)}
+                        className="whitespace-nowrap text-sm font-medium text-primary-600 underline-offset-2 transition-colors hover:text-primary-700 hover:underline focus:outline-none focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-primary-500"
+                      >
+                        {bioExpanded ? 'Read less' : 'Read more'}
+                      </button>
+                    )}
+                    </p>
+                  </div>
+                )}
+
+                <div className="space-y-2.5 pt-2">
                   {visibleFields.country && profile.country && <DetailRow icon={MapPin}>From <span className="font-semibold">{profile.country}</span></DetailRow>}
                   {visibleFields.location && profileLivesInLine ? (
                     <DetailRow icon={MapPin}>
@@ -891,7 +978,13 @@ const UserProfilePage: React.FC = () => {
                       </button>
                     ))}
                   </div>
-                  {mutualFriendsCount > 6 && <p onClick={() => setActiveTab('friends')} className="text-sm text-[#F97316] text-center mt-3 hover:underline cursor-pointer">See all mutual friends</p>}
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('friends')}
+                    className="mt-3 w-full text-center text-sm font-medium text-[#F97316] hover:underline"
+                  >
+                    See all friends
+                  </button>
                 </div>
               )}
 
@@ -958,7 +1051,11 @@ const UserProfilePage: React.FC = () => {
                     <Spinner className="w-8 h-8 text-[#F97316]" />
                   </div>
                 ) : (
-                  <FriendsTab friends={userFriends} isOwnProfile={Boolean(isOwnProfile)} />
+                  <FriendsTab
+                    friends={userFriends}
+                    mutualFriends={mutualFriends}
+                    isOwnProfile={Boolean(isOwnProfile)}
+                  />
                 )
               )}
             </div>
@@ -975,6 +1072,35 @@ const UserProfilePage: React.FC = () => {
           members={members.map((m) => ({ id: m.id, name: m.name, avatar_url: m.avatar_url }))}
           onSendToMembers={handleSendToMembers}
         />
+      )}
+
+      {bannerViewerOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Cover photo viewer"
+          onClick={() => setBannerViewerOpen(false)}
+        >
+          <button
+            type="button"
+            onClick={() => setBannerViewerOpen(false)}
+            aria-label="Close cover photo viewer"
+            className="absolute right-4 top-4 z-10 flex h-10 w-10 items-center justify-center rounded-full text-white transition hover:bg-white/15 focus:outline-none focus:ring-2 focus:ring-white"
+          >
+            <X className="h-6 w-6" aria-hidden="true" />
+          </button>
+          <img
+            src={profile.banner_image || "/assets/images/no-cover.svg"}
+            alt={`${profile.full_name}'s cover photo`}
+            onError={(event) => {
+              if (event.currentTarget.src.endsWith("/assets/images/no-cover.svg")) return;
+              event.currentTarget.src = "/assets/images/no-cover.svg";
+            }}
+            className="max-h-full max-w-full rounded-lg object-contain shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+          />
+        </div>
       )}
     </div>
   )

@@ -3,6 +3,7 @@
 import React from 'react'
 import { useRouter } from 'next/navigation'
 import { Users } from '@/shared/icons'
+import type { Friend, MutualFriend } from '@/shared/types'
 
 const EmptyState = ({ icon: Icon, title, sub }: { icon: React.ElementType; title: string; sub: string }) => (
   <div className="text-center py-14">
@@ -15,33 +16,94 @@ const EmptyState = ({ icon: Icon, title, sub }: { icon: React.ElementType; title
 )
 
 interface FriendsTabProps {
-  friends: any[]
+  friends: Friend[]
+  mutualFriends: MutualFriend[]
   isOwnProfile: boolean
 }
 
-const FriendsTab: React.FC<FriendsTabProps> = ({ friends, isOwnProfile }) => {
+const FriendsTab: React.FC<FriendsTabProps> = ({ friends, mutualFriends, isOwnProfile }) => {
   const router = useRouter()
+  const [view, setView] = React.useState<'friends' | 'mutual'>('friends')
+// Convert mutual friends to Friend format
+const mutualFriendRows = React.useMemo(
+  () =>
+    mutualFriends.map((friend) => ({
+      id: friend.user_id,
+      username: friend.username,
+      full_name: friend.full_name,
+      avatar_url: friend.avatar_url ?? undefined,
+    })),
+  [mutualFriends]
+)
+
+// Merge both arrays and remove duplicates
+const allFriends = React.useMemo(() => {
+  const uniqueFriends = new Map<string, Friend>()
+
+  friends.forEach((friend) => {
+    uniqueFriends.set(friend.id, friend)
+  })
+
+  mutualFriendRows.forEach((friend) => {
+    if (!uniqueFriends.has(friend.id)) {
+      uniqueFriends.set(friend.id, friend)
+    }
+  })
+
+  return Array.from(uniqueFriends.values())
+}, [friends, mutualFriendRows])
+
+// Display respective arrays
+const displayedFriends =
+  view === 'friends' ? allFriends : mutualFriendRows
+  
+  const title = view === 'friends' ? 'Friends' : 'Mutual Friends'
 
   return (
     <div className="bg-white sm:rounded-2xl shadow-card overflow-hidden">
       <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-gray-200">
-        <h2 className="text-lg sm:text-xl font-semibold text-gray-600">Friends</h2>
-        {friends.length > 0 && (
+        <h2 className="text-lg sm:text-xl font-semibold text-gray-600">{title}</h2>
+        {displayedFriends.length > 0 && (
           <span className="text-[13px] sm:text-sm text-gray-500">
-            {friends.length} {friends.length === 1 ? 'friend' : 'friends'}
+            {displayedFriends.length} {displayedFriends.length === 1 ? 'friend' : 'friends'}
           </span>
         )}
       </div>
+      {!isOwnProfile && (
+        <div className="flex gap-2 border-b border-gray-200 px-4 pt-3 sm:px-6">
+          {([
+            { key: 'friends', label: 'Friends' },
+            { key: 'mutual', label: 'Mutual Friends' },
+          ] as const).map((option) => (
+            <button
+              key={option.key}
+              type="button"
+              onClick={() => setView(option.key)}
+              className={`border-b-2 px-2 pb-3 text-sm font-semibold transition-colors ${
+                view === option.key
+                  ? 'border-[#F97316] text-[#F97316]'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      )}
       <div className="p-2 sm:p-4">
-        {friends.length === 0 ? (
+        {displayedFriends.length === 0 ? (
           <EmptyState
             icon={Users}
-            title="No friends yet"
-            sub={isOwnProfile ? 'Your friends will appear here.' : 'This user has no friends to show.'}
+            title={view === 'friends' ? 'No friends yet' : 'No mutual friends'}
+            sub={
+              view === 'friends'
+                ? isOwnProfile ? 'Your friends will appear here.' : 'This user has no friends to show.'
+                : 'You do not have any mutual friends with this user.'
+            }
           />
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 sm:gap-3">
-            {friends.map((f: any) => (
+            {displayedFriends.map((f) => (
               <button
                 key={f.id}
                 onClick={() => router.push(`/user/${f.id}`)}

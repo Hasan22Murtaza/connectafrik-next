@@ -32,23 +32,23 @@ export async function fetchConnectionsForOwner(
     })
   }
 
+  // The Friends tab includes both accepted friends and mutual follows.
+  // Mutual-friends-only filtering is handled by the dedicated mutual endpoint.
   const [{ data: followersData }, { data: followingData }] = await Promise.all([
     supabase.from('follows').select('follower_id').eq('following_id', ownerId),
     supabase.from('follows').select('following_id').eq('follower_id', ownerId),
   ])
 
   if (followersData && followingData) {
-    const followerIds = new Set(followersData.map((f: { follower_id: string }) => f.follower_id))
-    const mutualFollowIds = followingData
-      .filter((f: { following_id: string }) => followerIds.has(f.following_id))
-      .map((f: { following_id: string }) => f.following_id)
-
-    mutualFollowIds.forEach((id: string) => {
-      if (!friendsMap.has(id)) {
-        friendsMap.set(id, null)
-        friendIds.push(id)
-      }
-    })
+    const followerIds = new Set(followersData.map((row: { follower_id: string }) => row.follower_id))
+    followingData
+      .filter((row: { following_id: string }) => followerIds.has(row.following_id))
+      .forEach((row: { following_id: string }) => {
+        if (!friendsMap.has(row.following_id)) {
+          friendsMap.set(row.following_id, null)
+          friendIds.push(row.following_id)
+        }
+      })
   }
 
   if (friendIds.length === 0) {

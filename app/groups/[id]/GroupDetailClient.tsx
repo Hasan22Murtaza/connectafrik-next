@@ -597,7 +597,7 @@ const GroupDetailPage: React.FC = () => {
   return (
     <div className="mx-auto flex min-h-screen  gap-4 px-2 py-5 sm:gap-6 sm:px-6">
 
-      <aside className="sticky top-[73px] hidden h-[calc(100dvh-73px)] w-64 shrink-0 self-start overflow-y-auto border-r border-border-subtle bg-background px-3 py-1 scrollbar-hover lg:block xl:w-72">
+      <aside className="fixed top-[73px] px-4  hidden h-[calc(100dvh-73px)]  shrink-0 self-start overflow-y-auto  bg-background  py-4 md:block">
         <GroupsSidebar
           view="group-detail"
           onViewChange={(nextView) =>
@@ -610,7 +610,7 @@ const GroupDetailPage: React.FC = () => {
         />
       </aside>
 
-      <main className="min-w-0 flex-1">
+      <main className="flex-1 max-w-full px-4 py-4  md:ml-74">
         <div className="bg-surface pt-2 pb-0 px-2 rounded-2xl shadow-sm overflow-hidden">
         {/* Banner */}
         <div className="relative">
@@ -1180,7 +1180,7 @@ const GroupDetailPage: React.FC = () => {
             {/* Right Sidebar */}
             <div className="lg:col-span-4 space-y-4">
               {/* Stats Card */}
-              <div className="sticky top-35 rounded-lg border border-border bg-surface p-4 shadow-sm">
+              <div className="sticky top-20 rounded-lg border border-border bg-surface p-4 shadow-sm">
                 <h3 className="mb-4 font-semibold text-content">Group Stats</h3>
                 <div className="space-y-3 text-sm">
                   <div className="flex items-center justify-between">

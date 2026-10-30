@@ -2,12 +2,15 @@
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, ChevronLeft, ChevronRight, Play } from '@/shared/icons'
-import { getStoryRecommendations, getUserStories, Story } from '@/features/social/services/storiesService'
+import { Camera, ChevronLeft, ChevronRight, Play, Plus, Type, Video, X } from '@/shared/icons'
+import { createStory, getStoryRecommendations, getUserStories, Story } from '@/features/social/services/storiesService'
 import { useAuth } from '@/contexts/AuthContext'
 import { useProfile } from '@/shared/hooks/useProfile'
+import { useFileUpload } from '@/shared/hooks/useFileUpload'
+import { toast } from 'react-hot-toast'
 import StoryViewer from './StoryViewer'
 import { storyTextBackgroundStyle } from './storyGradientStyle'
+import { ListFilter } from 'lucide-react'
 
 const parseTextOverlay = (overlay: string | object | null | undefined) => {
   if (!overlay) return null
@@ -88,7 +91,7 @@ const StoryCard: React.FC<StoryCardProps> = React.memo(({ story, onClick, hasUns
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
-      <div className="relative w-[90px] sm:w-[112px] h-[160px] sm:h-[200px] rounded-xl overflow-hidden shadow-md hover:shadow-lg transition-shadow cursor-pointer">
+      <div className="relative w-[90px] sm:w-[112px] h-[170px] sm:h-[180px] rounded-[22px] overflow-hidden shadow-md hover:shadow-lg transition-shadow cursor-pointer">
         {isTextStory ? (
           <div
             className="absolute inset-0 flex items-center justify-center p-2 sm:p-3"
@@ -171,11 +174,15 @@ interface CreateStoryCardProps {
   userStories: Story[]
   profile: any
   user: any
+  onCreate:() => void
   onView: () => void
-  onCreate: () => void
+  onMediaSelect: (file: File, mediaType: 'image' | 'video') => void
+  onTextCreate: () => void
 }
 
-const CreateStoryCard: React.FC<CreateStoryCardProps> = React.memo(({ userStories, profile, user, onView, onCreate }) => {
+const CreateStoryCard: React.FC<CreateStoryCardProps> = React.memo(({ userStories, profile, user, onView, onCreate, onMediaSelect, onTextCreate }) => {
+  const imageInputRef = useRef<HTMLInputElement>(null)
+  const videoInputRef = useRef<HTMLInputElement>(null)
   const hasStories = userStories.length > 0
   const latestStory = userStories[0]
   const avatarUrl = profile?.avatar_url || user?.user_metadata?.avatar_url
@@ -206,7 +213,7 @@ const CreateStoryCard: React.FC<CreateStoryCardProps> = React.memo(({ userStorie
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
       >
-        <div className="relative w-[90px] sm:w-[112px] h-[160px] sm:h-[200px] rounded-xl overflow-hidden  hover:shadow-lg transition-shadow">
+        <div className="relative w-[90px] sm:w-[112px] h-[160px] sm:h-[180px] rounded-[22px] overflow-hidden  hover:shadow-lg transition-shadow">
           <button onClick={onView} className="absolute inset-0 cursor-pointer">
             {isTextStory ? (
               <div
@@ -254,7 +261,7 @@ const CreateStoryCard: React.FC<CreateStoryCardProps> = React.memo(({ userStorie
           </div>
 
           <button
-            onClick={(e) => { e.stopPropagation(); onCreate() }}
+            onClick={onCreate}
             className="absolute top-1.5 sm:top-2 right-1.5 sm:right-2 z-20 w-6 h-6 sm:w-7 sm:h-7 bg-primary-500 hover:bg-primary-600 rounded-full flex items-center justify-center border-2 border-white shadow-lg transition-colors"
           >
             <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white" />
@@ -269,29 +276,51 @@ const CreateStoryCard: React.FC<CreateStoryCardProps> = React.memo(({ userStorie
   }
 
   return (
-    <button onClick={onCreate} className="flex-shrink-0 w-[90px] sm:w-[112px]">
-      <div className="relative w-[90px] sm:w-[112px] h-[160px] sm:h-[200px] rounded-xl overflow-hidden  cursor-pointer bg-surface border border-border">
-        <div className="absolute top-0 left-0 right-0 h-[110px] sm:h-[140px]">
-          {avatarUrl ? (
-            <img src={avatarUrl} alt="Your profile" className="w-full h-full object-cover" loading="lazy" />
-          ) : (
-            <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
-              <span className="text-content-tertiary text-3xl sm:text-4xl font-bold">{userName.charAt(0).toUpperCase()}</span>
-            </div>
-          )}
-        </div>
-
-        <div className="absolute top-[92px] sm:top-[120px] left-1/2 -translate-x-1/2 z-10">
-          <div className=" group   w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center bg-[#FF6900]  shadow-md duration-300 transition-colors">
-            <Plus className="  w-5 h-5 sm:w-6 sm:h-6 text-white" />
+    <div className="flex-shrink-0 w-[116px] sm:w-[128px]">
+      <div className="relative h-[170px] sm:h-[180px] rounded-[22px] overflow-hidden bg-surface border border-[#eadfd7] shadow-sm">
+        <button type="button" onClick={hasStories ? onView : undefined}  className="absolute inset-x-0 top-0 h-[136px] sm:h-[148px] text-left">
+          <div className="absolute inset-x-0 top-0 h-[96px] sm:h-[108px]" />
+          <div className="absolute top-3 sm:top-4 left-1/2 -translate-x-1/2 w-[54px] h-[54px] sm:w-[60px] sm:h-[60px] rounded-full p-[3px] bg-white shadow-sm">
+            {avatarUrl ? (
+              <img src={avatarUrl} alt={userName} className="w-full h-full rounded-full object-cover" loading="lazy" />
+            ) : (
+              <div className="w-full h-full rounded-full bg-gradient-to-br from-primary-500 to-orange-400 flex items-center justify-center">
+                <span className="text-white text-lg font-bold">{userName.charAt(0).toUpperCase()}</span>
+              </div>
+            )}
           </div>
+          <div className="absolute top-[48px]  right-7 w-6 h-6 rounded-full bg-[#ff6900] border-2 border-white flex items-center justify-center shadow-sm">
+            <Plus className="w-3.5 h-3.5 text-white" />
+          </div>
+          <p className="absolute top-[85px]  inset-x-0 text-center text-[12px] sm:text-[13px] font-semibold text-content">
+            {hasStories ? 'Your story' : '+ Add Story'}
+          </p>
+        </button>
+
+        <div className="absolute bottom-2.5 left-2.5 right-2.5 h-9 rounded-full bg-[#f0f0fb] flex items-center justify-around">
+          <button type="button" aria-label="Add photo story" title="Add photo story" onClick={() => imageInputRef.current?.click()} className="p-1.5 text-content-secondary hover:text-primary-600 transition-colors">
+            <Camera className="w-[17px] h-[17px]" />
+          </button>
+          <button type="button" aria-label="Add video story" title="Add video story" onClick={() => videoInputRef.current?.click()} className="p-1.5 text-content-secondary hover:text-primary-600 transition-colors">
+            <Video className="w-[17px] h-[17px]" />
+          </button>
+          <button type="button" aria-label="Write text story" title="Write text story" onClick={onTextCreate} className="p-1.5 text-content-secondary hover:text-primary-600 transition-colors">
+            <ListFilter className="w-[17px] h-[17px]" />
+          </button>
         </div>
 
-        <div className="absolute bottom-0 left-0 right-0 h-[50px] sm:h-[60px] bg-surface flex items-end justify-center pb-2 sm:pb-3">
-          <p className="text-content text-[10px] sm:text-xs font-semibold text-center">Create story</p>
-        </div>
+        <input ref={imageInputRef} type="file" accept="image/*" className="hidden" onChange={(event) => {
+          const file = event.target.files?.[0]
+          if (file) onMediaSelect(file, 'image')
+          event.target.value = ''
+        }} />
+        <input ref={videoInputRef} type="file" accept="video/*" className="hidden" onChange={(event) => {
+          const file = event.target.files?.[0]
+          if (file) onMediaSelect(file, 'video')
+          event.target.value = ''
+        }} />
       </div>
-    </button>
+    </div>
   )
 })
 CreateStoryCard.displayName = 'CreateStoryCard'
@@ -299,7 +328,7 @@ const LoadingSkeleton: React.FC = React.memo(() => (
   <div className="bg-surface rounded-xl ">
     <div className="flex gap-1.5 sm:gap-2 overflow-hidden">
       {Array.from({ length: 5 }).map((_, index) => (
-        <div key={index} className="flex-shrink-0 w-[90px] sm:w-[112px] h-[160px] sm:h-[200px] bg-surface-tertiary rounded-xl animate-shimmer" />
+        <div key={index} className="flex-shrink-0 w-[90px] sm:w-[112px] h-[160px] sm:h-[180px] bg-surface-tertiary rounded-xl animate-shimmer" />
       ))}
     </div>
   </div>
@@ -311,6 +340,7 @@ const StoriesBar: React.FC = () => {
   const router = useRouter()
   const { user } = useAuth()
   const { profile } = useProfile()
+  const { uploadFile } = useFileUpload()
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const hasLoadedOnce = useRef(false)
 
@@ -323,6 +353,9 @@ const StoriesBar: React.FC = () => {
   const [viewerStories, setViewerStories] = useState<Story[]>([])
   const [showLeftArrow, setShowLeftArrow] = useState(false)
   const [showRightArrow, setShowRightArrow] = useState(false)
+  const [isTextDialogOpen, setIsTextDialogOpen] = useState(false)
+  const [textStory, setTextStory] = useState('')
+  const [isCreatingStory, setIsCreatingStory] = useState(false)
 
   const checkScrollPosition = useCallback(() => {
     const container = scrollContainerRef.current
@@ -471,6 +504,57 @@ const StoriesBar: React.FC = () => {
 
   const handleCreateStory = useCallback(() => router.push('/stories/create'), [router])
 
+  const handleMediaSelect = useCallback(async (file: File, mediaType: 'image' | 'video') => {
+    if (!user) return
+    setIsCreatingStory(true)
+    try {
+      const result = await uploadFile(file, {
+        bucket: mediaType === 'image' ? 'post-images' : 'post-videos',
+        compress: mediaType === 'image',
+      })
+      if (!result.url) throw new Error(result.error || 'Unable to upload this file')
+      const createdStory = await createStory({ media_url: result.url, media_type: mediaType })
+      window.dispatchEvent(new CustomEvent('story-created', { detail: createdStory }))
+      toast.success('Story created successfully')
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to create story')
+    } finally {
+      setIsCreatingStory(false)
+    }
+  }, [uploadFile, user])
+
+  const handleTextStoryCreate = useCallback(async () => {
+    const text = textStory.trim()
+    if (!text || isCreatingStory) return
+    setIsCreatingStory(true)
+    try {
+      const createdStory = await createStory({
+        caption: text,
+        text: text,
+        media_type: 'text',
+        background_color: '#2563eb',
+        text_overlay: JSON.stringify({
+          text,
+          fontSize: 24,
+          fontFamily: 'ui-sans-serif, system-ui, sans-serif',
+          color: '#FFFFFF',
+          backgroundColor: 'transparent',
+          align: 'center',
+          x: 50,
+          y: 50,
+        }),
+      })
+      window.dispatchEvent(new CustomEvent('story-created', { detail: createdStory }))
+      setTextStory('')
+      setIsTextDialogOpen(false)
+      toast.success('Story created successfully')
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to create story')
+    } finally {
+      setIsCreatingStory(false)
+    }
+  }, [isCreatingStory, textStory])
+
   const handleViewStory = useCallback((storyIndex: number) => {
     const selectedStory = stories[storyIndex]
     if (!selectedStory) return
@@ -547,10 +631,12 @@ const StoriesBar: React.FC = () => {
             user={user}
             onView={handleViewOwnStories}
             onCreate={handleCreateStory}
+            onMediaSelect={handleMediaSelect}
+            onTextCreate={() => setIsTextDialogOpen(true)}
           />
           {storyCards}
           {stories.length === 0 && (
-            <div className="flex-shrink-0 w-[90px] sm:w-[112px] h-[160px] sm:h-[200px] bg-surface-secondary rounded-xl flex items-center justify-center border border-dashed border-border">
+            <div className="flex-shrink-0 w-[90px] sm:w-[112px] h-[160px] sm:h-[180px] bg-surface-secondary rounded-xl flex items-center justify-center border border-dashed border-border">
               <p className="text-content-tertiary text-[10px] sm:text-xs text-center px-2">No stories<br />to show</p>
             </div>
           )}
@@ -563,6 +649,32 @@ const StoriesBar: React.FC = () => {
         stories={viewerStories}
         initialStoryIndex={selectedStoryIndex}
       />
+
+      {isTextDialogOpen && (
+        <div className="fixed inset-0 z-[10050] flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true" aria-labelledby="text-story-dialog-title">
+          <div className="w-full max-w-md rounded-2xl bg-surface p-5 shadow-xl" onClick={(event) => event.stopPropagation()}>
+            <div className="mb-4 flex items-center justify-between">
+              <h2 id="text-story-dialog-title" className="text-lg font-semibold text-content">Write a story</h2>
+              <button type="button" aria-label="Close dialog" onClick={() => setIsTextDialogOpen(false)} className="rounded-full p-1 text-content-secondary hover:bg-surface-secondary">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <textarea
+              autoFocus
+              value={textStory}
+              onChange={(event) => setTextStory(event.target.value.slice(0, 200))}
+              placeholder="Share what's on your mind..."
+              className="min-h-32 w-full resize-none rounded-xl border border-border bg-surface-secondary p-3 text-sm text-content outline-none focus:border-primary-500"
+            />
+            <div className="mt-4 flex justify-end gap-2">
+              <button type="button" onClick={() => setIsTextDialogOpen(false)} className="rounded-lg px-4 py-2 text-sm text-content-secondary hover:bg-surface-secondary">Cancel</button>
+              <button type="button" disabled={!textStory.trim() || isCreatingStory} onClick={handleTextStoryCreate} className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50">
+                {isCreatingStory ? 'Posting...' : 'Post story'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   )
 }

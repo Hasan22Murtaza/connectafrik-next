@@ -204,7 +204,7 @@ export function ProfileSettingsPanel() {
     }
   }
 
-  if (loading && !profile) return <SettingsPanelSkeleton />
+  if (loading && !profile) return <SettingsPanelSkeleton variant="profile" />
 
   const displayName = form.full_name || form.username || 'Your profile'
 
