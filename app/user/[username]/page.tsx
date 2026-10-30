@@ -13,7 +13,7 @@ import { friendRequestService } from '@/features/social/services/friendRequestSe
 import { apiClient } from '@/lib/api-client'
 import toast from 'react-hot-toast'
 import { formatDistanceToNow } from 'date-fns'
-import { UserProfileWithVisibility, MutualFriend } from '@/shared/types'
+import { UserProfileWithVisibility, MutualFriend, Friend } from '@/shared/types'
 import {
   canViewProfile, canComment, canFollow, canSendMessage,
   getVisibleProfileFields, type VisibleProfileFieldsInput,
@@ -230,7 +230,7 @@ const UserProfilePage: React.FC = () => {
   const [shareModalState, setShareModalState] = useState<{ open: boolean; postId: string | null }>({ open: false, postId: null })
   const [activeTab, setActiveTab] = useState<TabId>('posts')
   const [bioExpanded, setBioExpanded] = useState(false)
-  const [userFriends, setUserFriends] = useState<any[]>([])
+  const [userFriends, setUserFriends] = useState<Friend[]>([])
   const [friendshipStatus, setFriendshipStatus] = useState<FriendStatus>('none')
   const [friendRequestId, setFriendRequestId] = useState<string | null>(null)
   const [friendLoading, setFriendLoading] = useState(false)
@@ -291,6 +291,8 @@ const UserProfilePage: React.FC = () => {
     setTabPhotos([])
     setAboutForTab(null)
     setUserFriends([])
+    setMutualFriends([])
+    setMutualFriendsCount(0)
     setFriendshipStatus('none')
     setFriendRequestId(null)
     setPostsTabFetched(false)
@@ -401,9 +403,11 @@ const UserProfilePage: React.FC = () => {
         ; (async () => {
           setFriendsTabLoading(true)
           try {
-            const res = await apiClient.get<{ data: any[] }>(`/api/users/${identifierApiPath}/friends`)
+            const friendsRes = await apiClient.get<{ data: Friend[] }>(
+              `/api/users/${identifierApiPath}/friends`
+            )
             if (!cancelled) {
-              setUserFriends(res.data || [])
+              setUserFriends(friendsRes.data || [])
               setFriendsTabFetched(true)
             }
           } catch (e) {
@@ -470,7 +474,6 @@ const UserProfilePage: React.FC = () => {
 
       if (user && !isOwn) {
         await checkFollowStatus()
-        await fetchMutualFriends(user.id, ownerId)
         await loadFriendshipStatus(ownerId)
       }
     } catch (error: any) {
@@ -479,13 +482,38 @@ const UserProfilePage: React.FC = () => {
     } finally { setLoading(false) }
   }
 
-  const fetchMutualFriends = async (_uid: string, tid: string) => {
-    try {
-      const res = await apiClient.get<{ count: number; data: MutualFriend[] }>(`/api/friends/mutual/${tid}`, { limit: 6 })
-      setMutualFriendsCount(res.count || 0)
-      setMutualFriends(res.data || [])
-    } catch (e) { console.error('Mutual friends error:', e) }
-  }
+  useEffect(() => {
+    if (!profile || !user || user.id === profile.id) {
+      setMutualFriends([])
+      setMutualFriendsCount(0)
+      return
+    }
+
+    const profileVisibility = profile.profile_visibility || 'public'
+    if (!canViewProfile(user.id, profile.id, profileVisibility, isMutual)) return
+
+    let cancelled = false
+    ;(async () => {
+      try {
+        const res = await apiClient.get<{ count: number; data: MutualFriend[] }>(
+          `/api/friends/mutual/${profile.id}`,
+          { limit: 50 }
+        )
+        if (!cancelled) {
+          setMutualFriendsCount(res.count || 0)
+          setMutualFriends(res.data || [])
+        }
+      } catch (error) {
+        console.error('Mutual friends error:', error)
+        if (!cancelled) {
+          setMutualFriends([])
+          setMutualFriendsCount(0)
+        }
+      }
+    })()
+
+    return () => { cancelled = true }
+  }, [profile?.id, profile?.profile_visibility, user?.id, isMutual])
 
   const checkFollowStatus = async () => {
     if (!user || !profile) return
@@ -950,7 +978,13 @@ const UserProfilePage: React.FC = () => {
                       </button>
                     ))}
                   </div>
-                  {mutualFriendsCount > 6 && <p onClick={() => setActiveTab('friends')} className="text-sm text-[#F97316] text-center mt-3 hover:underline cursor-pointer">See all mutual friends</p>}
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('friends')}
+                    className="mt-3 w-full text-center text-sm font-medium text-[#F97316] hover:underline"
+                  >
+                    See all friends
+                  </button>
                 </div>
               )}
 
@@ -1017,7 +1051,11 @@ const UserProfilePage: React.FC = () => {
                     <Spinner className="w-8 h-8 text-[#F97316]" />
                   </div>
                 ) : (
-                  <FriendsTab friends={userFriends} isOwnProfile={Boolean(isOwnProfile)} />
+                  <FriendsTab
+                    friends={userFriends}
+                    mutualFriends={mutualFriends}
+                    isOwnProfile={Boolean(isOwnProfile)}
+                  />
                 )
               )}
             </div>
