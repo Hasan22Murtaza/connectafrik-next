@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import {
   UserPlus, UserCheck, MessageCircle, Phone, Video, MoreHorizontal, Edit,
-  MapPin, Calendar, Users,
+  MapPin, Calendar, Users, Eye, X,
 } from '@/shared/icons'
 import { useAuth } from '@/contexts/AuthContext'
 import { useProductionChat } from '@/contexts/ProductionChatContext'
@@ -28,7 +28,7 @@ import AboutTab from './components/AboutTab'
 import PhotosTab from './components/PhotosTab'
 import FriendsTab from './components/FriendsTab'
 import FriendsSidebar, { type FriendsSection } from '@/features/social/components/FriendsSidebar'
-import { CheckCheckIcon } from 'lucide-react'
+import { CheckCheckIcon, Fullscreen } from 'lucide-react'
 
 interface PostWithAuthor {
   id: string; content: string
@@ -234,6 +234,7 @@ const UserProfilePage: React.FC = () => {
   const [friendshipStatus, setFriendshipStatus] = useState<FriendStatus>('none')
   const [friendRequestId, setFriendRequestId] = useState<string | null>(null)
   const [friendLoading, setFriendLoading] = useState(false)
+  const [bannerViewerOpen, setBannerViewerOpen] = useState(false)
 
   const profileLivesInLine = useMemo(() => {
     if (!profile) return ''
@@ -242,6 +243,22 @@ const UserProfilePage: React.FC = () => {
 
   useEffect(() => { if (profileIdentifier) fetchUserProfile() }, [profileIdentifier])
   useEffect(() => { if (profile && user && user.id !== profile.id) checkFollowStatus() }, [profile?.id, user?.id])
+
+  useEffect(() => {
+    if (!bannerViewerOpen) return
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setBannerViewerOpen(false)
+    }
+
+    document.body.style.overflow = 'hidden'
+    window.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      document.body.style.overflow = ''
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [bannerViewerOpen])
 
   const loadFriendshipStatus = useCallback(async (ownerId: string) => {
     if (!user?.id || user.id === ownerId) {
@@ -694,7 +711,7 @@ const UserProfilePage: React.FC = () => {
       <main className="flex-1 max-w-full py-3 sm:py-6 pr-4 md:ml-64">
         <div className="mt-4">
           <div className="overflow-hidden rounded-2xl bg-surface shadow-card">
-            <div className="relative h-32 bg-gradient-to-br from-orange-200 via-amber-100 to-sky-100 sm:h-48 lg:h-56">
+            <div className="relative h-34 bg-gradient-to-br from-orange-200 via-amber-100 to-sky-100 sm:h-48 lg:h-56">
               <div className="absolute inset-0 overflow-hidden">
                 <img
                   src={profile.banner_image || "/assets/images/no-cover.svg"}
@@ -707,6 +724,15 @@ const UserProfilePage: React.FC = () => {
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent" />
               </div>
+              <button
+                type="button"
+                onClick={() => setBannerViewerOpen(true)}
+                aria-label="View cover photo"
+                title="View cover photo"
+                className="absolute right-3 top-3 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-black/45 text-gray-400 shadow-sm backdrop-blur-sm transition hover:bg-black/65 focus:outline-none focus:ring-2 focus:ring-gray-400"
+              >
+                <Fullscreen className="h-5 w-5" aria-hidden="true" />
+              </button>
               <div className="absolute -bottom-8 left-4 z-10 h-[76px] w-[76px] overflow-hidden rounded-2xl border-2 border-white bg-surface shadow-card sm:left-5 sm:h-[88px] sm:w-[88px]">
                 {profile.avatar_url ? (
                   <img src={profile.avatar_url} alt={profile.full_name} className="h-full w-full object-cover" />
@@ -1008,6 +1034,35 @@ const UserProfilePage: React.FC = () => {
           members={members.map((m) => ({ id: m.id, name: m.name, avatar_url: m.avatar_url }))}
           onSendToMembers={handleSendToMembers}
         />
+      )}
+
+      {bannerViewerOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Cover photo viewer"
+          onClick={() => setBannerViewerOpen(false)}
+        >
+          <button
+            type="button"
+            onClick={() => setBannerViewerOpen(false)}
+            aria-label="Close cover photo viewer"
+            className="absolute right-4 top-4 z-10 flex h-10 w-10 items-center justify-center rounded-full text-white transition hover:bg-white/15 focus:outline-none focus:ring-2 focus:ring-white"
+          >
+            <X className="h-6 w-6" aria-hidden="true" />
+          </button>
+          <img
+            src={profile.banner_image || "/assets/images/no-cover.svg"}
+            alt={`${profile.full_name}'s cover photo`}
+            onError={(event) => {
+              if (event.currentTarget.src.endsWith("/assets/images/no-cover.svg")) return;
+              event.currentTarget.src = "/assets/images/no-cover.svg";
+            }}
+            className="max-h-full max-w-full rounded-lg object-contain shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+          />
+        </div>
       )}
     </div>
   )
