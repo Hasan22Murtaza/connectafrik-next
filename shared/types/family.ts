@@ -13,6 +13,8 @@ export type SafetyAlertType =
   | 'dangerous_content'
   | 'multiple_reports'
   | 'account_compromise'
+  | 'suspicious_link'
+  | 'excessive_usage'
 export type SafetyAlertSeverity = 'info' | 'low' | 'medium' | 'high' | 'critical'
 export type SafetyAlertStatus = 'open' | 'acknowledged' | 'resolved' | 'dismissed'
 export type ActivityEventType =

@@ -227,7 +227,7 @@ export async function createPostReport(
         : input.reason === 'harmful_or_dangerous'
           ? 'dangerous_content'
           : input.reason === 'hateful_or_abusive'
-            ? 'harassment'
+            ? 'bullying'
             : 'reported_content'
     await createSafetyAlertForUser(client, {
       userId: post.author_id,

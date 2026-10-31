@@ -451,12 +451,13 @@ export function FamilySettingsPanel() {
               <SettingsToggleRow
                 icon={Shield}
                 title="Friend request approval"
-                description="Require your approval before they accept friends"
+                description="Require your approval before they accept new contacts"
                 checked={controls.friend_request_approval}
                 onChange={(v) => setControls({ ...controls, friend_request_approval: v })}
               />
               <SettingsToggleRow
-                title="Messaging"
+                title="Direct messaging"
+                description="Allow or block DMs for this account"
                 checked={controls.messaging_enabled}
                 onChange={(v) => setControls({ ...controls, messaging_enabled: v })}
               />
@@ -478,10 +479,56 @@ export function FamilySettingsPanel() {
               <SettingsToggleRow
                 icon={Clock}
                 title="Screen time"
-                description="Enforce CribsTalk usage limits"
+                description="Enforce daily limits and school-hour / bedtime windows"
                 checked={controls.screen_time_enabled}
                 onChange={(v) => setControls({ ...controls, screen_time_enabled: v })}
               />
+              <div className="space-y-3 px-4 py-3 sm:px-5">
+                <div>
+                  <label className={settingsLabelClass} htmlFor="profile-visibility">
+                    Profile visibility
+                  </label>
+                  <select
+                    id="profile-visibility"
+                    className={settingsInputClass}
+                    value={controls.profile_visibility ?? 'friends'}
+                    onChange={(e) =>
+                      setControls({
+                        ...controls,
+                        profile_visibility: e.target.value || null,
+                      })
+                    }
+                  >
+                    <option value="public">Public</option>
+                    <option value="friends">Friends only</option>
+                    <option value="private">Private</option>
+                  </select>
+                </div>
+                <div>
+                  <label className={settingsLabelClass} htmlFor="content-filter">
+                    Restrict content categories
+                  </label>
+                  <select
+                    id="content-filter"
+                    className={settingsInputClass}
+                    value={controls.content_filter_level ?? 'off'}
+                    onChange={(e) =>
+                      setControls({
+                        ...controls,
+                        content_filter_level:
+                          e.target.value === 'off'
+                            ? 'off'
+                            : (e.target.value as 'low' | 'medium' | 'high'),
+                      })
+                    }
+                  >
+                    <option value="off">Off</option>
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                  </select>
+                </div>
+              </div>
               <div className="px-4 pt-3 sm:px-5">
                 <button
                   type="button"
@@ -528,9 +575,13 @@ export function FamilySettingsPanel() {
                   }
                 />
               </div>
+              <p className="text-sm text-content-secondary">
+                Use the allowed window to lock the account during school hours. Bedtime covers sleep
+                / family quiet time.
+              </p>
               <div className="grid gap-3 sm:grid-cols-2">
                 <TimeField
-                  label="Allowed start"
+                  label="Allowed start (school / study window)"
                   value={screenTime.allowed_start_time}
                   onChange={(v) => setScreenTime({ ...screenTime, allowed_start_time: v })}
                 />
@@ -563,15 +614,15 @@ export function FamilySettingsPanel() {
 
           {memberView === 'activity' && activity ? (
             <div className="grid gap-3 px-4 py-4 sm:grid-cols-2 sm:px-5">
-              <Stat label="Time spent" value={formatMinutes(activity.session_minutes)} />
+              <Stat label="Screen time" value={formatMinutes(activity.session_minutes)} />
+              <Stat label="Friends added" value={String(activity.friends_added)} />
+              <Stat label="Communities joined" value={String(activity.groups_joined)} />
+              <Stat label="Safety alerts" value={String(activity.safety_alerts)} />
+              <Stat label="Friend requests" value={String(activity.friend_requests)} />
               <Stat label="Messages sent" value={String(activity.messages_sent)} />
               <Stat label="Calls" value={String(activity.calls)} />
               <Stat label="Posts viewed" value={String(activity.posts_viewed)} />
               <Stat label="Reels watched" value={String(activity.reels_watched)} />
-              <Stat label="Friends added" value={String(activity.friends_added)} />
-              <Stat label="Friend requests" value={String(activity.friend_requests)} />
-              <Stat label="Groups joined" value={String(activity.groups_joined)} />
-              <Stat label="Safety alerts" value={String(activity.safety_alerts)} />
             </div>
           ) : null}
 
@@ -668,10 +719,10 @@ export function FamilySettingsPanel() {
     <div className="space-y-4">
       <SettingsCard>
         <SettingsSectionHeader
-          title={overview.family.name}
+          title={`Family Dashboard · ${overview.family.name}`}
           description={
             isParent
-              ? 'Manage connected child and teen accounts.'
+              ? 'View account status, screen time, friends, communities, safety alerts, and permissions for connected child and teen accounts.'
               : 'You are part of this family.'
           }
         />
@@ -689,7 +740,9 @@ export function FamilySettingsPanel() {
                       <p className="text-[15px] font-semibold text-content">
                         {isYou ? 'You' : memberLabel(member)}
                       </p>
-                      <p className="text-sm text-content-secondary">{roleLabel(member.role)}</p>
+                      <p className="text-sm text-content-secondary">
+                        {roleLabel(member.role)} · Account {member.status}
+                      </p>
                     </div>
                   </div>
                   {isParent && (member.role === 'child' || member.role === 'teen') ? (

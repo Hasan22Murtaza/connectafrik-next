@@ -549,9 +549,35 @@ export function ParentalSafetyPage() {
         <li>Show them how to block and how to report.</li>
         <li>Talk about not moving conversations with strangers off the platform.</li>
         <li>
+          Use <Link href="/settings?tab=family">Family &amp; Parental Controls</Link> to connect
+          accounts, set screen-time limits, approve contacts, and review safety alerts.
+        </li>
+        <li>
           Use the <Link href="/parents/report">parent reporting center</Link> if something feels wrong.
         </li>
       </ul>
+
+      <h2>Purpose and goals</h2>
+      <p>
+        Family Circle helps parents protect younger users without reading private messages. It
+        supports child safety, age-appropriate experiences, digital well-being, family engagement,
+        and youth opportunity protection (education, mentorship, and verified programs).
+      </p>
+
+      <h2>Feature scope (Family Dashboard)</h2>
+      <h3>Family Dashboard</h3>
+      <p>Parents can view account status, screen time, friends and communities activity, safety alerts, and recent achievements when available.</p>
+      <h3>Parental permissions</h3>
+      <ul>
+        <li>Approve new contacts and control direct messaging</li>
+        <li>Control profile visibility and restrict content categories</li>
+        <li>Set daily time limits and lock access outside allowed / school-hour windows</li>
+      </ul>
+      <h3>Family safety alerts</h3>
+      <p>
+        Parents can receive notifications for suspected bullying, repeated reports, stranger contact
+        requests, suspicious links, account security issues, and excessive daily usage.
+      </p>
     </Page>
   )
 }
@@ -578,6 +604,11 @@ export function YouthSafetyPage() {
       <p>
         CribsTalk adds extra protections for younger users: tighter visibility, reporting and
         blocking tools, moderation, and checks before someone is shown as a verified mentor.
+        Age-appropriate experiences differ for children (under 13), teens (13–17), and adults (18+).
+      </p>
+      <p>
+        Parents can use <Link href="/settings?tab=family">Family &amp; Parental Controls</Link> for
+        screen-time limits, contact approval, and safety alerts without reading private messages.
       </p>
       <p>
         The full rules are in the <Link href="/child-safety">Child Safety Policy</Link> and the{' '}

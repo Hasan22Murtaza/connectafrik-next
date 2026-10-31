@@ -95,20 +95,35 @@ export async function POST(request: NextRequest) {
       const usedMinutes = await sumSessionMinutesToday(supabase, membership.id)
       const evaluation = evaluateScreenTime(rules, usedMinutes)
       if (!evaluation.allowed && evaluation.reason === 'daily_limit') {
-        const { data: parents } = await supabase
-          .from('family_members')
-          .select('user_id')
-          .eq('family_id', membership.family_id)
-          .eq('role', 'parent')
-          .eq('status', 'active')
+        const dayStart = new Date()
+        dayStart.setUTCHours(0, 0, 0, 0)
+        const { data: existingExcessAlert } = await supabase
+          .from('safety_alerts')
+          .select('id')
+          .eq('family_member_id', membership.id)
+          .eq('alert_type', 'excessive_usage')
+          .gte('created_at', dayStart.toISOString())
+          .limit(1)
+          .maybeSingle()
 
-        for (const parent of parents || []) {
+        if (!existingExcessAlert) {
+          const { createServiceClient } = await import('@/lib/supabase-server')
+          const { createSafetyAlertForUser } = await import('@/lib/family/alerts')
+          await createSafetyAlertForUser(createServiceClient(), {
+            userId: user.id,
+            alertType: 'excessive_usage',
+            severity: 'info',
+            title: 'Excessive daily usage',
+            description: 'This account reached its daily CribsTalk screen-time limit.',
+            source: 'screen_time',
+          })
+
           try {
             await createNotification({
-              user_id: parent.user_id,
+              user_id: user.id,
               type: 'family_screen_time_limit',
               title: 'Screen-time limit reached',
-              message: 'A family member reached their daily CribsTalk limit.',
+              message: 'You have reached your daily CribsTalk screen-time limit.',
               data: {
                 type: 'family_screen_time_limit',
                 family_member_id: membership.id,
@@ -118,22 +133,6 @@ export async function POST(request: NextRequest) {
           } catch {
             // non-fatal
           }
-        }
-
-        try {
-          await createNotification({
-            user_id: user.id,
-            type: 'family_screen_time_limit',
-            title: 'Screen-time limit reached',
-            message: 'You have reached your daily CribsTalk screen-time limit.',
-            data: {
-              type: 'family_screen_time_limit',
-              family_member_id: membership.id,
-              url: '/settings?tab=family',
-            },
-          })
-        } catch {
-          // non-fatal
         }
       }
 
