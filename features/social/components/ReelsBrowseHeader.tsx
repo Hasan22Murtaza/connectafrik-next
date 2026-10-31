@@ -64,7 +64,7 @@ export function ReelsMainTabs({
       className="flex justify-around w-full  border-b border-border px-1 sm:px-2  "
     >
       <TabLink active={forYouActive} href="/reels/foryou" label="For you" icon={Compass} />
-      <TabLink active={followingActive} href="/reels/following" label="Following" icon={Users} />
+      <TabLink active={followingActive} href="/reels/following" label="Tapping In" icon={Users} />
       <TabLink href="/reels/saved" label="Saved" icon={Bookmark} active={savedActive} />
       <TabLink href="/reels/reposted" label="Reposted" icon={Repeat2} active={repostedActive} />
       <TabLink href="/reels/liked" label="Liked" icon={Heart} active={likedActive} />

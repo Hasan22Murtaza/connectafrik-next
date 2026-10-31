@@ -16,7 +16,7 @@ import { Divider, SettingsCard, SettingsPanelSkeleton, SettingsSectionHeader } f
 
 type ListedAuthSession = {
   id: string
-  device_label: string
+  device_label: string  
   ip: string | null
   last_active_at: string
 }

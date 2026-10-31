@@ -19,6 +19,7 @@ import { useReelInteractions } from '@/shared/hooks/useReels'
 import { Reel } from '@/shared/types/reels'
 import { trackEvent, VideoWatchTracker } from '@/features/social/services/engagementTracking'
 import toast from 'react-hot-toast'
+import { HeartIcon } from 'lucide-react'
 
 function formatShortCount(num: number): string {
   if (num >= 1_000_000) return `${(num / 1_000_000).toFixed(1)}M`
@@ -355,8 +356,8 @@ const ReelShortsSlide: React.FC<ReelShortsSlideProps> = ({
   }, [reel.id])
 
   const likeIcon = (size: string) => (
-    <ThumbsUp
-      className={`${size} ${isLiked ? 'fill-sky-600 text-sky-600' : ''}`}
+    <HeartIcon
+      className={`${size} ${isLiked ? 'fill-red-600 text-red-600' : ''}`}
       strokeWidth={isLiked ? 0 : 2}
     />
   )
