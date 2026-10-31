@@ -38,6 +38,8 @@ import { isSameDay } from "date-fns";
 import {
   CheckCheck,
   ChevronLeft,
+  FileText,
+  Image as ImageIcon,
   Info,
   Loader2,
   Lock,
@@ -48,6 +50,7 @@ import {
   MoreVertical,
   Paperclip,
   Pencil,
+  Play,
   Phone,
   Ban,
   Pin,
@@ -96,7 +99,11 @@ import ChatMediaComposer from "./ChatMediaComposer";
 import MessageAttachments from "./MessageAttachments";
 import { ChatDateDivider, ChatUnreadDivider, MessageBubble } from "./MessageBubble";
 import TypingIndicator from "./TypingIndicator";
-import { formatMediaDuration } from "./messageMediaUtils";
+import {
+  fileExtensionLabel,
+  formatMediaDuration,
+  isVoiceNoteAttachment,
+} from "./messageMediaUtils";
 import {
   ChatRichTextEditor,
   type ChatRichTextEditorHandle,
@@ -110,6 +117,21 @@ import {
 import { useActiveCallSession } from "@/features/chat/hooks/useActiveCallSession";
 import { useMessageTranslations } from "@/features/chat/hooks/useMessageTranslations";
 import { messageTranslationLanguageLabel } from "@/features/chat/constants/messageTranslationLanguages";
+
+function getDocumentReplyAttachment(message: ChatMessage | null): ChatAttachment | null {
+  return (
+    message?.attachments?.find(
+      (attachment) => attachment.type === "file" && !isVoiceNoteAttachment(attachment)
+    ) || null
+  );
+}
+
+function getReplyMediaAttachment(
+  message: ChatMessage | null,
+  type: "image" | "video"
+): ChatAttachment | null {
+  return message?.attachments?.find((attachment) => attachment.type === type) || null;
+}
 
 interface ChatWindowProps {
   threadId: string;
@@ -3478,21 +3500,95 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
               </button>
             </div>
           ) : replyingTo ? (
-            <div className="mb-2 flex items-start gap-2 rounded-xl bg-surface-secondary p-2 border-l-[3px] border-[#f97316]">
+            <div className="mb-2 flex items-start gap-2 rounded-xl border border-orange-200/70 border-l-[3px] border-l-orange-500 bg-surface-secondary px-2.5 py-2 dark:border-orange-500/25">
+              {getReplyMediaAttachment(replyingTo, "image") ? (
+                <span className="relative mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-black/10 text-white">
+                  <img
+                    src={getReplyMediaAttachment(replyingTo, "image")?.previewUrl || getReplyMediaAttachment(replyingTo, "image")?.url}
+                    alt=""
+                    className="h-full w-full object-cover"
+                  />
+                  <span className="absolute inset-0 flex items-center justify-center bg-black/25">
+                    <ImageIcon className="h-4 w-4 drop-shadow" aria-hidden="true" />
+                  </span>
+                </span>
+              ) : getReplyMediaAttachment(replyingTo, "video") ? (
+                <span className="relative mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-purple-500/15 text-purple-600 dark:text-purple-300">
+                  {getReplyMediaAttachment(replyingTo, "video")?.previewUrl ? (
+                    <img
+                      src={getReplyMediaAttachment(replyingTo, "video")?.previewUrl}
+                      alt=""
+                      className="h-full w-full object-cover"
+                    />
+                  ) : null}
+                  <span className="absolute inset-0 flex items-center justify-center bg-black/25">
+                    <Play className="h-4 w-4 fill-current text-white drop-shadow" aria-hidden="true" />
+                  </span>
+                </span>
+              ) : getDocumentReplyAttachment(replyingTo) ? (
+                <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-sky-500/15 text-sky-600 dark:text-sky-300">
+                  <FileText className="h-4 w-4" aria-hidden="true" />
+                </span>
+              ) : ((replyingTo.message_type || "").toLowerCase() === "audio" ||
+                  (replyingTo.message_type || "").toLowerCase() === "voice" ||
+                  Boolean(replyingTo.attachments?.some((attachment) => isVoiceNoteAttachment(attachment)))) ? (
+                <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-orange-500/15 text-orange-600 dark:text-orange-300">
+                  <Mic className="h-4 w-4" aria-hidden="true" />
+                </span>
+              ) : null}
               <div className="min-w-0 flex-1">
-                <div className="mb-0.5 text-xs font-semibold text-[#f97316]">
+                <div className="mb-0.5 text-[11px] font-semibold uppercase tracking-wide text-orange-600 dark:text-orange-300">
                   Replying to {replyingTo.sender?.name || "Unknown"}
                 </div>
-                <div className="truncate text-sm text-content-secondary">
-                  {replyingTo.is_deleted
-                    ? "This message was deleted"
-                    : replyingTo.content}
-                </div>
+                {getReplyMediaAttachment(replyingTo, "image") ? (
+                  <div className="flex min-w-0 items-center gap-2 text-sm font-medium text-content-secondary">
+                    <ImageIcon className="h-4 w-4 shrink-0 text-orange-500" aria-hidden="true" />
+                    <span>Photo</span>
+                  </div>
+                ) : getReplyMediaAttachment(replyingTo, "video") ? (
+                  <div className="flex min-w-0 items-center gap-2 text-sm font-medium text-content-secondary">
+                    <Play className="h-4 w-4 shrink-0 fill-current text-purple-500" aria-hidden="true" />
+                    <span>Video</span>
+                  </div>
+                ) : getDocumentReplyAttachment(replyingTo) ? (
+                  <div className="flex min-w-0 items-center gap-2">
+                    <span className="shrink-0 rounded bg-sky-500/15 px-1.5 py-0.5 text-[10px] font-bold tracking-wide text-sky-600 dark:text-sky-300">
+                      {fileExtensionLabel(
+                        getDocumentReplyAttachment(replyingTo)?.name,
+                        getDocumentReplyAttachment(replyingTo)?.mimeType
+                      )}
+                    </span>
+                    <span className="truncate text-sm font-medium text-content-secondary">
+                      {getDocumentReplyAttachment(replyingTo)?.name || "Document"}
+                    </span>
+                  </div>
+                ) : ((replyingTo.message_type || "").toLowerCase() === "audio" ||
+                  (replyingTo.message_type || "").toLowerCase() === "voice" ||
+                  Boolean(replyingTo.attachments?.some((attachment) => isVoiceNoteAttachment(attachment)))) ? (
+                  <div className="flex items-center gap-2 text-sm font-medium text-content-secondary">
+                    <span className="inline-flex items-end gap-0.5" aria-hidden="true">
+                      {[3, 6, 4, 8, 5, 7, 3, 6].map((height, index) => (
+                        <span
+                          key={index}
+                          className="w-0.5 rounded-full bg-orange-500/75"
+                          style={{ height: `${height}px` }}
+                        />
+                      ))}
+                    </span>
+                    <span>Voice message</span>
+                  </div>
+                ) : (
+                  <div className="truncate text-sm text-content-secondary">
+                    {replyingTo.is_deleted
+                      ? "This message was deleted"
+                      : replyingTo.content}
+                  </div>
+                )}
               </div>
               <button
                 type="button"
                 onClick={() => setReplyingTo(null)}
-                className="flex-shrink-0 rounded-full p-1 text-content-secondary hover:bg-surface-hover hover:text-content"
+                className="flex-shrink-0 rounded-full p-1 text-content-secondary transition-colors hover:bg-orange-500/10 hover:text-orange-600"
                 aria-label="Cancel reply"
               >
                 <X className="h-4 w-4" />
