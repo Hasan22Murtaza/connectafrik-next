@@ -208,7 +208,11 @@ export function ScreenTimeUsageChart({
               margin={{ top: 12, right: 8, left: 0, bottom: 4 }}
               barCategoryGap={barCategoryGap}
               onClick={(state) => {
-                const date = (state?.activePayload?.[0]?.payload as ChartRow | undefined)?.date
+                const raw = state?.activeIndex ?? state?.activeTooltipIndex
+                const index =
+                  typeof raw === 'number' ? raw : typeof raw === 'string' ? Number(raw) : NaN
+                if (!Number.isFinite(index)) return
+                const date = chartData[index]?.date
                 if (!date) return
                 setSelectedDate((prev) => (prev === date ? null : date))
               }}

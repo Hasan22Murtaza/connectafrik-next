@@ -86,6 +86,7 @@ export default function ScreenTimeGate() {
         const result = await familyService.pingUsage()
         if (cancelled) return
         if (result.evaluation) {
+          const evaluation = result.evaluation
           setMe((prev) => {
             if (!prev?.screen_time) return prev
             return {
@@ -94,9 +95,9 @@ export default function ScreenTimeGate() {
                 ...prev.screen_time,
                 used_minutes_today:
                   result.used_minutes_today ??
-                  result.evaluation?.usedMinutes ??
+                  evaluation.usedMinutes ??
                   prev.screen_time.used_minutes_today,
-                evaluation: result.evaluation,
+                evaluation,
               },
             }
           })
