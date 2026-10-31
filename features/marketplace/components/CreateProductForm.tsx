@@ -37,6 +37,8 @@ import {
 import { CreateListingFormShimmer } from "@/shared/components/ui/ShimmerLoaders";
 import toast from "react-hot-toast";
 import Link from "next/link";
+import { ArrowDown, Check, ChevronDown } from "lucide-react";
+import { FaAngleDoubleDown, FaAngleDown } from "react-icons/fa";
 
 const initialFormData = {
   title: "",
@@ -113,6 +115,22 @@ const fieldClassName =
   "input-field";
 
 const labelClassName = "block text-sm font-semibold text-content mb-2";
+
+const ThemedCheckbox = (props: React.InputHTMLAttributes<HTMLInputElement>) => (
+  <span className="relative inline-flex h-4 w-4 shrink-0">
+    <input
+      {...props}
+      type="checkbox"
+      className="peer absolute inset-0 z-10 h-4 w-4 cursor-pointer opacity-0"
+    />
+    <span className="pointer-events-none absolute inset-0 rounded border-2 border-border bg-surface transition-colors peer-hover:border-orange-400 peer-checked:border-orange-500 peer-checked:bg-orange-500 peer-focus-visible:ring-2 peer-focus-visible:ring-orange-500/30 peer-focus-visible:ring-offset-0" />
+    <Check
+      aria-hidden="true"
+      className="pointer-events-none absolute inset-0 z-10 m-auto h-3 w-3 text-white opacity-0 transition-opacity peer-checked:opacity-100"
+      strokeWidth={3}
+    />
+  </span>
+);
 
 const CreateProductForm: React.FC<CreateProductFormProps> = ({
   productId,
@@ -527,6 +545,7 @@ const CreateProductForm: React.FC<CreateProductFormProps> = ({
             <label className={labelClassName} htmlFor="category">
               Category <span className="text-primary-600">*</span>
             </label>
+            <div className="relative">
             <select
               id="category"
               required
@@ -534,7 +553,7 @@ const CreateProductForm: React.FC<CreateProductFormProps> = ({
               onChange={(e) =>
                 setFormData({ ...formData, category: e.target.value, subcategory: "" })
               }
-              className={fieldClassName}
+              className={`${fieldClassName}  appearance-none `}
             >
               {PRODUCT_CATEGORIES.map((cat) => (
                 <option key={cat.value} value={cat.value}>
@@ -542,17 +561,21 @@ const CreateProductForm: React.FC<CreateProductFormProps> = ({
                 </option>
               ))}
             </select>
+              <ChevronDown className=" absolute top-1/2 -translate-y-1/2 right-4 w-4 h-4"/>
+
+            </div>
           </div>
           <div>
             <label className={labelClassName} htmlFor="subcategory">
               Subcategory <span className="text-primary-600">*</span>
             </label>
+            <div className="relative">
             <select
               id="subcategory"
               required
               value={formData.subcategory}
               onChange={(e) => setFormData({ ...formData, subcategory: e.target.value })}
-              className={fieldClassName}
+              className={`${fieldClassName} appearance-none`}
             >
               {subcategoryOptions.length === 0 ? (
                 <option value="">No subcategories</option>
@@ -564,17 +587,21 @@ const CreateProductForm: React.FC<CreateProductFormProps> = ({
                 ))
               )}
             </select>
+
+              <ChevronDown className=" absolute top-1/2 -translate-y-1/2 right-4 w-4 h-4"/>
+            </div>
           </div>
           <div className="sm:col-span-2">
             <label className={labelClassName} htmlFor="condition">
               Condition <span className="text-primary-600">*</span>
             </label>
+            <div className="relative">
             <select
               id="condition"
               required
               value={formData.condition}
               onChange={(e) => setFormData({ ...formData, condition: e.target.value })}
-              className={fieldClassName}
+              className={`${fieldClassName} appearance-none`}
             >
               {PRODUCT_CONDITIONS.map((cond) => (
                 <option key={cond.value} value={cond.value}>
@@ -582,6 +609,9 @@ const CreateProductForm: React.FC<CreateProductFormProps> = ({
                 </option>
               ))}
             </select>
+              <ChevronDown className=" absolute top-1/2 -translate-y-1/2 right-4 w-4 h-4"/>
+
+            </div>
           </div>
         </div>
 
@@ -610,22 +640,18 @@ const CreateProductForm: React.FC<CreateProductFormProps> = ({
           </p>
           <div className="flex flex-wrap gap-x-5 gap-y-2">
             <label className="flex items-center gap-2 text-sm text-content cursor-pointer">
-              <input
-                type="checkbox"
+              <ThemedCheckbox
                 checked={formData.pickupOnly}
                 onChange={(e) => setFormData({ ...formData, pickupOnly: e.target.checked })}
-                className="rounded border-border text-primary-600 focus:ring-primary-500"
               />
               Pickup only
             </label>
             <label className="flex items-center gap-2 text-sm text-content cursor-pointer">
-              <input
-                type="checkbox"
+              <ThemedCheckbox
                 checked={formData.deliveryAvailable}
                 onChange={(e) =>
                   setFormData({ ...formData, deliveryAvailable: e.target.checked })
                 }
-                className="rounded border-border text-primary-600 focus:ring-primary-500"
               />
               Delivery available
             </label>
@@ -636,22 +662,18 @@ const CreateProductForm: React.FC<CreateProductFormProps> = ({
           <p className={labelClassName}>Options</p>
           <div className="flex flex-wrap gap-x-5 gap-y-2">
             <label className="flex items-center gap-2 text-sm text-content cursor-pointer">
-              <input
-                type="checkbox"
+              <ThemedCheckbox
                 checked={formData.urgentSale}
                 onChange={(e) => setFormData({ ...formData, urgentSale: e.target.checked })}
-                className="rounded border-border text-primary-600 focus:ring-primary-500"
               />
               Urgent sale
             </label>
             <label className="flex items-center gap-2 text-sm text-content cursor-pointer">
-              <input
-                type="checkbox"
+              <ThemedCheckbox
                 checked={formData.featuredListing}
                 onChange={(e) =>
                   setFormData({ ...formData, featuredListing: e.target.checked })
                 }
-                className="rounded border-border text-primary-600 focus:ring-primary-500"
               />
               Featured listing
             </label>
@@ -662,29 +684,23 @@ const CreateProductForm: React.FC<CreateProductFormProps> = ({
           <p className={labelClassName}>Contact</p>
           <div className="flex flex-wrap gap-x-5 gap-y-2">
             <label className="flex items-center gap-2 text-sm text-content cursor-pointer">
-              <input
-                type="checkbox"
+              <ThemedCheckbox
                 checked={formData.contactChat}
                 onChange={(e) => setFormData({ ...formData, contactChat: e.target.checked })}
-                className="rounded border-border text-primary-600 focus:ring-primary-500"
               />
               Chat
             </label>
             <label className="flex items-center gap-2 text-sm text-content cursor-pointer">
-              <input
-                type="checkbox"
+              <ThemedCheckbox
                 checked={formData.contactEmail}
                 onChange={(e) => setFormData({ ...formData, contactEmail: e.target.checked })}
-                className="rounded border-border text-primary-600 focus:ring-primary-500"
               />
               Email
             </label>
             <label className="flex items-center gap-2 text-sm text-content cursor-pointer">
-              <input
-                type="checkbox"
+              <ThemedCheckbox
                 checked={formData.contactPhone}
                 onChange={(e) => setFormData({ ...formData, contactPhone: e.target.checked })}
-                className="rounded border-border text-primary-600 focus:ring-primary-500"
               />
               Phone
             </label>

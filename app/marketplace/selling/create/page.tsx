@@ -38,7 +38,7 @@ const CreateListingPageContent: React.FC = () => {
         <aside className="hidden lg:block w-[240px] shrink-0 py-6">
           <button
             type="button"
-            onClick={() => router.push("/marketplace/selling")}
+            onClick={() => router.push("/marketplace")}
             className="flex items-center gap-2 text-content-secondary hover:text-content mb-2 text-sm px-2"
           >
             <ArrowLeft className="w-4 h-4" />
