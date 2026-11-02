@@ -3,8 +3,8 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import {
-  UserPlus, UserCheck, MessageCircle, Phone, Video, MoreHorizontal,
-  MapPin, Calendar, Users,
+  UserPlus, UserCheck, MessageCircle, Phone, Video, MoreHorizontal, Edit,
+  MapPin, Calendar, Users, Eye, X,
 } from '@/shared/icons'
 import { useAuth } from '@/contexts/AuthContext'
 import { useProductionChat } from '@/contexts/ProductionChatContext'
@@ -13,7 +13,7 @@ import { friendRequestService } from '@/features/social/services/friendRequestSe
 import { apiClient } from '@/lib/api-client'
 import toast from 'react-hot-toast'
 import { formatDistanceToNow } from 'date-fns'
-import { UserProfileWithVisibility, MutualFriend } from '@/shared/types'
+import { UserProfileWithVisibility, MutualFriend, Friend } from '@/shared/types'
 import {
   canViewProfile, canComment, canFollow, canSendMessage,
   getVisibleProfileFields, type VisibleProfileFieldsInput,
@@ -27,8 +27,8 @@ import PostsTab from './components/PostsTab'
 import AboutTab from './components/AboutTab'
 import PhotosTab from './components/PhotosTab'
 import FriendsTab from './components/FriendsTab'
-import ReelsTab from './components/ReelsTab'
 import FriendsSidebar, { type FriendsSection } from '@/features/social/components/FriendsSidebar'
+import { CheckCheckIcon, Fullscreen } from 'lucide-react'
 
 interface PostWithAuthor {
   id: string; content: string
@@ -41,7 +41,7 @@ interface PostWithAuthor {
   isLiked?: boolean
 }
 
-type TabId = 'posts' | 'about' | 'photos' | 'friends' | 'reels'
+type TabId = 'posts' | 'about' | 'photos' | 'friends'
 type FriendStatus = 'none' | 'pending_sent' | 'pending_received' | 'friends'
 type UserProfileResponse = Omit<UserProfileWithVisibility, 'followers_count'> & {
   followers_count?: number | null
@@ -77,7 +77,6 @@ const TABS: { id: TabId; label: string }[] = [
   { id: 'about', label: 'About' },
   { id: 'photos', label: 'Photos' },
   { id: 'friends', label: 'Friends' },
-  { id: 'reels', label: 'Reels' },
 ]
 
 const fmt = (n: number) => {
@@ -114,41 +113,54 @@ const ProfileSkeleton = ({
 }: {
   onSectionSelect: (section: FriendsSection) => void;
 }) => (
-  <div className="mx-auto flex min-h-screen w-full max-w-screen-2xl gap-4 px-4 pb-20 sm:gap-6 sm:pb-8">
-    <aside className="hidden w-64 shrink-0 md:block">
-      <div className="fixed top-18 h-[calc(100vh-6rem)] overflow-y-auto py-4">
-        <FriendsSidebar
-          onSectionSelect={onSectionSelect}
-        />
-      </div>
+  <div className="mx-auto flex min-h-screen gap-6 px-4 pb-20 sm:pb-8">
+    <aside className="fixed top-[73px] hidden h-[calc(100dvh-73px)]  shrink-0 self-start overflow-y-auto  bg-background py-4 md:block">
+      <FriendsSidebar
+        onSectionSelect={onSectionSelect}
+      />
     </aside>
-    <main className="min-w-0 flex-1">
-      <div className="mt-4 w-full">
-        <div className="rounded-2xl border-b border-border bg-surface shadow-sm">
-          <div className="px-4 py-5 sm:px-6">
-            <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-start sm:gap-5">
-              <div className="h-24 w-24 animate-pulse rounded-full bg-surface-tertiary sm:h-32 sm:w-32" />
-              <div className="w-full flex-1 space-y-3 text-center sm:text-left">
-                <div className="mx-auto h-8 w-56 animate-pulse rounded bg-surface-tertiary sm:mx-0" />
-                <div className="mx-auto h-4 w-44 animate-pulse rounded bg-surface-tertiary sm:mx-0" />
-                <div className="mx-auto h-4 w-72 max-w-full animate-pulse rounded bg-surface-tertiary sm:mx-0" />
+    <main className="flex-1 max-w-full py-3 sm:py-6 pr-4 md:ml-64">
+      <div className="mt-4">
+        <div className="overflow-hidden rounded-2xl bg-surface shadow-card">
+          <div className="relative h-32 animate-shimmer sm:h-48 lg:h-56">
+            <div className="absolute -bottom-8 left-4 z-10 h-[76px] w-[76px] rounded-2xl border-2 border-white bg-surface-tertiary shadow-card sm:left-5 sm:h-[88px] sm:w-[88px]" />
+          </div>
+          <div className="flex flex-col gap-4 px-4 pb-4 pt-10 sm:px-5 sm:pt-12 md:flex-row md:items-start md:justify-between">
+            <div className="min-w-0 flex-1 space-y-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="h-7 w-40 max-w-full animate-shimmer rounded bg-surface-tertiary sm:h-8 sm:w-56" />
+                <div className="h-4 w-24 animate-shimmer rounded bg-surface-tertiary" />
+                <div className="h-5 w-24 animate-shimmer rounded-full bg-surface-tertiary" />
+                <div className="h-5 w-24 animate-shimmer rounded-full bg-surface-tertiary" />
+              </div>
+              <div className="h-4 w-full max-w-lg animate-shimmer rounded bg-surface-tertiary" />
+              <div className="h-4 w-2/3 max-w-sm animate-shimmer rounded bg-surface-tertiary" />
+              <div className="flex flex-wrap items-center gap-2 pt-1">
+                <div className="h-7 w-7 animate-shimmer rounded-full bg-surface-tertiary" />
+                <div className="h-4 w-32 animate-shimmer rounded bg-surface-tertiary" />
+                <div className="h-4 w-40 animate-shimmer rounded bg-surface-tertiary" />
               </div>
             </div>
+            <div className="flex flex-wrap gap-2 md:shrink-0">
+              <div className="h-9 w-24 animate-shimmer rounded-md bg-surface-tertiary" />
+              <div className="h-9 w-24 animate-shimmer rounded-md bg-surface-tertiary" />
+              <div className="h-9 w-24 animate-shimmer rounded-md bg-surface-tertiary" />
+            </div>
           </div>
-          <div className="flex gap-2 border-t border-border px-4 py-3 sm:px-6">
-            {[1, 2, 3, 4, 5].map((i) => (
-              <div key={i} className="h-8 w-16 animate-pulse rounded bg-surface-tertiary" />
+          <div className="flex gap-2 overflow-hidden border-t border-border px-3 sm:px-4">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="my-3 h-10 w-16 shrink-0 animate-shimmer rounded bg-surface-tertiary sm:w-20" />
             ))}
           </div>
         </div>
 
         <div className="mt-4 flex w-full flex-col gap-4 lg:flex-row">
-          <div className="w-full lg:w-[300px]">
+          <div className="hidden w-full lg:block lg:w-[300px] lg:shrink-0">
             <div className="space-y-3 rounded-2xl bg-surface p-4 shadow-sm">
               {[1, 2, 3, 4].map((i) => (
                 <div
                   key={i}
-                  className="h-4 animate-pulse rounded bg-surface-tertiary"
+                  className="h-4 animate-shimmer rounded bg-surface-tertiary"
                   style={{ width: `${90 - i * 15}%` }}
                 />
               ))}
@@ -157,13 +169,13 @@ const ProfileSkeleton = ({
           <div className="flex-1 space-y-4">
             <div className="space-y-3 rounded-2xl bg-surface p-4 shadow-sm">
               <div className="flex items-center gap-3">
-                <div className="h-10 w-10 animate-pulse rounded-full bg-surface-tertiary" />
+                <div className="h-10 w-10 animate-shimmer rounded-full bg-surface-tertiary" />
                 <div className="flex-1 space-y-2">
-                  <div className="h-4 w-32 animate-pulse rounded bg-surface-tertiary" />
-                  <div className="h-3 w-20 animate-pulse rounded bg-surface-tertiary" />
+                  <div className="h-4 w-32 animate-shimmer rounded bg-surface-tertiary" />
+                  <div className="h-3 w-20 animate-shimmer rounded bg-surface-tertiary" />
                 </div>
               </div>
-              <div className="h-20 w-full animate-pulse rounded bg-surface-tertiary" />
+              <div className="h-20 w-full animate-shimmer rounded bg-surface-tertiary" />
             </div>
           </div>
         </div>
@@ -199,18 +211,15 @@ const UserProfilePage: React.FC = () => {
   const [posts, setPosts] = useState<PostWithAuthor[]>([])
   const [sidebarPhotos, setSidebarPhotos] = useState<{ url: string; postId: string }[]>([])
   const [tabPhotos, setTabPhotos] = useState<{ url: string; postId: string }[]>([])
-  const [tabReels, setTabReels] = useState<{ url: string; postId: string; content: string; author: PostWithAuthor['author'] }[]>([])
   const [aboutForTab, setAboutForTab] = useState<UserProfileWithVisibility | null>(null)
   const [mutualFriends, setMutualFriends] = useState<MutualFriend[]>([])
   const [mutualFriendsCount, setMutualFriendsCount] = useState(0)
   const [loading, setLoading] = useState(true)
   const [postsTabLoading, setPostsTabLoading] = useState(false)
   const [photosTabLoading, setPhotosTabLoading] = useState(false)
-  const [reelsTabLoading, setReelsTabLoading] = useState(false)
   const [friendsTabLoading, setFriendsTabLoading] = useState(false)
   const [postsTabFetched, setPostsTabFetched] = useState(false)
   const [photosTabFetched, setPhotosTabFetched] = useState(false)
-  const [reelsTabFetched, setReelsTabFetched] = useState(false)
   const [friendsTabFetched, setFriendsTabFetched] = useState(false)
   const [aboutTabFetched, setAboutTabFetched] = useState(false)
   const [isFollowing, setIsFollowing] = useState(false)
@@ -220,10 +229,12 @@ const UserProfilePage: React.FC = () => {
   const [showCommentsFor, setShowCommentsFor] = useState<string | null>(null)
   const [shareModalState, setShareModalState] = useState<{ open: boolean; postId: string | null }>({ open: false, postId: null })
   const [activeTab, setActiveTab] = useState<TabId>('posts')
-  const [userFriends, setUserFriends] = useState<any[]>([])
+  const [bioExpanded, setBioExpanded] = useState(false)
+  const [userFriends, setUserFriends] = useState<Friend[]>([])
   const [friendshipStatus, setFriendshipStatus] = useState<FriendStatus>('none')
   const [friendRequestId, setFriendRequestId] = useState<string | null>(null)
   const [friendLoading, setFriendLoading] = useState(false)
+  const [bannerViewerOpen, setBannerViewerOpen] = useState(false)
 
   const profileLivesInLine = useMemo(() => {
     if (!profile) return ''
@@ -232,6 +243,22 @@ const UserProfilePage: React.FC = () => {
 
   useEffect(() => { if (profileIdentifier) fetchUserProfile() }, [profileIdentifier])
   useEffect(() => { if (profile && user && user.id !== profile.id) checkFollowStatus() }, [profile?.id, user?.id])
+
+  useEffect(() => {
+    if (!bannerViewerOpen) return
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setBannerViewerOpen(false)
+    }
+
+    document.body.style.overflow = 'hidden'
+    window.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      document.body.style.overflow = ''
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [bannerViewerOpen])
 
   const loadFriendshipStatus = useCallback(async (ownerId: string) => {
     if (!user?.id || user.id === ownerId) {
@@ -262,16 +289,17 @@ const UserProfilePage: React.FC = () => {
     setPosts([])
     setSidebarPhotos([])
     setTabPhotos([])
-    setTabReels([])
     setAboutForTab(null)
     setUserFriends([])
+    setMutualFriends([])
+    setMutualFriendsCount(0)
     setFriendshipStatus('none')
     setFriendRequestId(null)
     setPostsTabFetched(false)
     setPhotosTabFetched(false)
-    setReelsTabFetched(false)
     setFriendsTabFetched(false)
     setAboutTabFetched(false)
+    setBioExpanded(false)
   }, [profileIdentifier, profile?.id])
 
   useEffect(() => {
@@ -369,41 +397,17 @@ const UserProfilePage: React.FC = () => {
       return () => { cancelled = true }
     }
 
-    if (activeTab === 'reels') {
-      if (reelsTabFetched) return
-      let cancelled = false
-        ; (async () => {
-          setReelsTabLoading(true)
-          try {
-            const res = await apiClient.get<{
-              data: { url: string; postId: string; content: string; author: PostWithAuthor['author'] }[]
-            }>(`/api/users/${identifierApiPath}/reels`, { postLimit: 200 })
-            if (!cancelled) {
-              setTabReels(res.data || [])
-              setReelsTabFetched(true)
-            }
-          } catch (e) {
-            console.error(e)
-            if (!cancelled) {
-              setTabReels([])
-              setReelsTabFetched(true)
-            }
-          } finally {
-            if (!cancelled) setReelsTabLoading(false)
-          }
-        })()
-      return () => { cancelled = true }
-    }
-
     if (activeTab === 'friends') {
       if (friendsTabFetched) return
       let cancelled = false
         ; (async () => {
           setFriendsTabLoading(true)
           try {
-            const res = await apiClient.get<{ data: any[] }>(`/api/users/${identifierApiPath}/friends`)
+            const friendsRes = await apiClient.get<{ data: Friend[] }>(
+              `/api/users/${identifierApiPath}/friends`
+            )
             if (!cancelled) {
-              setUserFriends(res.data || [])
+              setUserFriends(friendsRes.data || [])
               setFriendsTabFetched(true)
             }
           } catch (e) {
@@ -438,7 +442,7 @@ const UserProfilePage: React.FC = () => {
         })()
       return () => { cancelled = true }
     }
-  }, [activeTab, profileIdentifier, identifierApiPath, profile, user?.id, isMutual, postsTabFetched, photosTabFetched, reelsTabFetched, friendsTabFetched, aboutTabFetched])
+  }, [activeTab, profileIdentifier, identifierApiPath, profile, user?.id, isMutual, postsTabFetched, photosTabFetched, friendsTabFetched, aboutTabFetched])
 
   const fetchUserProfile = async () => {
     try {
@@ -470,7 +474,6 @@ const UserProfilePage: React.FC = () => {
 
       if (user && !isOwn) {
         await checkFollowStatus()
-        await fetchMutualFriends(user.id, ownerId)
         await loadFriendshipStatus(ownerId)
       }
     } catch (error: any) {
@@ -479,13 +482,38 @@ const UserProfilePage: React.FC = () => {
     } finally { setLoading(false) }
   }
 
-  const fetchMutualFriends = async (_uid: string, tid: string) => {
-    try {
-      const res = await apiClient.get<{ count: number; data: MutualFriend[] }>(`/api/friends/mutual/${tid}`, { limit: 6 })
-      setMutualFriendsCount(res.count || 0)
-      setMutualFriends(res.data || [])
-    } catch (e) { console.error('Mutual friends error:', e) }
-  }
+  useEffect(() => {
+    if (!profile || !user || user.id === profile.id) {
+      setMutualFriends([])
+      setMutualFriendsCount(0)
+      return
+    }
+
+    const profileVisibility = profile.profile_visibility || 'public'
+    if (!canViewProfile(user.id, profile.id, profileVisibility, isMutual)) return
+
+    let cancelled = false
+    ;(async () => {
+      try {
+        const res = await apiClient.get<{ count: number; data: MutualFriend[] }>(
+          `/api/friends/mutual/${profile.id}`,
+          { limit: 50 }
+        )
+        if (!cancelled) {
+          setMutualFriendsCount(res.count || 0)
+          setMutualFriends(res.data || [])
+        }
+      } catch (error) {
+        console.error('Mutual friends error:', error)
+        if (!cancelled) {
+          setMutualFriends([])
+          setMutualFriendsCount(0)
+        }
+      }
+    })()
+
+    return () => { cancelled = true }
+  }, [profile?.id, profile?.profile_visibility, user?.id, isMutual])
 
   const checkFollowStatus = async () => {
     if (!user || !profile) return
@@ -615,7 +643,6 @@ const UserProfilePage: React.FC = () => {
       setPosts((p) => p.filter((x) => x.id !== postId))
       setSidebarPhotos((prev) => prev.filter((x) => x.postId !== postId))
       setTabPhotos((prev) => prev.filter((x) => x.postId !== postId))
-      setTabReels((prev) => prev.filter((x) => x.postId !== postId))
       toast.success('Post deleted')
     }
     catch { toast.error('Failed to delete post') }
@@ -703,267 +730,337 @@ const UserProfilePage: React.FC = () => {
   return (
     <div className="mx-auto flex min-h-screen gap-6 px-4 pb-20 sm:pb-8">
       {/* Left Sidebar */}
-      <div className="hidden w-64 shrink-0 md:block">
-        <div className="fixed top-18 h-[calc(100vh-6rem)] overflow-y-auto py-4">
-          <FriendsSidebar
-            onSectionSelect={navigateToFriendsSection}
-          />
-        </div>
-      </div>
+      <aside className="fixed top-[73px]  hidden h-[calc(100dvh-73px)]  shrink-0 self-start overflow-y-auto  bg-background  py-4 md:block">
+        <FriendsSidebar
+          onSectionSelect={navigateToFriendsSection}
+        />
+      </aside>
 
-      <main className="min-w-0 flex-1">
+      <main className="flex-1 max-w-full py-3 sm:py-6 pr-4 md:ml-64">
         <div className="mt-4">
-        <div className="bg-surface shadow-card rounded-2xl">
-          <div className="px-2 sm:px-6 pt-4 pb-3 sm:py-5 ">
-            <div className="flex flex-col items-center sm:flex-row sm:items-start gap-3 sm:gap-5">
-              <div className="flex-shrink-0">
-                <div className="rounded-full border-[3px] border-white">
-                  {profile.avatar_url ? (
-                    <Avatar
-                      src={profile.avatar_url}
-                      name={profile.full_name}
-                      size="lg"
-                    />
-                  ) : (
-                    <div className="flex h-28 w-28 items-center justify-center rounded-full bg-primary-100 text-xl font-semibold text-primary-600 ">
-                      {profile.full_name?.charAt(0).toUpperCase()}
-                    </div>
-                  )}
-                </div>
+          <div className="overflow-hidden rounded-2xl bg-surface shadow-card">
+            <div className="relative h-34 bg-gradient-to-br from-orange-200 via-amber-100 to-sky-100 sm:h-48 lg:h-56">
+              <div className="absolute inset-0 overflow-hidden">
+                <img
+                  src={profile.banner_image || "/assets/images/no-cover.svg"}
+                  alt=""
+                  onError={(event) => {
+                    if (event.currentTarget.src.endsWith("/assets/images/no-cover.svg")) return;
+                    event.currentTarget.src = "/assets/images/no-cover.svg";
+                  }}
+                  className="h-full w-full object-cover"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent" />
               </div>
-
-              <div className="flex-1 min-w-0 text-center sm:text-left">
-                <div className="flex flex-wrap items-baseline gap-x-2 justify-center sm:justify-start">
-                  <h1 className="text-[22px] sm:text-[28px] lg:text-[32px] font-semibold text-content leading-tight">{profile.full_name}</h1>
-                  <div className="flex items-center gap-1">
-                    {profile.is_verified && (
-                      <div className="w-[18px] h-[18px] bg-blue-500 rounded-full flex items-center justify-center">
-                        <span className="text-white text-[9px] font-bold">{'\u2713'}</span>
-                      </div>
-                    )}
-                    <span className="text-content-secondary text-sm sm:text-base">@{profile.username}</span>
-                  </div>
-                </div>
-
-                
-
-                {user && user.id !== profile.id && visibleFields.followersList && mutualFriendsCount > 0 && (
-                  <div className="flex items-center justify-center sm:justify-start py-2.5 gap-2">
-                    <div className="flex -space-x-1.5">
-                      {mutualFriends.slice(0, 3).map((f) => (
-                        <div key={f.user_id} className="w-6 h-6 sm:w-7 sm:h-7 rounded-full border-2 border-white overflow-hidden">
-                          {f.avatar_url
-                            ? <img src={f.avatar_url} alt={f.full_name} className="w-full h-full object-cover" />
-                            : <div className="w-full h-full bg-surface-tertiary flex items-center justify-center"><span className="text-[9px] font-semibold text-content-secondary">{f.full_name.charAt(0).toUpperCase()}</span></div>
-                          }
-                        </div>
-                      ))}
-                    </div>
-                    <span className="font-medium text-content text-sm">{mutualFriendsCount} mutual {mutualFriendsCount === 1 ? 'friend' : 'friends'}</span>
-
+              <button
+                type="button"
+                onClick={() => setBannerViewerOpen(true)}
+                aria-label="View cover photo"
+                title="View cover photo"
+                className="absolute right-3 top-3 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-black/45 text-gray-400 shadow-sm backdrop-blur-sm transition hover:bg-black/65 focus:outline-none focus:ring-2 focus:ring-gray-400"
+              >
+                <Fullscreen className="h-5 w-5" aria-hidden="true" />
+              </button>
+              <div className="absolute -bottom-8 left-4 z-10 h-[76px] w-[76px] overflow-hidden rounded-2xl border-2 border-white bg-surface shadow-card sm:left-5 sm:h-[88px] sm:w-[88px]">
+                {profile.avatar_url ? (
+                  <img src={profile.avatar_url} alt={profile.full_name} className="h-full w-full object-cover" />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center bg-primary-100 text-xl font-semibold text-primary-600">
+                    {profile.full_name?.charAt(0).toUpperCase()}
                   </div>
                 )}
-                 <div className="flex items-center justify-center sm:justify-start gap-2 ">
-                <div className="text-xs text-orange-500  bg-primary-50 border border-orange-500 rounded-full inline-block px-2 py-1">
-                  <span className="font-medium ">{fmt(profile.following_count)}</span> tapping in
-                </div>
-                <div className="text-xs text-green-500  bg-green-50 border border-green-500 rounded-full inline-block px-2 py-1 ">
-                  <span className="font-medium ">{fmt(profile.followers_count)}</span> tapped in
-                </div>
-                </div>
-
-                {/* {profile.bio && <p className="mt-2 text-[14px] sm:text-[15px] text-content leading-snug line-clamp-1 sm:line-clamp-3 max-w-xl">{profile.bio}</p>} */}
-
-
               </div>
             </div>
 
-            <div className="flex items-center gap-1.5 mt-3 sm:hidden">
+            <div className="flex flex-wrap gap-2 md:shrink-0 md:justify-end p-2 sm:p-4 float-end">
               {isOwnProfile ? (
-                <button onClick={() => router.push('/profile')} className=" px-2 py-2 inline-flex items-center justify-center gap-1.5 h-9 rounded-md text-[13px] font-semibold whitespace-nowrap bg-[#e4e6eb] text-content active:bg-[#d8dadf] transition">Edit Profile</button>
+                <button
+                  onClick={() => router.push('/profile')}
+                  aria-label="Edit profile"
+                  title="Edit profile"
+                  className={`${btnGray} w-9 px-0 sm:w-auto sm:px-4`}
+                >
+                  <Edit className="h-4 w-4 shrink-0" />
+                  <span className="hidden sm:inline">Edit Profile</span>
+                </button>
               ) : (
                 <>
                   {showMessageBtn && (
-                    <button onClick={handleStartChat} className=" px-2 py-2 inline-flex items-center justify-center gap-1.5  rounded-md text-[13px] font-semibold  bg-[#e4e6eb] text-content active:bg-[#d8dadf] transition">
-                      <MessageCircle className="w-3.5 h-3.5" />
-                      Message
+                    <button
+                      onClick={handleStartChat}
+                      aria-label="Message"
+                      title="Message"
+                      className={`${btnGray} w-9 px-0 sm:w-auto sm:px-4`}
+                    >
+                      <MessageCircle className="h-4 w-4 shrink-0" />
+                      <span className="hidden sm:inline">Message</span>
                     </button>
                   )}
                   {showFollowBtn && (
-                    <button onClick={handleFollow} disabled={followLoading} className={` px-2 py-2 inline-flex items-center justify-center gap-1.5  rounded-md text-[13px] font-semibold  disabled:opacity-50 transition ${isFollowing ? 'bg-[#e4e6eb] text-content active:bg-[#d8dadf]' : 'bg-[#F97316] text-white active:bg-[#ea580c]'}`}>
-                      {followLoading ? <Spinner className="w-3.5 h-3.5" /> : isFollowing ? <UserCheck className="w-3.5 h-3.5" /> : <UserPlus className="w-3.5 h-3.5" />}
-                      {isFollowing ? 'Tapped In' : 'Tap In'}
+                    <button
+                      onClick={handleFollow}
+                      disabled={followLoading}
+                      aria-label={isFollowing ? 'Tapped in' : 'Tap in'}
+                      title={isFollowing ? 'UnTap in' : 'Tap in'}
+                      className={`${btnBase} w-9 px-0 sm:w-auto sm:px-4 disabled:opacity-50 ${isFollowing ? 'bg-[#e4e6eb] text-content hover:bg-[#d8dadf]' : 'bg-[#F97316] text-white hover:bg-[#ea580c]'}`}
+                    >
+                      {followLoading ? <Spinner /> : isFollowing ? <UserCheck className="h-4 w-4 shrink-0" /> : <UserPlus className="h-4 w-4 shrink-0" />}
+                      <span className="hidden sm:inline">{isFollowing ? 'UnTap In' : 'Tap In'}</span>
                     </button>
                   )}
                   {showFriendRequestBtn && (
-                    <button onClick={handleFriendRequest} disabled={friendLoading} className={`px-2 py-2  inline-flex items-center justify-center gap-1.5  rounded-md text-[13px] font-semibold  disabled:opacity-50 transition ${fb.cls}`}>
-                      {friendLoading ? <Spinner className="w-3.5 h-3.5" /> : <fb.icon className="w-3.5 h-3.5" />}{fb.label}
+                    <button
+                      onClick={handleFriendRequest}
+                      disabled={friendLoading}
+                      aria-label={fb.label}
+                      title={fb.label}
+                      className={`${btnBase} w-9 px-0 sm:w-auto sm:px-4 disabled:opacity-50 ${fb.cls}`}
+                    >
+                      {friendLoading ? <Spinner /> : <fb.icon className="h-4 w-4 shrink-0" />}
+                      <span className="hidden sm:inline">{fb.label}</span>
                     </button>
                   )}
-
                 </>
               )}
             </div>
-          </div>
 
-          <hr className="border-border" />
-
-          <div className="flex items-center justify-between px-1 sm:px-4">
-            <div className="flex items-center overflow-x-auto scrollbar-hide flex-1">
-              {TABS.map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`px-3 sm:px-4 py-3 text-[13px] sm:text-[15px] font-semibold border-b-[3px] transition-colors whitespace-nowrap ${activeTab === tab.id ? 'text-[#F97316] border-[#F97316]' : 'text-content-secondary border-transparent hover:text-content rounded-t-md'
-                    }`}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </div>
-
-            <div className="hidden sm:flex items-center gap-2 flex-shrink-0 py-1.5">
-              {isOwnProfile ? (
-                <button onClick={() => router.push('/profile')} className={btnGray}>Edit Profile</button>
-              ) : (
-                <>
-                  {showMessageBtn && <button onClick={handleStartChat} className={btnGray}><MessageCircle className="w-4 h-4" />Message</button>}
-                  {showFollowBtn && (
-                    <button onClick={handleFollow} disabled={followLoading} className={`${btnBase} disabled:opacity-50 ${isFollowing ? 'bg-[#e4e6eb] text-content hover:bg-[#d8dadf]' : 'bg-[#F97316] text-white hover:bg-[#ea580c]'}`}>
-                      {followLoading ? <Spinner /> : isFollowing ? <UserCheck className="w-4 h-4" /> : <UserPlus className="w-4 h-4" />}
-                      {isFollowing ? 'Tapped In' : 'Tap In'}
-                    </button>
+            <div className=" px-4 pb-4 pt-10 sm:px-5 sm:pt-12 ">
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                  <h1 className="max-w-full break-words text-[22px] font-semibold leading-tight text-content sm:text-[28px] lg:text-[32px]">{profile.full_name}</h1>
+                  {profile.is_verified && (
+                    <span className="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full bg-orange-500 text-[9px] font-bold text-white" aria-label="Verified">
+                      <CheckCheckIcon />
+                    </span>
                   )}
-                  {showFriendRequestBtn && (
-                    <button onClick={handleFriendRequest} disabled={friendLoading} className={`${btnBase} disabled:opacity-50 ${fb.cls}`}>
-                      {friendLoading ? <Spinner /> : <fb.icon className="w-4 h-4" />}{fb.label}
-                    </button>
-                  )}
-
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-
-        <div className="mt-3 sm:mt-4 w-full flex flex-col lg:flex-row gap-0 sm:gap-4">
-
-          <div className={`w-full lg:w-[300px] flex-shrink-0 space-y-2 sm:space-y-4 lg:sticky lg:top-20 lg:self-start ${activeTab === 'posts' ? 'hidden lg:block' : activeTab === 'about' || activeTab === 'photos' || activeTab === 'friends' || activeTab === 'reels' ? 'hidden lg:block' : ''}`}>
-            <div className="bg-surface sm:rounded-2xl shadow-card p-4">
-              <h2 className="text-base sm:text-lg font-semibold text-content mb-3">Personal details</h2>
-              {profile.bio && <p className="text-sm text-content leading-relaxed mb-3  line-clamp-4">{profile.bio}</p>}
-              <div className="space-y-2.5">
-                {visibleFields.country && profile.country && <DetailRow icon={MapPin}>From <span className="font-semibold">{profile.country}</span></DetailRow>}
-                {visibleFields.location && profileLivesInLine ? (
-                  <DetailRow icon={MapPin}>
-                    Lives in <span className="font-semibold">{profileLivesInLine}</span>
-                  </DetailRow>
-                ) : null}
-                <DetailRow icon={Calendar}><span suppressHydrationWarning>Joined {formatDistanceToNow(new Date(profile.created_at), { addSuffix: true })}</span></DetailRow>
-                <DetailRow icon={Users}><span className="font-semibold">{profile.posts_count}</span> posts</DetailRow>
-              </div>
-              <button onClick={() => setActiveTab('about')} className="w-full mt-3 py-2 text-sm font-semibold text-content bg-[#e4e6eb] hover:bg-[#d8dadf] rounded-md transition">See more details</button>
-            </div>
-
-            {user && user.id !== profile.id && visibleFields.followersList && mutualFriendsCount > 0 && (
-              <div className="bg-surface sm:rounded-2xl shadow-card p-4">
-                <h2 className="text-base sm:text-lg font-semibold text-content">Friends</h2>
-                <div className="grid grid-cols-3 gap-2 pt-2">
-                  {mutualFriends.slice(0, 6).map((f) => (
-                    <button key={f.user_id} onClick={() => router.push(`/user/${f.user_id}`)} className="text-left group focus:outline-none">
-                      <div className="aspect-square rounded-lg overflow-hidden bg-surface-secondary">
-                        {f.avatar_url
-                          ? <img src={f.avatar_url} alt={f.full_name} className="w-full h-full object-cover group-hover:brightness-95 transition" />
-                          : <div className="w-full h-full flex items-center justify-center bg-surface-tertiary group-hover:bg-surface-tertiary transition"><span className="text-lg font-semibold text-content-secondary">{f.full_name.charAt(0).toUpperCase()}</span></div>
-                        }
-                      </div>
-                      <p className="text-[12px] sm:text-[13px] font-medium text-content truncate mt-1 group-hover:underline">{f.full_name}</p>
-                    </button>
-                  ))}
-                </div>
-                {mutualFriendsCount > 6 && <p onClick={() => setActiveTab('friends')} className="text-sm text-[#F97316] text-center mt-3 hover:underline cursor-pointer">See all mutual friends</p>}
-              </div>
-            )}
-
-            {sidebarPhotos.length > 0 && (
-              <div className="bg-surface sm:rounded-2xl shadow-card p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <h2 className="text-base sm:text-lg font-semibold text-content">Photos</h2>
-                  <button onClick={() => setActiveTab('photos')} className="text-sm text-[#F97316] hover:underline font-medium">See all</button>
-                </div>
-                <div className="grid grid-cols-3 gap-1 rounded-lg overflow-hidden">
-                  {sidebarPhotos.slice(0, 9).map((p, i) => (
-                    <div key={`sp-${p.postId}-${i}`} className="aspect-square bg-surface-secondary cursor-pointer hover:brightness-90 transition overflow-hidden" onClick={() => setActiveTab('photos')}>
-                      <img src={p.url} alt="" className="w-full h-full object-cover" loading="lazy" />
+                  <span className="break-all text-sm text-content-secondary sm:text-base">@{profile.username}</span>
+                  <div className="flex gap-2 items-center  w-full">
+                    <div className="inline-block rounded-xl border border-orange-500 bg-primary-50 px-2 py-1 text-xs text-orange-500 shrink-0">
+                      <span className="font-medium">{fmt(profile.following_count)}</span> Tapping In
                     </div>
-                  ))}
+                    <div className="inline-block rounded-xl border border-green-500 bg-green-50 px-2 py-1 text-xs text-green-500 shrink-0">
+                      <span className="font-medium">{fmt(profile.followers_count)}</span> Tapped In
+                    </div>
+                  </div>
+                </div>
+
+                {profile.bio && (
+                  <div className="mt-1 max-w-2xl">
+                    <p className="break-words text-sm text-content-secondary">
+                      {bioExpanded || profile.bio.length <= 120
+                        ? profile.bio
+                        : `${profile.bio.slice(0, 220).trimEnd()}...`}{' '}
+                    {profile.bio.length > 120 && (
+                      <button
+                        type="button"
+                        onClick={() => setBioExpanded((expanded) => !expanded)}
+                        className="whitespace-nowrap text-sm font-medium text-primary-600 underline-offset-2 transition-colors hover:text-primary-700 hover:underline focus:outline-none focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-primary-500"
+                      >
+                        {bioExpanded ? 'Read less' : 'Read more'}
+                      </button>
+                    )}
+                    </p>
+                  </div>
+                )}
+
+
+
+                {user && user.id !== profile.id && visibleFields.followersList && mutualFriendsCount > 0 && (
+                  <div className="mt-2 flex min-w-0 flex-wrap items-center gap-2">
+                    <div className="flex shrink-0 -space-x-1.5">
+                      {mutualFriends.slice(0, 3).map((f) => (
+                        <div key={f.user_id} className="h-6 w-6 overflow-hidden rounded-full border-2 border-white sm:h-7 sm:w-7">
+                          <img
+                            src={f.avatar_url || "/assets/images/profile-dp.svg"}
+                            alt={f.full_name}
+                            onError={(event) => {
+                              if (event.currentTarget.src.endsWith("/assets/images/profile-dp.svg")) return;
+                              event.currentTarget.src = "/assets/images/profile-dp.svg";
+                            }}
+                            className="h-full w-full object-cover"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                    <span className="min-w-0 break-words text-sm font-medium text-content">
+                      {mutualFriendsCount} mutual {mutualFriendsCount === 1 ? 'friend' : 'friends'}
+                    </span>
+                  </div>
+                )}
+
+                <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-content-secondary">
+                  {visibleFields.country && profile.country && <span>{profile.country}</span>}
+                  {visibleFields.location && profileLivesInLine && (
+                    <span>Lives in {profileLivesInLine}</span>
+                  )}
+                  {(visibleFields.country && profile.country || visibleFields.location && profileLivesInLine) && (
+                    <span aria-hidden="true">·</span>
+                  )}
+                  <span suppressHydrationWarning>
+                    Joined {formatDistanceToNow(new Date(profile.created_at), { addSuffix: true })}
+                  </span>
                 </div>
               </div>
-            )}
+            </div>
+            <hr className="border-border" />
+
+            <div className="flex items-center px-1 sm:px-4">
+              <div className="flex flex-1 items-center overflow-x-auto scrollbar-hide">
+                {TABS.map((tab) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`shrink-0 whitespace-nowrap border-b-[3px] px-3 py-3 text-[13px] font-semibold transition-colors sm:px-4 sm:text-[15px] ${activeTab === tab.id ? 'text-[#F97316] border-[#F97316]' : 'text-content-secondary border-transparent hover:text-content rounded-t-md'
+                      }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
 
-          <div className="flex-1 min-w-0">
-            {activeTab === 'posts' && (
-              postsTabLoading && !postsTabFetched ? (
-                <div className="bg-surface sm:rounded-2xl shadow-card py-20 flex justify-center">
-                  <Spinner className="w-8 h-8 text-[#F97316]" />
-                </div>
-              ) : (
-                <PostsTab
-                  posts={posts}
-                  isOwnProfile={Boolean(isOwnProfile)}
-                  userId={user?.id}
-                  profileId={profile.id}
-                  showCommentsFor={showCommentsFor}
-                  canCommentOnPost={canCommentOnPost}
-                  canFollow={showFollowBtn}
-                  onLike={handleLike}
-                  onComment={handleComment}
-                  onShare={handleShare}
-                  onDelete={handleDelete}
-                  onEdit={handleEdit}
-                  onEmojiReaction={handleEmojiReaction}
-                  onCloseComments={() => setShowCommentsFor(null)}
-                />
-              )
-            )}
+          <div className="mt-3 sm:mt-4 w-full flex flex-col lg:flex-row gap-0 sm:gap-4">
 
-            {activeTab === 'about' && (
-              <AboutTab profile={(aboutForTab ?? profile)!} visibleFields={visibleFields} />
-            )}
+            <div className={`w-full lg:w-[300px] flex-shrink-0 space-y-2 sm:space-y-4 lg:sticky lg:top-20 lg:self-start ${activeTab === 'posts' ? 'hidden lg:block' : activeTab === 'about' || activeTab === 'photos' || activeTab === 'friends' ? 'hidden lg:block' : ''}`}>
+              <div className="bg-surface sm:rounded-2xl shadow-card p-4">
+                <h2 className="text-base sm:text-lg font-semibold text-content mb-3">Personal details</h2>
+                {profile.bio && (
+                  <div className="mt-1 max-w-2xl">
+                    <p className="break-words text-sm text-content-secondary">
+                      {bioExpanded || profile.bio.length <= 120
+                        ? profile.bio
+                        : `${profile.bio.slice(0, 120).trimEnd()}...`}{' '}
+                    {profile.bio.length > 120 && (
+                      <button
+                        type="button"
+                        onClick={() => setBioExpanded((expanded) => !expanded)}
+                        className="whitespace-nowrap text-sm font-medium text-primary-600 underline-offset-2 transition-colors hover:text-primary-700 hover:underline focus:outline-none focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-primary-500"
+                      >
+                        {bioExpanded ? 'Read less' : 'Read more'}
+                      </button>
+                    )}
+                    </p>
+                  </div>
+                )}
 
-            {activeTab === 'photos' && (
-              photosTabLoading && !photosTabFetched ? (
-                <div className="bg-surface sm:rounded-2xl shadow-card py-20 flex justify-center">
-                  <Spinner className="w-8 h-8 text-[#F97316]" />
+                <div className="space-y-2.5 pt-2">
+                  {visibleFields.country && profile.country && <DetailRow icon={MapPin}>From <span className="font-semibold">{profile.country}</span></DetailRow>}
+                  {visibleFields.location && profileLivesInLine ? (
+                    <DetailRow icon={MapPin}>
+                      Lives in <span className="font-semibold">{profileLivesInLine}</span>
+                    </DetailRow>
+                  ) : null}
+                  <DetailRow icon={Calendar}><span suppressHydrationWarning>Joined {formatDistanceToNow(new Date(profile.created_at), { addSuffix: true })}</span></DetailRow>
+                  <DetailRow icon={Users}><span className="font-semibold">{profile.posts_count}</span> posts</DetailRow>
                 </div>
-              ) : (
-                <PhotosTab photos={tabPhotos} isOwnProfile={Boolean(isOwnProfile)} />
-              )
-            )}
+                <button onClick={() => setActiveTab('about')} className="w-full mt-3 py-2 text-sm font-semibold text-content bg-[#e4e6eb] hover:bg-[#d8dadf] rounded-md transition">See more details</button>
+              </div>
 
-            {activeTab === 'friends' && (
-              friendsTabLoading && !friendsTabFetched ? (
-                <div className="bg-surface sm:rounded-2xl shadow-card py-20 flex justify-center">
-                  <Spinner className="w-8 h-8 text-[#F97316]" />
+              {user && user.id !== profile.id && visibleFields.followersList && mutualFriendsCount > 0 && (
+                <div className="bg-surface sm:rounded-2xl shadow-card p-4">
+                  <h2 className="text-base sm:text-lg font-semibold text-content">Friends</h2>
+                  <div className="grid grid-cols-3 gap-2 pt-2">
+                    {mutualFriends.slice(0, 6).map((f) => (
+                      <button key={f.user_id} onClick={() => router.push(`/user/${f.user_id}`)} className="text-left group focus:outline-none">
+                        <div className="aspect-square rounded-lg overflow-hidden bg-surface-secondary">
+                          <img
+                            src={f.avatar_url || "/assets/images/profile-dp.svg"}
+                            alt={f.full_name}
+                            onError={(event) => {
+                              if (event.currentTarget.src.endsWith("/assets/images/profile-dp.svg")) return;
+                              event.currentTarget.src = "/assets/images/profile-dp.svg";
+                            }}
+                            className="h-full w-full object-cover transition group-hover:brightness-95"
+                          />
+                        </div>
+                        <p className="text-[12px] sm:text-[13px] font-medium text-content truncate mt-1 group-hover:underline">{f.full_name}</p>
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('friends')}
+                    className="mt-3 w-full text-center text-sm font-medium text-[#F97316] hover:underline"
+                  >
+                    See all friends
+                  </button>
                 </div>
-              ) : (
-                <FriendsTab friends={userFriends} isOwnProfile={Boolean(isOwnProfile)} />
-              )
-            )}
+              )}
 
-            {activeTab === 'reels' && (
-              reelsTabLoading && !reelsTabFetched ? (
-                <div className="bg-surface sm:rounded-2xl shadow-card py-20 flex justify-center">
-                  <Spinner className="w-8 h-8 text-[#F97316]" />
+              {sidebarPhotos.length > 0 && (
+                <div className="bg-surface sm:rounded-2xl shadow-card p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <h2 className="text-base sm:text-lg font-semibold text-content">Photos</h2>
+                    <button onClick={() => setActiveTab('photos')} className="text-sm text-[#F97316] hover:underline font-medium">See all</button>
+                  </div>
+                  <div className="grid grid-cols-3 gap-1 rounded-lg overflow-hidden">
+                    {sidebarPhotos.slice(0, 9).map((p, i) => (
+                      <div key={`sp-${p.postId}-${i}`} className="aspect-square bg-surface-secondary cursor-pointer hover:brightness-90 transition overflow-hidden" onClick={() => setActiveTab('photos')}>
+                        <img src={p.url} alt="" className="w-full h-full object-cover" loading="lazy" />
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              ) : (
-                <ReelsTab videos={tabReels} isOwnProfile={Boolean(isOwnProfile)} />
-              )
-            )}
+              )}
+            </div>
+
+            <div className="flex-1 min-w-0">
+              {activeTab === 'posts' && (
+                postsTabLoading && !postsTabFetched ? (
+                  <div className="bg-surface sm:rounded-2xl shadow-card py-20 flex justify-center">
+                    <Spinner className="w-8 h-8 text-[#F97316]" />
+                  </div>
+                ) : (
+                  <PostsTab
+                    posts={posts}
+                    isOwnProfile={Boolean(isOwnProfile)}
+                    userId={user?.id}
+                    profileId={profile.id}
+                    showCommentsFor={showCommentsFor}
+                    canCommentOnPost={canCommentOnPost}
+                    canFollow={showFollowBtn}
+                    onLike={handleLike}
+                    onComment={handleComment}
+                    onShare={handleShare}
+                    onDelete={handleDelete}
+                    onEdit={handleEdit}
+                    onEmojiReaction={handleEmojiReaction}
+                    onCloseComments={() => setShowCommentsFor(null)}
+                  />
+                )
+              )}
+
+              {activeTab === 'about' && (
+                <AboutTab profile={(aboutForTab ?? profile)!} visibleFields={visibleFields} />
+              )}
+
+              {activeTab === 'photos' && (
+                photosTabLoading && !photosTabFetched ? (
+                  <div className="bg-surface sm:rounded-2xl shadow-card py-20 flex justify-center">
+                    <Spinner className="w-8 h-8 text-[#F97316]" />
+                  </div>
+                ) : (
+                  <PhotosTab photos={tabPhotos} isOwnProfile={Boolean(isOwnProfile)} />
+                )
+              )}
+
+              {activeTab === 'friends' && (
+                friendsTabLoading && !friendsTabFetched ? (
+                  <div className="bg-surface sm:rounded-2xl shadow-card py-20 flex justify-center">
+                    <Spinner className="w-8 h-8 text-[#F97316]" />
+                  </div>
+                ) : (
+                  <FriendsTab
+                    friends={userFriends}
+                    mutualFriends={mutualFriends}
+                    isOwnProfile={Boolean(isOwnProfile)}
+                  />
+                )
+              )}
+            </div>
           </div>
         </div>
-      </div>
       </main>
 
       {shareModalState.open && shareModalState.postId && (
@@ -975,6 +1072,35 @@ const UserProfilePage: React.FC = () => {
           members={members.map((m) => ({ id: m.id, name: m.name, avatar_url: m.avatar_url }))}
           onSendToMembers={handleSendToMembers}
         />
+      )}
+
+      {bannerViewerOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Cover photo viewer"
+          onClick={() => setBannerViewerOpen(false)}
+        >
+          <button
+            type="button"
+            onClick={() => setBannerViewerOpen(false)}
+            aria-label="Close cover photo viewer"
+            className="absolute right-4 top-4 z-10 flex h-10 w-10 items-center justify-center rounded-full text-white transition hover:bg-white/15 focus:outline-none focus:ring-2 focus:ring-white"
+          >
+            <X className="h-6 w-6" aria-hidden="true" />
+          </button>
+          <img
+            src={profile.banner_image || "/assets/images/no-cover.svg"}
+            alt={`${profile.full_name}'s cover photo`}
+            onError={(event) => {
+              if (event.currentTarget.src.endsWith("/assets/images/no-cover.svg")) return;
+              event.currentTarget.src = "/assets/images/no-cover.svg";
+            }}
+            className="max-h-full max-w-full rounded-lg object-contain shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+          />
+        </div>
       )}
     </div>
   )

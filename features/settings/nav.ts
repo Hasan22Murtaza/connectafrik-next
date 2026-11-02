@@ -1,5 +1,5 @@
 import type { ComponentType } from 'react'
-import { Bell, Shield, User, Lock, Monitor } from '@/shared/icons'
+import { Bell, Shield, User, Lock, Monitor, Users } from '@/shared/icons'
 import type { SettingsTab } from './types'
 
 export type SettingsNavItem = {
@@ -46,4 +46,16 @@ export const SETTINGS_NAV: SettingsNavItem[] = [
     description: 'Sessions and message encryption',
     icon: Monitor,
   },
+  {
+    id: 'family',
+    href: '/settings?tab=family',
+    label: 'Family',
+    description: 'Parental controls and family accounts',
+    icon: Users,
+  },
 ]
+
+/** Full settings nav — Family is visible to everyone; sections inside are role-gated. */
+export function getSettingsNav(): SettingsNavItem[] {
+  return SETTINGS_NAV
+}

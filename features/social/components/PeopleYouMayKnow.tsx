@@ -4,14 +4,23 @@ import { apiClient } from '@/lib/api-client';
 import { useAuth } from '@/contexts/AuthContext';
 import { UserPlus, Users, ChevronLeft, ChevronRight, X, MoreHorizontal } from '@/shared/icons';
 import { toast } from 'react-hot-toast';
-import UserSearch from '@/shared/components/ui/UserSearch';
+import FriendProfileCard from './FriendProfileCard';
 
 interface Recommendation {
   user_id: string;
   username: string;
   full_name: string;
   avatar_url: string | null;
+  banner_image?: string | null;
+  location?: string | null;
+  country?: string | null;
   mutual_friends_count: number;
+  mutual_friends?: Array<{
+    user_id: string;
+    username: string;
+    full_name: string;
+    avatar_url: string | null;
+  }>;
 }
 
 export const PeopleYouMayKnow: React.FC = () => {
@@ -19,9 +28,10 @@ export const PeopleYouMayKnow: React.FC = () => {
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
   const [loading, setLoading] = useState(true);
   const [sendingRequests, setSendingRequests] = useState<Set<string>>(new Set());
-  const [showUserSearch, setShowUserSearch] = useState(false);
+  const [showOptions, setShowOptions] = useState(false);
   const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const optionsRef = useRef<HTMLDivElement>(null);
   const [showLeftArrow, setShowLeftArrow] = useState(false);
   const [showRightArrow, setShowRightArrow] = useState(false);
 
@@ -68,6 +78,19 @@ export const PeopleYouMayKnow: React.FC = () => {
     };
   }, [checkScrollPosition, visibleRecommendations.length, loading]);
 
+  useEffect(() => {
+    if (!showOptions) return;
+
+    const handleDocumentClick = (event: MouseEvent) => {
+      if (optionsRef.current && !optionsRef.current.contains(event.target as Node)) {
+        setShowOptions(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleDocumentClick);
+    return () => document.removeEventListener('mousedown', handleDocumentClick);
+  }, [showOptions]);
+
   const scrollStrip = useCallback((direction: 'left' | 'right') => {
     scrollContainerRef.current?.scrollBy({
       left: direction === 'left' ? -200 : 200,
@@ -99,6 +122,11 @@ export const PeopleYouMayKnow: React.FC = () => {
 
   const handleDismiss = (userId: string) => {
     setDismissedIds((prev) => new Set(prev).add(userId));
+  };
+
+  const handleHideSuggestions = () => {
+    setDismissedIds(new Set(recommendations.map((recommendation) => recommendation.user_id)));
+    setShowOptions(false);
   };
 
   if (!user) {
@@ -143,14 +171,29 @@ export const PeopleYouMayKnow: React.FC = () => {
             <Users className="w-5 h-5 text-primary-600 shrink-0" />
             People you may know
           </h3>
-          <button
-            type="button"
-            onClick={() => setShowUserSearch(true)}
-            className="flex h-9 w-9 items-center justify-center rounded-full text-content-secondary transition-colors hover:bg-primary-50 hover:text-orange-500"
-            aria-label="More options"
-          >
-            <MoreHorizontal className="w-5 h-5" />
-          </button>
+          <div ref={optionsRef} className="relative">
+            <button
+              type="button"
+              onClick={() => setShowOptions((open) => !open)}
+              className="flex h-9 w-9 items-center justify-center rounded-full text-content-secondary transition-colors hover:bg-primary-50 hover:text-orange-500"
+              aria-label="More options"
+              aria-expanded={showOptions}
+            >
+              <MoreHorizontal className="w-5 h-5" />
+            </button>
+
+            {showOptions && (
+              <div className="absolute right-0 top-11 z-30 min-w-44 rounded-xl border border-border bg-surface p-1.5 shadow-lg">
+                <button
+                  type="button"
+                  onClick={handleHideSuggestions}
+                  className="w-full rounded-lg px-3 py-2 text-left text-sm text-content transition-colors hover:bg-surface-secondary"
+                >
+                  Hide suggestions
+                </button>
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="relative pb-2">
@@ -180,61 +223,54 @@ export const PeopleYouMayKnow: React.FC = () => {
             className="flex gap-3 overflow-x-auto scrollbar-hide scroll-smooth px-4 pt-1 pb-3"
           >
             {visibleRecommendations.map((rec) => (
-              <div
+              <FriendProfileCard
                 key={rec.user_id}
-                className="w-[168px] shrink-0 rounded-xl border border-border bg-surface overflow-hidden shadow-sm"
-              >
-                <div className="relative aspect-square bg-surface-secondary">
-                  {rec.avatar_url ? (
-                    <img
-                      src={rec.avatar_url}
-                      alt=""
-                      className="absolute inset-0 h-full w-full object-cover"
-                    />
-                  ) : (
-                    <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-primary-100 to-primary-200">
-                      <span className="text-3xl font-semibold text-orange-500">
-                        {rec.full_name.charAt(0).toUpperCase()}
-                      </span>
-                    </div>
-                  )}
+                userId={rec.user_id}
+                fullName={rec.full_name}
+                username={rec.username}
+                avatarUrl={rec.avatar_url}
+                bannerImage={rec.banner_image}
+                location={rec.location ?? rec.country ?? undefined}
+                relationshipText={
+                  rec.mutual_friends_count > 0
+                    ? `${rec.mutual_friends_count} mutual ${rec.mutual_friends_count === 1 ? 'friend' : 'friends'}`
+                    : 'Suggested for you'
+                }
+                mutualFriends={rec.mutual_friends ?? []}
+                className="w-[220px] shrink-0"
+                coverAction={
                   <button
                     type="button"
                     onClick={() => handleDismiss(rec.user_id)}
-                    className="absolute top-2 right-2 flex h-7 w-7 items-center justify-center rounded-full bg-gray-800/55 text-white hover:bg-gray-900/65 transition-colors"
+                    className="flex h-7 w-7 items-center justify-center rounded-full bg-gray-800/55 text-white transition-colors hover:bg-gray-900/65"
                     aria-label={`Dismiss ${rec.full_name}`}
                   >
-                    <X className="w-4 h-4" />
+                    <X className="h-4 w-4" />
                   </button>
-                </div>
-                <div className="p-3 pt-2.5">
-                  <p className="font-semibold text-sm text-[#1c1e21] text-center line-clamp-2 min-h-[2.5rem] leading-tight">
-                    {rec.full_name}
-                  </p>
-                  {rec.mutual_friends_count > 0 ? (
-                    <p className="mt-1.5 text-xs text-content-secondary text-center truncate px-0.5">
-                      {rec.mutual_friends_count} mutual {rec.mutual_friends_count === 1 ? 'friend' : 'friends'}
-                    </p>
+                }
+              >
+                <button
+                  type="button"
+                  onClick={() => handleSendRequest(rec.user_id)}
+                  disabled={sendingRequests.has(rec.user_id)}
+                  className="flex w-full items-center justify-center gap-1.5 rounded-full bg-[#ff6900] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#e85f00] disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {sendingRequests.has(rec.user_id) ? (
+                    'Sending…'
                   ) : (
-                    <p className="mt-1.5 text-xs text-content-tertiary text-center">Suggested for you</p>
+                    <>
+                      <UserPlus className="h-4 w-4 shrink-0" />
+                      Link Up
+                    </>
                   )}
-                  <button
-                    type="button"
-                    onClick={() => handleSendRequest(rec.user_id)}
-                    disabled={sendingRequests.has(rec.user_id)}
-                    className="mt-2.5 flex w-full items-center justify-center gap-1.5 rounded-lg border border-[var(--primary-200)] bg-primary-50 py-2 text-sm font-semibold text-primary-600 transition-colors hover:bg-[var(--primary-100)] disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    {sendingRequests.has(rec.user_id) ? (
-                      'Sending…'
-                    ) : (
-                      <>
-                        <UserPlus className="h-4 w-4 shrink-0" />
-                        Link Up
-                      </>
-                    )}
-                  </button>
-                </div>
-              </div>
+                </button>
+                <Link
+                  href={`/user/${rec?.user_id}`}
+                  className="mt-2.5 flex w-full items-center justify-center rounded-full bg-[#eef2ff] px-4 py-2.5 text-sm font-medium text-slate-700 transition-colors hover:bg-[#e0e7ff] dark:bg-white/10 dark:text-content dark:hover:bg-white/15"
+                >
+                  View Profile
+                </Link>
+              </FriendProfileCard>
             ))}
           </div>
         </div>
@@ -249,15 +285,6 @@ export const PeopleYouMayKnow: React.FC = () => {
         </div>
       </div>
 
-      {showUserSearch && (
-        <UserSearch
-          onClose={() => setShowUserSearch(false)}
-          onUserSelect={() => {
-            setShowUserSearch(false);
-            fetchRecommendations();
-          }}
-        />
-      )}
     </>
   );
 };

@@ -13,12 +13,14 @@ export interface FriendRequest {
     username: string
     full_name: string
     avatar_url?: string
+    banner_image?: string | null
   }
   receiver?: {
     id: string
     username: string
     full_name: string
     avatar_url?: string
+    banner_image?: string | null
   }
 }
 
@@ -27,6 +29,7 @@ export interface Friend {
   username: string
   full_name: string
   avatar_url?: string
+  banner_image?: string | null
   friends_since: string
   status?: string
   last_seen?: string
@@ -194,6 +197,7 @@ class FriendRequestService {
         username: u.username ?? 'user',
         full_name: u.full_name ?? u.username ?? 'CribsTalk User',
         avatar_url: u.avatar_url,
+        banner_image: u.banner_image ?? null,
         friends_since: (u as Friend).friends_since ?? '',
         status: u.status,
         last_seen: u.last_seen

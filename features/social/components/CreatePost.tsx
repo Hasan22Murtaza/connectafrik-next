@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react'
-import { MapPin, Send, X, Film, ChevronDown, Save, Loader2, Navigation, ArrowLeft, Search, Ban, Images } from '@/shared/icons'
+import { MapPin, Send, X, Film, ChevronDown, Save, Loader2, Navigation, ArrowLeft, Search, Ban, Images, Globe, Users, Lock, Smile, UserPlus } from '@/shared/icons'
 import { useAuth } from '@/contexts/AuthContext'
 import { useProfile } from '@/shared/hooks/useProfile'
 import { useFileUpload } from '@/shared/hooks/useFileUpload'
@@ -9,6 +9,16 @@ import { CULTURE_SUBCATEGORIES, type CultureSubcategorySlug } from '@/shared/con
 import { POLITICS_SUBCATEGORIES, type PoliticsSubcategorySlug } from '@/shared/constants/politics'
 import { POST_BACKGROUND_PRESETS, getPostBackgroundPreset } from '@/features/social/constants/postBackgrounds'
 import { parsePostLocation, serializePostLocation } from '@/features/social/utils/postLocation'
+import { sanitizePostFeeling, type PostFeeling } from '@/features/social/utils/postFeeling'
+import { feelingSubtitle } from '@/features/social/constants/postFeelings'
+import PostFeelingPicker from '@/features/social/components/PostFeelingPicker'
+import PostPeopleTagPicker, { type TaggedPerson } from '@/features/social/components/PostPeopleTagPicker'
+import {
+  POST_VISIBILITY_OPTIONS,
+  normalizePostVisibility,
+  postVisibilityFromProfileDefault,
+} from '@/shared/utils/visibilityUtils'
+import type { PostVisibility } from '@/shared/types'
 
 type MediaType = 'image' | 'video' | 'none'
 type Category = 'politics' | 'culture' | 'general'
@@ -24,6 +34,12 @@ export interface PostSubmitData {
   location?: string
   /** Text-only feed posts: preset id from `POST_BACKGROUND_PRESETS`, or null to clear */
   background_id?: string | null
+  /** Who can see this post: public | friends | only_me */
+  visibility?: PostVisibility
+  /** Facebook-style feeling: { emoji, label } */
+  feeling?: PostFeeling | null
+  /** Friend profile ids tagged on the post */
+  tagged_user_ids?: string[]
 }
 
 export interface EditPostData {
@@ -36,7 +52,16 @@ export interface EditPostData {
   tags?: string[]
   location?: string
   background_id?: string | null
+  visibility?: PostVisibility
+  feeling?: PostFeeling | null
+  tagged_users?: TaggedPerson[]
 }
+
+const VISIBILITY_ICONS = {
+  public: Globe,
+  friends: Users,
+  only_me: Lock,
+} as const
 
 interface CreatePostProps {
   onSubmit: (postData: PostSubmitData) => void | Promise<void>
@@ -73,6 +98,7 @@ const splitGroupPostBody = (text: string): { title: string; content: string } =>
 const VIDEO_REGEX = /\.(mp4|webm|ogg|mov)(\?|$)/i
 const MAX_FILES = 4
 const MAX_IMAGE_SIZE = 10 * 1024 * 1024
+const MAX_BACKGROUND_CHARACTERS = 250
 
 const CATEGORIES = [
   { value: 'general' as const, label: 'General', icon: '💬', active: 'bg-orange-50 border-orange-400 text-orange-500' },
@@ -192,7 +218,23 @@ const CreatePost: React.FC<CreatePostProps> = ({
     if (urls && urls.length > 0) return null
     return editData?.background_id ?? null
   })
+  const backgroundBeforeCharacterLimitRef = useRef<string | null>(null)
   const [showBackgroundModal, setShowBackgroundModal] = useState(false)
+  const [visibility, setVisibility] = useState<PostVisibility>(() =>
+    normalizePostVisibility(
+      editData?.visibility,
+      postVisibilityFromProfileDefault(profile?.post_visibility)
+    )
+  )
+  const [showVisibilityMenu, setShowVisibilityMenu] = useState(false)
+  const [selectedFeeling, setSelectedFeeling] = useState<PostFeeling | null>(() =>
+    sanitizePostFeeling(editData?.feeling)
+  )
+  const [taggedPeople, setTaggedPeople] = useState<TaggedPerson[]>(() =>
+    Array.isArray(editData?.tagged_users) ? editData!.tagged_users! : []
+  )
+  const [showFeelingModal, setShowFeelingModal] = useState(false)
+  const [showPeopleTagModal, setShowPeopleTagModal] = useState(false)
 
   const contentRef = useRef<HTMLTextAreaElement>(null)
   const locationInputRef = useRef<HTMLInputElement>(null)
@@ -206,18 +248,127 @@ const CreatePost: React.FC<CreatePostProps> = ({
   const totalMediaCount = mediaFiles.length + existingImageUrls.length
   const hasMedia = totalMediaCount > 0 || !!videoUrl || existingVideoUrls.length > 0
   const hasLocation = !!selectedLocation
+  const hasFeeling = !!selectedFeeling
   const effectiveCategory = culturePageMode ? 'culture' : politicsPageMode ? 'politics' : category
-  /** Text-only posts need 10+ chars; photo/video or a check-in can omit caption. */
+  /** Text-only posts need 10+ chars; photo/video, check-in, or feeling can omit caption. */
   const isFormValid =
-    (hasMedia || hasLocation || content.trim().length >= 10) && !isSubmitting && !uploading
+    (hasMedia || hasLocation || hasFeeling || content.trim().length >= 10) && !isSubmitting && !uploading
   const hasActiveVideo = videoUrl !== '' || existingVideoUrls.length > 0
   const selectedBgPreset = selectedBackgroundId ? getPostBackgroundPreset(selectedBackgroundId) : null
+  const selectedVisibility =
+    POST_VISIBILITY_OPTIONS.find((o) => o.value === visibility) ?? POST_VISIBILITY_OPTIONS[0]
+  const VisibilityIcon = VISIBILITY_ICONS[visibility] ?? Globe
   /** Full-screen Facebook-style shell when parent passes onCancel (feed, edit, culture, politics). */
   const useModalShell = typeof onCancel === 'function'
+
+  const visibilityPicker = !groupPostEdit ? (
+    <div className="relative mt-1.5">
+      <button
+        type="button"
+        onClick={() => setShowVisibilityMenu((v) => !v)}
+        className="inline-flex items-center gap-1.5 rounded-md border border-border bg-surface px-2 py-1 text-xs font-medium text-content-secondary transition-colors hover:bg-surface-hover"
+        aria-haspopup="listbox"
+        aria-expanded={showVisibilityMenu}
+      >
+        <VisibilityIcon className="h-3.5 w-3.5" />
+        {selectedVisibility.label}
+        <ChevronDown className={`h-3.5 w-3.5 transition-transform ${showVisibilityMenu ? 'rotate-180' : ''}`} />
+      </button>
+      {showVisibilityMenu && (
+        <>
+          <button
+            type="button"
+            className="fixed inset-0 z-40 cursor-default"
+            aria-label="Close visibility menu"
+            onClick={() => setShowVisibilityMenu(false)}
+          />
+          <div
+            role="listbox"
+            className="absolute left-0 top-full z-50 mt-1 min-w-[9rem] overflow-hidden rounded-xl border border-border bg-surface shadow-lg"
+          >
+            {POST_VISIBILITY_OPTIONS.map((option) => {
+              const Icon = VISIBILITY_ICONS[option.value]
+              const active = visibility === option.value
+              return (
+                <button
+                  key={option.value}
+                  type="button"
+                  role="option"
+                  aria-selected={active}
+                  onClick={() => {
+                    setVisibility(option.value)
+                    setShowVisibilityMenu(false)
+                  }}
+                  className={`flex w-full items-center gap-2.5 px-3 py-2.5 text-left transition-colors hover:bg-surface-hover ${
+                    active ? 'bg-orange-50/80' : ''
+                  }`}
+                >
+                  <Icon className={`h-4 w-4 shrink-0 ${active ? 'text-orange-600' : 'text-content-tertiary'}`} />
+                  <span className={`text-sm font-medium ${active ? 'text-orange-700' : 'text-content'}`}>
+                    {option.label}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+        </>
+      )}
+    </div>
+  ) : null
 
   useEffect(() => {
     if (hasMedia) setSelectedBackgroundId(null)
   }, [hasMedia])
+
+  const handleContentChange = (nextContent: string) => {
+    setContent(nextContent)
+
+    if (nextContent.length > MAX_BACKGROUND_CHARACTERS) {
+      if (selectedBackgroundId) {
+        backgroundBeforeCharacterLimitRef.current = selectedBackgroundId
+        setSelectedBackgroundId(null)
+      }
+      return
+    }
+
+    if (!selectedBackgroundId && backgroundBeforeCharacterLimitRef.current && !hasMedia) {
+      setSelectedBackgroundId(backgroundBeforeCharacterLimitRef.current)
+      backgroundBeforeCharacterLimitRef.current = null
+    }
+  }
+
+  const handleBackgroundSelection = (backgroundId: string | null) => {
+    if (backgroundId === null) {
+      backgroundBeforeCharacterLimitRef.current = null
+      setSelectedBackgroundId(null)
+      setShowBackgroundModal(false)
+      return
+    }
+
+    if (content.length > MAX_BACKGROUND_CHARACTERS) {
+      toast.error(`Backgrounds are limited to ${MAX_BACKGROUND_CHARACTERS} characters`)
+      return
+    }
+
+    backgroundBeforeCharacterLimitRef.current = null
+    setSelectedBackgroundId(backgroundId)
+    setShowBackgroundModal(false)
+  }
+
+  useEffect(() => {
+    if (isEditMode) return
+    if (!profile?.post_visibility) return
+    setVisibility(postVisibilityFromProfileDefault(profile.post_visibility))
+  }, [isEditMode, profile?.post_visibility])
+
+  useEffect(() => {
+    if (!showVisibilityMenu) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowVisibilityMenu(false)
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [showVisibilityMenu])
 
   useEffect(() => {
     if (!useModalShell) return
@@ -439,8 +590,8 @@ const CreatePost: React.FC<CreatePostProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     const trimmed = content.trim()
-    if (!hasMedia && !hasLocation && !trimmed) return
-    if (!hasMedia && !hasLocation && trimmed.length < 10) {
+    if (!hasMedia && !hasLocation && !hasFeeling && !trimmed) return
+    if (!hasMedia && !hasLocation && !hasFeeling && trimmed.length < 10) {
       return toast.error('Your post must be at least 10 characters long')
     }
     if (effectiveCategory === 'culture' && !cultureSubcategory) return toast.error('Please select a cultural category')
@@ -493,8 +644,10 @@ const CreatePost: React.FC<CreatePostProps> = ({
               const split = splitGroupPostBody(text)
               return { title: split.title, content: split.content }
             })()
-          : { content: text }),
+          : { content: text, visibility }),
         background_id: media_type === 'none' ? selectedBackgroundId : null,
+        feeling: selectedFeeling,
+        tagged_user_ids: taggedPeople.map((p) => p.id),
       }
 
       await onSubmit(payload)
@@ -514,6 +667,10 @@ const CreatePost: React.FC<CreatePostProps> = ({
         setShowLocationModal(false)
         setSelectedBackgroundId(null)
         setShowBackgroundModal(false)
+        setSelectedFeeling(null)
+        setTaggedPeople([])
+        setShowFeelingModal(false)
+        setShowPeopleTagModal(false)
       }
     } catch (error: any) {
       toast.error(error.message || 'Failed to save post')
@@ -560,7 +717,7 @@ const CreatePost: React.FC<CreatePostProps> = ({
       <div
         className={
           useModalShell
-            ? 'fixed bottom-0 left-0 right-0 z-[10051] flex min-h-0 max-h-[92dvh] flex-col overflow-hidden rounded-xl  bg-surface shadow-[0_-8px_40px_rgba(0,0,0,0.18)] sm:bottom-auto sm:left-1/2 sm:right-auto sm:top-1/2 sm:max-h-[min(88vh,720px)] sm:w-full sm:max-w-[500px] sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-xl sm:shadow-2xl'
+            ? 'fixed bottom-0 left-0 right-0 z-[10051] flex min-h-0 max-h-[92dvh] flex-col overflow-hidden rounded-xl  bg-surface shadow-[0_-8px_40px_rgba(0,0,0,0.18)] sm:bottom-auto sm:left-1/2 sm:right-auto sm:top-1/2 sm:max-h-[min(88vh,720px)] sm:w-full sm:max-w-[650px] sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-xl sm:shadow-2xl'
             : 'relative overflow-visible rounded-xl border border-border-subtle bg-surface shadow-sm'
         }
         {...(useModalShell ? { 'data-edit-modal': '' } : {})}
@@ -610,7 +767,8 @@ const CreatePost: React.FC<CreatePostProps> = ({
                     </>
                   )}
                 </p>
-                  <p className="shrink-0 text-xs text-secondary">{profile?.username}</p>
+                <p className="shrink-0 text-xs text-secondary">{profile?.username}</p>
+                {visibilityPicker}
               </div>
             </div>
           </>
@@ -633,7 +791,9 @@ const CreatePost: React.FC<CreatePostProps> = ({
                   </>
                 )}
               </p>
-              <p className="text-xs text-content-tertiary leading-tight mt-0.5">{isEditMode ? 'Editing post' : 'Share with the community'}</p>
+              {visibilityPicker ?? (
+                <p className="text-xs text-content-tertiary leading-tight mt-0.5">{isEditMode ? 'Editing post' : 'Share with the community'}</p>
+              )}
             </div>
           </div>
         )}
@@ -700,7 +860,7 @@ const CreatePost: React.FC<CreatePostProps> = ({
               ref={contentRef}
               placeholder={`What's on your mind, ${firstName}?`}
               value={content}
-              onChange={(e) => { setContent(e.target.value); autoResize() }}
+              onChange={(e) => { handleContentChange(e.target.value); autoResize() }}
               className={`w-full text-sm sm:text-base border-0 focus:outline-none focus:ring-0 resize-none bg-transparent p-0 leading-relaxed ${
                 selectedBgPreset
                   ? `${selectedBgPreset.textClass} ${selectedBgPreset.placeholderClass}`
@@ -767,7 +927,7 @@ const CreatePost: React.FC<CreatePostProps> = ({
                       <button
                         type="button"
                         title="No background"
-                        onClick={() => { setSelectedBackgroundId(null); setShowBackgroundModal(false) }}
+                        onClick={() => handleBackgroundSelection(null)}
                         className={`flex aspect-square items-center justify-center rounded-xl border-2 bg-surface transition-transform active:scale-95 ${
                           selectedBackgroundId === null ? 'border-[var(--african-orange)] ring-2 ring-orange-200' : 'border-border'
                         }`}
@@ -779,7 +939,7 @@ const CreatePost: React.FC<CreatePostProps> = ({
                           key={p.id}
                           type="button"
                           title={p.label}
-                          onClick={() => { setSelectedBackgroundId(p.id); setShowBackgroundModal(false) }}
+                          onClick={() => handleBackgroundSelection(p.id)}
                           className={`aspect-square rounded-xl border-2 transition-transform active:scale-95 ${
                             selectedBackgroundId === p.id ? 'border-[var(--african-orange)] ring-2 ring-orange-200' : 'border-border-subtle'
                           }`}
@@ -909,6 +1069,42 @@ const CreatePost: React.FC<CreatePostProps> = ({
           </div>
         )}
 
+        {(selectedFeeling || taggedPeople.length > 0) && (
+          <div className="px-3 sm:px-4 mt-2 flex flex-wrap gap-2">
+            {selectedFeeling ? (
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-900">
+                <span aria-hidden>{selectedFeeling.emoji}</span>
+                {feelingSubtitle(selectedFeeling.label, selectedFeeling.emoji)}
+                <button
+                  type="button"
+                  onClick={() => setSelectedFeeling(null)}
+                  className="ml-0.5 rounded-full p-0.5 text-amber-700/70 hover:bg-amber-100 hover:text-amber-900"
+                  aria-label="Remove feeling"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </span>
+            ) : null}
+            {taggedPeople.map((person) => (
+              <span
+                key={person.id}
+                className="inline-flex items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-800"
+              >
+                <UserPlus className="w-3.5 h-3.5 shrink-0" />
+                {person.full_name || person.username}
+                <button
+                  type="button"
+                  onClick={() => setTaggedPeople((prev) => prev.filter((p) => p.id !== person.id))}
+                  className="ml-0.5 rounded-full p-0.5 text-blue-700/70 hover:bg-blue-100 hover:text-blue-900"
+                  aria-label={`Remove ${person.full_name || person.username}`}
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+
         </div>
 
         <div className="mx-3 my-3 shrink-0 sm:mx-4">
@@ -937,6 +1133,32 @@ const CreatePost: React.FC<CreatePostProps> = ({
               >
                 <span className="flex h-8 w-8 items-center justify-center rounded-full bg-violet-100">
                   <Film className="h-[18px] w-[18px] text-violet-600" strokeWidth={2} />
+                </span>
+              </button>
+              <button
+                type="button"
+                title="Tag people"
+                disabled={uploading || isSubmitting || !!groupPostEdit}
+                onClick={() => setShowPeopleTagModal(true)}
+                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-surface-hover disabled:opacity-40 ${
+                  taggedPeople.length > 0 ? 'ring-2 ring-blue-200' : ''
+                }`}
+              >
+                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100">
+                  <UserPlus className="h-[18px] w-[18px] text-blue-600" strokeWidth={2} />
+                </span>
+              </button>
+              <button
+                type="button"
+                title="Feeling"
+                disabled={uploading || isSubmitting || !!groupPostEdit}
+                onClick={() => setShowFeelingModal(true)}
+                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-surface-hover disabled:opacity-40 ${
+                  selectedFeeling ? 'ring-2 ring-amber-200' : ''
+                }`}
+              >
+                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-100">
+                  <Smile className="h-[18px] w-[18px] text-amber-600" strokeWidth={2} />
                 </span>
               </button>
               <button
@@ -1159,6 +1381,28 @@ const CreatePost: React.FC<CreatePostProps> = ({
             )}
           </div>
         </div>
+      )}
+
+      {showFeelingModal && (
+        <PostFeelingPicker
+          initial={selectedFeeling}
+          onClose={() => setShowFeelingModal(false)}
+          onDone={(feeling) => {
+            setSelectedFeeling(feeling)
+            setShowFeelingModal(false)
+          }}
+        />
+      )}
+
+      {showPeopleTagModal && (
+        <PostPeopleTagPicker
+          initial={taggedPeople}
+          onClose={() => setShowPeopleTagModal(false)}
+          onDone={(people) => {
+            setTaggedPeople(people)
+            setShowPeopleTagModal(false)
+          }}
+        />
       )}
       </div>
     </>

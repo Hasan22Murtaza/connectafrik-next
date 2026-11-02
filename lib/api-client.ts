@@ -1,5 +1,6 @@
 import { supabase } from './supabase'
 import { CHAT_LOCKED_CODE } from '@/features/chat/chatLockEvents'
+import { PARENTAL_RESTRICTED_CODE } from '@/shared/types/family'
 
 export const PRIVACY_DENIED_CODE = 'PRIVACY_DENIED'
 
@@ -14,16 +15,26 @@ export class ApiError extends Error {
   }
 }
 
-export function isChatLockedError(error: unknown): boolean {
-  if (!(error instanceof ApiError)) return false
+function apiErrorCode(error: unknown): string | undefined {
+  if (!(error instanceof ApiError)) return undefined
   const details = error.details as { code?: string } | undefined
-  return error.status === 403 && details?.code === CHAT_LOCKED_CODE
+  return details?.code
+}
+
+export function isChatLockedError(error: unknown): boolean {
+  return error instanceof ApiError && error.status === 403 && apiErrorCode(error) === CHAT_LOCKED_CODE
 }
 
 export function isPrivacyDeniedError(error: unknown): boolean {
-  if (!(error instanceof ApiError)) return false
-  const details = error.details as { code?: string } | undefined
-  return error.status === 403 && details?.code === PRIVACY_DENIED_CODE
+  return error instanceof ApiError && error.status === 403 && apiErrorCode(error) === PRIVACY_DENIED_CODE
+}
+
+export function isParentalRestrictedError(error: unknown): boolean {
+  return (
+    error instanceof ApiError &&
+    error.status === 403 &&
+    apiErrorCode(error) === PARENTAL_RESTRICTED_CODE
+  )
 }
 
 let extraHeaderProvider: (endpoint?: string) => Record<string, string> = () => ({})

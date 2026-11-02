@@ -1,16 +1,18 @@
 'use client'
 
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { Camera, Loader2, User } from '@/shared/icons'
+import { Camera, Image, Loader2, Trash2, User, X } from '@/shared/icons'
 import { useProfile } from '@/shared/hooks/useProfile'
 import { useFileUpload } from '@/shared/hooks/useFileUpload'
 import { LocationSearch } from '@/shared/components/ui/LocationSearch'
+import { useConfirmDialog } from '@/shared/components/ui/ConfirmDialog'
 import { profileLocationFromDb } from '@/shared/types/location'
 import toast from 'react-hot-toast'
 import {
   SettingsCard,
   SettingsPanelSkeleton,
   SettingsSaveBar,
+  SettingsSectionHeader,
   settingsInputClass,
   settingsLabelClass,
 } from './SettingsPrimitives'
@@ -43,12 +45,16 @@ const emptyForm: ProfileFormState = {
 
 export function ProfileSettingsPanel() {
   const { profile, loading, updateProfile } = useProfile()
-  const { uploadFile } = useFileUpload()
-  const fileRef = useRef<HTMLInputElement>(null)
+  const { uploadFile, deleteFile } = useFileUpload()
+  const { confirm, dialog } = useConfirmDialog()
+  const avatarRef = useRef<HTMLInputElement>(null)
+  const bannerRef = useRef<HTMLInputElement>(null)
 
   const [form, setForm] = useState<ProfileFormState>(emptyForm)
   const [saved, setSaved] = useState<ProfileFormState>(emptyForm)
-  const [isUploading, setIsUploading] = useState(false)
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false)
+  const [isDeletingAvatar, setIsDeletingAvatar] = useState(false)
+  const [isUploadingBanner, setIsUploadingBanner] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
 
   useEffect(() => {
@@ -104,7 +110,7 @@ export function ProfileSettingsPanel() {
     e.target.value = ''
     if (!file) return
 
-    setIsUploading(true)
+    setIsUploadingAvatar(true)
     try {
       const result = await uploadFile(file, {
         bucket: 'user-avatars',
@@ -120,70 +126,244 @@ export function ProfileSettingsPanel() {
     } catch {
       toast.error('Failed to upload avatar')
     } finally {
-      setIsUploading(false)
+      setIsUploadingAvatar(false)
     }
   }
 
-  if (loading && !profile) return <SettingsPanelSkeleton />
+  const handleRemoveAvatar = async () => {
+    const avatarUrl = profile?.avatar_url
+    if (!avatarUrl) return
+
+    const confirmed = await confirm({
+      title: 'Delete profile photo?',
+      message: 'Your profile photo will be removed.',
+      confirmLabel: 'Delete photo',
+      variant: 'danger',
+    })
+    if (!confirmed) return
+
+    setIsDeletingAvatar(true)
+    try {
+      const { error } = await updateProfile({ avatar_url: null })
+      if (error) {
+        toast.error(error)
+        return
+      }
+
+      toast.success('Profile photo removed')
+      const fileDeleted = await deleteFile(avatarUrl, 'user-avatars')
+      if (!fileDeleted) {
+        toast.error('Profile photo removed, but its image file could not be deleted')
+      }
+    } catch {
+      toast.error('Failed to remove profile photo')
+    } finally {
+      setIsDeletingAvatar(false)
+    }
+  }
+
+  const handleBannerUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+
+    setIsUploadingBanner(true)
+    try {
+      const result = await uploadFile(file, {
+        bucket: 'user-avatars',
+        maxSize: 10 * 1024 * 1024,
+        compress: true,
+      })
+
+      if (result.error) {
+        toast.error(result.error)
+      } else if (result.url) {
+        await updateProfile({ banner_image: result.url })
+        toast.success('Banner image updated!')
+      }
+    } catch {
+      toast.error('Failed to upload banner')
+    } finally {
+      setIsUploadingBanner(false)
+    }
+  }
+
+  const handleRemoveBanner = async () => {
+    setIsUploadingBanner(true)
+    try {
+      const { error } = await updateProfile({ banner_image: null })
+      if (error) {
+        toast.error(error)
+      } else {
+        toast.success('Banner image removed')
+      }
+    } catch {
+      toast.error('Failed to remove banner')
+    } finally {
+      setIsUploadingBanner(false)
+    }
+  }
+
+  if (loading && !profile) return <SettingsPanelSkeleton variant="profile" />
+
+  const displayName = form.full_name || form.username || 'Your profile'
 
   return (
     <div className="space-y-4">
-      <div>
-        <div className="flex flex-col items-center gap-5 px-5 py-6 sm:flex-row sm:items-center sm:gap-6">
-          <div className="relative h-28 w-28 shrink-0 sm:h-32 sm:w-32">
-            {profile?.avatar_url ? (
+      <input
+        ref={bannerRef}
+        type="file"
+        accept="image/*"
+        onChange={handleBannerUpload}
+        className="hidden"
+        disabled={isUploadingBanner}
+      />
+      <input
+        ref={avatarRef}
+        type="file"
+        accept="image/*"
+        onChange={handleAvatarUpload}
+        className="hidden"
+        disabled={isUploadingAvatar || isDeletingAvatar}
+      />
+
+      {/* Profile preview — banner + avatar as one composition */}
+      <SettingsCard className="overflow-hidden">
+        <div className="relative">
+          <div
+            className={`group/banner relative h-36 overflow-hidden sm:h-44 ${profile?.banner_image
+                ? 'bg-surface-secondary'
+                : 'bg-[linear-gradient(135deg,color-mix(in_srgb,var(--primary-200)_55%,transparent),color-mix(in_srgb,var(--primary-50)_80%,var(--surface-secondary)),color-mix(in_srgb,var(--primary-100)_40%,transparent))]'
+              }`}
+          >
+            {profile?.banner_image ? (
               <img
-                src={profile.avatar_url}
-                alt="Profile"
-                className="h-full w-full shrink-0 rounded-full object-cover ring-1 ring-border-subtle"
+                src={profile.banner_image}
+                alt=""
+                className="h-full w-full object-cover transition-transform duration-500 ease-out group-hover/banner:scale-[1.02]"
               />
             ) : (
-              <div className="flex h-full w-full shrink-0 items-center justify-center rounded-full bg-surface-secondary ring-1 ring-border-subtle">
-                <User className="h-10 w-10 text-content-tertiary" />
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 px-4 text-center">
+                <Image className="h-7 w-7 text-primary/50" aria-hidden />
+                <span className="text-sm text-content-secondary">Add a banner to personalize your profile</span>
               </div>
             )}
 
-            <button
-              type="button"
-              onClick={() => fileRef.current?.click()}
-              disabled={isUploading}
-              className="absolute bottom-0 right-0 z-10 inline-flex h-10 w-10 items-center justify-center rounded-full border-[3px] border-surface bg-primary text-white shadow-sm transition-transform duration-200 hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:opacity-60"
-              aria-label="Change profile photo"
-            >
-              <Camera className="h-4 w-4" />
-            </button>
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/25 via-transparent to-black/10 opacity-0 transition-opacity duration-300 group-hover/banner:opacity-100" />
 
-            {isUploading ? (
-              <div className="absolute inset-0 z-[5] flex items-center justify-center rounded-full bg-black/45">
+            <div className="absolute right-3 top-3 z-10 flex items-center gap-2">
+              {profile?.banner_image ? (
+                <button
+                  type="button"
+                  onClick={handleRemoveBanner}
+                  disabled={isUploadingBanner}
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-surface/90 text-content shadow-sm backdrop-blur-sm transition-transform duration-200 hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:opacity-60"
+                  aria-label="Remove banner image"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              ) : null}
+              <button
+                type="button"
+                onClick={() => bannerRef.current?.click()}
+                disabled={isUploadingBanner}
+                className="inline-flex min-h-9 items-center gap-2 rounded-full bg-surface/90 px-3.5 text-sm font-medium text-content shadow-sm backdrop-blur-sm transition-transform duration-200 hover:scale-[1.02] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:opacity-60"
+              >
+                <Camera className="h-3.5 w-3.5" />
+                <span>{profile?.banner_image ? 'Edit cover' : 'Add cover'}</span>
+              </button>
+            </div>
+
+            {isUploadingBanner ? (
+              <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/40">
                 <Loader2 className="h-7 w-7 animate-spin text-white" />
               </div>
             ) : null}
           </div>
-          <div className="w-full text-center sm:text-left">
-            <div className="text-[17px] font-semibold text-content">
-              {form.full_name || form.username || 'Your profile'}
+
+          <div className="relative px-4 pb-5 pt-0 sm:px-5">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+              <div className="flex gap-3">
+                <div className="-mt-12 relative h-[104px] w-[104px] shrink-0 sm:-mt-14 sm:h-[120px] sm:w-[120px]">
+                  <div className="h-full w-full overflow-hidden rounded-full border-[4px] border-surface bg-surface-secondary shadow-sm">
+                    {profile?.avatar_url ? (
+                      <img
+                        src={profile.avatar_url}
+                        alt=""
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center">
+                        <User className="h-10 w-10 text-content-tertiary" />
+                      </div>
+                    )}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => avatarRef.current?.click()}
+                    disabled={isUploadingAvatar}
+                    className="absolute bottom-1 right-1 z-10 inline-flex h-10 w-10 items-center justify-center rounded-full border-[3px] border-surface bg-primary text-white shadow-sm transition-transform duration-200 hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:opacity-60"
+                    aria-label="Change profile photo"
+                  >
+                    <Camera className="h-4 w-4" />
+                  </button>
+
+                  {isUploadingAvatar || isDeletingAvatar ? (
+                    <div className="absolute inset-0 z-[5] flex items-center justify-center rounded-full bg-black/45">
+                      <Loader2 className="h-7 w-7 animate-spin text-white" />
+                    </div>
+                  ) : null}
+                </div>
+
+                <div className="min-w-0 pb-1 text-center sm:text-left">
+                  <h3 className="truncate text-lg font-semibold tracking-tight text-content sm:text-xl">
+                    {displayName}
+                  </h3>
+                  {form.username ? (
+                    <p className="mt-0.5 text-sm text-content-secondary">@{form.username}</p>
+                  ) : (
+                    <p className="mt-0.5 text-sm text-content-tertiary">Choose a username below</p>
+                  )}
+                </div>
+              </div>
+              <div className="flex  items-center justify-center gap-2 sm:justify-start">
+                <button
+                  type="button"
+                  onClick={() => avatarRef.current?.click()}
+                  disabled={isUploadingAvatar || isDeletingAvatar}
+                  className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 !rounded-[14px] btn-secondary  px-4 text-sm font-semibold  transition-colors "
+                >
+                  <Camera className="h-4 w-4" />
+                  <span >Change photo</span>
+                </button>
+                {profile?.avatar_url ? (
+                  <button
+                    type="button"
+                    onClick={handleRemoveAvatar}
+                    disabled={isUploadingAvatar || isDeletingAvatar}
+                    className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-[14px] border border-red-300 bg-surface px-4 text-sm font-semibold text-danger transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60 dark:hover:bg-red-950/40"
+                  >
+                    {isDeletingAvatar ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Trash2 className="h-4 w-4" />
+                    )}
+                    <span>{isDeletingAvatar ? 'Deleting…' : 'Delete photo'}</span>
+                  </button>
+                ) : null}
+              </div>
             </div>
-            {form.username ? (
-              <p className="mt-0.5 text-sm text-content-secondary">@{form.username}</p>
-            ) : null}
-            <label className="btn-secondary mt-3 inline-flex min-h-11 cursor-pointer rounded-[14px] px-4">
-              <Camera className="h-4 w-4" />
-              <span>Change Avatar</span>
-              <input
-                ref={fileRef}
-                type="file"
-                accept="image/*"
-                onChange={handleAvatarUpload}
-                className="hidden"
-                disabled={isUploading}
-              />
-            </label>
-            <p className="mt-2 text-xs text-content-tertiary">JPG, PNG or WebP. Max 5MB.</p>
+
           </div>
         </div>
-      </div>
+      </SettingsCard>
 
       <SettingsCard>
+        <SettingsSectionHeader
+          title="About you"
+          description="This is how people find and recognize you on CribsTalk."
+        />
         <div className="space-y-5 px-4 py-5 sm:px-5">
           <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
             <div>
@@ -271,6 +451,7 @@ export function ProfileSettingsPanel() {
       </SettingsCard>
 
       <SettingsSaveBar dirty={dirty} saving={isSaving} onSave={handleSave} />
+      {dialog}
     </div>
   )
 }

@@ -7,12 +7,17 @@ export interface User {
   full_name?: string
 }
 
+/** Per-post audience (DB: public | friends | only_me) */
+export type PostVisibility = 'public' | 'friends' | 'only_me'
+
 export interface Post {
   id: string
   content: string
   category: 'politics' | 'culture' | 'general'
   author_id: string
   media_urls?: string[]
+  /** Who can see this post: public, friends, only_me */
+  visibility?: PostVisibility
   likes_count: number
   comments_count: number
   shares_count: number
@@ -29,7 +34,8 @@ export interface Profile {
   full_name: string
   first_name?: string
   last_name?: string
-  avatar_url?: string
+  avatar_url?: string | null
+  banner_image?: string | null
   country?: string
   address?: string | null
   city?: string | null
@@ -76,6 +82,15 @@ export interface Profile {
   data_download_requested?: boolean
   /** Chat translate target. `off` is “My language (default)” and leaves messages as written. */
   message_translation_language?: MessageTranslationLanguageCode
+  /** Live counts from GET /api/users/me */
+  follower_count?: number
+  following_count?: number
+  posts_count?: number
+  reels_count?: number
+  saved_posts_count?: number
+  saved_reels_count?: number
+  saved_count?: number
+  friends_count?: number
 }
 
 export interface UserProfile {
@@ -83,6 +98,7 @@ export interface UserProfile {
   username: string
   full_name: string
   avatar_url: string | null
+  banner_image?: string | null
   bio: string | null
   country: string | null
   address?: string | null
@@ -98,6 +114,11 @@ export interface UserProfile {
   followers_count: number
   following_count: number
   posts_count: number
+  reels_count?: number
+  saved_posts_count?: number
+  saved_reels_count?: number
+  saved_count?: number
+  friends_count?: number
   created_at: string
 }
 
@@ -121,6 +142,7 @@ export interface MutualFriend {
   username: string
   full_name: string
   avatar_url: string | null
+  banner_image?: string | null
 }
 
 export interface Friend {
@@ -128,10 +150,13 @@ export interface Friend {
   username: string
   full_name: string
   avatar_url?: string
+  banner_image?: string | null
   country?: string
   bio?: string
   friendship_date?: string
   birthday?: string
+  mutual_friends_count?: number
+  mutual_friends?: MutualFriend[]
 }
 
 export interface FriendRequest {
@@ -146,8 +171,12 @@ export interface FriendRequest {
     username: string
     full_name: string
     avatar_url?: string
+    banner_image?: string | null
     country?: string
   }
+  mutualFriendsCount?: number
+  mutual_friends_count?: number
+  mutual_friends?: MutualFriend[]
 }
 
 export interface Comment {

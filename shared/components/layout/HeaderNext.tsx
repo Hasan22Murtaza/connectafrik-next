@@ -1,33 +1,33 @@
-"use client";
+﻿"use client";
 
-import React, { useState, useEffect, useRef } from "react";
-import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { useAuth } from "@/contexts/AuthContext";
+import MobileSearchModal from "@/shared/components/search/MobileSearchModal";
+import SearchResultsDropdown from "@/shared/components/search/SearchResultsDropdown";
+import UserMenu from "@/shared/components/theme/UserMenu";
+import NotificationDropdown from "@/shared/components/ui/NotificationDropdown";
+import { useHeaderInboxCounts } from "@/shared/hooks/useHeaderInboxCounts";
+import { useProfile } from "@/shared/hooks/useProfile";
+import { useSearch } from "@/shared/hooks/useSearch";
+import { useSpaceNavCounts } from "@/shared/hooks/useSpaceNavCounts";
 import {
-  Search,
   Bell,
-  MessageCircle,
-  Phone,
-  Home,
-  Video,
-  Users,
-  Menu,
   Close,
+  Home,
+  Menu,
+  MessageCircle,
+  Search,
   Store,
   UserRound,
+  Users,
+  Video
 } from "@/shared/icons";
-import { useAuth } from "@/contexts/AuthContext";
-import { useProfile } from "@/shared/hooks/useProfile";
-import { useNotifications } from "@/shared/hooks/useNotifications";
-import NotificationDropdown from "@/shared/components/ui/NotificationDropdown";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import React, { useEffect, useRef, useState } from "react";
 import { FaBars } from "react-icons/fa";
 import MobileSideDrawer from "../ui/MobileSideDrawer";
-import { useSearch } from "@/shared/hooks/useSearch";
-import SearchResultsDropdown from "@/shared/components/search/SearchResultsDropdown";
-import MobileSearchModal from "@/shared/components/search/MobileSearchModal";
-import UserMenu from "@/shared/components/theme/UserMenu";
-import { useHeaderInboxCounts } from "@/shared/hooks/useHeaderInboxCounts";
-import { useSpaceNavCounts } from "@/shared/hooks/useSpaceNavCounts";
+import PlayMedia from "@/shared/icons/PlayMedia";
+import { Handbag } from "lucide-react";
 
 interface HeaderProps {
   searchTerm?: string;
@@ -133,11 +133,10 @@ const Header: React.FC<HeaderProps> = ({
         className={
           user
             ? "sticky top-0 z-50 bg-surface shadow-header"
-            : `sticky top-0 z-50 border-b transition-[background-color,box-shadow,border-color] duration-300 ${
-                scrolled
-                  ? "border-black/[0.06] bg-white/90 shadow-sm backdrop-blur-xl"
-                  : "border-transparent bg-white/70 backdrop-blur-md"
-              }`
+            : `sticky top-0 z-50 border-b transition-[background-color,box-shadow,border-color] duration-300 ${scrolled
+              ? "border-black/[0.06] bg-white/90 shadow-sm backdrop-blur-xl"
+              : "border-transparent bg-white/70 backdrop-blur-md"
+            }`
         }
       >
         <div
@@ -150,289 +149,186 @@ const Header: React.FC<HeaderProps> = ({
           <div
             className={
               user
-                ? "flex items-center h-14 sm:h-16 justify-between gap-2 w-full"
+                ? "relative flex items-center h-14 sm:h-16 justify-between gap-2 w-full"
                 : "flex w-full items-center justify-between gap-4"
             }
           >
-            <div className="flex items-center ">
-            {/* Logo - Pinned to left */}
-            <Link href="/" className="flex-shrink-0 " aria-label="CribsTalk home">
-              <img src="/assets/images/logo_2.png" alt="CribsTalk" className="sm:w-40 w-32" />
-            </Link>
+            <div className="flex items-center flex-1 min-w-0 gap-3 sm:gap-4">
+              {/* Logo - Pinned to left */}
+              <Link href="/" className="flex-shrink-0" aria-label="CribsTalk home">
+                <img src="/assets/images/logo_2.png" alt="CribsTalk" className="sm:w-40 w-32" />
+              </Link>
 
-            {/* Search Bar - Only when logged in; hidden on mobile, visible on tablet+ */}
-            {user && (
-              <div className="hidden md:flex  max-w-70  w-full">
-                <div className="relative w-full" ref={searchContainerRef}>
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-content-tertiary w-4 h-4 z-10" />
-                  <input
-                    type="text"
-                    placeholder="Search CribsTalk..."
-                    className="w-full px-3 py-2.5 pl-9 bg-surface-input hover:bg-surface-hover focus-visible:bg-surface-hover border border-border rounded-full focus:border-orange-500 focus:ring-2 focus:ring-orange-200 focus:outline-none transition-colors text-sm text-content placeholder:text-content-tertiary"
-                    value={searchTerm}
-                    onChange={(e) => handleSearchChange(e.target.value)}
-                    onFocus={() => {
-                      if (searchTerm.trim().length >= 2 && searchResults) {
-                        setShowSearchResults(true);
-                      }
-                    }}
-                  />
-
-                  {/* Search Results Dropdown */}
-                  {showSearchResults && (
-                    <SearchResultsDropdown
-                      results={searchResults}
-                      isSearching={isSearching}
-                      searchTerm={searchTerm}
-                      onClose={() => setShowSearchResults(false)}
+              {/* Search Bar - Only when logged in; hidden on mobile, visible on tablet+ */}
+              {user && (
+                <div className="hidden md:flex max-w-[min(100%,28rem)] w-full min-w-0">
+                  <div className="relative w-full" ref={searchContainerRef}>
+                    <Search className="pointer-events-none absolute left-3.5 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-content-tertiary" />
+                    <input
+                      type="text"
+                      placeholder="Search CribsTalk..."
+                      className="w-full rounded-full border border-border-subtle bg-surface-secondary py-2.5 pl-10 pr-4 text-sm text-content placeholder:text-content-tertiary transition-colors hover:bg-surface-hover focus:border-border focus:bg-surface focus:outline-none focus:ring-2 focus:ring-primary/20"
+                      value={searchTerm}
+                      onChange={(e) => handleSearchChange(e.target.value)}
+                      onFocus={() => {
+                        if (searchTerm.trim().length >= 2 && searchResults) {
+                          setShowSearchResults(true);
+                        }
+                      }}
                     />
-                  )}
-                </div>
-              </div>
-            )}
 
-            {/* Mobile Search Button - Visible only on mobile when logged in */}
-            {user && (
-              <button
-                onClick={() => setShowMobileSearch(true)}
-                className="md:hidden p-2 text-content-secondary hover:text-primary-600 transition-colors"
-                aria-label="Open search"
-              >
-                <Search className="w-5 h-5" />
-              </button>
-            )}
+                    {/* Search Results Dropdown */}
+                    {showSearchResults && (
+                      <div className="absolute top-full left-0 right-0 mt-2 bg-surface-elevated rounded-lg shadow-dropdown border border-border max-h-[600px] overflow-y-auto z-50 md:block">
+                        <SearchResultsDropdown
+                          results={searchResults}
+                          isSearching={isSearching}
+                          searchTerm={searchTerm}
+                          onClose={() => setShowSearchResults(false)}
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Navigation and User Menu - Pinned to right */}
-              {user ? (
-                <>
-                  {/* Navigation Links - Hidden on mobile, visible on desktop */}
-                  <nav className="md:block hidden flex-1 md:max-w-lg lg:max-w-lg 2xl:max-w-2xl mx-auto">
-                    <ul className="flex items-center gap-6  pt-3 justify-between  ">
-
-                      {/* Feed */}
-                      <li className="relative">
-                        <Link
-                          href="/feed"
-                          className={`group flex flex-col items-center gap-1 pb-2 px-0 sm:px-4 transition-colors ${pathname === "/feed"
-                            ? "text-primary-600"
-                            : "text-content-secondary hover:text-primary-600"
-                            }`}
-                        >
-                          <Home className="w-12" />
-                          <span className="text-sm font-medium">Feed</span>
-
-                          {/* <span
-                            className={`absolute bottom-0 left-0 h-[2px] bg-primary-600 rounded-full transition-all duration-300 ease-in-out ${pathname === "/feed"
-                              ? "w-full"
-                              : "w-0 group-hover:w-full"
-                              }`}
-                          /> */}
-                        </Link>
-                      </li>
-
-                      {/* Reels */}
-                      <li className="relative">
-                        <Link
-                          href="/memories/foryou"
-                          className={`group flex flex-col items-center gap-1 pb-2 px-0 sm:px-4 transition-colors ${pathname.startsWith("/memories")
-                            ? "text-primary-600"
-                            : "text-content-secondary hover:text-primary-600"
-                            }`}
-                        >
-                          <Video className="w-12" />
-                          <span className="text-sm font-medium">Reels</span>
-
-                        </Link>
-                      </li>
-
-                      {/* tradehub */}
-                      <li className="relative">
-                        <Link
-                          href="/marketplace"
-                          className={`group flex flex-col items-center gap-1 pb-2 px-0 sm:px-4 transition-colors ${pathname === "/marketplace"
-                            ? "text-primary-600"
-                            : "text-content-secondary hover:text-primary-600"
-                            }`}
-                        >
-                          <Store className="w-12" />
-                          <span className="text-sm font-medium">TradeHub</span>
-
-                          
-                        </Link>
-                      </li>
-
-                      {/* friends */}
-                      <li className="relative">
-                        <Link
-                          href="/friends"
-                          className={`group flex flex-col items-center gap-1 pb-2 px-0 sm:px-4 transition-colors ${pathname === "/friends"
-                            ? "text-primary-600"
-                            : "text-content-secondary hover:text-primary-600"
-                            }`}
-                        >
-                          <UserRound className="w-12" />
-                          <span className="text-sm font-medium">Friends</span>
-
-                          {friendRequestCount > 0 && (
-                            <span className="absolute top-0 right-2 w-4 h-4 px-1.2 rounded-full bg-red-500 text-white text-xs font-medium flex items-center justify-center">
-                              {friendRequestCount > 99 ? "99+" : friendRequestCount}
-                            </span>
-                          )}
-                        </Link>
-                      </li>
-
-                      {/* Groups */}
-                      <li className="relative">
-                        <Link
-                          href="/groups"
-                          className={`group flex flex-col items-center gap-1 pb-2 px-0 sm:px-4 transition-colors ${pathname === "/groups"
-                            ? "text-primary-600"
-                            : "text-content-secondary hover:text-primary-600"
-                            }`}
-                        >
-                          <Users className="w-12" />
-                          <span className="text-sm font-medium">Groups</span>
-
-                          {/* <span
-                            className={`absolute bottom-0 left-0 h-[2px] bg-primary-600 rounded-full transition-all duration-300 ease-in-out ${pathname === "/groups"
-                              ? "w-full"
-                              : "w-0 group-hover:w-full"
-                              }`}
-                          /> */}
-                        </Link>
-                      </li>
-
-                    </ul>
-                  </nav>
-
-                  {/* Notifications & Messaging */}
-                  <div className="flex items-center space-x-2 sm:space-x-2 border-border-subtle w-65 xl:w-80 2xl:w-[24rem] justify-end">
-
-                    {/* Chat & Calls live in LeftSidebar on lg+; keep in header for mobile */}
-                    <div className="relative lg:hidden">
-                      <Link
-                        href="/chat"
-                        onClick={() => setShowNotifications(false)}
-                        className="relative p-1 sm:p-1.5 lg:p-2 text-content-tertiary hover:text-primary-600 transition-colors inline-flex"
-                        aria-label="Chat"
-                      >
-                        <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5" />
-                        {unreadMessages > 0 && (
-                          <span className="absolute -top-1 -right-1 w-4 h-4 sm:w-5 sm:h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-medium">
-                            {unreadMessages > 99 ? "99+" : unreadMessages}
-                          </span>
-                        )}
-                      </Link>
-                    </div>
-
-                    <div className="relative lg:hidden">
-                      <Link
-                        href="/calls"
-                        onClick={() => setShowNotifications(false)}
-                        className="relative p-1 sm:p-1.5 lg:p-2 text-content-tertiary hover:text-primary-600 transition-colors inline-flex"
-                        aria-label="Calls"
-                      >
-                        <Phone className="w-4 h-4 sm:w-5 sm:h-5" />
-                        {callBadgeCount > 0 && (
-                          <span className="absolute -top-1 -right-1 w-4 h-4 sm:w-5 sm:h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-medium">
-                            {callBadgeCount > 99 ? "99+" : callBadgeCount}
-                          </span>
-                        )}
-                      </Link>
-                    </div>
-
-                    <div className="relative">
-                      <button
-                        onClick={() => {
-                          setShowNotifications(!showNotifications);
-                        }}
-                        className="relative p-1 sm:p-1.5 lg:p-2 text-content-tertiary hover:text-primary-600 transition-colors"
-                      >
-                        <Bell className="w-4 h-4 sm:w-5 sm:h-5" />
-                        {unreadNotificationCount > 0 && (
-                          <span className="absolute -top-1 -right-1 w-4 h-4 sm:w-5 sm:h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-medium">
-                            {unreadNotificationCount > 99 ? "99+" : unreadNotificationCount}
-                          </span>
-                        )}
-                      </button>
-                      <NotificationDropdown
-                        isOpen={showNotifications}
-                        onClose={() => setShowNotifications(false)}
-                        onUnreadCountChange={setUnreadNotificationCount}
-                      />
-                    </div>
-
-
-                    {/* User Menu */}
-                    <div className="relative group ">
-                      <button
-                        onClick={() => setIsUserMenuOpen((prev) => !prev)}
-                        onBlur={(e) => {
-                          if (!e.currentTarget.contains(e.relatedTarget)) {
-                            setIsUserMenuOpen(false);
-                          }
-                        }}
-                        className="flex items-center space-x-1 sm:space-x-2 p-1 sm:p-1.5 lg:p-2 rounded-lg hover:bg-surface-hover shrink-0"
-                      >
-                        {profile?.avatar_url ? (
-                          <img
-                            src={profile.avatar_url}
-                            alt={profile.full_name}
-                            className="w-8 h-8 sm:w-10 sm:h-10 rounded-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-8 h-8 sm:w-10 sm:h-10 bg-surface-tertiary text-content-secondary rounded-full flex items-center justify-center uppercase">
-                            {profile?.username.slice(0, 1) || "User"}
-                          </div>
-                        )}
-                      </button>
-
-                      <UserMenu
-                        isOpen={isUserMenuOpen}
-                        onSignOut={handleSignOut}
-                        onClose={() => setIsUserMenuOpen(false)}
-                      />
-                    </div>
+            {user ? (
+              <>
+                {/* Notifications & Messaging */}
+                <div className="relative flex items-center space-x-2 sm:space-x-2 border-border-subtle">
+                  <div className="group relative flex items-center sm:hidden ">
+                    <input
+                      type="text"
+                      placeholder="Search CribsTalk..."
+                      className="peer absolute top-8 right-0 w-0 rounded-full border-0 bg-surface py-2 px-3 opacity-0 outline-none transition-all duration-300 focus:w-62 focus:border focus:border-gray-300 focus:opacity-100 focus:ring-1 focus:ring-primary"
+                      value={searchTerm}
+                      onChange={(e) => handleSearchChange(e.target.value)}
+                      onFocus={() => {
+                        if (searchTerm.trim().length >= 2 && searchResults) {
+                          setShowSearchResults(true);
+                        }
+                      }}
+                    />
 
                     <button
-                      onClick={() => setMobileMenuOpen(true)}
-                      className="sm:hidden text-content text-xl"
+                      type="button"
+                      onClick={(e) => {
+                        e.currentTarget.parentElement?.querySelector("input")?.focus();
+                      }}
+                      className="relative z-10 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-content-secondary hover:bg-surface-secondary"
+                      aria-label="Search"
                     >
-                      <FaBars />
+                      <Search className="h-5 w-5" />
                     </button>
+
+
                   </div>
-                </>
-              ) : (
-                <div className="flex items-center gap-2 sm:gap-3">
-                  <Link
-                    href="/signin"
-                    className="hidden rounded-full  bg-white px-4 py-2.5 text-sm font-semibold text-[#111827] dark:text-slate-100 transition-colors hover:bg-[#F9FAFB] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F97316]/40 sm:inline-flex"
-                  >
-                    Sign In
-                  </Link>
-                  <Link
-                    href="/signup"
-                    className="hidden rounded-full bg-[#F97316] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#EA580C] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F97316]/40 sm:inline-flex"
-                  >
-                    Join CribsTalk
-                  </Link>
+
+
+
+                  <div className="relative">
+                    <button
+                      onClick={() => {
+                        setShowNotifications(!showNotifications);
+                      }}
+                      className="relative p-1 sm:p-1.5 lg:p-2 text-content-tertiary hover:text-primary-600 transition-colors"
+                    >
+                      <Bell className="w-4 h-4 sm:w-5 sm:h-5" />
+                      {unreadNotificationCount > 0 && (
+                        <span className="absolute -top-1 -right-1 w-4 h-4 sm:w-5 sm:h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-medium">
+                          {unreadNotificationCount > 99 ? "99+" : unreadNotificationCount}
+                        </span>
+                      )}
+                    </button>
+                    <NotificationDropdown
+                      isOpen={showNotifications}
+                      onClose={() => setShowNotifications(false)}
+                      onUnreadCountChange={setUnreadNotificationCount}
+                    />
+                  </div>
+
+                  {/* User Menu */}
+                  <div className="relative group ">
+                    <button
+                      onClick={() => setIsUserMenuOpen((prev) => !prev)}
+                      onBlur={(e) => {
+                        if (!e.currentTarget.contains(e.relatedTarget)) {
+                          setIsUserMenuOpen(false);
+                        }
+                      }}
+                      className="flex items-center space-x-1 sm:space-x-2 p-1 sm:p-1.5 lg:p-2 rounded-lg hover:bg-surface-hover shrink-0"
+                    >
+                      {profile?.avatar_url ? (
+                        <img
+                          src={profile.avatar_url}
+                          alt={profile.full_name}
+                          className="w-8 h-8 sm:w-10 sm:h-10 rounded-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-8 h-8 sm:w-10 sm:h-10 bg-surface-tertiary text-content-secondary rounded-full flex items-center justify-center uppercase">
+                          {profile?.username.slice(0, 1) || "User"}
+                        </div>
+                      )}
+                    </button>
+
+                    <UserMenu
+                      isOpen={isUserMenuOpen}
+                      onSignOut={handleSignOut}
+                      onClose={() => setIsUserMenuOpen(false)}
+                    />
+                  </div>
 
                   <button
-                    type="button"
-                    className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-[#E5E7EB] bg-white text-[#111827] transition-colors hover:bg-[#F9FAFB] dark:text-slate-50 dark:border-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F97316]/40 sm:hidden"
-                    aria-label={guestMenuOpen ? "Close menu" : "Open menu"}
-                    aria-expanded={guestMenuOpen}
-                    onClick={() => setGuestMenuOpen((open) => !open)}
+                    onClick={() => setMobileMenuOpen(true)}
+                    className="sm:hidden text-content text-xl"
                   >
-                    {guestMenuOpen ? (
-                      <Close className="h-5 w-5" />
-                    ) : (
-                      <Menu className="h-5 w-5" />
-                    )}
+                    <FaBars />
                   </button>
                 </div>
-              )}
+              </>
+            ) : (
+              <div className="flex items-center gap-2 sm:gap-3">
+                <Link
+                  href="/signin"
+                  className="hidden rounded-full  bg-white px-4 py-2.5 text-sm font-semibold text-[#111827] dark:text-slate-100 transition-colors hover:bg-[#F9FAFB] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F97316]/40 sm:inline-flex"
+                >
+                  Sign In
+                </Link>
+                <Link
+                  href="/signup"
+                  className="hidden rounded-full bg-[#F97316] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#EA580C] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F97316]/40 sm:inline-flex"
+                >
+                  Join CribsTalk
+                </Link>
+
+                <button
+                  type="button"
+                  className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-[#E5E7EB] bg-white text-[#111827] transition-colors hover:bg-[#F9FAFB] dark:text-slate-50 dark:border-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F97316]/40 sm:hidden"
+                  aria-label={guestMenuOpen ? "Close menu" : "Open menu"}
+                  aria-expanded={guestMenuOpen}
+                  onClick={() => setGuestMenuOpen((open) => !open)}
+                >
+                  {guestMenuOpen ? (
+                    <Close className="h-5 w-5" />
+                  ) : (
+                    <Menu className="h-5 w-5" />
+                  )}
+                </button>
+              </div>
+            )}
+
+            {(user && showSearchResults) && (
+              <div className="absolute top-22 sm:hidden left-0 right-0 mt-2 bg-surface-elevated rounded-lg shadow-dropdown border border-border max-h-[600px] overflow-y-auto z-50  mx-4">
+                <SearchResultsDropdown
+                  results={searchResults}
+                  isSearching={isSearching}
+                  searchTerm={searchTerm}
+                  onClose={() => setShowSearchResults(false)}
+                />
+              </div>
+            )}
           </div>
         </div>
 
@@ -461,7 +357,7 @@ const Header: React.FC<HeaderProps> = ({
         )}
       </header>
       {/* Mobile Navigation */}
-      {user && !pathname?.startsWith("/memories") && (
+      {user && !pathname?.startsWith("/reels") && (
         <div className="md:hidden fixed bottom-0 w-full  block bg-white border-t border-gray-200 py-1 z-50">
           <nav className="w-full">
             <ul className="flex justify-between w-full px-2">
@@ -481,27 +377,33 @@ const Header: React.FC<HeaderProps> = ({
               {/* Reels */}
               <li>
                 <Link
-                  href="/memories/foryou"
-                  className={`flex items-center justify-center py-2 px-3 transition-colors ${pathname?.startsWith("/memories")
+                  href="/reels/foryou"
+                  className={`flex items-center justify-center py-2 px-3 transition-colors ${pathname?.startsWith("/reels")
                     ? "text-primary-600"
                     : "text-gray-500 hover:text-primary-600"
                     }`}
                 >
-                  <Video className="w-6 h-6" />
+                  <PlayMedia className="w-6 h-6" />
                 </Link>
               </li>
 
-              {/* TradeHub */}
-              <li>
+
+              {/* chat */}
+              <li className="relative">
                 <Link
-                  href="/marketplace"
-                  className={`flex items-center justify-center py-2 px-3 transition-colors ${pathname === "/marketplace"
+                  href="/chat"
+                  className={`flex items-center justify-center py-2 px-3 transition-colors ${pathname === "/chat"
                     ? "text-primary-600"
                     : "text-gray-500 hover:text-primary-600"
                     }`}
                 >
-                  <Store className="w-6 h-6" />
+                  <MessageCircle className="w-6 h-6" />
                 </Link>
+                {unreadMessages > 0 && (
+                  <span className="absolute -top-1 -right-1 w-4 h-4 sm:w-5 sm:h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-medium">
+                    {unreadMessages > 99 ? "99+" : unreadMessages}
+                  </span>
+                )}
               </li>
 
               {/* Friends */}
@@ -522,18 +424,19 @@ const Header: React.FC<HeaderProps> = ({
                 )}
               </li>
 
-              {/* Groups */}
+              {/* TradeHub */}
               <li>
                 <Link
-                  href="/groups"
-                  className={`flex items-center justify-center py-2 px-3 transition-colors ${pathname === "/groups"
+                  href="/marketplace"
+                  className={`flex items-center justify-center py-2 px-3 transition-colors ${pathname === "/marketplace"
                     ? "text-primary-600"
                     : "text-gray-500 hover:text-primary-600"
                     }`}
                 >
-                  <Users className="w-6 h-6" />
+                  <Handbag className="w-6 h-6" />
                 </Link>
               </li>
+
             </ul>
           </nav>
         </div>

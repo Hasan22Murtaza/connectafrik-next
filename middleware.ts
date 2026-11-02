@@ -24,6 +24,17 @@ function clearSupabaseAuthCookies(
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
+  if (pathname === '/memories' || pathname.startsWith('/memories/')) {
+    const url = request.nextUrl.clone()
+    url.pathname = pathname.replace(/^\/memories/, '/reels') || '/reels'
+    return NextResponse.redirect(url, 308)
+  }
+  if (pathname === '/api/memories' || pathname.startsWith('/api/memories/')) {
+    const url = request.nextUrl.clone()
+    url.pathname = pathname.replace(/^\/api\/memories/, '/api/reels')
+    return NextResponse.rewrite(url)
+  }
+
   // OAuth callback exchanges the PKCE code — skip session refresh so verifier cookies stay intact.
   if (pathname === '/auth/callback' || pathname === '/api/auth/callback') {
     return NextResponse.next()
@@ -128,7 +139,7 @@ export async function middleware(request: NextRequest) {
     '/profile',
     '/settings',
     '/saved',
-    '/memories',
+    '/reels',
     '/my-orders',
     '/culture',
     '/politics',
@@ -179,14 +190,14 @@ export async function middleware(request: NextRequest) {
     '/security/',
   ]
 
-  const memoryAppSegments = new Set(['foryou', 'explore', 'following', 'my-videos', 'create'])
+  const reelAppSegments = new Set(['foryou', 'explore', 'following', 'my-videos', 'create'])
   const isPublicSeoContentPath =
     /^\/post\/[^/]+\/?$/.test(pathname) ||
     (/^\/groups\/[^/]+\/?$/.test(pathname) && !pathname.startsWith('/groups/create')) ||
     /^\/groups\/[^/]+\/post\/[^/]+\/?$/.test(pathname) ||
     (() => {
-      const match = pathname.match(/^\/memories\/([^/]+)\/?$/)
-      return Boolean(match && !memoryAppSegments.has(match[1]))
+      const match = pathname.match(/^\/reels\/([^/]+)\/?$/)
+      return Boolean(match && !reelAppSegments.has(match[1]))
     })()
 
   const isMarketplaceHubRoute =

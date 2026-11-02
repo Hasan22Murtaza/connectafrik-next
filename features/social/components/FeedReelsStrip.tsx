@@ -1,15 +1,16 @@
-'use client'
+﻿'use client'
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
-import { Clapperboard, ChevronLeft, ChevronRight, MoreHorizontal, MoreVertical, Play } from '@/shared/icons'
+import { Clapperboard, ChevronLeft, ChevronRight, MoreVertical, Play } from '@/shared/icons'
 import { useReels } from '@/shared/hooks/useReels'
 import type { Reel } from '@/shared/types/reels'
+import { reelsFeedHref } from '@/lib/reels/feedHref'
 
 const THUMB_WIDTH = 'w-[118px] sm:w-[132px]'
 
-function ReelThumb({ reel, isFirst }: { reel: Reel; isFirst: boolean }) {
-  const href = `/memories/explore/feed?start=${encodeURIComponent(reel.id)}`
+function ReelThumb({ reel }: { reel: Reel; isFirst?: boolean }) {
+  const href = reelsFeedHref({ start: reel.id, feed: 'explore' })
   const videoRef = useRef<HTMLVideoElement>(null)
   const [isPlaying, setIsPlaying] = useState(false)
   const hasVideo = Boolean(reel.video_url?.trim())
@@ -23,19 +24,11 @@ function ReelThumb({ reel, isFirst }: { reel: Reel; isFirst: boolean }) {
     v.addEventListener('play', onPlay)
     v.addEventListener('pause', onPause)
 
-    if (isFirst) {
-      const tryPlay = () => {
-        v.play().catch(() => setIsPlaying(false))
-      }
-      if (v.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) tryPlay()
-      else v.addEventListener('canplay', tryPlay, { once: true })
-    }
-
     return () => {
       v.removeEventListener('play', onPlay)
       v.removeEventListener('pause', onPause)
     }
-  }, [hasVideo, isFirst, reel.id])
+  }, [hasVideo, reel.id])
 
   const handleEnter = useCallback(() => {
     const v = videoRef.current
@@ -46,15 +39,13 @@ function ReelThumb({ reel, isFirst }: { reel: Reel; isFirst: boolean }) {
   const handleLeave = useCallback(() => {
     const v = videoRef.current
     if (!v || !hasVideo) return
-    if (!isFirst) {
-      v.pause()
-      try {
-        v.currentTime = 0
-      } catch {
-        /* ignore */
-      }
+    v.pause()
+    try {
+      v.currentTime = 0
+    } catch {
+      /* ignore */
     }
-  }, [hasVideo, isFirst])
+  }, [hasVideo])
 
   const showPlayIcon = !hasVideo || !isPlaying
 
@@ -73,7 +64,7 @@ function ReelThumb({ reel, isFirst }: { reel: Reel; isFirst: boolean }) {
           muted
           loop
           playsInline
-          preload={isFirst ? 'auto' : 'metadata'}
+          preload="metadata"
         />
       ) : reel.thumbnail_url ? (
         <img
@@ -107,8 +98,11 @@ export const FeedReelsStrip: React.FC = () => {
   const { reels, loading } = useReels(reelFilters, sortOptions, { enabled: true })
 
   const scrollContainerRef = useRef<HTMLDivElement>(null)
+  const optionsRef = useRef<HTMLDivElement>(null)
   const [showLeftArrow, setShowLeftArrow] = useState(false)
   const [showRightArrow, setShowRightArrow] = useState(false)
+  const [showOptions, setShowOptions] = useState(false)
+  const [isHidden, setIsHidden] = useState(false)
 
   const displayReels = useMemo(() => reels.slice(0, 16), [reels])
 
@@ -129,6 +123,28 @@ export const FeedReelsStrip: React.FC = () => {
       window.removeEventListener('resize', checkScrollPosition)
     }
   }, [checkScrollPosition, displayReels.length, loading])
+
+  useEffect(() => {
+    if (!showOptions) return
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!optionsRef.current?.contains(event.target as Node)) {
+        setShowOptions(false)
+      }
+    }
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setShowOptions(false)
+      }
+    }
+
+    document.addEventListener('pointerdown', handlePointerDown)
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [showOptions])
 
   const scrollStrip = useCallback((direction: 'left' | 'right') => {
     scrollContainerRef.current?.scrollBy({
@@ -159,7 +175,7 @@ export const FeedReelsStrip: React.FC = () => {
     )
   }
 
-  if (displayReels.length === 0) {
+  if (isHidden || displayReels.length === 0) {
     return null
   }
 
@@ -170,13 +186,45 @@ export const FeedReelsStrip: React.FC = () => {
           <Clapperboard className="w-5 h-5 text-primary-600 shrink-0" />
           Reels
         </h3>
-        <Link
-          href="/memories/explore"
-          className="flex h-9 w-9 items-center justify-center rounded-full text-content-secondary transition-colors hover:bg-primary-50 hover:text-orange-500"
-          aria-label="More reels"
-        >
-          <MoreHorizontal className="w-5 h-5" />
-        </Link>
+        <div ref={optionsRef} className="relative">
+          <button
+            type="button"
+            onClick={() => setShowOptions((open) => !open)}
+            className="flex h-9 w-9 items-center justify-center rounded-full text-content-secondary transition-colors hover:bg-primary-50 hover:text-orange-500"
+            aria-label="More reels options"
+            aria-expanded={showOptions}
+            aria-haspopup="menu"
+          >
+            <MoreVertical className="w-5 h-5" />
+          </button>
+
+          {showOptions && (
+            <div
+              role="menu"
+              className="absolute right-0 top-11 z-30 min-w-48 rounded-xl border border-border bg-surface p-1.5 shadow-lg"
+            >
+              <Link
+                href="/reels/explore"
+                role="menuitem"
+                onClick={() => setShowOptions(false)}
+                className="block w-full rounded-lg px-3 py-2 text-left text-sm text-content transition-colors hover:bg-surface-secondary"
+              >
+                Explore all reels
+              </Link>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setShowOptions(false)
+                  setIsHidden(true)
+                }}
+                className="w-full rounded-lg px-3 py-2 text-left text-sm text-content transition-colors hover:bg-surface-secondary"
+              >
+                Hide suggestion
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="relative pb-2">
@@ -206,14 +254,14 @@ export const FeedReelsStrip: React.FC = () => {
           className="flex gap-3 overflow-x-auto scrollbar-hide scroll-smooth px-4 pt-1 pb-3"
         >
           {displayReels.map((reel, index) => (
-            <ReelThumb key={reel.id} reel={reel} isFirst={index === 0} />
+            <ReelThumb key={reel.id} reel={reel} />
           ))}
         </div>
       </div>
 
       <div className="border-t border-border-subtle py-3">
         <Link
-          href="/memories/explore"
+          href="/reels/explore"
           className="block text-center text-sm font-semibold text-primary-600 hover:text-orange-500 hover:underline"
         >
           See all

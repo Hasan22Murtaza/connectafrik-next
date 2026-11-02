@@ -6,6 +6,7 @@ import "slick-carousel/slick/slick-theme.css";
 import { Providers } from "./providers";
 import ConditionalHeader from "./components/ConditionalHeader";
 import ConditionalFooter from "./components/ConditionalFooter";
+import ConditionalAppSidebar from "./components/ConditionalAppSidebar";
 import GlobalComponents from "./components/GlobalComponents";
 import { JsonLd } from "@/components/seo/JsonLd";
 import {
@@ -77,8 +78,7 @@ export default function RootLayout({
           <JsonLd data={[websiteJsonLd(), organizationJsonLd()]} />
           <div className="min-h-screen w-full mx-auto min-[1950px]:max-w-[1800px] ">
             <ConditionalHeader />
-            
-            {children}
+            <ConditionalAppSidebar>{children}</ConditionalAppSidebar>
             <ConditionalFooter />
           </div>
           <GlobalComponents />

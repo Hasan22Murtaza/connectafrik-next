@@ -10,6 +10,7 @@ import { PrivacySettingsPanel } from './PrivacySettingsPanel'
 import { NotificationSettingsPanel } from './NotificationSettingsPanel'
 import { SecuritySettingsPanel } from './SecuritySettingsPanel'
 import { DevicesSettingsPanel } from './DevicesSettingsPanel'
+import { FamilySettingsPanel } from './FamilySettingsPanel'
 import { SettingsSignInPrompt } from './SettingsPrimitives'
 
 const PANEL_COPY: Record<SettingsTab, { title: string; description: string }> = {
@@ -33,6 +34,10 @@ const PANEL_COPY: Record<SettingsTab, { title: string; description: string }> = 
     title: 'Devices',
     description: 'Manage signed-in sessions and message encryption.',
   },
+  family: {
+    title: 'Family & Parental Controls',
+    description: 'Manage family members, permissions, screen time, and safety alerts.',
+  },
 }
 
 function SettingsExperienceInner() {
@@ -55,6 +60,7 @@ function SettingsExperienceInner() {
       {displayTab === 'notifications' ? <NotificationSettingsPanel /> : null}
       {displayTab === 'security' ? <SecuritySettingsPanel /> : null}
       {displayTab === 'devices' ? <DevicesSettingsPanel /> : null}
+      {displayTab === 'family' ? <FamilySettingsPanel /> : null}
     </SettingsShell>
   )
 }

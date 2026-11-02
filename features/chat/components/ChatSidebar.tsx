@@ -757,7 +757,7 @@ export default function ChatSidebar({
 
   return (
     <aside
-      className={`flex h-full w-full flex-col sm:w-[360px] sm:shrink-0 lg:w-[400px] ${selectedThreadId ? "hidden sm:flex" : "flex"
+      className={`flex h-full w-full border-r border-gray-200 flex-col sm:w-[340px] sm:shrink-0 ${selectedThreadId ? "hidden sm:flex" : "flex"
         }`}
     >
       <header className="shrink-0 border-b border-border bg-surface">
@@ -903,8 +903,8 @@ export default function ChatSidebar({
                   type="button"
                   onClick={() => setFilter(chip.key)}
                   className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-medium transition ${active
-                    ? "bg-[#25D366]/20 text-content dark:bg-[#25D366]/25 dark:text-green-300"
-                    : "border border-border text-content-secondary hover:bg-orange-50 hover:border-orange-100 hover:text-orange-700 dark:hover:bg-surface-hover dark:hover:border-border-strong dark:hover:text-orange-300"
+                    ? "bg-orange-50 text-orange-500 border-orange-500 border"
+                    : "border border-border text-content-secondary hover:bg-orange-50 hover:border-orange-100 hover:text-orange-500 dark:hover:bg-surface-hover dark:hover:border-border-strong dark:hover:text-orange-300"
                     }`}
                 >
                   <span>{chip.label}</span>

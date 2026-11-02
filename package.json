@@ -33,7 +33,7 @@
     "apn": "^2.2.0",
     "buffer": "^6.0.3",
     "date-fns": "^4.1.0",
-    "emoji-picker-react": "^4.16.1",
+    "emoji-picker-react": "^4.22.3",
     "firebase": "^10.7.1",
     "firebase-admin": "^12.0.0",
     "jsonwebtoken": "^9.0.3",
@@ -51,6 +51,7 @@
     "react-paginate": "^8.3.0",
     "react-phone-number-input": "^3.4.14",
     "react-slick": "^0.31.0",
+    "recharts": "^3.10.1",
     "slick-carousel": "^1.8.1",
     "stripe": "^20.0.0"
   },

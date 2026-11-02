@@ -56,14 +56,14 @@ export function AdminTableRow({
     <tr
       className={`${AP.tableRow} ${className}`}
       onClick={onClick}
-      role={onClick ? 'button' : undefined}
+      role={onClick ? "button" : undefined}
       tabIndex={onClick ? 0 : undefined}
       onKeyDown={
         onClick
           ? (e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault()
-                onClick()
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onClick();
               }
             }
           : undefined
@@ -100,11 +100,11 @@ export function AdminTableCard({
   return (
     <div className={`${AP.card} overflow-hidden`}>
       <div
-        className={`px-4 sm:px-5 py-3.5 border-b border-gray-100 font-medium text-sm flex items-center justify-between gap-3 ${
-          highlight ? "bg-amber-50/80 text-amber-900" : "bg-gray-50/60"
+        className={`flex items-center justify-between gap-3 border-b border-gray-200 px-4 py-3 sm:px-5 ${
+          highlight ? "bg-primary-50 text-primary-900" : "bg-white text-gray-900"
         }`}
       >
-        <span>{title}</span>
+        <span className="text-sm font-medium">{title}</span>
         {action}
       </div>
       {children}

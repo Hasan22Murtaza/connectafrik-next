@@ -1,4 +1,4 @@
-import { getCanonicalUrl } from './canonical'
+﻿import { getCanonicalUrl } from './canonical'
 import { getSeoSiteUrl, SEO_DEFAULT_OG_IMAGE_PATH, SEO_SITE_NAME } from './config'
 import type { SeoImage, SeoInput } from './types'
 
@@ -50,7 +50,7 @@ export function buildOpenGraph(input: SeoInput) {
   }))
 
   const ogType =
-    input.type === 'article' || input.type === 'groupPost' || input.type === 'memory'
+    input.type === 'article' || input.type === 'groupPost' || input.type === 'reel'
       ? 'article'
       : 'website'
 

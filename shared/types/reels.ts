@@ -6,14 +6,15 @@ export interface Reel {
   video_url: string
   thumbnail_url?: string
   duration: number
-  aspect_ratio: '9:16' | '16:9' | '1:1' | '4:3'
-  category: ReelCategory
+  aspect_ratio: string
+  category: string
   tags: string[]
   likes_count: number
   comments_count: number
   shares_count: number
   views_count: number
   saves_count: number
+  reposts_count?: number
   is_public: boolean
   is_featured: boolean
   is_deleted: boolean
@@ -23,9 +24,9 @@ export interface Reel {
   is_following?: boolean
   is_saved?: boolean
   is_liked?: boolean
+  is_reposted?: boolean
   is_shared?: boolean
   is_viewed?: boolean
-  // Joined fields from profiles
   profiles?: {
     username: string
     full_name: string
@@ -56,9 +57,7 @@ export interface ReelLike {
 export interface ReelComment {
   id: string
   reel_id: string
-  /** Current schema column in public.reel_comments */
   user_id: string
-  /** Backward-compatible alias returned by some API paths */
   author_id?: string
   content: string
   parent_id?: string
@@ -68,7 +67,6 @@ export interface ReelComment {
   is_deleted: boolean
   created_at: string
   updated_at: string
-  // Joined fields
   author?: {
     username: string
     full_name: string
@@ -107,12 +105,27 @@ export interface ReelSave {
   created_at: string
 }
 
+export interface ReelRepost {
+  id: string
+  user_id: string
+  reel_id: string
+  created_at: string
+}
+
 export interface ReelShare {
   id: string
   user_id: string
   reel_id: string
-  share_type: 'copy_link' | 'social_media' | 'direct_message' | 'story'
+  share_type: string
   platform?: string
+  created_at: string
+}
+
+export interface ReelReaction {
+  id: string
+  user_id: string
+  reel_id: string
+  reaction_type: string
   created_at: string
 }
 
@@ -122,8 +135,8 @@ export interface CreateReelData {
   video_url: string
   thumbnail_url?: string
   duration: number
-  aspect_ratio?: '9:16' | '16:9' | '1:1' | '4:3'
-  category?: ReelCategory
+  aspect_ratio?: string
+  category?: string
   tags?: string[]
   is_public?: boolean
 }
@@ -132,8 +145,25 @@ export interface UpdateReelData {
   title?: string
   description?: string
   thumbnail_url?: string
-  category?: ReelCategory
+  category?: string
   tags?: string[]
+  is_public?: boolean
+}
+
+export interface ReelAnalyticsTopReel {
+  id: string
+  title: string
+  thumbnail_url?: string | null
+  video_url?: string | null
+  duration: number
+  category?: string | null
+  likes_count: number
+  comments_count: number
+  shares_count: number
+  views_count: number
+  saves_count?: number
+  engagement_score: number
+  created_at: string
   is_public?: boolean
 }
 
@@ -143,24 +173,42 @@ export interface ReelStats {
   total_likes: number
   total_comments: number
   total_shares: number
+  total_saves?: number
   avg_engagement: number
+  engagement_rate?: number
+  engagement_mix?: {
+    likes: number
+    comments: number
+    shares: number
+    saves: number
+  }
+  by_category?: Record<string, number>
+  top_reels?: ReelAnalyticsTopReel[]
 }
-
-/** Single `/api/memories?feed=…` discriminator (preferred over legacy flags). */
-export type ReelFeedType = 'foryou' | 'explore' | 'following' | 'mine'
+export type ReelFeedType =
+  | 'foryou'
+  | 'explore'
+  | 'following'
+  | 'mine'
+  | 'saved'
+  | 'liked'
+  | 'reposted'
 
 export interface ReelFilters {
-  category?: ReelCategory
+  category?: string
   author_id?: string
-  /** Preferred: unified feed mode for GET /api/memories */
   feed?: ReelFeedType
-  /** Public reels from creators the current user follows (API requires auth). */
   following_only?: boolean
   is_featured?: boolean
   min_duration?: number
   max_duration?: number
   tags?: string[]
   search?: string
+  /** Author profile country (marketplace-style location filter). */
+  country?: string
+  lat?: number
+  lng?: number
+  radius_km?: number
 }
 
 export interface ReelSortOptions {
@@ -187,29 +235,30 @@ export interface ReelPlayerState {
 export interface ReelInteractionState {
   isLiked: boolean
   isSaved: boolean
+  isReposted: boolean
   isFollowing: boolean
   hasViewed: boolean
 }
 
 export const REEL_CATEGORIES: { value: ReelCategory; label: string; icon: string }[] = [
-  { value: 'entertainment', label: 'Entertainment', icon: '🎭' },
-  { value: 'education', label: 'Education', icon: '📚' },
-  { value: 'news', label: 'News', icon: '📰' },
-  { value: 'comedy', label: 'Comedy', icon: '😂' },
-  { value: 'music', label: 'Music', icon: '🎵' },
-  { value: 'dance', label: 'Dance', icon: '💃' },
-  { value: 'food', label: 'Food', icon: '🍽️' },
-  { value: 'travel', label: 'Travel', icon: '✈️' },
-  { value: 'fashion', label: 'Fashion', icon: '👗' },
-  { value: 'sports', label: 'Sports', icon: '⚽' },
-  { value: 'other', label: 'Other', icon: '🎬' }
+  { value: 'entertainment', label: 'Entertainment', icon: 'ðŸŽ­' },
+  { value: 'education', label: 'Education', icon: 'ðŸ“š' },
+  { value: 'news', label: 'News', icon: 'ðŸ“°' },
+  { value: 'comedy', label: 'Comedy', icon: 'ðŸ˜‚' },
+  { value: 'music', label: 'Music', icon: 'ðŸŽµ' },
+  { value: 'dance', label: 'Dance', icon: 'ðŸ’ƒ' },
+  { value: 'food', label: 'Food', icon: 'ðŸ½ï¸' },
+  { value: 'travel', label: 'Travel', icon: 'âœˆï¸' },
+  { value: 'fashion', label: 'Fashion', icon: 'ðŸ‘—' },
+  { value: 'sports', label: 'Sports', icon: 'âš½' },
+  { value: 'other', label: 'Other', icon: 'ðŸŽ¬' }
 ]
 
 export const REEL_ASPECT_RATIOS = [
-  { value: '9:16', label: 'Portrait (9:16)', icon: '📱' },
-  { value: '16:9', label: 'Landscape (16:9)', icon: '🖥️' },
-  { value: '1:1', label: 'Square (1:1)', icon: '⬜' },
-  { value: '4:3', label: 'Classic (4:3)', icon: '📺' }
+  { value: '9:16', label: 'Portrait (9:16)', icon: 'ðŸ“±' },
+  { value: '16:9', label: 'Landscape (16:9)', icon: 'ðŸ–¥ï¸' },
+  { value: '1:1', label: 'Square (1:1)', icon: 'â¬œ' },
+  { value: '4:3', label: 'Classic (4:3)', icon: 'ðŸ“º' }
 ]
 
 export const MAX_REEL_DURATION = 300 // 5 minutes in seconds

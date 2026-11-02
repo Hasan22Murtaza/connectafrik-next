@@ -528,34 +528,57 @@ const EditGroupPage: React.FC = () => {
               <label className="block text-sm font-medium text-gray-700 mb-3">
                 Privacy
               </label>
-              <div className="space-y-2">
-                <label className="flex items-center space-x-3 cursor-pointer">
+              <div className="overflow-hidden rounded-[16px] border border-border-subtle bg-surface">
+                <label
+                  className={`flex min-h-11 cursor-pointer items-center justify-between gap-4 px-4 py-3.5 transition-colors duration-200 sm:px-5 ${
+                    formData.is_public ? 'bg-primary/10' : 'hover:bg-surface-hover'
+                  }`}
+                >
                   <input
                     type="radio"
                     name="privacy"
                     checked={formData.is_public}
                     onChange={() => handleInputChange('is_public', true)}
-                    className="text-primary-600"
+                    className="sr-only"
                   />
-                  <Globe className="w-5 h-5 text-gray-400" />
-                  <div>
-                    <div className="font-medium">Public</div>
-                    <div className="text-sm text-gray-500">Anyone can find and join this group</div>
+                  <div className="flex min-w-0 items-start gap-3">
+                    <div className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-[12px] transition-colors duration-200 ${formData.is_public ? 'bg-primary/15 text-primary' : 'bg-surface-secondary text-content-secondary'}`}>
+                      <Globe className="h-[18px] w-[18px]" aria-hidden />
+                    </div>
+                    <div className="min-w-0">
+                      <div className={`text-[15px] font-medium ${formData.is_public ? 'text-primary' : 'text-content'}`}>Public</div>
+                      <p className="mt-0.5 text-sm leading-5 text-content-secondary">Anyone can find and join this group</p>
+                    </div>
                   </div>
+                  <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors duration-200 ${formData.is_public ? 'border-primary' : 'border-border-strong'}`} aria-hidden>
+                    <span className={`h-2.5 w-2.5 rounded-full bg-primary transition-transform duration-200 ${formData.is_public ? 'scale-100' : 'scale-0'}`} />
+                  </span>
                 </label>
-                <label className="flex items-center space-x-3 cursor-pointer">
+                <div className="h-px bg-border-subtle" />
+                <label
+                  className={`flex min-h-11 cursor-pointer items-center justify-between gap-4 px-4 py-3.5 transition-colors duration-200 sm:px-5 ${
+                    !formData.is_public ? 'bg-primary/10' : 'hover:bg-surface-hover'
+                  }`}
+                >
                   <input
                     type="radio"
                     name="privacy"
                     checked={!formData.is_public}
                     onChange={() => handleInputChange('is_public', false)}
-                    className="text-primary-600"
+                    className="sr-only"
                   />
-                  <Lock className="w-5 h-5 text-gray-400" />
-                  <div>
-                    <div className="font-medium">Private</div>
-                    <div className="text-sm text-gray-500">People request to join; co-admins and admins approve members</div>
+                  <div className="flex min-w-0 items-start gap-3">
+                    <div className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-[12px] transition-colors duration-200 ${!formData.is_public ? 'bg-primary/15 text-primary' : 'bg-surface-secondary text-content-secondary'}`}>
+                      <Lock className="h-[18px] w-[18px]" aria-hidden />
+                    </div>
+                    <div className="min-w-0">
+                      <div className={`text-[15px] font-medium ${!formData.is_public ? 'text-primary' : 'text-content'}`}>Private</div>
+                      <p className="mt-0.5 text-sm leading-5 text-content-secondary">People request to join; co-admins and admins approve members</p>
+                    </div>
                   </div>
+                  <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors duration-200 ${!formData.is_public ? 'border-primary' : 'border-border-strong'}`} aria-hidden>
+                    <span className={`h-2.5 w-2.5 rounded-full bg-primary transition-transform duration-200 ${!formData.is_public ? 'scale-100' : 'scale-0'}`} />
+                  </span>
                 </label>
               </div>
             </div>

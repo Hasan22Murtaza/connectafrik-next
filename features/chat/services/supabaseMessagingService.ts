@@ -1,5 +1,10 @@
 import { supabase } from '@/lib/supabase'
-import { apiClient, isChatLockedError, isPrivacyDeniedError } from '@/lib/api-client'
+import {
+  apiClient,
+  isChatLockedError,
+  isParentalRestrictedError,
+  isPrivacyDeniedError,
+} from '@/lib/api-client'
 import type { ChatParticipant as BaseParticipant } from "@/shared/types/chat"
 import { notificationService } from '@/shared/services/notificationService'
 import {
@@ -1414,15 +1419,23 @@ export const supabaseMessagingService = {
   async getRecentCalls(
     currentUserId: string,
     limit = 10,
-    page = 0
+    page = 0,
+    options?: { type?: 'all' | 'audio' | 'video'; search?: string }
   ): Promise<{ entries: RecentCallEntry[]; hasMore: boolean; page: number }> {
     if (!currentUserId) return { entries: [], hasMore: false, page }
 
     try {
+      const type = options?.type && options.type !== 'all' ? options.type : undefined
+      const search = options?.search?.trim() || undefined
       const res = await apiClient.get<{
         data: any[]
         meta?: { page: number; pageSize: number; hasMore: boolean }
-      }>('/api/chat/calls', { limit, page })
+      }>('/api/chat/calls', {
+        limit,
+        page,
+        ...(type ? { type } : {}),
+        ...(search ? { search } : {}),
+      })
       const list = Array.isArray(res?.data) ? res.data : []
       const hasMore =
         typeof res?.meta?.hasMore === 'boolean' ? res.meta.hasMore : list.length >= limit
@@ -1483,7 +1496,13 @@ export const supabaseMessagingService = {
       if (!id) throw new Error('No thread id returned')
       return id
     } catch (error) {
-      if (isPrivacyDeniedError(error) || isChatLockedError(error)) throw error
+      if (
+        isPrivacyDeniedError(error) ||
+        isChatLockedError(error) ||
+        isParentalRestrictedError(error)
+      ) {
+        throw error
+      }
       console.error('Error creating thread:', error)
       activateFallback(error)
       const thread = createLocalThread(currentUser, options)
@@ -1638,7 +1657,13 @@ export const supabaseMessagingService = {
       notifyMessageSubscribers(formattedMessage)
       return formattedMessage
     } catch (error) {
-      if (isPrivacyDeniedError(error) || isChatLockedError(error)) throw error
+      if (
+        isPrivacyDeniedError(error) ||
+        isChatLockedError(error) ||
+        isParentalRestrictedError(error)
+      ) {
+        throw error
+      }
       if (error instanceof Error && /encryption key|end-to-end|Attachment was uploaded|recovery passphrase/i.test(error.message)) {
         throw error
       }

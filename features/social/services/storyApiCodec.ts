@@ -207,6 +207,9 @@ export function denormalizeStoryFromApi(raw: Record<string, unknown>): Story {
       media_url: (raw.media_url as string | null) ?? null,
       media_type: raw.media_type as Story['media_type'],
       text_overlay,
+      text_color:
+        (raw.text_color as string) ||
+        (typeof textOverlayParsed?.color === 'string' ? textOverlayParsed.color : '#FFFFFF'),
       background_color: (raw.background_color as string) || '#2563eb',
       background_gradient: colors ? `${colors[0]},${colors[1]}` : ((raw.background_gradient as string) || null),
       background_gradient_colors:
@@ -287,6 +290,9 @@ export function denormalizeStoryFromApi(raw: Record<string, unknown>): Story {
     media_url: (raw.media_url as string | null) ?? null,
     media_type: raw.media_type as Story['media_type'],
     text_overlay: (raw.text_overlay as string) || null,
+    text_color:
+      (raw.text_color as string) ||
+      (typeof textOverlay?.color === 'string' ? textOverlay.color : '#FFFFFF'),
     background_color: (raw.background_color as string) || '#2563eb',
     background_gradient: legacyG ? `${legacyG[0]},${legacyG[1]}` : ((raw.background_gradient as string) || null),
     background_gradient_colors: legacyG || (Array.isArray(raw.background_gradient_colors) ? (raw.background_gradient_colors as string[]) : null),

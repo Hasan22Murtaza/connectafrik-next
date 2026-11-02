@@ -30,7 +30,7 @@ const CreateGroupPage: React.FC = () => {
     avatar_url: '',
     banner_url: '',
   })
-  
+
   const [goals, setGoals] = useState<string[]>([''])
   const [tags, setTags] = useState<string[]>([''])
   const [rules, setRules] = useState<string[]>(['Be respectful to all members'])
@@ -61,9 +61,9 @@ const CreateGroupPage: React.FC = () => {
   }
 
   const handleArrayChange = (
-    array: string[], 
-    setArray: React.Dispatch<React.SetStateAction<string[]>>, 
-    index: number, 
+    array: string[],
+    setArray: React.Dispatch<React.SetStateAction<string[]>>,
+    index: number,
     value: string
   ) => {
     const newArray = [...array]
@@ -72,15 +72,15 @@ const CreateGroupPage: React.FC = () => {
   }
 
   const addArrayItem = (
-    array: string[], 
+    array: string[],
     setArray: React.Dispatch<React.SetStateAction<string[]>>
   ) => {
     setArray([...array, ''])
   }
 
   const removeArrayItem = (
-    array: string[], 
-    setArray: React.Dispatch<React.SetStateAction<string[]>>, 
+    array: string[],
+    setArray: React.Dispatch<React.SetStateAction<string[]>>,
     index: number
   ) => {
     if (array.length > 1) {
@@ -209,10 +209,10 @@ const CreateGroupPage: React.FC = () => {
       }
 
       const newGroup = await createGroup(groupData)
-      
+
       toast.success('Group created successfully!')
       router.push(`/groups/${newGroup.id}`)
-      
+
     } catch (error) {
       // Error handling is done in the hook
     } finally {
@@ -257,7 +257,7 @@ const CreateGroupPage: React.FC = () => {
           {/* Avatar and Banner */}
           <div className="card space-y-6">
             <h3 className="text-lg font-medium text-gray-900">Group Images</h3>
-            
+
             {/* Banner */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -347,7 +347,7 @@ const CreateGroupPage: React.FC = () => {
           {/* Basic Info */}
           <div className="card space-y-4">
             <h3 className="text-lg font-medium text-gray-900">Basic Information</h3>
-            
+
             {/* Group Name */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -396,11 +396,10 @@ const CreateGroupPage: React.FC = () => {
                     key={value}
                     type="button"
                     onClick={() => handleInputChange('category', value)}
-                    className={`flex items-center space-x-2 p-2 rounded-lg border-2 transition-all duration-200 ${
-                      formData.category === value
+                    className={`flex items-center space-x-2 p-2 rounded-lg border-2 transition-all duration-200 ${formData.category === value
                         ? 'border-orange-400 bg-primary-200 text-orange-900'
                         : 'border-gray-200 bg-[#F3F4F6] text-gray-600 hover:border-orange-400 hover:text-orange-900 hover:bg-primary-200'
-                    }`}
+                      }`}
                   >
                     <span className="text-lg">{icon}</span>
                     <span className="text-sm font-medium">{label}</span>
@@ -416,7 +415,7 @@ const CreateGroupPage: React.FC = () => {
             <p className="text-sm text-gray-600">
               What does your group aim to achieve? List your main objectives.
             </p>
-            
+
             {goals.map((goal, index) => (
               <div key={index} className="flex items-center space-x-2">
                 <input
@@ -452,40 +451,62 @@ const CreateGroupPage: React.FC = () => {
           {/* Settings */}
           <div className="card space-y-4">
             <h3 className="text-lg font-medium text-gray-900">Group Settings</h3>
-            
+
             {/* Privacy */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-3">
                 Privacy
               </label>
-              <div className="space-y-2">
-                <label className="flex items-center space-x-3 cursor-pointer">
+              <div className="overflow-hidden ">
+                <label
+                  className={`flex min-h-11 cursor-pointer rounded-lg items-center justify-between gap-4 px-4 py-3.5 transition-colors duration-200 sm:px-5 ${
+                    formData.is_public ? 'bg-primary/10 ' : 'hover:bg-surface-hover'
+                  }`}
+                >
                   <input
                     type="radio"
                     name="privacy"
                     checked={formData.is_public}
                     onChange={() => handleInputChange('is_public', true)}
-                    className="text-primary-600"
+                    className="sr-only"
                   />
-                  <Globe className="w-5 h-5 text-gray-400" />
-                  <div>
-                    <div className="font-medium">Public</div>
-                    <div className="text-sm text-gray-500">Anyone can find and join this group</div>
+                  <div className="flex min-w-0 items-start gap-3">
+                    <div className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-[12px] transition-colors duration-200 ${formData.is_public ? 'bg-primary/15 text-primary' : 'bg-surface-secondary text-content-secondary'}`}>
+                      <Globe className="h-[18px] w-[18px]" aria-hidden />
+                    </div>
+                    <div className="min-w-0">
+                      <div className={`text-[15px] font-medium ${formData.is_public ? 'text-primary' : 'text-content'}`}>Public</div>
+                      <p className="mt-0.5 text-sm leading-5 text-content-secondary">Anyone can find and join this group</p>
+                    </div>
                   </div>
+                  <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors duration-200 ${formData.is_public ? 'border-primary' : 'border-border-strong'}`} aria-hidden>
+                    <span className={`h-2.5 w-2.5 rounded-full bg-primary transition-transform duration-200 ${formData.is_public ? 'scale-100' : 'scale-0'}`} />
+                  </span>
                 </label>
-                <label className="flex items-center space-x-3 cursor-pointer">
+                <label
+                  className={`flex min-h-11 cursor-pointer rounded-lg items-center justify-between gap-4 px-4 py-3.5 transition-colors duration-200 sm:px-5 ${
+                    !formData.is_public ? 'bg-primary/10' : 'hover:bg-surface-hover'
+                  }`}
+                >
                   <input
                     type="radio"
                     name="privacy"
                     checked={!formData.is_public}
                     onChange={() => handleInputChange('is_public', false)}
-                    className="text-primary-600"
+                    className="sr-only"
                   />
-                  <Lock className="w-5 h-5 text-gray-400" />
-                  <div>
-                    <div className="font-medium">Private</div>
-                    <div className="text-sm text-gray-500">People request to join; co-admins and admins approve members</div>
+                  <div className="flex min-w-0 items-start gap-3">
+                    <div className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-[12px] transition-colors duration-200 ${!formData.is_public ? 'bg-primary/15 text-primary' : 'bg-surface-secondary text-content-secondary'}`}>
+                      <Lock className="h-[18px] w-[18px]" aria-hidden />
+                    </div>
+                    <div className="min-w-0">
+                      <div className={`text-[15px] font-medium ${!formData.is_public ? 'text-primary' : 'text-content'}`}>Private</div>
+                      <p className="mt-0.5 text-sm leading-5 text-content-secondary">People request to join; co-admins and admins approve members</p>
+                    </div>
                   </div>
+                  <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors duration-200 ${!formData.is_public ? 'border-primary' : 'border-border-strong'}`} aria-hidden>
+                    <span className={`h-2.5 w-2.5 rounded-full bg-primary transition-transform duration-200 ${!formData.is_public ? 'scale-100' : 'scale-0'}`} />
+                  </span>
                 </label>
               </div>
             </div>
@@ -495,18 +516,37 @@ const CreateGroupPage: React.FC = () => {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Maximum Members
               </label>
-              <select
-                value={formData.max_members}
-                onChange={(e) => handleInputChange('max_members', parseInt(e.target.value))}
-                className="input-field"
-              >
-                <option value={50}>50 members</option>
-                <option value={100}>100 members</option>
-                <option value={250}>250 members</option>
-                <option value={500}>500 members</option>
-                <option value={1000}>1000 members</option>
-                <option value={5000}>5000 members</option>
-              </select>
+              <div className="relative w-full">
+                <select
+                  value={formData.max_members}
+                  onChange={(e) =>
+                    handleInputChange("max_members", parseInt(e.target.value))
+                  }
+                  className="input-field appearance-none pr-10"
+                >
+                  <option value={50}>50 members</option>
+                  <option value={100}>100 members</option>
+                  <option value={250}>250 members</option>
+                  <option value={500}>500 members</option>
+                  <option value={1000}>1000 members</option>
+                  <option value={5000}>5000 members</option>
+                </select>
+
+                <svg
+                  className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="m19 9-7 7-7-7"
+                  />
+                </svg>
+              </div>
             </div>
 
             {/* Location */}
@@ -527,16 +567,34 @@ const CreateGroupPage: React.FC = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Country (Optional)
                 </label>
+                <div className='relative w-full'>
                 <select
                   value={formData.country}
                   onChange={(e) => handleInputChange('country', e.target.value)}
-                  className="input-field"
+                  className="input-field appearance-none"
                 >
                   <option value="">Select Country</option>
                   {countries.map(country => (
                     <option key={country} value={country}>{country}</option>
                   ))}
                 </select>
+
+                
+                   <svg
+                  className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="m19 9-7 7-7-7"
+                  />
+                </svg> 
+                </div>
               </div>
             </div>
           </div>
@@ -547,7 +605,7 @@ const CreateGroupPage: React.FC = () => {
             <p className="text-sm text-gray-600">
               Help people discover your group with relevant tags.
             </p>
-            
+
             {tags.map((tag, index) => (
               <div key={index} className="flex items-center space-x-2">
                 <Tag className="w-4 h-4 text-gray-400" />
@@ -587,7 +645,7 @@ const CreateGroupPage: React.FC = () => {
             <p className="text-sm text-gray-600">
               Set clear guidelines for group behavior and participation.
             </p>
-            
+
             {rules.map((rule, index) => (
               <div key={index} className="flex items-start space-x-2">
                 <span className="text-sm text-gray-500 mt-3 min-w-6">{index + 1}.</span>

@@ -114,10 +114,3 @@ export async function resolveDisputeAdmin(
   return result.data
 }
 
-export async function listAdminDisputes(status?: string) {
-  const result = await apiClient.get<{ data: Dispute[] }>(
-    '/api/admin/disputes',
-    status ? { status } : undefined
-  )
-  return result.data || []
-}

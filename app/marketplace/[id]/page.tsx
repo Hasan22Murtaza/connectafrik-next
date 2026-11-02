@@ -58,6 +58,13 @@ const FALLBACK_IMAGE =
   "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800";
 const DESC_COLLAPSE_CHARS = 320;
 
+const getValidProductImages = (images: Product["images"] | null | undefined): string[] =>
+  Array.isArray(images)
+    ? images.filter(
+        (image): image is string => typeof image === "string" && image.trim().length > 0
+      )
+    : [];
+
 const ProductDetailPage: React.FC = () => {
   const params = useParams();
   const router = useRouter();
@@ -315,10 +322,11 @@ const ProductDetailPage: React.FC = () => {
   };
 
   const goToImage = (index: number) => {
-    const count = product?.images?.length || 0;
+    const count = getValidProductImages(product?.images).length;
     if (count === 0) return;
     const next = ((index % count) + count) % count;
     setSelectedImage(next);
+    setLightboxZoom(1);
   };
 
   const onGalleryTouchStart = (e: React.TouchEvent) => {
@@ -364,7 +372,8 @@ const ProductDetailPage: React.FC = () => {
     );
   }
 
-  const images = product.images?.length ? product.images : [FALLBACK_IMAGE];
+  const productImages = getValidProductImages(product.images);
+  const images = productImages.length ? productImages : [FALLBACK_IMAGE];
   const hasMultipleImages = images.length > 1;
   const isPending = !product.is_available && product.stock_quantity > 0;
   const isSold = product.stock_quantity === 0;
@@ -412,10 +421,6 @@ const ProductDetailPage: React.FC = () => {
   if (hasPickup) {
     specRows.push({ label: "Pickup", value: "Available" });
   }
-  displayTags.slice(0, 6).forEach((tag) => {
-    specRows.push({ label: "Tag", value: tag });
-  });
-
   const openSellerProfile = () => {
     if (product.seller?.id) {
       router.push(`/user/${product.seller.id}`);
@@ -819,6 +824,22 @@ const ProductDetailPage: React.FC = () => {
                   </div>
                 ))}
               </dl>
+
+              {displayTags.length > 0 && (
+                <div className="mt-6">
+                  <h3 className="text-sm font-semibold text-content mb-3">Tags</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {displayTags.slice(0, 6).map((tag) => (
+                      <span
+                        key={tag}
+                        className="inline-flex items-center rounded-full border border-orange-500 bg-orange-50 px-3 py-1 text-xs font-medium text-orange-500 dark:border-orange-500/30 dark:bg-orange-500/10 dark:text-orange-300"
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
             </section>
 
             {/* Location */}

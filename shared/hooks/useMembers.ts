@@ -4,6 +4,7 @@ export interface Member {
   id: string
   name: string
   avatar_url?: string
+  banner_image?: string | null
   username?: string
   /** Raw `profiles.status` (may be legacy values); use `deriveUserPresence` in UI. */
   status?: string | null
@@ -39,6 +40,7 @@ export function useMembers(enabled: boolean = true) {
             id: profile.id,
             name: normalizedName(profile.full_name, profile.username),
             avatar_url: profile.avatar_url ?? undefined,
+            banner_image: profile.banner_image ?? null,
             username: profile.username ?? undefined,
             status: profile.status ?? null,
             last_seen: profile.last_seen ?? null,

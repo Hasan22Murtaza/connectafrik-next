@@ -13,7 +13,6 @@ import {
 } from '../types/reels'
 
 export type UseReelsOptions = {
-  /** When false, clears data and skips network requests. */
   enabled?: boolean
 }
 
@@ -37,23 +36,51 @@ export const useReels = (
 
       const sortField = currentSortOptions?.field || 'created_at'
       const sortOrder = currentSortOptions?.order || 'desc'
+      const feed = currentFilters?.feed
+      const dedicatedFeed =
+        feed === 'foryou'
+          ? '/api/reels/foryou'
+          : feed === 'following'
+            ? '/api/reels/following'
+            : feed === 'saved'
+              ? '/api/reels/saved'
+              : feed === 'liked'
+                ? '/api/reels/liked'
+                : feed === 'reposted'
+                  ? '/api/reels/reposted'
+                  : null
+      const endpoint = dedicatedFeed ?? '/api/reels'
       const params: Record<string, string | number | boolean | undefined> = {
         limit: pageSize,
         page: pageNum,
         sort_field: sortField,
         sort_order: sortOrder,
       }
-      if (currentFilters?.feed) params.feed = currentFilters.feed
+      // Dedicated feed routes do not need ?feed=; keep it for explore/mine on /api/reels
+      if (feed && !dedicatedFeed) params.feed = feed
       if (currentFilters?.category) params.category = currentFilters.category
       if (currentFilters?.author_id && currentFilters?.feed !== 'mine') params.author_id = currentFilters.author_id
-      if (currentFilters?.following_only) params.following = true
+      if (currentFilters?.following_only && !dedicatedFeed) params.following = true
       if (currentFilters?.is_featured) params.is_featured = true
       if (currentFilters?.min_duration != null) params.min_duration = currentFilters.min_duration
       if (currentFilters?.max_duration != null) params.max_duration = currentFilters.max_duration
       if (currentFilters?.tags?.length) params.tags = currentFilters.tags.join(',')
       if (currentFilters?.search) params.search = currentFilters.search
+      if (currentFilters?.country) params.country = currentFilters.country
+      if (
+        currentFilters?.lat != null &&
+        currentFilters?.lng != null &&
+        Number.isFinite(currentFilters.lat) &&
+        Number.isFinite(currentFilters.lng)
+      ) {
+        params.lat = currentFilters.lat
+        params.lng = currentFilters.lng
+        if (currentFilters.radius_km != null && Number.isFinite(currentFilters.radius_km)) {
+          params.radius_km = currentFilters.radius_km
+        }
+      }
 
-      const res = await apiClient.get<{ data: Reel[] }>('/api/memories', params)
+      const res = await apiClient.get<{ data: Reel[] }>(endpoint, params)
       const newReels = res?.data ?? []
 
       if (append) {
@@ -117,6 +144,7 @@ export const useReel = (reelId: string) => {
   const [interactionState, setInteractionState] = useState<ReelInteractionState>({
     isLiked: false,
     isSaved: false,
+    isReposted: false,
     isFollowing: false,
     hasViewed: false
   })
@@ -128,7 +156,7 @@ export const useReel = (reelId: string) => {
       setLoading(true)
       setError(null)
 
-      const res = await apiClient.get<{ data: ReelWithInteractionState }>(`/api/memories/${reelId}`)
+      const res = await apiClient.get<{ data: ReelWithInteractionState }>(`/api/reels/${reelId}`)
       const payload = res?.data
       if (payload) {
         setReel(payload)
@@ -171,7 +199,7 @@ export const useCreateReel = () => {
       setLoading(true)
       setError(null)
 
-      const res = await apiClient.post<{ data: Reel }>('/api/memories', {
+      const res = await apiClient.post<{ data: Reel }>('/api/reels', {
         ...reelData,
         aspect_ratio: reelData.aspect_ratio || '9:16',
         category: reelData.category || 'entertainment',
@@ -212,7 +240,7 @@ export const useUpdateReel = () => {
       setLoading(true)
       setError(null)
 
-      const res = await apiClient.patch<{ data: Reel }>(`/api/memories/${reelId}`, {
+      const res = await apiClient.patch<{ data: Reel }>(`/api/reels/${reelId}`, {
         ...updateData,
         updated_at: new Date().toISOString()
       })
@@ -250,7 +278,7 @@ export const useDeleteReel = () => {
       setLoading(true)
       setError(null)
 
-      await apiClient.delete<{ success: boolean }>(`/api/memories/${reelId}`)
+      await apiClient.delete<{ success: boolean }>(`/api/reels/${reelId}`)
       return { success: true, error: null }
     } catch (err) {
       console.error('Error deleting reel:', err)
@@ -283,7 +311,10 @@ export const useReelInteractions = (reelId: string) => {
       setLoading(true)
       setError(null)
 
-      await apiClient.post<{ data: { liked: boolean } }>(`/api/memories/${reelId}/like`)
+      await apiClient.post<{ data: { liked: boolean; reaction_type: string | null } }>(
+        `/api/reels/${reelId}/like`,
+        { reaction_type: 'love' }
+      )
       return { success: true, error: null }
     } catch (err) {
       console.error('Error toggling reel like:', err)
@@ -304,7 +335,7 @@ export const useReelInteractions = (reelId: string) => {
       setLoading(true)
       setError(null)
 
-      await apiClient.post<{ data: { saved: boolean } }>(`/api/memories/${reelId}/save`)
+      await apiClient.post<{ data: { saved: boolean } }>(`/api/reels/${reelId}/save`)
       return { success: true, error: null }
     } catch (err) {
       console.error('Error toggling reel save:', err)
@@ -316,11 +347,32 @@ export const useReelInteractions = (reelId: string) => {
     }
   }, [user, reelId])
 
+  const toggleRepost = useCallback(async () => {
+    if (!user) {
+      throw new Error('User must be logged in to repost a reel')
+    }
+
+    try {
+      setLoading(true)
+      setError(null)
+
+      await apiClient.post<{ data: { reposted: boolean } }>(`/api/reels/${reelId}/repost`)
+      return { success: true, error: null }
+    } catch (err) {
+      console.error('Error toggling reel repost:', err)
+      const errorMessage = err instanceof Error ? err.message : 'Failed to toggle repost'
+      setError(errorMessage)
+      return { success: false, error: errorMessage }
+    } finally {
+      setLoading(false)
+    }
+  }, [user, reelId])
+
   const recordView = useCallback(async (viewDuration?: number, completionRate?: number) => {
     if (!user) return
 
     try {
-      await apiClient.post(`/api/memories/${reelId}/view`, {
+      await apiClient.post(`/api/reels/${reelId}/view`, {
         view_duration: viewDuration,
         completion_rate: completionRate
       })
@@ -338,7 +390,7 @@ export const useReelInteractions = (reelId: string) => {
       setLoading(true)
       setError(null)
 
-      await apiClient.post(`/api/memories/${reelId}/share`, { share_type: shareType, platform })
+      await apiClient.post(`/api/reels/${reelId}/share`, { share_type: shareType, platform })
       return { success: true, error: null }
     } catch (err) {
       console.error('Error sharing reel:', err)
@@ -353,6 +405,7 @@ export const useReelInteractions = (reelId: string) => {
   return {
     toggleLike,
     toggleSave,
+    toggleRepost,
     recordView,
     shareReel,
     loading,
@@ -371,7 +424,7 @@ export const useReelComments = (reelId: string, enabled: boolean = false) => {
       setLoading(true)
       setError(null)
 
-      const res = await apiClient.get<{ data: ReelComment[] }>(`/api/memories/${reelId}/comments`)
+      const res = await apiClient.get<{ data: ReelComment[] }>(`/api/reels/${reelId}/comments`)
       setComments(res?.data ?? [])
     } catch (err) {
       console.error('Error fetching reel comments:', err)
@@ -390,7 +443,7 @@ export const useReelComments = (reelId: string, enabled: boolean = false) => {
       setLoading(true)
       setError(null)
 
-      const res = await apiClient.post<{ data: ReelComment }>(`/api/memories/${reelId}/comments`, {
+      const res = await apiClient.post<{ data: ReelComment }>(`/api/reels/${reelId}/comments`, {
         content,
         parent_id: parentId
       })
@@ -417,7 +470,7 @@ export const useReelComments = (reelId: string, enabled: boolean = false) => {
       setLoading(true)
       setError(null)
 
-      await apiClient.delete(`/api/memories/${reelId}/comments/${commentId}`)
+      await apiClient.delete(`/api/reels/${reelId}/comments/${commentId}`)
       await fetchComments()
       return { success: true, error: null }
     } catch (err) {
@@ -437,7 +490,7 @@ export const useReelComments = (reelId: string, enabled: boolean = false) => {
 
     try {
       setError(null)
-      const res = await apiClient.post<{ data: { liked: boolean } }>(`/api/memories/${reelId}/comments/${commentId}/like`)
+      const res = await apiClient.post<{ data: { liked: boolean } }>(`/api/reels/${reelId}/comments/${commentId}/like`)
       await fetchComments()
       return { liked: !!res?.data?.liked, error: null }
     } catch (err) {
@@ -482,11 +535,11 @@ export const useReelStats = (enabled: boolean = true) => {
     try {
       setLoading(true)
       setError(null)
-      const res = await apiClient.get<{ data: ReelStats }>('/api/memories/stats')
+      const res = await apiClient.get<{ data: ReelStats }>('/api/reels/analytics')
       setStats(res?.data ?? null)
     } catch (err) {
-      console.error('Error fetching reel stats:', err)
-      setError(err instanceof Error ? err.message : 'Failed to fetch reel stats')
+      console.error('Error fetching reel analytics:', err)
+      setError(err instanceof Error ? err.message : 'Failed to fetch reel analytics')
     } finally {
       setLoading(false)
     }

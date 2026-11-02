@@ -1,13 +1,13 @@
 "use client";
 
-import type { LucideIcon } from '@/shared/icons';
-import { TrendingDown, TrendingUp, Minus } from '@/shared/icons';
+import type { LucideIcon } from "@/shared/icons";
+import { TrendingDown, TrendingUp, Minus } from "@/shared/icons";
 import { AP } from "../constants/adminLayout";
 
 interface AdminStatCardProps {
   label: string;
   value: string | number;
-  icon: LucideIcon;
+  icon?: LucideIcon;
   iconColor?: string;
   iconBg?: string;
   trend?: { value: number; label?: string };
@@ -33,22 +33,26 @@ export function AdminStatCard({
 
   return (
     <div
-      className={`${AP.card} ${AP.cardPadding} ${AP.cardHover} ${
-        highlight ? "ring-1 ring-orange-200/60" : ""
+      className={`${AP.card} ${AP.cardPadding} ${
+        highlight ? "border-primary-300 bg-primary-50/30" : ""
       }`}
     >
-      <div className="flex items-start justify-between mb-3">
-        <div className={`p-2.5 rounded-xl ${iconBg}`}>
-          <Icon className={`w-5 h-5 ${iconColor}`} aria-hidden="true" />
-        </div>
+      <div className="flex items-start justify-between gap-2 mb-3">
+        {Icon ? (
+          <div className={`p-2 rounded-md ${iconBg}`}>
+            <Icon className={`w-4 h-4 ${iconColor}`} aria-hidden="true" />
+          </div>
+        ) : (
+          <p className="text-xs font-medium text-gray-500">{label}</p>
+        )}
         {trend && (
           <span
-            className={`inline-flex items-center gap-0.5 text-xs font-medium px-2 py-0.5 rounded-full ${
+            className={`inline-flex items-center gap-0.5 text-xs font-medium ${
               trendUp
-                ? "bg-green-50 text-green-700"
+                ? "text-emerald-600"
                 : trendDown
-                  ? "bg-red-50 text-red-700"
-                  : "bg-gray-100 text-gray-600"
+                  ? "text-red-600"
+                  : "text-gray-500"
             }`}
           >
             {trendUp && <TrendingUp className="w-3 h-3" aria-hidden="true" />}
@@ -59,22 +63,22 @@ export function AdminStatCard({
           </span>
         )}
       </div>
-      <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
-        {label}
-      </p>
+      {Icon && (
+        <p className="text-xs font-medium text-gray-500 mb-1">{label}</p>
+      )}
       <p
-        className={`text-2xl sm:text-3xl font-bold tracking-tight ${
-          highlight ? "text-orange-600" : "text-gray-900"
+        className={`text-2xl sm:text-3xl font-semibold tracking-tight tabular-nums ${
+          highlight ? "text-primary-700" : "text-gray-900"
         }`}
       >
         {value}
       </p>
       {trend?.label && !footnote && (
-        <p className="text-xs text-gray-400 mt-1">{trend.label}</p>
+        <p className="text-xs text-gray-400 mt-1.5">{trend.label}</p>
       )}
       {footnote && (
         <p
-          className={`text-xs mt-1.5 font-medium ${
+          className={`text-xs mt-1.5 ${
             footnoteVariant === "danger" ? "text-red-600" : "text-gray-400"
           }`}
         >

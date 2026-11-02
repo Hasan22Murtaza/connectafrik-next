@@ -183,11 +183,12 @@ export default function FeedbackPage() {
             >
               Feedback type <span className="text-orange-600">*</span>
             </label>
+            <div className='relative'>
             <select
               id="feedback-type"
               value={feedbackType}
               onChange={(e) => setFeedbackType(e.target.value as FeedbackType | '')}
-              className="input-field"
+              className="input-field  appearance-none pr-10"
             >
               <option value="">Select a type</option>
               {FEEDBACK_TYPE_OPTIONS.map((opt) => (
@@ -196,6 +197,21 @@ export default function FeedbackPage() {
                 </option>
               ))}
             </select>
+             <svg
+                  className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="m19 9-7 7-7-7"
+                  />
+                </svg>
+            </div>
             {errors.feedbackType && (
               <p className="mt-1.5 text-xs text-red-600">{errors.feedbackType}</p>
             )}
@@ -317,6 +333,7 @@ export default function FeedbackPage() {
               <input
                 id="feedback-email"
                 type="email"
+                readOnly
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"

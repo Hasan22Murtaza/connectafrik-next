@@ -257,12 +257,93 @@ export function SettingsSignInPrompt({ message }: { message: string }) {
   )
 }
 
-export function SettingsPanelSkeleton() {
+export type SettingsSkeletonVariant = 'profile' | 'privacy' | 'notifications' | 'security' | 'devices'
+
+function SkeletonLine({ className }: { className: string }) {
+  return <div className={`animate-pulse rounded-md bg-surface-secondary ${className}`} />
+}
+
+function SkeletonCard({ rows = 2 }: { rows?: number }) {
+  return (
+    <div className="overflow-hidden rounded-[16px] border border-border-subtle bg-surface">
+      <div className="border-b border-border-subtle px-4 py-4 sm:px-5">
+        <SkeletonLine className="h-4 w-36" />
+        <SkeletonLine className="mt-2 h-3.5 w-64 max-w-full" />
+      </div>
+      <div>
+        {Array.from({ length: rows }).map((_, index) => (
+          <React.Fragment key={index}>
+            {index > 0 ? <div className="h-px bg-border-subtle" /> : null}
+            <div className="flex items-center gap-3 px-4 py-3.5 sm:px-5">
+              <SkeletonLine className="h-9 w-9 shrink-0 rounded-[12px]" />
+              <div className="min-w-0 flex-1 space-y-2">
+                <SkeletonLine className="h-3.5 w-36 max-w-full" />
+                <SkeletonLine className="h-3 w-56 max-w-full" />
+              </div>
+              <SkeletonLine className="h-6 w-10 shrink-0 rounded-full" />
+            </div>
+          </React.Fragment>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+export function SettingsPanelSkeleton({ variant = 'profile' }: { variant?: SettingsSkeletonVariant }) {
+  if (variant === 'profile') {
+    return (
+      <div className="space-y-4" aria-hidden>
+        <div className="overflow-hidden rounded-[16px] border border-border-subtle bg-surface">
+          <SkeletonLine className="h-36 rounded-none sm:h-44" />
+          <div className="flex items-end gap-4 px-4 pb-5 sm:px-5">
+            <SkeletonLine className="-mt-12 h-[104px] w-[104px] shrink-0 rounded-full border-[4px] border-surface sm:-mt-14 sm:h-[120px] sm:w-[120px]" />
+            <div className="mb-2 flex-1 space-y-2">
+              <SkeletonLine className="h-5 w-40" />
+              <SkeletonLine className="h-3.5 w-24" />
+            </div>
+          </div>
+        </div>
+        <SkeletonCard rows={4} />
+      </div>
+    )
+  }
+
+  if (variant === 'privacy') {
+    return (
+      <div className="space-y-4" aria-hidden>
+        <SkeletonCard rows={3} />
+        <SkeletonCard rows={3} />
+        <SkeletonCard rows={2} />
+      </div>
+    )
+  }
+
+  if (variant === 'notifications') {
+    return (
+      <div className="space-y-4" aria-hidden>
+        <SkeletonCard rows={2} />
+        <SkeletonCard rows={1} />
+        <SkeletonCard rows={1} />
+        <SkeletonCard rows={2} />
+      </div>
+    )
+  }
+
+  if (variant === 'security') {
+    return (
+      <div className="space-y-4" aria-hidden>
+        <SkeletonCard rows={2} />
+        <SkeletonCard rows={1} />
+        <SkeletonCard rows={2} />
+        <SkeletonCard rows={2} />
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-4" aria-hidden>
-      <div className="h-28 animate-pulse rounded-[16px] bg-surface-secondary" />
-      <div className="h-48 animate-pulse rounded-[16px] bg-surface-secondary" />
-      <div className="h-32 animate-pulse rounded-[16px] bg-surface-secondary" />
+      <SkeletonCard rows={3} />
+      <SkeletonCard rows={2} />
     </div>
   )
 }

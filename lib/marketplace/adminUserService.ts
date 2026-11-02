@@ -2,12 +2,9 @@ import { SupabaseClient, User as AuthUser } from '@supabase/supabase-js'
 import { sendAccountReactivatedEmail, sendAccountSuspendedEmail } from '@/shared/services/emailService'
 import { deleteUserAccount } from '@/lib/account/deleteAccount'
 
-export type AdminUserAccountType = 'buyer' | 'seller' | 'both' | 'none'
 export type AdminUserAccountStatus = 'active' | 'suspended'
 export type AdminUserFilter =
   | 'all'
-  | 'sellers'
-  | 'buyers'
   | 'verified'
   | 'unverified'
   | 'active'
@@ -18,8 +15,6 @@ export type AdminUserSortField = 'created_at' | 'full_name' | 'username' | 'last
 
 export interface AdminUserStats {
   total_users: number
-  total_buyers: number
-  total_sellers: number
   new_users_today: number
   new_users_this_week: number
   active_users: number
@@ -32,20 +27,10 @@ export interface AdminUserListItem {
   full_name: string
   avatar_url: string | null
   email: string | null
-  account_type: AdminUserAccountType
   is_verified: boolean
   created_at: string
   last_login: string | null
   account_status: AdminUserAccountStatus
-  listings_count: number
-}
-
-export interface AdminUserSellerStats {
-  total_listings: number
-  active_listings: number
-  sold_items: number
-  average_rating: number | null
-  total_earnings: number | null
 }
 
 export interface AdminUserDetail extends AdminUserListItem {
@@ -56,13 +41,8 @@ export interface AdminUserDetail extends AdminUserListItem {
   state: string | null
   bio: string | null
   platform_role: string
-  seller_tier: string | null
   last_active_at: string | null
   last_seen: string | null
-  total_orders: number
-  total_reviews: number
-  total_transactions: number
-  seller_stats: AdminUserSellerStats | null
 }
 
 /** Columns required for list + filter + sort — avoid optional/missing profile fields. */
@@ -92,38 +72,6 @@ function isAuthUserBanned(user: AuthUser | null): boolean {
   const bannedUntil = getBannedUntil(user)
   if (!bannedUntil) return false
   return new Date(bannedUntil) > new Date()
-}
-
-function resolveAccountType(
-  userId: string,
-  sellerIds: Set<string>,
-  buyerIds: Set<string>
-): AdminUserAccountType {
-  const isSeller = sellerIds.has(userId)
-  const isBuyer = buyerIds.has(userId)
-  if (isSeller && isBuyer) return 'both'
-  if (isSeller) return 'seller'
-  if (isBuyer) return 'buyer'
-  return 'none'
-}
-
-async function getDistinctColumnValues(
-  serviceClient: SupabaseClient,
-  table: string,
-  column: string
-): Promise<string[]> {
-  const { data, error } = await serviceClient.from(table).select(column).not(column, 'is', null)
-  if (error) throw new Error(error.message)
-  return [
-    ...new Set(
-      (data ?? []).map((row) => String((row as unknown as Record<string, unknown>)[column]))
-    ),
-  ]
-}
-
-async function getSellerAndBuyerIdSets(serviceClient: SupabaseClient) {
-  const productSellerIds = await getDistinctColumnValues(serviceClient, 'products', 'seller_id')
-  return { sellerIds: new Set(productSellerIds), buyerIds: new Set<string>() }
 }
 
 async function getAuthUserSafe(
@@ -178,40 +126,10 @@ async function getSuspendedUserIds(serviceClient: SupabaseClient): Promise<strin
   return suspended
 }
 
-async function getListingsCounts(
-  serviceClient: SupabaseClient,
-  sellerIds: string[]
-): Promise<Map<string, number>> {
-  const counts = new Map<string, number>()
-  if (sellerIds.length === 0) return counts
-
-  const { data, error } = await serviceClient
-    .from('products')
-    .select('seller_id')
-    .in('seller_id', sellerIds)
-
-  if (error) throw new Error(error.message)
-
-  for (const row of data ?? []) {
-    const id = row.seller_id as string
-    counts.set(id, (counts.get(id) ?? 0) + 1)
-  }
-
-  return counts
-}
-
 async function enrichUserRows(
   serviceClient: SupabaseClient,
-  profiles: Array<Record<string, unknown>>,
-  sellerIds: Set<string>,
-  buyerIds: Set<string>
+  profiles: Array<Record<string, unknown>>
 ): Promise<AdminUserListItem[]> {
-  const pageSellerIds = profiles
-    .map((p) => String(p.id))
-    .filter((id) => sellerIds.has(id))
-
-  const listingsCounts = await getListingsCounts(serviceClient, pageSellerIds)
-
   return Promise.all(
     profiles.map(async (profile) => {
       const id = String(profile.id)
@@ -223,7 +141,6 @@ async function enrichUserRows(
         full_name: String(profile.full_name ?? ''),
         avatar_url: (profile.avatar_url as string | null) ?? null,
         email: authUser?.email ?? null,
-        account_type: resolveAccountType(id, sellerIds, buyerIds),
         is_verified: Boolean(profile.is_verified),
         created_at: String(profile.created_at),
         last_login:
@@ -232,7 +149,6 @@ async function enrichUserRows(
           authUser?.last_sign_in_at ??
           null,
         account_status: isAuthUserBanned(authUser) ? 'suspended' : 'active',
-        listings_count: listingsCounts.get(id) ?? 0,
       }
     })
   )
@@ -249,7 +165,6 @@ export async function getAdminUserStats(serviceClient: SupabaseClient): Promise<
     newWeekResult,
     activeUsersResult,
     verifiedUsersResult,
-    { sellerIds, buyerIds },
   ] = await Promise.all([
     serviceClient.from('profiles').select('id', { count: 'exact', head: true }),
     serviceClient
@@ -268,7 +183,6 @@ export async function getAdminUserStats(serviceClient: SupabaseClient): Promise<
       .from('profiles')
       .select('id', { count: 'exact', head: true })
       .eq('is_verified', true),
-    getSellerAndBuyerIdSets(serviceClient),
   ])
 
   if (totalUsersResult.error) throw new Error(totalUsersResult.error.message)
@@ -279,8 +193,6 @@ export async function getAdminUserStats(serviceClient: SupabaseClient): Promise<
 
   return {
     total_users: totalUsersResult.count ?? 0,
-    total_buyers: buyerIds.size,
-    total_sellers: sellerIds.size,
     new_users_today: newTodayResult.count ?? 0,
     new_users_this_week: newWeekResult.count ?? 0,
     active_users: activeUsersResult.count ?? 0,
@@ -308,8 +220,6 @@ export async function listAdminUsers(
   const sortDir = filters.sort_dir ?? 'desc'
   const search = filters.search?.trim()
 
-  const { sellerIds, buyerIds } = await getSellerAndBuyerIdSets(serviceClient)
-
   if (search?.includes('@')) {
     const authUser = await findAuthUserByEmail(serviceClient, search)
     if (!authUser) {
@@ -325,7 +235,7 @@ export async function listAdminUsers(
     if (error) throw new Error(error.message)
     if (!profile) return { data: [], count: 0, page, limit }
 
-    const enriched = await enrichUserRows(serviceClient, [profile], sellerIds, buyerIds)
+    const enriched = await enrichUserRows(serviceClient, [profile])
     const row = enriched[0]
     if (
       !matchesFilter(row, filter, daysAgo(7), daysAgo(ACTIVE_WINDOW_DAYS))
@@ -348,14 +258,6 @@ export async function listAdminUsers(
   const activeSince = daysAgo(ACTIVE_WINDOW_DAYS)
 
   switch (filter) {
-    case 'sellers':
-      if (sellerIds.size === 0) return { data: [], count: 0, page, limit }
-      query = query.in('id', [...sellerIds])
-      break
-    case 'buyers':
-      if (buyerIds.size === 0) return { data: [], count: 0, page, limit }
-      query = query.in('id', [...buyerIds])
-      break
     case 'verified':
       query = query.eq('is_verified', true)
       break
@@ -392,7 +294,7 @@ export async function listAdminUsers(
   const { data, error, count } = await query
   if (error) throw new Error(error.message)
 
-  const enriched = await enrichUserRows(serviceClient, data ?? [], sellerIds, buyerIds)
+  const enriched = await enrichUserRows(serviceClient, data ?? [])
 
   return { data: enriched, count: count ?? 0, page, limit }
 }
@@ -404,10 +306,6 @@ function matchesFilter(
   activeSince: string
 ): boolean {
   switch (filter) {
-    case 'sellers':
-      return user.account_type === 'seller' || user.account_type === 'both'
-    case 'buyers':
-      return user.account_type === 'buyer' || user.account_type === 'both'
     case 'verified':
       return user.is_verified
     case 'unverified':
@@ -425,41 +323,6 @@ function matchesFilter(
   }
 }
 
-async function getSellerStats(
-  serviceClient: SupabaseClient,
-  userId: string
-): Promise<AdminUserSellerStats> {
-  const [listingsResult, activeListingsResult, soldResult] = await Promise.all([
-    serviceClient
-      .from('products')
-      .select('id', { count: 'exact', head: true })
-      .eq('seller_id', userId),
-    serviceClient
-      .from('products')
-      .select('id', { count: 'exact', head: true })
-      .eq('seller_id', userId)
-      .eq('is_available', true)
-      .gt('stock_quantity', 0),
-    serviceClient
-      .from('products')
-      .select('id', { count: 'exact', head: true })
-      .eq('seller_id', userId)
-      .eq('stock_quantity', 0),
-  ])
-
-  if (listingsResult.error) throw new Error(listingsResult.error.message)
-  if (activeListingsResult.error) throw new Error(activeListingsResult.error.message)
-  if (soldResult.error) throw new Error(soldResult.error.message)
-
-  return {
-    total_listings: listingsResult.count ?? 0,
-    active_listings: activeListingsResult.count ?? 0,
-    sold_items: soldResult.count ?? 0,
-    average_rating: null,
-    total_earnings: null,
-  }
-}
-
 export async function getAdminUserDetail(serviceClient: SupabaseClient, userId: string) {
   const { data: profile, error } = await serviceClient
     .from('profiles')
@@ -472,18 +335,7 @@ export async function getAdminUserDetail(serviceClient: SupabaseClient, userId: 
     throw new Error(error.message)
   }
 
-  const { sellerIds, buyerIds } = await getSellerAndBuyerIdSets(serviceClient)
   const authUser = await getAuthUserSafe(serviceClient, userId)
-  const accountType = resolveAccountType(userId, sellerIds, buyerIds)
-  const isSeller = accountType === 'seller' || accountType === 'both'
-
-  const sellerStats = isSeller ? await getSellerStats(serviceClient, userId) : null
-  const totalOrders = 0
-  const totalReviews = 0
-
-  const listingsCounts = isSeller
-    ? await getListingsCounts(serviceClient, [userId])
-    : new Map<string, number>()
 
   const detail: AdminUserDetail = {
     id: userId,
@@ -498,8 +350,6 @@ export async function getAdminUserDetail(serviceClient: SupabaseClient, userId: 
     state: profile.state ?? null,
     bio: profile.bio ?? null,
     platform_role: String(profile.platform_role ?? 'user'),
-    seller_tier: profile.seller_tier ?? null,
-    account_type: accountType,
     is_verified: Boolean(profile.is_verified),
     created_at: String(profile.created_at),
     last_login:
@@ -507,11 +357,6 @@ export async function getAdminUserDetail(serviceClient: SupabaseClient, userId: 
     last_active_at: profile.last_active_at ?? null,
     last_seen: profile.last_seen ?? null,
     account_status: isAuthUserBanned(authUser) ? 'suspended' : 'active',
-    listings_count: listingsCounts.get(userId) ?? 0,
-    total_orders: totalOrders,
-    total_reviews: totalReviews,
-    total_transactions: totalOrders,
-    seller_stats: sellerStats,
   }
 
   return detail

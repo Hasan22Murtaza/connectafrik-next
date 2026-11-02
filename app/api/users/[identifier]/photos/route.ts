@@ -5,7 +5,7 @@ import { fetchFormattedAuthorPosts } from '../_shared/media-from-posts'
 
 const DEFAULT_POST_ROWS = 120
 const MAX_POST_ROWS = 250
-const DEFAULT_ITEM_LIMIT = 200
+const DEFAULT_ITEM_LIMIT = 20
 const MAX_ITEM_LIMIT = 500
 
 export async function GET(

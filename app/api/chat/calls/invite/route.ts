@@ -216,6 +216,17 @@ export async function POST(request: NextRequest) {
       return errorResponse('Cannot invite yourself', 400)
     }
 
+    const { checkParentalRestriction, parentalDecisionResponse, recordActivityEvent } = await import(
+      '@/lib/family'
+    )
+    const parental = await checkParentalRestriction(serviceClient, user.id, 'calling')
+    const parentalDenied = parentalDecisionResponse(parental)
+    if (parentalDenied) return parentalDenied
+    const screenGate = await checkParentalRestriction(serviceClient, user.id, 'screen_time')
+    const screenDenied = parentalDecisionResponse(screenGate)
+    if (screenDenied) return screenDenied
+    void recordActivityEvent(serviceClient, user.id, 'call', 1, { call_id })
+
     if (!caller_avatar_url) {
       const { data: prof } = await serviceClient
         .from('profiles')

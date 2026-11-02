@@ -10,7 +10,7 @@ const productLinks = [
   { href: "/#discover", label: "Discover" },
   { href: "/groups", label: "Communities" },
   { href: "/#messaging", label: "Messaging" },
-  { href: "/marketplace", label: "Marketplace" },
+  { href: "/marketplace", label: "TradeHub" },
 ];
 
 const companyLinks = [

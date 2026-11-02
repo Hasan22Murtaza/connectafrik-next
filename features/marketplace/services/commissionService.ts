@@ -170,57 +170,6 @@ export async function getSellerPayouts(
 }
 
 /**
- * Get pending payouts (admin function)
- */
-export async function getPendingPayouts(): Promise<SellerPayout[]> {
-  try {
-    const allPayouts: SellerPayout[] = []
-    let page = 0
-    let hasMore = true
-
-    while (hasMore) {
-      const result = await apiClient.get<{ data: SellerPayout[]; hasMore?: boolean }>(
-        '/api/admin/pending-payouts',
-        { page, limit: 20 }
-      )
-      const pagePayouts = result.data || []
-      allPayouts.push(...pagePayouts)
-      hasMore = Boolean(result.hasMore)
-      page += 1
-
-      if (pagePayouts.length === 0) break
-    }
-
-    return allPayouts
-  } catch (error) {
-    console.error('Error fetching pending payouts:', error)
-    return []
-  }
-}
-
-/**
- * Get platform revenue summary (admin function)
- */
-export async function getPlatformRevenue(): Promise<{
-  total_orders: number
-  total_gmv: number
-  total_commission_revenue: number
-  realized_revenue: number
-  pending_revenue: number
-  avg_commission_per_order: number
-  active_sellers: number
-  active_buyers: number
-} | null> {
-  try {
-    const result = await apiClient.get<{ data: any }>('/api/admin/revenue')
-    return result.data
-  } catch (error) {
-    console.error('Error fetching platform revenue:', error)
-    return null
-  }
-}
-
-/**
  * Format currency for display
  */
 export function formatCurrency(amount: number, currency: string = 'USD'): string {

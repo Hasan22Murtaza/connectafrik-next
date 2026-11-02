@@ -8,6 +8,9 @@ import {
   canViewLastSeen as canViewLastSeenRule,
   canViewOnlineStatus as canViewOnlineStatusRule,
   canViewPost as canViewPostRule,
+  canViewPostByVisibility,
+  normalizePostVisibility,
+  postVisibilityFromProfileDefault,
   canViewProfile as canViewProfileRule,
   canViewReadReceipt as canViewReadReceiptRule,
   PRIVACY_DENIED_CODE,
@@ -181,14 +184,18 @@ export async function loadPostAuthorAccess(
 
   const { data: post } = await db
     .from('posts')
-    .select('id, author_id, is_deleted')
+    .select('id, author_id, is_deleted, visibility')
     .eq('id', postId)
     .maybeSingle()
 
   if (!post || post.is_deleted) return deny(PRIVACY_ERRORS.postUnavailable)
 
   const rel = await getRelationship(viewerId, post.author_id, db)
-  if (!canViewPostRule(viewerId, post.author_id, rel.settings.post_visibility, rel.isFriend, rel.isBlocked)) {
+  const visibility = normalizePostVisibility(
+    post.visibility,
+    postVisibilityFromProfileDefault(rel.settings.post_visibility)
+  )
+  if (!canViewPostByVisibility(viewerId, post.author_id, visibility, rel.isFriend, rel.isBlocked)) {
     return deny(PRIVACY_ERRORS.postUnavailable)
   }
   return { allowed: true, authorId: post.author_id }

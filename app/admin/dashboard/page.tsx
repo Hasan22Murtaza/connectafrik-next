@@ -2,26 +2,18 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
-import dynamic from "next/dynamic";
-import {
-  LayoutDashboard,
-  Shield,
-  DollarSign,
-  Package,
-  AlertTriangle,
-  TrendingUp,
-  Wallet,
-  ArrowRight,
-  Inbox,
-} from '@/shared/icons';
+import { Flag, Activity as ActivityIcon } from "@/shared/icons";
 import toast from "react-hot-toast";
 import { AdminLoading } from "@/features/admin/components/AdminLoading";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
-import { AdminStatusBadge } from "@/features/admin/components/AdminStatusBadge";
 import { AdminStatCard } from "@/features/admin/components/AdminStatCard";
-import { AdminMotion } from "@/features/admin/components/AdminMotion";
 import { AdminEmptyState } from "@/features/admin/components/AdminEmptyState";
 import { AdminErrorState } from "@/features/admin/components/AdminErrorState";
+import { AdminStatusBadge } from "@/features/admin/components/AdminStatusBadge";
+import {
+  AdminRecentCallsCard,
+  AdminSystemHealthCard,
+} from "@/features/admin/components/AdminMonitoringSections";
 import {
   AdminTableBody,
   AdminTableCard,
@@ -30,93 +22,104 @@ import {
   AdminTableHeadCell,
   AdminTableRow,
 } from "@/features/admin/components/AdminTable";
-import { AdminChartSkeleton } from "@/features/admin/components/skeletons/AdminShimmerLoaders";
 import { useAdminAuth } from "@/features/admin/hooks/useAdminAuth";
 import { AP } from "@/features/admin/constants/adminLayout";
 import {
-  getAdminDashboard,
-  AdminDashboardSummary,
+  AdminUserStats,
+  listAdminUsers,
 } from "@/features/marketplace/services/adminService";
+import { listAdminReportGroups } from "@/features/social/services/reportService";
+import {
+  fetchMonitoringSnapshot,
+  type MonitoringActivityEvent,
+  type MonitoringCallRow,
+  type MonitoringKpis,
+  type MonitoringServiceHealth,
+} from "@/features/admin/services/monitoringService";
+import type { PostReportGroup, PostReportStats } from "@/lib/reports/types";
 
-const AdminBarChart = dynamic(
-  () => import("@/features/admin/components/AdminChart").then((m) => m.AdminBarChart),
-  { loading: () => <AdminChartSkeleton />, ssr: false }
-);
-
-const AdminDonutChart = dynamic(
-  () => import("@/features/admin/components/AdminChart").then((m) => m.AdminDonutChart),
-  { loading: () => <AdminChartSkeleton />, ssr: false }
-);
-
-function CurrencyBreakdown({
-  title,
-  data,
-  delay = 0,
-}: {
-  title: string;
-  data: Record<string, number>;
-  delay?: number;
-}) {
-  const entries = Object.entries(data);
-  if (entries.length === 0) return null;
-
-  return (
-    <AdminMotion delay={delay} className={`${AP.card} ${AP.cardPadding} ${AP.cardHover}`}>
-      <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-4">
-        {title}
-      </h3>
-      <div className="space-y-3">
-        {entries.map(([currency, amount]) => (
-          <div key={currency} className="flex justify-between items-center text-sm">
-            <span className="text-gray-600 font-medium">{currency}</span>
-            <span className="font-bold text-gray-900 tabular-nums">
-              {amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-            </span>
-          </div>
-        ))}
-      </div>
-    </AdminMotion>
-  );
+interface DashboardData {
+  users: AdminUserStats;
+  reports: PostReportStats;
+  kpis: MonitoringKpis;
+  recentActivity: MonitoringActivityEvent[];
+  recentReports: PostReportGroup[];
+  services: MonitoringServiceHealth[];
+  recentCalls: MonitoringCallRow[];
 }
 
-const QUICK_LINKS = [
-  {
-    href: "/admin/orders",
-    label: "Manage orders",
-    description: "Filter, view, and refund orders",
-    icon: Package,
-    iconColor: "text-blue-600",
-    iconBg: "bg-blue-50",
-  },
-  {
-    href: "/admin/payouts",
-    label: "Process payouts",
-    description: "Review pending seller transfers",
-    icon: Wallet,
-    iconColor: "text-emerald-600",
-    iconBg: "bg-emerald-50",
-  },
-  {
-    href: "/admin/disputes",
-    label: "Resolve disputes",
-    description: "Review buyer-seller cases",
-    icon: Shield,
-    iconColor: "text-orange-600",
-    iconBg: "bg-orange-50",
-  },
-] as const;
+function formatDate(dateString: string | null | undefined) {
+  if (!dateString) return "—";
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(dateString));
+}
+
+function activityTypeLabel(type: string) {
+  return type.replace(/_/g, " ");
+}
+
+function reportReasonLabel(group: PostReportGroup) {
+  if (!group.latest_reason) return "Reported content";
+  return String(group.latest_reason).replace(/_/g, " ");
+}
+
+function reportTargetLabel(group: PostReportGroup) {
+  if (group.post?.content?.trim()) {
+    const content = group.post.content.trim();
+    return content.length > 56 ? `${content.slice(0, 56).trimEnd()}…` : content;
+  }
+  const author =
+    group.post?.author?.full_name || group.post?.author?.username || null;
+  if (author) return `Post by ${author}`;
+  return `Post ${group.post_id.slice(0, 8)}…`;
+}
+
+function reportReporterLabel(group: PostReportGroup) {
+  const reporter = group.latest_reporter;
+  if (reporter?.full_name || reporter?.username) {
+    return reporter.full_name || reporter.username || "Unknown";
+  }
+  return `${group.report_count} reporter${group.report_count === 1 ? "" : "s"}`;
+}
 
 export default function AdminDashboardPage() {
   const { isReady, authLoading } = useAdminAuth("/admin/dashboard");
-  const [summary, setSummary] = useState<AdminDashboardSummary | null>(null);
+  const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
   const loadDashboard = React.useCallback(() => {
     setLoading(true);
     setError(false);
-    getAdminDashboard()
-      .then(setSummary)
+
+    Promise.all([
+      listAdminUsers({ page: 0, limit: 1, include_stats: true }),
+      listAdminReportGroups({
+        status: "all",
+        page: 0,
+        limit: 8,
+        include_stats: true,
+      }),
+      fetchMonitoringSnapshot({ range: "7d" }),
+    ])
+      .then(([usersResult, reportsResult, monitoring]) => {
+        if (!usersResult.stats) {
+          throw new Error("Missing user stats");
+        }
+        setData({
+          users: usersResult.stats,
+          reports: reportsResult.stats,
+          kpis: monitoring.kpis,
+          recentActivity: monitoring.activity_events.slice(0, 10),
+          recentReports: reportsResult.items,
+          services: monitoring.services,
+          recentCalls: monitoring.recent_calls,
+        });
+      })
       .catch(() => {
         setError(true);
         toast.error("Admin access required or dashboard unavailable");
@@ -129,234 +132,141 @@ export default function AdminDashboardPage() {
     loadDashboard();
   }, [isReady, loadDashboard]);
 
-  if (authLoading || (loading && !summary)) {
+  if (authLoading || (loading && !data)) {
     return <AdminLoading variant="dashboard" />;
   }
 
-  if (error || !summary) {
+  if (error || !data) {
     return (
-      <div className="max-w-6xl mx-auto">
+      <div className="mx-auto max-w-6xl">
         <AdminErrorState
           title="Dashboard unavailable"
-          message="We couldn't load marketplace metrics. Verify your admin access and try again."
+          message="We couldn't load platform metrics. Verify your admin access and try again."
           onRetry={loadDashboard}
         />
       </div>
     );
   }
 
-  const revenue = summary.revenue as Record<string, number> | null;
+  const openReports = data.reports.pending + data.reports.under_review;
+  const pendingReports = data.recentReports.filter(
+    (g) => g.status === "pending" || g.status === "under_review"
+  );
 
   return (
-    <div className="max-w-6xl mx-auto">
+    <div className="mx-auto max-w-6xl">
       <AdminPageHeader
-        title="Marketplace Dashboard"
-        icon={LayoutDashboard}
+        title="Dashboard"
+        description="Overview of members, content, and moderation across CribsTalk."
         action={
-          <Link href="/admin/disputes" className={AP.btnPrimary}>
-            <Shield className="w-4 h-4" aria-hidden="true" />
-            Dispute queue ({summary.open_disputes})
+          <Link href="/admin/reports" className={AP.btnPrimary}>
+            Review reports
+            {openReports > 0 ? ` (${openReports})` : ""}
           </Link>
         }
       />
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-6 sm:mb-8">
-        {QUICK_LINKS.map((link, i) => {
-          const Icon = link.icon;
-          return (
-            <AdminMotion key={link.href} delay={i * 80}>
-              <Link
-                href={link.href}
-                className={`${AP.card} ${AP.cardPadding} ${AP.cardHover} ${AP.cardInteractive} block`}
-              >
-                <div className="flex items-start gap-3">
-                  <div className={`p-2.5 rounded-xl ${link.iconBg}`}>
-                    <Icon className={`w-5 h-5 ${link.iconColor}`} aria-hidden="true" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-gray-900 text-sm group-hover:text-primary-600 transition-colors">
-                      {link.label}
-                    </p>
-                    <p className="text-xs text-gray-500 mt-1 leading-relaxed">
-                      {link.description}
-                    </p>
-                  </div>
-                  <ArrowRight
-                    className="w-4 h-4 text-gray-300 group-hover:text-primary-600 group-hover:translate-x-0.5 transition-all shrink-0 mt-1"
-                    aria-hidden="true"
-                  />
-                </div>
-              </Link>
-            </AdminMotion>
-          );
-        })}
-      </div>
-
-      <div className={`${AP.statsGrid} mb-6 sm:mb-8`}>
-        <AdminMotion delay={0}>
+      <section className="mb-8" aria-labelledby="overview-heading">
+        <h2 id="overview-heading" className="mb-3 text-sm font-medium text-gray-900">
+          Overview
+        </h2>
+        <div className={AP.statsGrid}>
           <AdminStatCard
-            label="Total orders"
-            value={summary.total_orders.toLocaleString()}
-            icon={Package}
-            iconBg="bg-blue-50"
-            iconColor="text-blue-600"
+            label="Total users"
+            value={data.users.total_users.toLocaleString()}
+            footnote={`${data.users.new_users_today.toLocaleString()} new today`}
           />
-        </AdminMotion>
-        <AdminMotion delay={60}>
           <AdminStatCard
-            label="Total payouts"
-            value={summary.total_payouts.toLocaleString()}
-            icon={DollarSign}
-            iconBg="bg-emerald-50"
-            iconColor="text-emerald-600"
+            label="Active users"
+            value={data.users.active_users.toLocaleString()}
+            footnote={`${data.kpis.online_users.toLocaleString()} online now`}
           />
-        </AdminMotion>
-        <AdminMotion delay={120}>
           <AdminStatCard
-            label="Open disputes"
-            value={summary.open_disputes}
-            icon={Shield}
-            iconBg="bg-orange-50"
-            iconColor="text-orange-600"
-            highlight={summary.open_disputes > 0}
+            label="Posts"
+            value={data.kpis.posts_in_period.toLocaleString()}
+            footnote={`${data.kpis.reels_in_period.toLocaleString()} reels · 7d`}
+          />
+          <AdminStatCard
+            label="Reports"
+            value={openReports.toLocaleString()}
+            highlight={openReports > 0}
             footnote={
-              summary.dispute_sla_breaches > 0
-                ? `${summary.dispute_sla_breaches} SLA breach${summary.dispute_sla_breaches !== 1 ? "es" : ""}`
-                : undefined
+              data.kpis.high_priority_reports > 0
+                ? `${data.kpis.high_priority_reports} high priority`
+                : `${data.reports.resolved.toLocaleString()} resolved`
             }
-            footnoteVariant="danger"
+            footnoteVariant={
+              data.kpis.high_priority_reports > 0 ? "danger" : "default"
+            }
           />
-        </AdminMotion>
-        <AdminMotion delay={180}>
           <AdminStatCard
-            label="Chargebacks"
-            value={summary.open_chargebacks}
-            icon={AlertTriangle}
-            iconBg="bg-red-50"
-            iconColor="text-red-600"
-            highlight={summary.open_chargebacks > 0}
+            label="Calls"
+            value={data.kpis.calls_in_period.toLocaleString()}
+            footnote={`${data.kpis.active_calls.toLocaleString()} active now`}
           />
-        </AdminMotion>
-      </div>
-
-      {revenue && (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-6 sm:mb-8">
-          <AdminMotion delay={0}>
-            <div className={`${AP.card} ${AP.cardPadding} ${AP.cardHover}`}>
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
-                Total GMV
-              </p>
-              <p className="text-2xl font-bold text-gray-900 tabular-nums">
-                {Number(revenue.total_gmv ?? 0).toLocaleString()}
-              </p>
-            </div>
-          </AdminMotion>
-          <AdminMotion delay={60}>
-            <div className={`${AP.card} ${AP.cardPadding} ${AP.cardHover}`}>
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
-                Commission revenue
-              </p>
-              <p className="text-2xl font-bold text-emerald-600 tabular-nums">
-                {Number(revenue.total_commission_revenue ?? 0).toLocaleString()}
-              </p>
-            </div>
-          </AdminMotion>
-          <AdminMotion delay={120}>
-            <div className={`${AP.card} ${AP.cardPadding} ${AP.cardHover}`}>
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
-                Pending revenue
-              </p>
-              <p className="text-2xl font-bold text-amber-600 tabular-nums">
-                {Number(revenue.pending_revenue ?? 0).toLocaleString()}
-              </p>
-            </div>
-          </AdminMotion>
+          <AdminStatCard
+            label="TradeHub"
+            value={data.kpis.listings_in_period.toLocaleString()}
+            footnote="Listings · last 7 days"
+          />
         </div>
-      )}
+      </section>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6 sm:mb-8">
-        <AdminMotion delay={0}>
-          <AdminBarChart title="Orders by status" data={summary.orders_by_status} />
-        </AdminMotion>
-        <AdminMotion delay={80}>
-          <AdminDonutChart title="Payouts by status" data={summary.payouts_by_status} />
-        </AdminMotion>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4 mb-6 sm:mb-8">
-        <CurrencyBreakdown title="GMV by currency" data={summary.gmv_by_currency} delay={0} />
-        <CurrencyBreakdown
-          title="Held payouts (seller net)"
-          data={summary.escrow_by_currency}
-          delay={60}
-        />
-        <CurrencyBreakdown
-          title="Refunds by currency"
-          data={summary.refunds_by_currency}
-          delay={120}
-        />
-      </div>
-
-      <AdminMotion delay={100}>
-        <AdminTableCard
-          title={
-            <span className="flex items-center gap-2">
-              <TrendingUp className="w-4 h-4 text-primary-600" aria-hidden="true" />
-              Recent orders
-            </span>
-          }
-          action={
-            <Link
-              href="/admin/orders"
-              className="text-xs font-medium text-primary-600 hover:text-orange-500 transition-colors"
-            >
-              View all →
-            </Link>
-          }
-        >
-          {summary.recent_orders.length === 0 ? (
+      <section className="mb-8" aria-labelledby="activity-heading">
+        <AdminTableCard title={<span id="activity-heading">Recent activity</span>}>
+          {data.recentActivity.length === 0 ? (
             <AdminEmptyState
-              icon={Inbox}
-              title="No recent orders"
-              description="Orders will appear here as they come in."
-              action={
-                <Link href="/admin/orders" className={AP.btnSecondary}>
-                  Browse all orders
-                </Link>
-              }
+              icon={ActivityIcon}
+              title="No recent activity"
+              description="Platform events from the last 7 days will appear here."
             />
           ) : (
             <div className={AP.tableWrap}>
               <table className={AP.table}>
                 <AdminTableHead>
-                  <AdminTableHeadCell>Order</AdminTableHeadCell>
-                  <AdminTableHeadCell>Amount</AdminTableHeadCell>
+                  <AdminTableHeadCell>User</AdminTableHeadCell>
+                  <AdminTableHeadCell>Activity</AdminTableHeadCell>
+                  <AdminTableHeadCell>Type</AdminTableHeadCell>
+                  <AdminTableHeadCell>Date</AdminTableHeadCell>
                   <AdminTableHeadCell>Status</AdminTableHeadCell>
-                  <AdminTableHeadCell>Payout hold</AdminTableHeadCell>
-                  <AdminTableHeadCell>Payout</AdminTableHeadCell>
+                  <AdminTableHeadCell>Action</AdminTableHeadCell>
                 </AdminTableHead>
                 <AdminTableBody>
-                  {summary.recent_orders.map((order) => (
-                    <AdminTableRow key={order.id}>
+                  {data.recentActivity.map((event) => (
+                    <AdminTableRow key={event.id}>
                       <AdminTableCell>
-                        <Link
-                          href="/marketplace"
-                          className="text-primary-600 hover:text-orange-500 font-mono text-xs font-medium transition-colors"
-                        >
-                          {order.id.slice(0, 8)}…
-                        </Link>
-                      </AdminTableCell>
-                      <AdminTableCell className="tabular-nums whitespace-nowrap">
-                        {order.currency} {Number(order.total_amount).toLocaleString()}
-                      </AdminTableCell>
-                      <AdminTableCell>
-                        <AdminStatusBadge status={order.status} />
+                        <span className="font-medium text-gray-900">
+                          {event.actor_name || event.actor_username || "System"}
+                        </span>
+                        {event.actor_username && event.actor_name && (
+                          <span className="mt-0.5 block text-xs text-gray-500">
+                            @{event.actor_username}
+                          </span>
+                        )}
                       </AdminTableCell>
                       <AdminTableCell>
-                        <AdminStatusBadge status={order.escrow_status} />
+                        <span className="line-clamp-2 text-gray-700">
+                          {event.title}
+                          {event.target_label ? ` · ${event.target_label}` : ""}
+                        </span>
+                      </AdminTableCell>
+                      <AdminTableCell className="whitespace-nowrap capitalize text-gray-600">
+                        {activityTypeLabel(event.event_type)}
+                      </AdminTableCell>
+                      <AdminTableCell className="whitespace-nowrap text-gray-500">
+                        {formatDate(event.timestamp)}
                       </AdminTableCell>
                       <AdminTableCell>
-                        <AdminStatusBadge status={order.payout_status} />
+                        <AdminStatusBadge status={event.status} />
+                      </AdminTableCell>
+                      <AdminTableCell>
+                        {event.href ? (
+                          <Link href={event.href} className={AP.link}>
+                            View
+                          </Link>
+                        ) : (
+                          <span className="text-sm text-gray-400">—</span>
+                        )}
                       </AdminTableCell>
                     </AdminTableRow>
                   ))}
@@ -365,7 +275,76 @@ export default function AdminDashboardPage() {
             </div>
           )}
         </AdminTableCard>
-      </AdminMotion>
+      </section>
+
+      <section className="mb-8 grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <AdminSystemHealthCard services={data.services} />
+        <AdminRecentCallsCard calls={data.recentCalls} />
+      </section>
+
+      <section className="mb-4" aria-labelledby="reports-heading">
+        <AdminTableCard
+          title={<span id="reports-heading">Reports queue</span>}
+          highlight={pendingReports.length > 0}
+          action={
+            <Link href="/admin/reports" className={AP.link}>
+              Open queue
+            </Link>
+          }
+        >
+          {pendingReports.length === 0 ? (
+            <AdminEmptyState
+              icon={Flag}
+              title="No pending reports"
+              description="Flagged posts that need review will appear here."
+            />
+          ) : (
+            <div className={AP.tableWrap}>
+              <table className={AP.table}>
+                <AdminTableHead>
+                  <AdminTableHeadCell>Reason</AdminTableHeadCell>
+                  <AdminTableHeadCell>Reported</AdminTableHeadCell>
+                  <AdminTableHeadCell>Reporter</AdminTableHeadCell>
+                  <AdminTableHeadCell>Status</AdminTableHeadCell>
+                  <AdminTableHeadCell>Date</AdminTableHeadCell>
+                  <AdminTableHeadCell>Action</AdminTableHeadCell>
+                </AdminTableHead>
+                <AdminTableBody>
+                  {pendingReports.map((group) => (
+                    <AdminTableRow key={group.post_id}>
+                      <AdminTableCell className="whitespace-nowrap capitalize text-gray-700">
+                        {reportReasonLabel(group)}
+                      </AdminTableCell>
+                      <AdminTableCell>
+                        <span className="line-clamp-2 text-gray-900">
+                          {reportTargetLabel(group)}
+                        </span>
+                      </AdminTableCell>
+                      <AdminTableCell className="text-gray-600">
+                        {reportReporterLabel(group)}
+                      </AdminTableCell>
+                      <AdminTableCell>
+                        <AdminStatusBadge status={group.status} />
+                      </AdminTableCell>
+                      <AdminTableCell className="whitespace-nowrap text-gray-500">
+                        {formatDate(group.last_reported_at)}
+                      </AdminTableCell>
+                      <AdminTableCell>
+                        <Link
+                          href={`/admin/reports/${group.post_id}`}
+                          className={AP.link}
+                        >
+                          Review
+                        </Link>
+                      </AdminTableCell>
+                    </AdminTableRow>
+                  ))}
+                </AdminTableBody>
+              </table>
+            </div>
+          )}
+        </AdminTableCard>
+      </section>
     </div>
   );
 }

@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
 
     const { data: profiles, error: profError } = await serviceClient
       .from('profiles')
-      .select('id, full_name, username, avatar_url, birthday')
+      .select('id, full_name, username, avatar_url, banner_image, birthday')
       .in('id', Array.from(connectedUserIds))
       .not('birthday', 'is', null)
       .order('birthday', { ascending: true })

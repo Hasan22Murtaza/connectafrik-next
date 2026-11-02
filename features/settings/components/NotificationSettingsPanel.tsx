@@ -78,7 +78,7 @@ export function NotificationSettingsPanel() {
     }
   }
 
-  if (loading && !profile) return <SettingsPanelSkeleton />
+  if (loading && !profile) return <SettingsPanelSkeleton variant="notifications" />
 
   return (
     <div className="space-y-4">

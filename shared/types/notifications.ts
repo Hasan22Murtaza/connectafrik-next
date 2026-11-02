@@ -60,6 +60,14 @@ export type NotificationType =
   | 'failed'
   // Other
   | 'birthday'
+  // Family & parental controls
+  | 'family_invite'
+  | 'family_invite_accepted'
+  | 'family_controls_updated'
+  | 'family_screen_time_updated'
+  | 'family_screen_time_limit'
+  | 'family_safety_alert'
+  | 'family_friend_request_approved'
 
 /**
  * Canonical types you requested for persisted notifications.
@@ -91,6 +99,13 @@ export const CANONICAL_NOTIFICATION_TYPES = [
   'chat_message',
   'call',
   'birthday',
+  'family_invite',
+  'family_invite_accepted',
+  'family_controls_updated',
+  'family_screen_time_updated',
+  'family_screen_time_limit',
+  'family_safety_alert',
+  'family_friend_request_approved',
 ] as const satisfies readonly NotificationType[]
 
 export type CanonicalNotificationType = (typeof CANONICAL_NOTIFICATION_TYPES)[number]

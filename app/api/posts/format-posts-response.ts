@@ -1,6 +1,14 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { canComment, canFollow, canViewPost } from '@/shared/utils/visibilityUtils'
+import {
+  canComment,
+  canFollow,
+  canViewPostByVisibility,
+  normalizePostVisibility,
+  postVisibilityFromProfileDefault,
+} from '@/shared/utils/visibilityUtils'
 import { getRelationships } from '@/lib/privacy/access'
+import { sanitizePostFeeling } from '@/features/social/utils/postFeeling'
+import { loadTaggedUsersByPostIds } from '@/features/social/utils/postTaggedUsers'
 
 const LATEST_COMMENTS_PREVIEW = 3
 const MAX_REACTION_PREVIEW_USERS = 3
@@ -109,7 +117,7 @@ function nestCommentPreviews(
 export const POST_SELECT = `
   *,
   author:profiles!posts_author_id_fkey(
-    id, username, full_name, avatar_url, country,
+    id, username, full_name, avatar_url, banner_image, country,
     post_visibility, allow_comments, allow_follows
   ),
   comments(count)
@@ -145,6 +153,7 @@ function mapEmbeddedRepostPost(row: any) {
     media_type: row.media_type,
     background_id: row.background_id ?? null,
     location: row.location,
+    feeling: sanitizePostFeeling(row.feeling),
     created_at: row.created_at,
     author: row.author
       ? {
@@ -152,6 +161,7 @@ function mapEmbeddedRepostPost(row: any) {
           username: row.author.username,
           full_name: row.author.full_name,
           avatar_url: row.author.avatar_url,
+          banner_image: row.author.banner_image ?? null,
           country: row.author.country,
         }
       : null,
@@ -189,8 +199,11 @@ export async function formatPostsForClient(
 
   const filtered = scoped.filter((p: any) => {
     const rel = relationships.get(p.author_id)
-    const vis = p.author?.post_visibility ?? rel?.settings.post_visibility ?? 'public'
-    return canViewPost(userId, p.author_id, vis, rel?.isFriend ?? false, rel?.isBlocked ?? false)
+    const fallback = postVisibilityFromProfileDefault(
+      p.author?.post_visibility ?? rel?.settings.post_visibility
+    )
+    const vis = normalizePostVisibility(p.visibility, fallback)
+    return canViewPostByVisibility(userId, p.author_id, vis, rel?.isFriend ?? false, rel?.isBlocked ?? false)
   })
 
   let likedPostIds = new Set<string>()
@@ -400,9 +413,9 @@ export async function formatPostsForClient(
       .from('posts')
       .select(
         `
-        id, content, category, media_urls, media_type, background_id, location, created_at,
+        id, content, category, media_urls, media_type, background_id, location, feeling, created_at,
         author:profiles!posts_author_id_fkey(
-          id, username, full_name, avatar_url, country
+          id, username, full_name, avatar_url, banner_image, country
         )
       `
       )
@@ -415,6 +428,11 @@ export async function formatPostsForClient(
       }
     }
   }
+
+  const taggedUsersByPostId = await loadTaggedUsersByPostIds(
+    supabase,
+    filtered.map((p: any) => p.id)
+  )
 
   return filtered.map((post: any) => {
     const rel = relationships.get(post.author_id)
@@ -432,12 +450,18 @@ export async function formatPostsForClient(
       ? Object.values(postReactions.groups).sort((a: any, b: any) => b.count - a.count)
       : []
 
+    const visibility = normalizePostVisibility(
+      post.visibility,
+      postVisibilityFromProfileDefault(post.author?.post_visibility ?? rel?.settings.post_visibility)
+    )
+
     return {
       id: post.id,
       author_id: post.author_id,
       content: post.content,
       category: post.category,
       tags: post.tags,
+      visibility,
       background_id: post.background_id ?? null,
       media_urls: post.media_urls,
       media_type: post.media_type,
@@ -447,6 +471,8 @@ export async function formatPostsForClient(
       shares_count: post.shares_count,
       views_count: post.views_count,
       location: post.location,
+      feeling: sanitizePostFeeling(post.feeling),
+      tagged_users: taggedUsersByPostId.get(post.id) ?? [],
       created_at: post.created_at,
       author: post.author
         ? {
@@ -454,6 +480,7 @@ export async function formatPostsForClient(
             username: post.author.username,
             full_name: post.author.full_name,
             avatar_url: post.author.avatar_url,
+            banner_image: post.author.banner_image ?? null,
             country: post.author.country,
           }
         : null,

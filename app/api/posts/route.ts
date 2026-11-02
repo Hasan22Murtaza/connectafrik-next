@@ -4,6 +4,16 @@ import { getAuthenticatedUser, getAccessTokenFromRequest } from '@/lib/supabase-
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
 import { POST_SELECT, formatPostsForClient } from './format-posts-response'
 import { sanitizePostBackgroundId } from '@/features/social/constants/postBackgrounds'
+import { sanitizePostFeeling } from '@/features/social/utils/postFeeling'
+import {
+  replacePostTaggedUsers,
+  sanitizeTaggedUserIds,
+} from '@/features/social/utils/postTaggedUsers'
+import {
+  normalizePostVisibility,
+  postVisibilityFromProfileDefault,
+} from '@/shared/utils/visibilityUtils'
+import type { PostVisibility } from '@/shared/types'
 
 const PAGE_SIZE = 10
 
@@ -80,7 +90,18 @@ export async function POST(request: NextRequest) {
     const { user, supabase } = await getAuthenticatedUser(request)
     const body = await request.json()
 
-    const { content, category, media_type, media_urls, tags, location, background_id } = body
+    const {
+      content,
+      category,
+      media_type,
+      media_urls,
+      tags,
+      location,
+      background_id,
+      visibility,
+      feeling,
+      tagged_user_ids,
+    } = body
 
     const urls = Array.isArray(media_urls) ? media_urls : []
     const mt = (media_type || (urls.length > 0 ? 'image' : 'none')) as string
@@ -88,15 +109,27 @@ export async function POST(request: NextRequest) {
     const hasMediaPayload = urls.length > 0 || mt === 'image' || mt === 'video'
     const hasLocation =
       typeof location === 'string' && location.trim().length > 0
-    if (!hasMediaPayload && !hasLocation && trimmedContent.length < 10) {
+    const resolvedFeeling = sanitizePostFeeling(feeling)
+    const resolvedTaggedIds = await sanitizeTaggedUserIds(supabase, user.id, tagged_user_ids)
+    if (!hasMediaPayload && !hasLocation && !resolvedFeeling && trimmedContent.length < 10) {
       return errorResponse(
-        'Add at least 10 characters of text, attach media, or add a location',
+        'Add at least 10 characters of text, attach media, add a location, or choose a feeling',
         400
       )
     }
 
     const isTextOnly = urls.length === 0 && mt === 'none'
     const resolvedBackgroundId = isTextOnly ? sanitizePostBackgroundId(background_id) : null
+
+    let resolvedVisibility: PostVisibility = normalizePostVisibility(visibility)
+    if (visibility == null || visibility === '') {
+      const { data: authorProfile } = await supabase
+        .from('profiles')
+        .select('post_visibility')
+        .eq('id', user.id)
+        .maybeSingle()
+      resolvedVisibility = postVisibilityFromProfileDefault(authorProfile?.post_visibility)
+    }
 
     const { data: post, error: insertError } = await supabase
       .from('posts')
@@ -108,6 +141,8 @@ export async function POST(request: NextRequest) {
         tags: tags || [],
         location: location || null,
         background_id: resolvedBackgroundId,
+        visibility: resolvedVisibility,
+        feeling: resolvedFeeling,
         author_id: user.id,
       })
       .select(POST_SELECT_SINGLE)
@@ -117,7 +152,33 @@ export async function POST(request: NextRequest) {
       return errorResponse(insertError.message, 400)
     }
 
-    notifyFollowersAndFriends(user, post, getAccessTokenFromRequest(request)).catch(() => {})
+    let taggedUsers: {
+      id: string
+      username: string
+      full_name: string
+      avatar_url: string | null
+    }[] = []
+    if (resolvedTaggedIds.length > 0) {
+      try {
+        await replacePostTaggedUsers(supabase, post.id, resolvedTaggedIds)
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, username, full_name, avatar_url')
+          .in('id', resolvedTaggedIds)
+        taggedUsers = (profiles || []).map((p) => ({
+          id: p.id,
+          username: p.username,
+          full_name: p.full_name,
+          avatar_url: p.avatar_url ?? null,
+        }))
+      } catch (tagErr: any) {
+        console.error('Failed to save post tagged users:', tagErr?.message || tagErr)
+      }
+    }
+
+    if (resolvedVisibility !== 'only_me') {
+      notifyFollowersAndFriends(user, post, getAccessTokenFromRequest(request)).catch(() => {})
+    }
 
     return jsonResponse({
       data: {
@@ -126,7 +187,10 @@ export async function POST(request: NextRequest) {
         content: post.content,
         category: post.category,
         tags: post.tags,
+        visibility: post.visibility ?? resolvedVisibility,
         background_id: post.background_id ?? null,
+        feeling: post.feeling ?? resolvedFeeling,
+        tagged_users: taggedUsers,
         media_urls: post.media_urls,
         media_type: post.media_type,
         likes_count: post.likes_count ?? 0,

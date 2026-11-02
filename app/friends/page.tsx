@@ -3,9 +3,16 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { useProductionChat } from "@/contexts/ProductionChatContext";
 import { apiClient } from "@/lib/api-client";
-import { FriendsGridShimmer, useShimmerCount } from "@/shared/components/ui/ShimmerLoaders";
+import {
+  FriendProfileCardsShimmer,
+  FriendsGridShimmer,
+  useShimmerCount,
+} from "@/shared/components/ui/ShimmerLoaders";
 import { Friend, FriendRequest } from "@/shared/types";
 import FriendsSidebar, { type FriendsSection } from "@/features/social/components/FriendsSidebar";
+import FriendProfileCard from "@/features/social/components/FriendProfileCard";
+import { friendRequestService } from "@/features/social/services/friendRequestService";
+import { useConfirmDialog } from "@/shared/components/ui/ConfirmDialog";
 import {
   Cake,
   ChevronDown,
@@ -13,7 +20,8 @@ import {
   Gift,
   PartyPopper,
   Search,
-  Users
+  Users,
+  X,
 } from '@/shared/icons';
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -27,6 +35,7 @@ type BirthdayProfileRow = {
   full_name: string;
   username: string;
   avatar_url: string | null;
+  banner_image?: string | null;
   birthday: string;
 };
 
@@ -36,12 +45,21 @@ function mapBirthdayProfileToFriend(p: BirthdayProfileRow): Friend {
     username: p.username,
     full_name: p.full_name,
     avatar_url: p.avatar_url ?? undefined,
+    banner_image: p.banner_image ?? null,
     birthday: p.birthday,
   };
 }
+
 type Section = FriendsSection;
 type RequestsView = "received" | "pending";
 const FRIENDS_SECTIONS: Section[] = ["home", "requests", "suggestions", "all", "birthdays"];
+
+type MutualFriendPreview = {
+  user_id: string;
+  username: string;
+  full_name: string;
+  avatar_url: string | null;
+};
 
 type SentFriendRequest = {
   id: string;
@@ -53,7 +71,29 @@ type SentFriendRequest = {
     username: string;
     full_name: string;
     avatar_url?: string | null;
+    banner_image?: string | null;
+    country?: string | null;
   } | null;
+  mutualFriendsCount?: number;
+  mutual_friends_count?: number;
+  mutual_friends?: MutualFriendPreview[];
+};
+
+type FriendSuggestion = {
+  user_id: string;
+  username: string;
+  full_name: string;
+  avatar_url: string | null;
+  banner_image?: string | null;
+  location?: string | null;
+  country?: string | null;
+  mutual_friends_count: number;
+  mutual_friends?: Array<{
+    user_id: string;
+    username: string;
+    full_name: string;
+    avatar_url: string | null;
+  }>;
 };
 
 function parseFriendsSection(tab: string | null): Section | null {
@@ -85,22 +125,20 @@ function RequestsViewTabs({
               key={tab.key}
               type="button"
               onClick={() => onChange(tab.key)}
-              className={`relative shrink-0 px-4 py-2.5 text-sm font-semibold transition-colors ${
-                isActive ? "text-primary-600" : "text-content-secondary hover:text-content"
-              }`}
+              className={`relative shrink-0 px-4 py-2.5 text-sm font-semibold transition-colors ${isActive ? "text-primary-600" : "text-content-secondary hover:text-content"
+                }`}
             >
               {tab.label}
               {tab.count > 0 && (
                 <span
-                  className={`ml-1.5 tabular-nums ${
-                    isActive ? "text-primary-600" : "text-content-tertiary"
-                  }`}
+                  className={`ml-1.5 tabular-nums ${isActive ? "text-primary-600" : "text-content-tertiary"
+                    }`}
                 >
                   ({tab.count})
                 </span>
               )}
               {isActive && (
-                <span className="absolute inset-x-2 bottom-0 h-0.5 rounded-full bg-primary-600" />
+                <span className="absolute inset-x-2 bottom-0 h-0.5 rounded-full bg-primary-600 w-full left-0" />
               )}
             </button>
           );
@@ -121,43 +159,139 @@ function SentRequestCard({
 }) {
   const profile = request.receiver;
   const userId = request.receiver_id || profile?.id || "";
+  const mutualCount = request.mutual_friends_count ?? request.mutualFriendsCount ?? 0;
+  const relationshipText = mutualCount > 0
+    ? `${mutualCount} mutual ${mutualCount === 1 ? "friend" : "friends"}`
+    : "Request pending";
 
   return (
-    <div className="bg-surface rounded-lg shadow-card overflow-hidden hover:shadow-md transition-shadow">
-      <Link href={`/user/${userId}`} className="block cursor-pointer">
-        <div className="w-full aspect-square bg-surface-secondary relative">
-          <div className="w-full h-full flex items-center justify-center text-4xl font-bold text-primary-600 bg-primary-100">
-            {profile?.full_name?.charAt(0)?.toUpperCase() || "U"}
-          </div>
-
-          {profile?.avatar_url && (
-            <img
-              src={profile.avatar_url}
-              alt={profile?.full_name || "User"}
-              onError={(e) => {
-                e.currentTarget.style.display = "none";
-              }}
-              className="absolute inset-0 w-full h-full object-cover"
-            />
-          )}
-        </div>
-      </Link>
-      <div className="p-3">
-        <Link href={`/user/${userId}`} className="block cursor-pointer">
-          <h3 className="font-semibold text-content text-sm mb-1 line-clamp-1 hover:text-primary-600 transition-colors">
-            {profile?.full_name || "Unknown User"}
-          </h3>
+    <FriendProfileCard
+      userId={userId}
+      fullName={profile?.full_name}
+      username={profile?.username}
+      avatarUrl={profile?.avatar_url}
+      bannerImage={profile?.banner_image}
+      relationshipText={relationshipText}
+      mutualFriends={request.mutual_friends ?? []}
+    >
+      <div className="flex flex-col gap-2">
+        <Link
+          href={`/user/${userId}`}
+          className="flex w-full items-center justify-center rounded-full bg-[#ff6900] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#e85f00]"
+        >
+          View Profile
         </Link>
-        <p className="text-xs text-content-secondary mb-3">Request sent</p>
         <button
+          type="button"
           onClick={onCancel}
           disabled={cancelling}
-          className="w-full btn-secondary text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full rounded-full border border-border px-4 py-2.5 text-sm font-semibold text-content-secondary transition-colors hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-50"
         >
           {cancelling ? "Cancelling..." : "Cancel request"}
         </button>
       </div>
-    </div>
+    </FriendProfileCard>
+  );
+}
+
+function ReceivedRequestCard({
+  request,
+  onAccept,
+  onDecline,
+}: {
+  request: FriendRequest;
+  onAccept: () => void;
+  onDecline: () => void;
+}) {
+  const profile = request.requester;
+  const mutualCount = request.mutual_friends_count ?? request.mutualFriendsCount ?? 0;
+  const relationshipText = mutualCount > 0
+    ? `${mutualCount} mutual ${mutualCount === 1 ? "friend" : "friends"}`
+    : "Wants to connect with you";
+
+  return (
+    <FriendProfileCard
+      userId={request.requester_id}
+      fullName={profile?.full_name}
+      username={profile?.username}
+      avatarUrl={profile?.avatar_url}
+      bannerImage={profile?.banner_image}
+      location={profile?.country}
+      relationshipText={relationshipText}
+      mutualFriends={request.mutual_friends ?? []}
+    >
+      <div className="flex gap-2 flex-col">
+        <button
+          type="button"
+          onClick={onAccept}
+          className="flex-1  rounded-full bg-[#ff6900] px-3 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#e85f00]"
+        >
+          Confirm
+        </button>
+        <button
+          type="button"
+          onClick={onDecline}
+          className="flex-1  rounded-full border border-border px-3 py-2.5 text-sm font-semibold text-content-secondary transition-colors hover:bg-surface-hover"
+        >
+          Delete
+        </button>
+      </div>
+    </FriendProfileCard>
+  );
+}
+
+function SuggestionCard({
+  suggestion,
+  sending,
+  onSend,
+  onDismiss,
+}: {
+  suggestion: FriendSuggestion;
+  sending: boolean;
+  onSend: () => void;
+  onDismiss: () => void;
+}) {
+  const relationshipText = suggestion.mutual_friends_count > 0
+    ? `${suggestion.mutual_friends_count} mutual ${suggestion.mutual_friends_count === 1 ? "friend" : "friends"}`
+    : "Suggested for you";
+
+  return (
+    <FriendProfileCard
+      userId={suggestion.user_id}
+      fullName={suggestion.full_name}
+      username={suggestion.username}
+      avatarUrl={suggestion.avatar_url}
+      bannerImage={suggestion.banner_image}
+      location={suggestion.country ?? undefined}
+      relationshipText={relationshipText}
+      mutualFriends={suggestion.mutual_friends ?? []}
+      coverAction={
+        <button
+          type="button"
+          onClick={onDismiss}
+          aria-label={`Remove ${suggestion.full_name} from suggestions`}
+          title="Remove suggestion"
+          className="flex h-8 w-8 items-center justify-center rounded-full bg-black/55 text-white opacity-0 transition-[opacity,background-color] group-hover:opacity-100 hover:bg-black/75 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+        >
+          <X className="h-4 w-4" aria-hidden="true" />
+        </button>
+      }
+    >
+      <button
+        type="button"
+        onClick={onSend}
+        disabled={sending}
+        className="flex w-full items-center justify-center gap-2 rounded-full bg-[#ff6900] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-[#e85f00] hover:shadow-md active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        {sending ? "Sending..." : "Link up"}
+      </button>
+      <Link
+        href={`/user/${suggestion.user_id}`}
+        className="mt-2.5 flex w-full items-center justify-center rounded-full bg-[#eef2ff] px-4 py-2.5 text-sm font-medium text-slate-700 transition-colors hover:bg-[#e0e7ff] dark:bg-white/10 dark:text-content dark:hover:bg-white/15"
+      >
+        View Profile
+      </Link>
+    </FriendProfileCard>
   );
 }
 
@@ -167,18 +301,13 @@ const FriendsPageContent: React.FC = () => {
   const searchParams = useSearchParams();
   const { startChatWithMembers, openThread } = useProductionChat();
   const [friends, setFriends] = useState<Friend[]>([]);
-  const [requests, setRequests] = useState<(FriendRequest & { mutualFriendsCount?: number })[]>([]);
+  const [requests, setRequests] = useState<FriendRequest[]>([]);
   const [sentRequests, setSentRequests] = useState<SentFriendRequest[]>([]);
   const [sentLoading, setSentLoading] = useState(false);
   const [requestsView, setRequestsView] = useState<RequestsView>("received");
   const [cancellingRequests, setCancellingRequests] = useState<Set<string>>(new Set());
-  const [suggestions, setSuggestions] = useState<Array<{
-    user_id: string;
-    username: string;
-    full_name: string;
-    avatar_url: string | null;
-    mutual_friends_count: number;
-  }>>([]);
+  const [removingFriends, setRemovingFriends] = useState<Set<string>>(new Set());
+  const [suggestions, setSuggestions] = useState<FriendSuggestion[]>([]);
   const [loading, setLoading] = useState(true);
   const [friendsLoading, setFriendsLoading] = useState(false);
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
@@ -195,6 +324,7 @@ const FriendsPageContent: React.FC = () => {
   const [birthdaysLoading, setBirthdaysLoading] = useState(false);
   const birthdaySentinelRef = useRef<HTMLDivElement>(null);
   const shimmerCount = useShimmerCount();
+  const { confirm, dialog: confirmDialog } = useConfirmDialog();
 
   // Categories for Birthdays tab (data loaded from /api/friends/birthdays when tab is opened)
   const birthdayFriends = useMemo(() => {
@@ -447,7 +577,7 @@ const FriendsPageContent: React.FC = () => {
       fetchFriends();
     } catch (error: any) {
       console.error("Error accepting request:", error);
-      toast.error("Failed to accept request");
+      toast.error(error?.message || "Failed to accept request");
     }
   };
 
@@ -480,6 +610,30 @@ const FriendsPageContent: React.FC = () => {
     }
   };
 
+  const handleRemoveFriend = async (friend: Friend) => {
+    const confirmed = await confirm({
+      title: "Remove friend",
+      message: `Are you sure you want to remove ${friend.full_name} from your friends?`,
+      confirmLabel: "Remove friend",
+      variant: "danger",
+    });
+    if (!confirmed) return;
+
+    setRemovingFriends((current) => new Set(current).add(friend.id));
+    const result = await friendRequestService.removeFriend(friend.id);
+    if (result.success) {
+      setFriends((current) => current.filter((currentFriend) => currentFriend.id !== friend.id));
+      toast.success(`${friend.full_name} removed from your friends`);
+    } else {
+      toast.error(result.error || "Failed to remove friend");
+    }
+    setRemovingFriends((current) => {
+      const next = new Set(current);
+      next.delete(friend.id);
+      return next;
+    });
+  };
+
   const fetchSuggestions = async () => {
     if (!user?.id) return;
 
@@ -492,6 +646,10 @@ const FriendsPageContent: React.FC = () => {
     } finally {
       setSuggestionsLoading(false);
     }
+  };
+
+  const handleDismissSuggestion = (userId: string) => {
+    setSuggestions((current) => current.filter((suggestion) => suggestion.user_id !== userId));
   };
 
   const handleStartBirthdayChat = async (friend: Friend) => {
@@ -553,29 +711,29 @@ const FriendsPageContent: React.FC = () => {
       suggestion.username?.toLowerCase().includes(suggestionsSearchTerm.toLowerCase())
   );
 
+
+
   return (
-    <div className="min-h-screen px-4">
-      <div className="flex gap-6 sm:pb-0 pb-18">
+    <div className="min-h-screen sm:p-0 p-2">
+      <div className="flex gap-4 sm:pb-0 pb-18 md:min-h-[calc(100dvh-4rem)]">
         {/* Left Sidebar */}
-        <div className="hidden md:block w-64 shrink-0">
-          <div className="fixed top-18 h-[calc(100vh-6rem)]  py-4 overflow-y-auto ">
-            <FriendsSidebar
-              activeSection={activeSection}
-              requestCount={requests.length}
-              onSectionSelect={selectSection}
-            />
-          </div>
-        </div>
+        <aside className="fixed top-[73px] hidden h-[calc(100dvh-73px)]  shrink-0 self-start overflow-y-auto  bg-background  md:block">
+          <FriendsSidebar
+            activeSection={activeSection}
+            requestCount={requests.length}
+            onSectionSelect={selectSection}
+          />
+        </aside>
 
         {/* Main Content */}
-        <div className="flex-1 max-w-full py-3 sm:py-6 sm:px-4 px-0 ">
+        <div className="flex-1 max-w-full py-3 sm:py-6 pr-4 md:ml-64">
           <div className="flex gap-2 sm:hidden overflow-x-auto w-full pb-5  scrollbar-hide">
             {/* We use inline-flex + min-w-fit to prevent shrinking */}
             <button
               onClick={() => selectSection("all")}
               className={`min-w-fit   text-center rounded-full px-3 py-1.5 font-medium transition-colors
                  ${activeSection === "home" || activeSection === "all" ?
-                   " border border-orange-500 bg-orange-100 text-orange-500" : "text-content bg-surface-tertiary"
+                  " border border-orange-500 bg-orange-100 text-orange-500" : "text-content bg-surface-tertiary"
                 }`}
             >
               All friends
@@ -598,7 +756,7 @@ const FriendsPageContent: React.FC = () => {
               >
                 Friend requests
                 {requests.length > 0 && (
-                  <span className="ml-2 bg-orange-600 text-white text-xs px-2 py-0.5 rounded-full">
+                  <span className="ml-2 bg-orange-600 text-white text-xs px-2 py-0.5 rounded-full ">
                     {requests.length}
                   </span>
                 )}
@@ -617,40 +775,77 @@ const FriendsPageContent: React.FC = () => {
             <div className="space-y-8">
               {/* Friend Requests Section — only shown when loading or there are requests */}
               {(loading || sentLoading || requests.length > 0 || sentRequests.length > 0) && (
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <h2 className="sm:text-2xl font-semibold text-content text-lg">Friend Requests</h2>
-                  <button
-                    onClick={() => selectSection("requests")}
-                    className="text-primary-600 hover:text-orange-700 font-medium hover:underline duration-300 "
-                  >
-                    See all
-                  </button>
-                </div>
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <h2 className="sm:text-2xl font-semibold text-content text-lg">Friend Requests</h2>
+                    <button
+                      onClick={() => selectSection("requests")}
+                      className="text-primary-600 hover:text-orange-700 font-medium hover:underline duration-300 "
+                    >
+                      See all
+                    </button>
+                  </div>
 
-                <RequestsViewTabs
-                  view={requestsView}
-                  onChange={setRequestsView}
-                  receivedCount={requests.length}
-                  pendingCount={sentRequests.length}
-                />
+                  <RequestsViewTabs
+                    view={requestsView}
+                    onChange={setRequestsView}
+                    receivedCount={requests.length}
+                    pendingCount={sentRequests.length}
+                  />
 
-                {requestsView === "pending" ? (
-                  sentLoading ? (
-                    <FriendsGridShimmer count={shimmerCount * 2} />
-                  ) : sentRequests.length > 0 ? (
+                  {requestsView === "pending" ? (
+                    sentLoading ? (
+                      <FriendProfileCardsShimmer count={shimmerCount * 2} />
+                    ) : sentRequests.length > 0 ? (
+                      <>
+                        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                          {sentRequests.slice(0, requestsDisplayLimit).map((request) => (
+                            <SentRequestCard
+                              key={request.id}
+                              request={request}
+                              cancelling={cancellingRequests.has(request.id)}
+                              onCancel={() => handleCancelSentRequest(request.id)}
+                            />
+                          ))}
+                        </div>
+                        {sentRequests.length > requestsDisplayLimit && (
+                          <div className="flex justify-center mt-6">
+                            <button
+                              onClick={() => setRequestsDisplayLimit(prev => prev + 20)}
+                              className="flex items-center space-x-1 text-primary-600 hover:text-orange-700 font-medium"
+                            >
+                              <span>See more</span>
+                              <ChevronDown className="w-4 h-4" />
+                            </button>
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <div className="text-center py-12 bg-surface rounded-lg">
+                        <Clock className="w-16 h-16 text-content-tertiary mx-auto mb-4" />
+                        <h3 className="text-lg font-medium text-content mb-2">
+                          No pending requests
+                        </h3>
+                        <p className="text-content-secondary">
+                          Friend requests you send will appear here.
+                        </p>
+                      </div>
+                    )
+                  ) : loading ? (
+                    <FriendProfileCardsShimmer count={shimmerCount * 2} />
+                  ) : requests.length > 0 ? (
                     <>
-                      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 2xl:grid-cols-6 gap-4">
-                        {sentRequests.slice(0, requestsDisplayLimit).map((request) => (
-                          <SentRequestCard
+                      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        {requests.slice(0, requestsDisplayLimit).map((request) => (
+                          <ReceivedRequestCard
                             key={request.id}
                             request={request}
-                            cancelling={cancellingRequests.has(request.id)}
-                            onCancel={() => handleCancelSentRequest(request.id)}
+                            onAccept={() => handleAcceptRequest(request.id)}
+                            onDecline={() => handleDeclineRequest(request.id)}
                           />
                         ))}
                       </div>
-                      {sentRequests.length > requestsDisplayLimit && (
+                      {requests.length > requestsDisplayLimit && (
                         <div className="flex justify-center mt-6">
                           <button
                             onClick={() => setRequestsDisplayLimit(prev => prev + 20)}
@@ -666,103 +861,12 @@ const FriendsPageContent: React.FC = () => {
                     <div className="text-center py-12 bg-surface rounded-lg">
                       <Clock className="w-16 h-16 text-content-tertiary mx-auto mb-4" />
                       <h3 className="text-lg font-medium text-content mb-2">
-                        No pending requests
+                        No friend requests
                       </h3>
-                      <p className="text-content-secondary">
-                        Friend requests you send will appear here.
-                      </p>
+                      <p className="text-content-secondary">You&apos;re all caught up!</p>
                     </div>
-                  )
-                ) : loading ? (
-                  <FriendsGridShimmer count={shimmerCount * 2} />
-                ) : requests.length > 0 ? (
-                  <>
-                    <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 2xl:grid-cols-6 gap-4">
-                      {requests.slice(0, requestsDisplayLimit).map((request) => (
-                        <div
-                          key={request.id}
-                          className="bg-surface rounded-lg shadow-card overflow-hidden hover:shadow-md transition-shadow"
-                        >
-                          {/* Profile Image */}
-                          <Link href={`/user/${request.requester_id || ''}`} className="block cursor-pointer">
-                            <div className="w-full aspect-square bg-surface-secondary relative">
-                              <div className="w-full h-full flex items-center justify-center text-4xl font-bold text-primary-600 bg-primary-100">
-                                {request.requester?.full_name?.charAt(0)?.toUpperCase() || "U"}
-                              </div>
-
-                              {request.requester?.avatar_url && (
-                                <img
-                                  src={request.requester.avatar_url}
-                                  alt={request.requester.full_name || "User"}
-                                  onLoad={(e) => {
-                                    e.currentTarget.style.display = "block";
-                                  }}
-                                  onError={(e) => {
-                                    e.currentTarget.style.display = "none";
-                                  }}
-                                  className="absolute inset-0 w-full h-full object-cover"
-                                />
-                              )}
-                            </div>
-                          </Link>
-
-                          {/* Content */}
-                          <div className="p-3">
-                            <Link href={`/user/${request.requester_id || ''}`} className="block cursor-pointer">
-                              <h3 className="font-semibold text-content text-sm mb-1 line-clamp-1 hover:text-primary-600 transition-colors">
-                                {request.requester?.full_name || "Unknown User"}
-                              </h3>
-                            </Link>
-
-                            {/* Mutual Friends */}
-                            {request.mutualFriendsCount !== undefined && request.mutualFriendsCount > 0 && (
-                              <div className="flex items-center space-x-1.5 text-xs text-content-secondary mb-1">
-                               
-                                <span>{request.mutualFriendsCount} mutual {request.mutualFriendsCount === 1 ? 'friend' : 'friends'}</span>
-                              </div>
-                            )}
-
-                            {/* Action Buttons */}
-                            <div className="flex gap-2 items-center flex-wrap">
-                              <button
-                                onClick={() => handleAcceptRequest(request.id)}
-                                className="flex-1 btn-sm-primary text-sm"
-                              >
-                                Confirm
-                              </button>
-                              <button
-                                onClick={() => handleDeclineRequest(request.id)}
-                                className="flex-1 btn-secondary text-sm"
-                              >
-                                Delete
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                    {requests.length > requestsDisplayLimit && (
-                      <div className="flex justify-center mt-6">
-                        <button
-                          onClick={() => setRequestsDisplayLimit(prev => prev + 20)}
-                          className="flex items-center space-x-1 text-primary-600 hover:text-orange-700 font-medium"
-                        >
-                          <span>See more</span>
-                          <ChevronDown className="w-4 h-4" />
-                        </button>
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <div className="text-center py-12 bg-surface rounded-lg">
-                    <Clock className="w-16 h-16 text-content-tertiary mx-auto mb-4" />
-                    <h3 className="text-lg font-medium text-content mb-2">
-                      No friend requests
-                    </h3>
-                    <p className="text-content-secondary">You&apos;re all caught up!</p>
-                  </div>
-                )}
-              </div>
+                  )}
+                </div>
               )}
 
               {/* People You May Know Section */}
@@ -779,61 +883,18 @@ const FriendsPageContent: React.FC = () => {
 
                 {/* Suggestions Grid */}
                 {suggestionsLoading ? (
-                  <FriendsGridShimmer count={shimmerCount * 2} />
+                  <FriendProfileCardsShimmer count={shimmerCount * 2} />
                 ) : suggestions.length > 0 ? (
                   <>
-                    <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
+                    <div className="grid grid-cols-2 gap-4 sm:grid-cols-2 lg:grid-cols-4">
                       {suggestions.slice(0, suggestionsDisplayLimit).map((suggestion) => (
-                        <div
+                        <SuggestionCard
                           key={suggestion.user_id}
-                          className="bg-surface rounded-lg shadow-card overflow-hidden hover:shadow-md transition-shadow"
-                        >
-                          {/* Profile Image */}
-                          <Link href={`/user/${suggestion.user_id || ''}`} className="block cursor-pointer">
-                           <div className="w-full aspect-square bg-surface-secondary relative">
-                              <div className="w-full h-full flex items-center justify-center text-4xl font-bold text-primary-600 bg-primary-100">
-                                {suggestion.full_name?.charAt(0)?.toUpperCase() || "U"}
-                              </div>
-
-                              {suggestion.avatar_url && (
-                                <img
-                                  src={suggestion.avatar_url}
-                                  alt={suggestion.full_name || "User"}
-                                  onError={(e) => {
-                                    e.currentTarget.style.display = "none";
-                                  }}
-                                  className="absolute inset-0 w-full h-full object-cover"
-                                />
-                              )}
-                            </div>
-                          </Link>
-
-                          {/* Content */}
-                          <div className="p-4">
-                            <Link href={`/user/${suggestion.user_id || ''}`} className="block cursor-pointer">
-                              <h3 className="font-semibold text-content text-sm mb-1 line-clamp-1 hover:text-primary-600 transition-colors">
-                                {suggestion.full_name || "Unknown User"}
-                              </h3>
-                            </Link>
-
-                            {/* Mutual Friends */}
-                            {suggestion.mutual_friends_count > 0 && (
-                              <div className="flex items-center space-x-1.5 text-xs text-content-secondary mb-4">
-                              
-                                <span>{suggestion.mutual_friends_count} mutual {suggestion.mutual_friends_count === 1 ? 'friend' : 'friends'}</span>
-                              </div>
-                            )}
-
-                            {/* Action Button */}
-                            <button
-                              onClick={() => handleSendFriendRequest(suggestion.user_id)}
-                              disabled={sendingRequests.has(suggestion.user_id)}
-                              className="w-full btn-sm-primary text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                              {sendingRequests.has(suggestion.user_id) ? "Sending..." : "Link up"}
-                            </button>
-                          </div>
-                        </div>
+                          suggestion={suggestion}
+                          sending={sendingRequests.has(suggestion.user_id)}
+                          onSend={() => handleSendFriendRequest(suggestion.user_id)}
+                          onDismiss={() => handleDismissSuggestion(suggestion.user_id)}
+                        />
                       ))}
                     </div>
                     {suggestions.length > suggestionsDisplayLimit && (
@@ -880,9 +941,9 @@ const FriendsPageContent: React.FC = () => {
 
               {requestsView === "pending" ? (
                 sentLoading ? (
-                  <FriendsGridShimmer count={shimmerCount * 2} />
+                  <FriendProfileCardsShimmer count={shimmerCount * 2} />
                 ) : sentRequests.length > 0 ? (
-                  <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 2xl:grid-cols-6 gap-4">
+                  <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     {sentRequests.map((request) => (
                       <SentRequestCard
                         key={request.id}
@@ -904,64 +965,16 @@ const FriendsPageContent: React.FC = () => {
                   </div>
                 )
               ) : loading ? (
-                <FriendsGridShimmer count={shimmerCount * 2} />
+                <FriendProfileCardsShimmer count={shimmerCount * 2} />
               ) : requests.length > 0 ? (
-                <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 2xl:grid-cols-6 gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                   {requests.map((request) => (
-                    <div
+                    <ReceivedRequestCard
                       key={request.id}
-                      className="bg-surface rounded-lg shadow-card overflow-hidden hover:shadow-md transition-shadow"
-                    >
-                      {/* Profile Image */}
-                      <Link href={`/user/${request.requester_id || ''}`} className="block cursor-pointer">
-                        <div className="w-full aspect-square bg-surface-secondary relative">
-                          {request.requester?.avatar_url ? (
-                            <img
-                              src={request.requester.avatar_url}
-                              alt={request.requester.full_name}
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center text-4xl font-bold text-primary-600 bg-primary-100">
-                              {request.requester?.full_name?.charAt(0) || "U"}
-                            </div>
-                          )}
-                        </div>
-                      </Link>
-
-                      {/* Content */}
-                      <div className="p-3">
-                        <Link href={`/user/${request.requester_id || ''}`} className="block cursor-pointer">
-                          <h3 className="font-semibold text-content text-sm mb-1 line-clamp-1 hover:text-primary-600 transition-colors">
-                            {request.requester?.full_name || "Unknown User"}
-                          </h3>
-                        </Link>
-
-                        {/* Mutual Friends */}
-                        {request.mutualFriendsCount !== undefined && request.mutualFriendsCount > 0 && (
-                          <div className="flex items-center space-x-1.5 mb-2 text-xs text-content-secondary ">
-                         
-                            <span>{request.mutualFriendsCount} mutual {request.mutualFriendsCount === 1 ? 'friend' : 'friends'}</span>
-                          </div>
-                        )}
-
-                        {/* Action Buttons */}
-                        <div className="flex gap-2 items-center">
-                          <button
-                            onClick={() => handleAcceptRequest(request.id)}
-                            className="w-full btn-sm-primary text-sm"
-                          >
-                            Confirm
-                          </button>
-                          <button
-                            onClick={() => handleDeclineRequest(request.id)}
-                            className="w-full btn-secondary text-sm"
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </div>
-                    </div>
+                      request={request}
+                      onAccept={() => handleAcceptRequest(request.id)}
+                      onDecline={() => handleDeclineRequest(request.id)}
+                    />
                   ))}
                 </div>
               ) : (
@@ -993,56 +1006,40 @@ const FriendsPageContent: React.FC = () => {
 
               {/* Friends Grid */}
               {friendsLoading ? (
-                <FriendsGridShimmer count={shimmerCount * 2} />
+                <FriendProfileCardsShimmer count={shimmerCount * 2} />
               ) : filteredFriends.length > 0 ? (
-                <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                   {filteredFriends.map((friend) => (
-                    <div
+                    <FriendProfileCard
                       key={friend.id}
-                      className="bg-surface rounded-lg shadow-card overflow-hidden hover:shadow-md transition-shadow"
+                      userId={friend.id}
+                      fullName={friend.full_name}
+                      username={friend.username}
+                      avatarUrl={friend.avatar_url}
+                      bannerImage={friend.banner_image}
+                      location={friend.country}
+                      relationshipText={
+                        (friend.mutual_friends_count ?? 0) > 0
+                          ? `${friend.mutual_friends_count} mutual ${friend.mutual_friends_count === 1 ? "friend" : "friends"}`
+                          : undefined
+                      }
+                      mutualFriends={friend.mutual_friends ?? []}
                     >
-                      {/* Profile Image */}
-                      <Link href={`/user/${friend.id || ''}`} className="block cursor-pointer">
-                        <div className="w-full aspect-square bg-surface-secondary relative">
-                          {friend.avatar_url ? (
-                            <img
-                              src={friend.avatar_url}
-                              alt={friend.full_name}
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center text-4xl font-bold text-primary-600 bg-primary-100">
-                              {friend.full_name?.charAt(0) || "U"}
-                            </div>
-                          )}
-                        </div>
+                      <Link
+                        href={`/user/${friend.id}`}
+                        className="flex w-full items-center justify-center rounded-full bg-[#ff6900] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#e85f00]"
+                      >
+                        View Profile
                       </Link>
-
-                      {/* Content */}
-                      <div className="p-4">
-                        <Link href={`/user/${friend.id || ''}`} className="block cursor-pointer">
-                          <h3 className="font-semibold text-content text-sm mb-1 line-clamp-1 hover:text-primary-600 transition-colors">
-                            {friend.full_name || "Unknown User"}
-                          </h3>
-                        </Link>
-                        <p className="text-xs text-content-secondary mb-1 line-clamp-1">
-                          @{friend.username}
-                        </p>
-                        {friend.country && (
-                          <p className="text-xs text-content-tertiary mb-4 line-clamp-1">
-                            {friend.country}
-                          </p>
-                        )}
-
-                        {/* Action Button */}
-                        <button
-                          onClick={() => router.push(`/user/${friend.id}`)}
-                          className="w-full btn-sm-primary text-sm"
-                        >
-                          View Profile
-                        </button>
-                      </div>
-                    </div>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveFriend(friend)}
+                        disabled={removingFriends.has(friend.id)}
+                        className="mt-2 w-full rounded-full border border-border px-4 py-2.5 text-sm font-semibold text-content-secondary transition-colors hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {removingFriends.has(friend.id) ? "Removing..." : "Remove friend"}
+                      </button>
+                    </FriendProfileCard>
                   ))}
                 </div>
               ) : (
@@ -1078,60 +1075,17 @@ const FriendsPageContent: React.FC = () => {
 
               {/* Suggestions Grid */}
               {suggestionsLoading ? (
-                <FriendsGridShimmer count={shimmerCount * 2} />
+                <FriendProfileCardsShimmer count={shimmerCount * 2} />
               ) : filteredSuggestions.length > 0 ? (
-                <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                   {filteredSuggestions.map((suggestion) => (
-                    <div
+                    <SuggestionCard
                       key={suggestion.user_id}
-                      className="bg-surface rounded-lg shadow-card overflow-hidden hover:shadow-md transition-shadow"
-                    >
-                      {/* Profile Image */}
-                      <Link href={`/user/${suggestion.user_id || ''}`} className="block cursor-pointer">
-                         <div className="w-full aspect-square bg-surface-secondary relative">
-                              <div className="w-full h-full flex items-center justify-center text-4xl font-bold text-primary-600 bg-primary-100">
-                                {suggestion.full_name?.charAt(0)?.toUpperCase() || "U"}
-                              </div>
-
-                              {suggestion.avatar_url && (
-                                <img
-                                  src={suggestion.avatar_url}
-                                  alt={suggestion.full_name || "User"}
-                                  onError={(e) => {
-                                    e.currentTarget.style.display = "none";
-                                  }}
-                                  className="absolute inset-0 w-full h-full object-cover"
-                                />
-                              )}
-                            </div>
-                      </Link>
-
-                      {/* Content */}
-                      <div className="p-4">
-                        <Link href={`/user/${suggestion.user_id || ''}`} className="block cursor-pointer">
-                          <h3 className="font-semibold text-content text-sm mb-1 line-clamp-1 hover:text-primary-600 transition-colors">
-                            {suggestion.full_name || "Unknown User"}
-                          </h3>
-                        </Link>
-
-                        {/* Mutual Friends */}
-                        {suggestion.mutual_friends_count > 0 && (
-                          <div className="flex items-center space-x-1.5 text-xs text-content-secondary mb-4">
-                         
-                            <span>{suggestion.mutual_friends_count} mutual {suggestion.mutual_friends_count === 1 ? 'friend' : 'friends'}</span>
-                          </div>
-                        )}
-
-                        {/* Action Button */}
-                        <button
-                          onClick={() => handleSendFriendRequest(suggestion.user_id)}
-                          disabled={sendingRequests.has(suggestion.user_id)}
-                          className="w-full btn-sm-primary text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          {sendingRequests.has(suggestion.user_id) ? "Sending..." : "Link up"}
-                        </button>
-                      </div>
-                    </div>
+                      suggestion={suggestion}
+                      sending={sendingRequests.has(suggestion.user_id)}
+                      onSend={() => handleSendFriendRequest(suggestion.user_id)}
+                      onDismiss={() => handleDismissSuggestion(suggestion.user_id)}
+                    />
                   ))}
                 </div>
               ) : (
@@ -1364,7 +1318,7 @@ const FriendsPageContent: React.FC = () => {
           )}
         </div>
       </div>
-
+      {confirmDialog}
     </div>
   );
 };
@@ -1373,18 +1327,16 @@ function FriendsPageFallback() {
   return (
     <div className="min-h-screen px-4">
       <div className="flex gap-6">
-        <div className="hidden md:block w-64 shrink-0">
-          <div className="sticky top-18 h-[calc(100vh-6rem)] py-4">
-            <div className="h-7 w-24 bg-surface-tertiary rounded animate-pulse mb-6" />
-            <div className="space-y-4">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <div key={i} className="h-10 bg-surface-tertiary rounded-lg animate-pulse" />
-              ))}
-            </div>
+        <aside className="sticky top-[73px] hidden h-[calc(100dvh-73px)] w-64 shrink-0 self-start border-r border-border-subtle bg-background px-3 py-4 md:block">
+          <div className="mb-6 h-7 w-24 animate-pulse rounded bg-surface-tertiary" />
+          <div className="space-y-4">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="h-10 animate-pulse rounded-lg bg-surface-tertiary" />
+            ))}
           </div>
-        </div>
+        </aside>
         <div className="flex-1 max-w-full py-3 sm:py-6 px-4">
-          <FriendsGridShimmer count={8} />
+          <FriendProfileCardsShimmer count={8} />
         </div>
       </div>
     </div>

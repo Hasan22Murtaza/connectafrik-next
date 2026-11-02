@@ -82,8 +82,9 @@ const SellerListingActions: React.FC<SellerListingActionsProps> = ({
         icon: Users,
       },
       { action: "edit", label: "Edit listing", icon: Pencil },
-      { action: "delete", label: "Delete listing", icon: Trash2, destructive: true },
       { action: "messages", label: "View messages", icon: MessageCircle },
+      { action: "delete", label: "Delete listing", icon: Trash2, destructive: true },
+
     ];
 
   const handleMenuClick = (action: ListingActionMenuItem) => {
@@ -158,7 +159,7 @@ const SellerListingActions: React.FC<SellerListingActionsProps> = ({
                         : "text-content hover:bg-surface-hover"
                       }`}
                   >
-                    <Icon className="w-4 h-4 shrink-0 text-content-secondary" />
+                    <Icon className="w-4 h-4 shrink-0 " />
                     {item.label}
                   </button>
                 );

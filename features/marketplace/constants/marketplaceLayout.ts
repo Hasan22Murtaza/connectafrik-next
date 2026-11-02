@@ -58,7 +58,7 @@ export const MP = {
   filterOption:
     "flex items-center gap-2.5 py-1.5 px-2 rounded-lg hover:bg-surface-hover cursor-pointer text-[15px] text-content",
   filterRadio:
-    "w-4 h-4 text-primary-600 border-border focus:ring-primary-500 cursor-pointer",
+    "h-4 w-4 cursor-pointer appearance-none rounded-full border-2 border-border bg-surface transition-colors hover:border-orange-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/30 focus-visible:ring-offset-0 checked:border-orange-500 checked:bg-[radial-gradient(circle,_white_0_32%,_#f97316_36%)]",
 
   card: "bg-surface rounded-lg border border-border-subtle shadow-sm",
   cardPadding: "p-2.5",

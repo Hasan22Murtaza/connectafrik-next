@@ -4,6 +4,7 @@
  */
 export type { Icon as AppIcon, IconProps } from "./createIcon";
 export type { LucideIcon } from "lucide-react";
+export { default as UserRoundGroup } from "./UserRoundGroup";
 
 import {
   Activity as ActivityIcon,
@@ -247,7 +248,12 @@ export {
   Compass,
   Copy,
   CreditCard,
+  Crop,
   Crosshair,
+  Scissors,
+  SlidersHorizontal,
+  SwitchCamera,
+  Type,
   DollarSign,
   Download,
   ExternalLink,

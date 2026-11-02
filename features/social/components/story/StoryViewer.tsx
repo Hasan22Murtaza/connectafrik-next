@@ -29,7 +29,6 @@ import {
   getStoryReplies,
   getStoryViewers
 } from '@/features/social/services/storiesService'
-import { storyTextBackgroundStyle } from './storyGradientStyle'
 import { formatStoryRelativeTime } from './storyRelativeTime'
 import { useAuth } from '@/contexts/AuthContext'
 import { toast } from 'react-hot-toast'
@@ -90,21 +89,6 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
   const isOwnStory = currentStory?.user_id === user?.id
   const textOverlay = useMemo(() => parseTextOverlay(currentStory?.text_overlay), [currentStory?.text_overlay])
   const storyText = (textOverlay?.text || currentStory?.caption || '').trim()
-  const textStoryLegacyGradient = useMemo(() => {
-    if (Array.isArray(currentStory?.background_gradient_colors) && currentStory.background_gradient_colors.length >= 2) {
-      return null
-    }
-    if (typeof currentStory?.background_gradient === 'string' && currentStory.background_gradient.trim()) {
-      return currentStory.background_gradient.trim()
-    }
-    if (typeof currentStory?.media_url === 'string' && currentStory.media_url.startsWith('gradient:')) {
-      return currentStory.media_url.replace(/^gradient:/, '').trim()
-    }
-    if (typeof textOverlay?.gradient === 'string' && textOverlay.gradient.trim()) {
-      return textOverlay.gradient.trim()
-    }
-    return null
-  }, [currentStory?.background_gradient, currentStory?.background_gradient_colors, currentStory?.media_url, textOverlay])
   const isTextStory =
     currentStory?.media_type === 'text' ||
     currentStory?.media_url?.startsWith('gradient:') ||
@@ -362,19 +346,15 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
             {isTextStory ? (
               <div
                 className="absolute inset-0 flex items-center justify-center"
-                style={storyTextBackgroundStyle(
-                  currentStory.background_gradient_colors,
-                  textStoryLegacyGradient,
-                  currentStory.background_color || '#2563eb'
-                )}
+                style={{ backgroundColor: currentStory.background_color || '#2563eb' }}
               >
                 {storyText && (
                   <div
-                    className="max-w-[85%] px-4 py-3 rounded-lg"
+                    className="noto-color-emoji-regular max-w-[85%] px-4 py-3 rounded-lg"
                     style={{
                       fontSize: `${textOverlay?.fontSize || 24}px`,
                       fontFamily: textOverlay?.fontFamily || 'ui-sans-serif, system-ui, sans-serif',
-                      color: textOverlay?.color || '#FFFFFF',
+                      color: currentStory.text_color || textOverlay?.color || '#FFFFFF',
                       backgroundColor: textOverlay?.backgroundColor || 'transparent',
                       textAlign: textOverlay?.align || 'center',
                       fontWeight: textOverlay?.isBold ? 'bold' : 'normal'

@@ -7,7 +7,6 @@ import { sendFriendRequestReceivedEmail } from '@/shared/services/emailService'
 import { lookupNotificationEmailRecipient } from '@/lib/emails/recipients'
 import { canSendFriendRequestAsync, getRelationships, sanitizePresenceFields } from '@/lib/privacy'
 import { privacyDecisionResponse } from '@/lib/privacy/http'
-
 async function notifyFriendRequestReceived(params: {
   senderId: string
   receiverId: string
@@ -107,7 +106,7 @@ export async function GET(request: NextRequest) {
 
     const { data: profiles, error: profError } = await supabase
       .from('profiles')
-      .select('id, username, full_name, avatar_url, country, bio, birthday, status, last_seen')
+      .select('id, username, full_name, avatar_url, banner_image, country, bio, birthday, status, last_seen')
       .in('id', otherIds)
 
     if (profError) {
@@ -115,7 +114,47 @@ export async function GET(request: NextRequest) {
     }
 
     const profileMap = new Map((profiles || []).map((p: any) => [p.id, p]))
-    const relationships = await getRelationships(user.id, otherIds, supabase)
+
+    const mutualCounts: Record<string, number> = {}
+    const mutualFriendsById = new Map<
+      string,
+      Array<{ user_id: string; username: string; full_name: string; avatar_url: string | null }>
+    >()
+
+    const [relationships] = await Promise.all([
+      getRelationships(user.id, otherIds, supabase),
+      Promise.all(
+        otherIds.map(async (otherId) => {
+          const { data: count } = await supabase.rpc('get_mutual_friends_count', {
+            user1_id: user.id,
+            user2_id: otherId,
+          })
+          const mutualCount = Number(count ?? 0)
+          mutualCounts[otherId] = mutualCount
+
+          if (mutualCount <= 0) {
+            mutualFriendsById.set(otherId, [])
+            return
+          }
+
+          const { data: mutuals } = await supabase.rpc('get_mutual_friends', {
+            user1_id: user.id,
+            user2_id: otherId,
+            limit_count: 3,
+          })
+
+          mutualFriendsById.set(
+            otherId,
+            (mutuals || []).slice(0, 3).map((m: any) => ({
+              user_id: m.user_id,
+              username: m.username,
+              full_name: m.full_name,
+              avatar_url: m.avatar_url ?? null,
+            }))
+          )
+        })
+      ),
+    ])
 
     const friends = rows.map((r: any) => {
       const otherId = r.sender_id === user.id ? r.receiver_id : r.sender_id
@@ -130,12 +169,15 @@ export async function GET(request: NextRequest) {
         username: profile.username,
         full_name: profile.full_name,
         avatar_url: profile.avatar_url,
+        banner_image: profile.banner_image ?? null,
         country: profile.country,
         bio: profile.bio,
         birthday: profile.birthday,
         friendship_date: r.created_at,
         status: presence.status,
         last_seen: presence.last_seen,
+        mutual_friends_count: mutualCounts[otherId] ?? 0,
+        mutual_friends: mutualFriendsById.get(otherId) ?? [],
       }
     }).filter(Boolean)
 

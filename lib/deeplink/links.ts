@@ -20,7 +20,7 @@ const ALLOWED_TARGET_PATTERNS: RegExp[] = [
   /^\/user\/[A-Za-z0-9_.-]+\/?$/,
   /^\/groups(\/[A-Za-z0-9_-]+)?\/?$/,
   /^\/marketplace(\/[A-Za-z0-9_-]+)?\/?$/,
-  /^\/memories(\/[A-Za-z0-9_-]+)?\/?$/,
+  /^\/reels(\/[A-Za-z0-9_-]+)?\/?$/,
   /^\/chat(\/[A-Za-z0-9_-]+)?\/?$/,
   /^\/notifications\/?$/,
   /^\/friends\/?$/,

@@ -37,6 +37,7 @@ export function restrictedProfileStub(profile: Record<string, unknown>): Record<
     username: profile.username ?? null,
     full_name: profile.full_name ?? null,
     avatar_url: profile.avatar_url ?? null,
+    banner_image: profile.banner_image ?? null,
     is_verified: profile.is_verified ?? false,
     profile_restricted: true,
   }

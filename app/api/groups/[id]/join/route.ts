@@ -30,6 +30,16 @@ export async function POST(request: NextRequest, context: RouteContext) {
     const accessToken = getAccessTokenFromRequest(request)
     const serviceClient = createServiceClient()
 
+    const { checkParentalRestriction, parentalDecisionResponse, recordActivityEvent } = await import(
+      '@/lib/family'
+    )
+    const parental = await checkParentalRestriction(serviceClient, user.id, 'group_joining')
+    const parentalDenied = parentalDecisionResponse(parental)
+    if (parentalDenied) return parentalDenied
+    const screenGate = await checkParentalRestriction(serviceClient, user.id, 'screen_time')
+    const screenDenied = parentalDecisionResponse(screenGate)
+    if (screenDenied) return screenDenied
+
     const { data: group, error: groupError } = await serviceClient
       .from('groups')
       .select('id, name, is_public, is_active')
@@ -38,6 +48,8 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
     if (groupError) return errorResponse(groupError.message, 400)
     if (!group || group.is_active === false) return errorResponse('Group not found', 404)
+
+    void recordActivityEvent(serviceClient, user.id, 'group_joined', 1, { group_id: groupId })
 
     const { data: existingMembership, error: existingError } = await serviceClient
       .from('group_memberships')

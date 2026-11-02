@@ -15,6 +15,7 @@ import {
   EyeOff,
 } from '@/shared/icons';
 import { formatDistanceToNow } from "date-fns";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import {
@@ -35,6 +36,7 @@ import { FeedPostVideo } from "@/features/social/components/FeedPostVideo";
 import { PostDetailVideo } from "@/features/social/components/PostDetailVideo";
 import { PostLocationCheckIn } from "@/features/social/components/PostLocationCheckIn";
 import { parsePostLocation } from "@/features/social/utils/postLocation";
+import { sanitizePostFeeling } from "@/features/social/utils/postFeeling";
 interface Post {
   id: string;
   content: string;
@@ -53,6 +55,14 @@ interface Post {
   media_type?: string | null;
   background_id?: string | null;
   location?: string | null;
+  feeling?: { emoji: string; label: string } | null;
+  tagged_users?: Array<{
+    id: string;
+    username: string;
+    full_name: string;
+    avatar_url: string | null;
+  }>;
+  visibility?: "public" | "friends" | "only_me";
   likes_count: number;
   comments_count: number;
   shares_count: number;
@@ -108,7 +118,17 @@ interface PostCardProps {
   onComment: (postId: string) => void;
   onShare: (postId: string) => void;
   onDelete?: (postId: string) => void;
-  onEdit?: (postId: string, updates: { content: string; category: 'politics' | 'culture' | 'general'; media_urls?: string[]; media_type?: string; tags?: string[]; background_id?: string | null }) => void;
+  onEdit?: (postId: string, updates: {
+    content: string
+    category: 'politics' | 'culture' | 'general'
+    media_urls?: string[]
+    media_type?: string
+    tags?: string[]
+    background_id?: string | null
+    visibility?: 'public' | 'friends' | 'only_me'
+    feeling?: { emoji: string; label: string } | null
+    tagged_users?: Array<{ id: string; username: string; full_name: string; avatar_url: string | null }>
+  }) => void;
   onEmojiReaction?: (postId: string, emoji: string) => void | boolean | Promise<void | boolean>;
   showEmojiPicker?: boolean;
   postReactions?: { [emoji: string]: string[] };
@@ -264,9 +284,12 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
   };
 
   const parsedLocation = parsePostLocation(post.location);
+  const postFeeling = sanitizePostFeeling(post.feeling);
+  const taggedUsers = Array.isArray(post.tagged_users) ? post.tagged_users : [];
   const hasPostMedia = !!(post.media_urls && post.media_urls.length > 0);
   const showLocationCheckIn =
     !!parsedLocation && !hasPostMedia && !post.reposted_post;
+  const showFeelingOrPeopleHeader = !showLocationCheckIn && (!!postFeeling || taggedUsers.length > 0);
 
   const cardBackgroundPreset = getPostBackgroundPreset(post.background_id);
   const useLegacyShortCard = !cardBackgroundPreset && isShortTextPost();
@@ -482,6 +505,9 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
         media_urls: postData.media_urls ?? [],
         location: postData.location || null,
         background_id: postData.background_id ?? null,
+        visibility: postData.visibility,
+        feeling: postData.feeling ?? null,
+        tagged_user_ids: postData.tagged_user_ids ?? [],
         updated_at: new Date().toISOString(),
       };
 
@@ -493,6 +519,14 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
           media_type?: string;
           tags?: string[];
           background_id?: string | null;
+          visibility?: "public" | "friends" | "only_me";
+          feeling?: { emoji: string; label: string } | null;
+          tagged_users?: Array<{
+            id: string;
+            username: string;
+            full_name: string;
+            avatar_url: string | null;
+          }>;
         };
       }>(`/api/posts/${post.id}`, updatePayload);
 
@@ -504,6 +538,9 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
           media_type: response.data.media_type,
           tags: response.data.tags,
           background_id: response.data.background_id ?? null,
+          visibility: response.data.visibility ?? postData.visibility,
+          feeling: response.data.feeling ?? null,
+          tagged_users: response.data.tagged_users ?? [],
         });
       }
 
@@ -757,13 +794,12 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
         : `${plainContent.slice(0, plainPreviewLen).trimEnd()}…`;
     return (
       <div className="mb-2">
-        <p className="text-content leading-relaxed whitespace-pre-wrap break-words text-sm sm:text-base">
+        <p className="text-content leading-relaxed  break-words text-sm sm:text-base">
           {plainVisibleContent}
-        </p>
-        {showPlainReadToggle && (
+          {showPlainReadToggle && (
           <button
             type="button"
-            className="mt-1 text-sm font-semibold text-content-secondary hover:text-content"
+            className="mt-1 text-sm font-semibold text-orange-500 hover:underline"
             onClick={(e) => {
               e.stopPropagation();
               setIsContentExpanded((v) => !v);
@@ -772,6 +808,8 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
             {isContentExpanded ? "Read less" : "Read more"}
           </button>
         )}
+        </p>
+        
       </div>
     );
   };
@@ -823,7 +861,7 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
         <div className="flex items-center space-x-3 flex-1 min-w-0">
           <button
             onClick={handleUserProfileClick}
-            className="flex items-center space-x-3 flex-1 min-w-0 !no-underline"
+            className="flex items-start space-x-3 flex-1 min-w-0 !no-underline"
             style={{ textDecoration: 'none' }}
           >
             {post.author.avatar_url ? (
@@ -849,7 +887,7 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
               </span>
             </div>
             
-            <div className="min-w-0 flex-1">
+            <div>
               {showLocationCheckIn && parsedLocation ? (
                 <>
                   <div className="flex min-w-0 items-baseline text-sm sm:text-[15px] text-content leading-snug !no-underline">
@@ -880,6 +918,60 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
                     ) : null}
                     <span aria-hidden>·</span>
                     <Globe className="w-3.5 h-3.5 shrink-0" aria-label="Public" />
+                  </div>
+                </>
+              ) : showFeelingOrPeopleHeader ? (
+                <>
+                  <div className="min-w-0 text-sm sm:text-[15px] text-content leading-snug !no-underline">
+                    <span className="font-semibold">{post.author.full_name}</span>
+                    {postFeeling ? (
+                      <>
+                        <span className="text-content-secondary"> is feeling </span>
+                        <span className="font-semibold">
+                          {postFeeling.label} {postFeeling.emoji}
+                        </span>
+                      </>
+                    ) : null}
+                    {taggedUsers.length > 0 ? (
+                      <span className="text-content-secondary">
+                        {" with "}
+                        {taggedUsers.map((taggedUser, index) => {
+                          const taggedName = taggedUser.full_name || taggedUser.username;
+                          const isLast = index === taggedUsers.length - 1;
+                          const isSecondToLast = index === taggedUsers.length - 2;
+
+                          return (
+                            <React.Fragment key={taggedUser.id}>
+                              <Link
+                                href={`/user/${taggedUser.id}`}
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                }}
+                                className="font-semibold text-primary-600 underline-offset-2 transition-colors hover:text-primary-700 hover:underline active:text-primary-800 focus:outline-none focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-primary-500"
+                              >
+                                {taggedName}
+                              </Link>
+                              {!isLast && (isSecondToLast ? " and " : ", ")}
+                            </React.Fragment>
+                          );
+                        })}
+                      </span>
+                    ) : null}
+                  </div>
+                  <div className="flex items-center gap-1.5 mt-0.5 flex-wrap text-content-secondary text-xs sm:text-sm">
+                    <time dateTime={post.created_at}>
+                      {formatDistanceToNow(new Date(post.created_at), {
+                        addSuffix: true,
+                      })}
+                    </time>
+                    <span aria-hidden>·</span>
+                    <span className="truncate">@{post.author.username}</span>
+                    {isDetail && (
+                      <>
+                        <span aria-hidden>·</span>
+                        <Globe className="w-3.5 h-3.5 shrink-0" aria-label="Public" />
+                      </>
+                    )}
                   </div>
                 </>
               ) : (
@@ -1208,6 +1300,9 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
             media_urls: post.media_urls ?? undefined,
             location: post.location ?? undefined,
             background_id: post.background_id ?? null,
+            visibility: post.visibility,
+            feeling: post.feeling ?? null,
+            tagged_users: post.tagged_users ?? [],
           }}
           onSubmit={handleSaveEdit}
           onCancel={handleCancelEdit}
@@ -1222,11 +1317,6 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
             const blockBg = preset ? preset.css : legacyGradientForPostId(post.id);
             const contentText = (post.content || "").trim();
             const longBody = contentText.length > 150;
-            const showStyledReadToggle = !isDetail && longBody;
-            const styledVisibleContent =
-              isDetail || isContentExpanded || !showStyledReadToggle
-                ? post.content
-                : `${contentText.slice(0, 150).trimEnd()}…`;
             const minH = preset ? (longBody ? "min-h-[120px]" : "min-h-[220px]") : "min-h-[250px]";
             const pad = preset && longBody ? "p-6 sm:p-8" : "p-8";
             const textClass = preset
@@ -1242,20 +1332,9 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
               >
                 <div className={preset && longBody ? "w-full" : "text-center w-full"}>
                   <p className={textClass}>
-                    {styledVisibleContent}
+                    {post.content}
                   </p>
-                  {showStyledReadToggle && (
-                    <button
-                      type="button"
-                      className={readToggleClass}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setIsContentExpanded((v) => !v);
-                      }}
-                    >
-                      {isContentExpanded ? "Read less" : "Read more"}
-                    </button>
-                  )}
+                 
                 </div>
               </div>
             );

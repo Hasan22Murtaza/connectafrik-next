@@ -8,6 +8,7 @@ export interface Story {
   media_url: string | null
   media_type: 'image' | 'video' | 'text'
   text_overlay?: string | null
+  text_color?: string | null
   background_color: string
   background_gradient?: string | null
   background_gradient_colors?: string[] | null
