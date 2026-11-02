@@ -2,15 +2,17 @@
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { Camera, ChevronLeft, ChevronRight, Play, Plus, Type, Video, X } from '@/shared/icons'
+import dynamic from 'next/dynamic'
+import { Camera, ChevronLeft, ChevronRight, Palette, Play, Plus, Video, X } from '@/shared/icons'
 import { createStory, getStoryRecommendations, getUserStories, Story } from '@/features/social/services/storiesService'
 import { useAuth } from '@/contexts/AuthContext'
 import { useProfile } from '@/shared/hooks/useProfile'
 import { useFileUpload } from '@/shared/hooks/useFileUpload'
 import { toast } from 'react-hot-toast'
 import StoryViewer from './StoryViewer'
-import { storyTextBackgroundStyle } from './storyGradientStyle'
-import { ListFilter } from 'lucide-react'
+import { ALargeSmall, ListFilter, Send, Smile } from 'lucide-react'
+
+const StoryEmojiPicker = dynamic(() => import('emoji-picker-react'), { ssr: false })
 
 const parseTextOverlay = (overlay: string | object | null | undefined) => {
   if (!overlay) return null
@@ -21,6 +23,21 @@ const parseTextOverlay = (overlay: string | object | null | undefined) => {
   }
 }
 
+const TEXT_STORY_BACKGROUND_COLORS = [
+  '#FFFFFF',
+  '#F97316',
+  '#2563EB',
+  '#7C3AED',
+  '#DB2777',
+  '#059669',
+  '#111827',
+  '#F59E0B',
+  '#F3F4F6',
+] as const
+
+const TEXT_STORY_TEXT_COLORS = ['#FFFFFF', '#111827', '#FDE68A', '#FED7AA'] as const
+const MAX_TEXT_STORY_LENGTH = 250
+
 const isTextStoryLike = (story: Story | null | undefined, textOverlay: any): boolean => {
   if (!story) return false
   if (typeof story.media_url === 'string' && story.media_url.startsWith('gradient:')) return true
@@ -29,22 +46,6 @@ const isTextStoryLike = (story: Story | null | undefined, textOverlay: any): boo
   if (Array.isArray(story.background_gradient_colors) && story.background_gradient_colors.length >= 2) return true
   if (!story.media_url && Boolean(textOverlay?.text || story.caption || story.background_color)) return true
   return false
-}
-
-const getStoryBackgroundGradient = (story: Story, textOverlay: any): string | null => {
-  if (Array.isArray(story.background_gradient_colors) && story.background_gradient_colors.length >= 2) {
-    return `${story.background_gradient_colors[0]},${story.background_gradient_colors[1]}`
-  }
-  if (typeof story.background_gradient === 'string' && story.background_gradient.trim()) {
-    return story.background_gradient.trim()
-  }
-  if (typeof story.media_url === 'string' && story.media_url.startsWith('gradient:')) {
-    return story.media_url.replace(/^gradient:/, '').trim()
-  }
-  if (typeof textOverlay?.gradient === 'string' && textOverlay.gradient.trim()) {
-    return textOverlay.gradient.trim()
-  }
-  return null
 }
 
 interface StoryCardProps {
@@ -66,14 +67,14 @@ const StoryCard: React.FC<StoryCardProps> = React.memo(({ story, onClick, hasUns
   const displayAvatar = story.profile_picture_url || story.user_avatar || ''
   const textOverlay = parseTextOverlay(story.text_overlay)
   const isTextStory = isTextStoryLike(story, textOverlay)
-  const storyGradient = getStoryBackgroundGradient(story, textOverlay)
   const storyText = (textOverlay?.text || story.caption || '').trim()
+  const storyTextColor = story.text_color || textOverlay?.color || '#FFFFFF'
   const isVideo = story.media_type === 'video' && !isTextStory
   const videoRef = useRef<HTMLVideoElement>(null)
 
   const handleMouseEnter = useCallback(() => {
     if (isVideo && videoRef.current) {
-      videoRef.current.play().catch(() => {})
+      videoRef.current.play().catch(() => { })
     }
   }, [isVideo])
 
@@ -95,10 +96,13 @@ const StoryCard: React.FC<StoryCardProps> = React.memo(({ story, onClick, hasUns
         {isTextStory ? (
           <div
             className="absolute inset-0 flex items-center justify-center p-2 sm:p-3"
-            style={storyTextBackgroundStyle(story.background_gradient_colors, storyGradient, story.background_color || '#2563eb')}
+            style={{ backgroundColor: story.background_color || '#2563eb' }}
           >
             {storyText && (
-              <p className="text-white text-center font-medium text-[10px] sm:text-xs line-clamp-4 sm:line-clamp-5 drop-shadow">
+              <p
+                className="noto-color-emoji-regular text-center font-medium text-[10px] sm:text-xs line-clamp-4 sm:line-clamp-5 drop-shadow"
+                style={{ color: storyTextColor }}
+              >
                 {storyText}
               </p>
             )}
@@ -174,7 +178,7 @@ interface CreateStoryCardProps {
   userStories: Story[]
   profile: any
   user: any
-  onCreate:() => void
+  onCreate: () => void
   onView: () => void
   onMediaSelect: (file: File, mediaType: 'image' | 'video') => void
   onTextCreate: () => void
@@ -189,13 +193,14 @@ const CreateStoryCard: React.FC<CreateStoryCardProps> = React.memo(({ userStorie
   const userName = profile?.full_name || user?.user_metadata?.full_name || 'You'
   const latestStoryTextOverlay = parseTextOverlay(latestStory?.text_overlay)
   const isTextStory = isTextStoryLike(latestStory, latestStoryTextOverlay)
-  const latestStoryGradient = latestStory ? getStoryBackgroundGradient(latestStory, latestStoryTextOverlay) : null
+  const latestStoryText = (latestStoryTextOverlay?.text || latestStory?.caption || '').trim()
+  const latestStoryTextColor = latestStory?.text_color || latestStoryTextOverlay?.color || '#FFFFFF'
   const isVideo = latestStory?.media_type === 'video' && !isTextStory
   const videoRef = useRef<HTMLVideoElement>(null)
 
   const handleMouseEnter = useCallback(() => {
     if (isVideo && videoRef.current) {
-      videoRef.current.play().catch(() => {})
+      videoRef.current.play().catch(() => { })
     }
   }, [isVideo])
 
@@ -217,13 +222,18 @@ const CreateStoryCard: React.FC<CreateStoryCardProps> = React.memo(({ userStorie
           <button onClick={onView} className="absolute inset-0 cursor-pointer">
             {isTextStory ? (
               <div
-                className="w-full h-full"
-                style={storyTextBackgroundStyle(
-                  latestStory.background_gradient_colors,
-                  latestStoryGradient,
-                  latestStory.background_color || '#2563eb'
+                className="relative flex h-full w-full items-center justify-center p-2"
+                style={{ backgroundColor: latestStory.background_color || '#2563eb' }}
+              >
+                {latestStoryText && (
+                  <p
+                    className="noto-color-emoji-regular line-clamp-5 text-center text-[10px] font-medium drop-shadow sm:text-xs"
+                    style={{ color: latestStoryTextColor }}
+                  >
+                    {latestStoryText}
+                  </p>
                 )}
-              />
+              </div>
             ) : isVideo && latestStory.media_url ? (
               <video
                 ref={videoRef}
@@ -278,7 +288,7 @@ const CreateStoryCard: React.FC<CreateStoryCardProps> = React.memo(({ userStorie
   return (
     <div className="flex-shrink-0 w-[116px] sm:w-[128px]">
       <div className="relative h-[170px] sm:h-[180px] rounded-[22px] overflow-hidden bg-surface border border-[#eadfd7] shadow-sm">
-        <button type="button" onClick={hasStories ? onView : undefined}  className="absolute inset-x-0 top-0 h-[136px] sm:h-[148px] text-left">
+        <button type="button" onClick={hasStories ? onView : undefined} className="absolute inset-x-0 top-0 h-[136px] sm:h-[148px] text-left">
           <div className="absolute inset-x-0 top-0 h-[96px] sm:h-[108px]" />
           <div className="absolute top-3 sm:top-4 left-1/2 -translate-x-1/2 w-[54px] h-[54px] sm:w-[60px] sm:h-[60px] rounded-full p-[3px] bg-white shadow-sm">
             {avatarUrl ? (
@@ -342,6 +352,7 @@ const StoriesBar: React.FC = () => {
   const { profile } = useProfile()
   const { uploadFile } = useFileUpload()
   const scrollContainerRef = useRef<HTMLDivElement>(null)
+  const storyEditorRef = useRef<HTMLDivElement>(null)
   const hasLoadedOnce = useRef(false)
 
   const [stories, setStories] = useState<Story[]>([])
@@ -355,6 +366,9 @@ const StoriesBar: React.FC = () => {
   const [showRightArrow, setShowRightArrow] = useState(false)
   const [isTextDialogOpen, setIsTextDialogOpen] = useState(false)
   const [textStory, setTextStory] = useState('')
+  const [textStoryBackgroundColor, setTextStoryBackgroundColor] = useState('#FFFFFF')
+  const [textStoryTextColor, setTextStoryTextColor] = useState('#111827')
+  const [activeTextTool, setActiveTextTool] = useState<'text' | 'background' | 'textColor' | 'emoji' | ''>('text')
   const [isCreatingStory, setIsCreatingStory] = useState(false)
 
   const checkScrollPosition = useCallback(() => {
@@ -532,12 +546,12 @@ const StoriesBar: React.FC = () => {
         caption: text,
         text: text,
         media_type: 'text',
-        background_color: '#2563eb',
+        background_color: textStoryBackgroundColor,
+        text_color: textStoryTextColor,
         text_overlay: JSON.stringify({
           text,
           fontSize: 24,
-          fontFamily: 'ui-sans-serif, system-ui, sans-serif',
-          color: '#FFFFFF',
+          color: textStoryTextColor,
           backgroundColor: 'transparent',
           align: 'center',
           x: 50,
@@ -553,7 +567,39 @@ const StoriesBar: React.FC = () => {
     } finally {
       setIsCreatingStory(false)
     }
-  }, [isCreatingStory, textStory])
+  }, [isCreatingStory, textStory, textStoryBackgroundColor, textStoryTextColor])
+
+  const insertStoryEmoji = useCallback((emoji: string) => {
+    setTextStory((current) => {
+      const nextText = `${current}${emoji}`.slice(0, MAX_TEXT_STORY_LENGTH)
+      if (storyEditorRef.current) {
+        storyEditorRef.current.textContent = nextText
+        storyEditorRef.current.focus()
+        const selection = window.getSelection()
+        const range = document.createRange()
+        range.selectNodeContents(storyEditorRef.current)
+        range.collapse(false)
+        selection?.removeAllRanges()
+        selection?.addRange(range)
+      }
+      return nextText
+    })
+    setActiveTextTool('text')
+  }, [])
+
+  useEffect(() => {
+    if (isTextDialogOpen && storyEditorRef.current && storyEditorRef.current.textContent !== textStory) {
+      storyEditorRef.current.textContent = textStory
+    }
+  }, [isTextDialogOpen, textStory])
+
+  const handleStoryBoardInput = useCallback((event: React.FormEvent<HTMLDivElement>) => {
+    const nextText = event.currentTarget.textContent || ''
+    if (nextText.length > MAX_TEXT_STORY_LENGTH) {
+      event.currentTarget.textContent = nextText.slice(0, MAX_TEXT_STORY_LENGTH)
+    }
+    setTextStory(nextText.slice(0, MAX_TEXT_STORY_LENGTH))
+  }, [])
 
   const handleViewStory = useCallback((storyIndex: number) => {
     const selectedStory = stories[storyIndex]
@@ -649,28 +695,243 @@ const StoriesBar: React.FC = () => {
         stories={viewerStories}
         initialStoryIndex={selectedStoryIndex}
       />
-
       {isTextDialogOpen && (
-        <div className="fixed inset-0 z-[10050] flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true" aria-labelledby="text-story-dialog-title">
-          <div className="w-full max-w-md rounded-2xl bg-surface p-5 shadow-xl" onClick={(event) => event.stopPropagation()}>
-            <div className="mb-4 flex items-center justify-between">
-              <h2 id="text-story-dialog-title" className="text-lg font-semibold text-content">Write a story</h2>
-              <button type="button" aria-label="Close dialog" onClick={() => setIsTextDialogOpen(false)} className="rounded-full p-1 text-content-secondary hover:bg-surface-secondary">
+        <div
+          className="fixed inset-0 z-[10050] flex items-center justify-center bg-black/60 p-3 backdrop-blur-[1px] sm:p-5"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="text-story-dialog-title"
+        >
+          <div
+            className="flex max-h-[95dvh] w-full max-w-[520px] flex-col overflow-hidden rounded-[28px]  bg-white shadow-[0_24px_70px_rgba(44,62,88,0.2)]"
+            onClick={(event) => event.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-[#edf0f4] px-4 py-3.5 sm:px-5">
+              <div>
+                <h2
+                  id="text-story-dialog-title"
+                  className="text-sm font-semibold text-[#364152]"
+                >
+                  Create status
+                </h2>
+                <p className="mt-0.5 text-[9px] text-[#8b95a5]">
+                  Share an update with your contacts • 24h duration
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setIsTextDialogOpen(false)}
+                className="rounded-full p-1.5 text-[#7d8795] transition hover:bg-[#f1f3f6] hover:text-[#364152]"
+                aria-label="Close dialog"
+              >
                 <X className="h-5 w-5" />
               </button>
             </div>
-            <textarea
-              autoFocus
-              value={textStory}
-              onChange={(event) => setTextStory(event.target.value.slice(0, 200))}
-              placeholder="Share what's on your mind..."
-              className="min-h-32 w-full resize-none rounded-xl border border-border bg-surface-secondary p-3 text-sm text-content outline-none focus:border-primary-500"
-            />
-            <div className="mt-4 flex justify-end gap-2">
-              <button type="button" onClick={() => setIsTextDialogOpen(false)} className="rounded-lg px-4 py-2 text-sm text-content-secondary hover:bg-surface-secondary">Cancel</button>
-              <button type="button" disabled={!textStory.trim() || isCreatingStory} onClick={handleTextStoryCreate} className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50">
-                {isCreatingStory ? 'Posting...' : 'Post story'}
-              </button>
+
+            {/* Preview */}
+            <div className="flex justify-center overflow-y-auto ">
+              <div
+                className="relative flex aspect-[9/14] w-full  items-center justify-center overflow-hidden  p-8 shadow-[0_10px_24px_rgba(37,53,76,0.16)] transition-colors"
+                style={{
+                  backgroundColor: textStoryBackgroundColor,
+                  color: textStoryTextColor,
+                }}
+              >
+                {/* Top Right Tools */}
+                <div className="absolute right-3 top-3 z-20 flex items-start gap-1.5">
+                  {/* Text Tool */}
+                  <button
+                    type="button"
+                    onClick={() => setActiveTextTool('text')}
+                    aria-label="Edit status text"
+                    aria-pressed={activeTextTool === 'text'}
+                    className={`flex h-7 w-7 items-center justify-center rounded-full shadow-md backdrop-blur-md transition
+                ${activeTextTool === 'text'
+                        ? 'bg-[#F97316] text-white'
+                        : 'bg-black/20 text-white hover:bg-black/35'
+                      }`}
+                  >
+                    <span className="text-sm font-bold leading-none" aria-hidden="true">T</span>
+                  </button>
+
+                  {/* Background Tool */}
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setActiveTextTool(
+                          activeTextTool === 'background' ? '' : 'background'
+                        )
+                      }
+                      aria-label="Background color"
+                      aria-expanded={activeTextTool === 'background'}
+                      className={`flex h-7 w-7 items-center justify-center rounded-full shadow-md backdrop-blur-md transition
+                  ${activeTextTool === 'background'
+                          ? 'bg-[#F97316] text-white'
+                          : 'bg-black/50 text-white hover:bg-black/70'
+                        }`}
+                    >
+                      <Palette className="h-3.5 w-3.5" />
+                    </button>
+
+                    {activeTextTool === 'background' && (
+                      <div className="absolute right-0 top-9 z-30 w-[190px] rounded-xl border border-[#e5e7eb] bg-white p-3 shadow-xl">
+                        <p className="mb-3 text-xs font-semibold text-[#364152]">
+                          Background color
+                        </p>
+
+                        <div className="grid grid-cols-5 gap-2">
+                          {TEXT_STORY_BACKGROUND_COLORS.map((color) => (
+                            <button
+                              key={color}
+                              type="button"
+                              aria-label={`Use ${color} background`}
+                              aria-pressed={textStoryBackgroundColor === color}
+                              onClick={() => setTextStoryBackgroundColor(color)}
+                              className={`h-7 w-7 rounded-full border-2 transition hover:scale-110
+                          ${textStoryBackgroundColor === color
+                                  ? 'border-white ring-2 ring-[#F97316]'
+                                  : 'border-[#d6dbe3]'
+                                }`}
+                              style={{ backgroundColor: color }}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Text Color Tool */}
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setActiveTextTool(
+                          activeTextTool === 'textColor' ? '' : 'textColor'
+                        )
+                      }
+                      aria-label="Text color"
+                      aria-expanded={activeTextTool === 'textColor'}
+                      className={`flex h-7 w-7 items-center justify-center rounded-full shadow-md backdrop-blur-md transition
+                  ${activeTextTool === 'textColor'
+                          ? 'bg-[#F97316] text-white'
+                          : 'bg-black/50 text-white hover:bg-black/70'
+                        }`}
+                    >
+                      <ALargeSmall className="h-3.5 w-3.5" />
+                    </button>
+
+                    {activeTextTool === 'textColor' && (
+                      <div className="absolute right-0 top-9 z-30 w-[190px] rounded-xl border border-[#e5e7eb] bg-white p-3 shadow-xl">
+                        <p className="mb-3 text-xs font-semibold text-[#364152]">
+                          Text color
+                        </p>
+
+                        <div className="grid grid-cols-5 gap-2">
+                          {TEXT_STORY_TEXT_COLORS.map((color) => (
+                            <button
+                              key={color}
+                              type="button"
+                              aria-label={`Use ${color} text`}
+                              aria-pressed={textStoryTextColor === color}
+                              onClick={() => setTextStoryTextColor(color)}
+                              className={`h-7 w-7 rounded-full border-2 transition hover:scale-110
+                          ${textStoryTextColor === color
+                                  ? 'border-white ring-2 ring-[#F97316]'
+                                  : 'border-[#d6dbe3]'
+                                }`}
+                              style={{ backgroundColor: color }}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Emoji Tool */}
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setActiveTextTool(
+                          activeTextTool === 'emoji' ? '' : 'emoji'
+                        )
+                      }
+                      aria-label="Select emoji"
+                      aria-expanded={activeTextTool === 'emoji'}
+                      className={`flex h-7 w-7 items-center justify-center rounded-full shadow-md backdrop-blur-md transition
+                  ${activeTextTool === 'emoji'
+                          ? 'bg-[#F97316] text-white'
+                          : 'bg-black/50 text-white hover:bg-black/70'
+                        }`}
+                    >
+                      <Smile className="h-3.5 w-3.5" />
+                    </button>
+
+                    {activeTextTool === 'emoji' && (
+                      <div className="absolute right-0 top-9 z-30 w-[min(300px,calc(100vw-40px))] overflow-hidden rounded-xl border border-[#e5e7eb] bg-white p-2 shadow-xl">
+                        <StoryEmojiPicker
+                          onEmojiClick={(emojiData) =>
+                            insertStoryEmoji(emojiData.emoji)
+                          }
+                          width="100%"
+                          height={300}
+                          searchDisabled
+                          skinTonesDisabled
+                          previewConfig={{ showPreview: false }}
+                          lazyLoadEmojis
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Editable Story Text */}
+                <div
+                  ref={storyEditorRef}
+                  contentEditable
+                  suppressContentEditableWarning
+                  role="textbox"
+                  aria-label="Write your status"
+                  aria-multiline="true"
+                  spellCheck
+                  onInput={handleStoryBoardInput}
+                  data-placeholder="Type a status..."
+                  className="noto-color-emoji-regular max-h-full w-full overflow-y-auto break-words whitespace-pre-wrap text-center text-2xl font-semibold leading-relaxed outline-none empty:before:content-[attr(data-placeholder)] empty:before:opacity-40 sm:text-3xl"
+                />
+
+                {/* Character Count */}
+                <div className="absolute bottom-3 left-4 rounded-full bg-black/10 px-2 py-0.5 text-[9px] opacity-70">
+                  {textStory.length}/{MAX_TEXT_STORY_LENGTH}
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="flex items-center justify-between gap-3 border-t border-[#edf0f4] px-4 py-3 sm:px-5">
+              
+
+              <div className="flex shrink-0 items-center justify-end w-full gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsTextDialogOpen(false)}
+                  className="rounded-full px-3 py-2 text-xs font-medium text-[#566171] transition hover:bg-[#f1f3f6] hover:text-[#364152]"
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="button"
+                  disabled={!textStory.trim() || isCreatingStory}
+                  onClick={handleTextStoryCreate}
+                  className="flex items-center gap-1.5 rounded-full bg-[#F97316] px-4 py-2 text-xs font-semibold text-white shadow-lg shadow-orange-500/20 transition hover:bg-[#EA580C] disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <Send className="h-4 w-4" />
+                  {isCreatingStory ? 'Posting...' : 'Post'}
+                </button>
+              </div>
             </div>
           </div>
         </div>

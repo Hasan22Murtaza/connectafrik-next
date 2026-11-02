@@ -3500,7 +3500,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
               </button>
             </div>
           ) : replyingTo ? (
-            <div className="mb-2 flex items-start gap-2 rounded-xl border border-orange-200/70 border-l-[3px] border-l-orange-500 bg-surface-secondary px-2.5 py-2 dark:border-orange-500/25">
+            <div className="mb-2 flex items-start gap-2  border border-r-0 border-y-0 rounded-xl  border-l-[3px] border-l-orange-500 bg-primary-50 px-2.5 py-2 ">
               {getReplyMediaAttachment(replyingTo, "image") ? (
                 <span className="relative mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-black/10 text-white">
                   <img
