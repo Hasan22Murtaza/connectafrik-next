@@ -226,7 +226,7 @@ export function SettingsSaveBar({
     <div
       className={`flex flex-col-reverse items-stretch justify-between gap-3 rounded-[16px] sm:flex-row sm:items-center ${
         dirty
-          ? 'sticky bottom-3 z-10 border border-border-subtle bg-surface/95 p-3 shadow-sm backdrop-blur-sm sm:bottom-4'
+          ? 'sticky bottom-3 z-10 '
           : ''
       }`}
     >
