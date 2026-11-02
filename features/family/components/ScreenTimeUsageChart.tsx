@@ -72,6 +72,8 @@ type Props = {
   dailyLimitMinutes: number | null
   loading?: boolean
   onRangeChange: (days: number) => void
+  /** When true, empty-state copy addresses the viewer about their own usage. */
+  selfView?: boolean
 }
 
 function ChartTooltip({
@@ -97,6 +99,7 @@ export function ScreenTimeUsageChart({
   dailyLimitMinutes,
   loading = false,
   onRangeChange,
+  selfView = false,
 }: Props) {
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
 
@@ -292,7 +295,9 @@ export function ScreenTimeUsageChart({
 
       {history && history.total_minutes === 0 ? (
         <p className="text-xs text-content-secondary">
-          Usage appears here as they spend time in CribsTalk.
+          {selfView
+            ? 'Usage appears here as you spend time in CribsTalk.'
+            : 'Usage appears here as they spend time in CribsTalk.'}
         </p>
       ) : null}
     </div>
