@@ -19,7 +19,7 @@ const Logo: React.FC<LogoProps> = ({
   }
 
   const logoPath = '/assets/images/logo_2.png'
-  const iconPath = '/assets/favicon-32x32.png'
+  const iconPath = '/assets/favicon-2.ico'
 
   if (variant === 'icon') {
     return (
