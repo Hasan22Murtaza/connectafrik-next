@@ -75,7 +75,7 @@ export default function ApiDocsPage() {
             fontSize: '13px',
           }}
         >
-          v1.0.0
+          v1.1.0
         </span>
       </div>
       <div id="swagger-ui" ref={containerRef} />
