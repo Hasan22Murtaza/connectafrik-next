@@ -51,7 +51,7 @@ const DisplayModeMenu: React.FC<DisplayModeMenuProps> = ({
             role="menuitemradio"
             aria-checked={isActive}
             onClick={() => handleSelect(item.value)}
-            className="w-full flex items-center justify-between px-4 py-2.5 text-sm text-content hover:bg-surface-hover transition-colors rounded-md"
+            className="w-full flex items-center rounded-md justify-between px-4 py-2.5 text-sm text-content hover:bg-surface-hover transition-colors "
           >
             <span className="flex items-center gap-3">
               <span className="text-content-secondary">{MODE_ICONS[item.value]}</span>
@@ -67,7 +67,7 @@ const DisplayModeMenu: React.FC<DisplayModeMenuProps> = ({
   if (variant === 'inline') {
     return (
       <div className="px-2 py-1">
-        <p className="px-2 py-1 text-xs font-semibold uppercase tracking-wide text-content-tertiary">
+        <p className="px-2 py-1 text-xs  font-semibold uppercase tracking-wide text-content-tertiary">
           Display mode
         </p>
         {optionsList}

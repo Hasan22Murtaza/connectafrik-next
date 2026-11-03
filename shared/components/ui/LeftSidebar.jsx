@@ -135,13 +135,13 @@ const LeftSidebar = () => {
       "group relative flex w-full items-center rounded-lg text-[15px] font-medium transition-colors duration-150",
       showLabels ? "gap-3 px-3 py-2.5" : "justify-center px-2 py-2.5",
       isActive
-        ? "bg-[#f0f2f5] text-[#050505]"
-        : "text-[#65676b] hover:bg-[#f2f2f2] hover:text-[#050505]",
+        ? "bg-surface-hover text-content"
+        : "text-content-secondary hover:bg-surface-hover hover:text-content",
     ].join(" ");
 
   return (
     <aside
-      className={`sticky top-[73px] z-30 hidden h-[calc(100dvh-73px)] shrink-0 self-start lg:block ${railClass}`}
+      className={`sticky top-[62px] z-30 hidden h-[calc(100dvh-62px)] shrink-0 self-start lg:block ${railClass}`}
       onMouseEnter={() => mode === "hover" && setHovered(true)}
       onMouseLeave={() => {
         if (mode === "hover") {
@@ -151,7 +151,7 @@ const LeftSidebar = () => {
       }}
     >
       <div
-        className={`flex h-full flex-col border-r border-[#e4e6eb] bg-white ${
+        className={`flex h-full flex-col border-r border-[#e4e6eb] dark:border-[#415474] bg-white ${
           hoverExpanded
             ? "absolute inset-y-0 left-0 z-40 w-56 shadow-lg"
             : "relative w-full"
@@ -206,13 +206,13 @@ const LeftSidebar = () => {
 
         <div
           ref={controlRef}
-          className="relative shrink-0 border-t border-[#e4e6eb] p-2"
+          className="relative shrink-0 border-t border-[#e4e6eb] p-2 dark:border-[#415474]"
         >
           <button
             type="button"
             onClick={() => setControlOpen((o) => !o)}
             className={[
-              "flex w-full items-center rounded-lg text-[15px] font-medium text-[#65676b] transition-colors hover:bg-[#f2f2f2] hover:text-[#050505]",
+              "flex w-full items-center rounded-lg text-[15px] font-medium text-content-secondary transition-colors hover:bg-surface-hover hover:text-content",
               showLabels ? "gap-3 px-3 py-2.5" : "justify-center px-2 py-2.5",
             ].join(" ")}
             aria-expanded={controlOpen}
@@ -231,9 +231,9 @@ const LeftSidebar = () => {
             <div
               role="dialog"
               aria-label="Sidebar control"
-              className="absolute bottom-full left-2 z-50 mb-2 w-48 rounded-lg border border-[#e4e6eb] bg-white p-1.5 shadow-lg"
+              className="absolute bottom-full left-2 z-50 mb-2 w-48 rounded-lg border border-border bg-surface-elevated p-1.5 shadow-lg"
             >
-              <p className="px-2.5 py-1.5 text-xs font-semibold text-[#050505]">
+              <p className="px-2.5 py-1.5 text-xs font-semibold text-content">
                 Sidebar control
               </p>
               <ul className="space-y-0.5" role="listbox" aria-label="Sidebar width">
@@ -246,13 +246,13 @@ const LeftSidebar = () => {
                         onClick={() => persistMode(opt.id)}
                         className={`flex w-full items-center justify-between rounded-md px-2.5 py-2 text-left text-sm transition-colors ${
                           selected
-                            ? "bg-[#f0f2f5] text-[#050505]"
-                            : "text-[#65676b] hover:bg-[#f2f2f2] hover:text-[#050505]"
+                            ? "bg-surface-hover text-content"
+                            : "text-content-secondary hover:bg-surface-hover hover:text-content"
                         }`}
                       >
                         <span>{opt.label}</span>
                         {selected && (
-                          <Check className="h-4 w-4 text-[#050505]" aria-hidden />
+                          <Check className="h-4 w-4 text-content" aria-hidden />
                         )}
                       </button>
                     </li>

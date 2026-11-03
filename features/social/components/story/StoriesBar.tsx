@@ -287,7 +287,7 @@ const CreateStoryCard: React.FC<CreateStoryCardProps> = React.memo(({ userStorie
 
   return (
     <div className="flex-shrink-0 w-[116px] sm:w-[128px]">
-      <div className="relative h-[170px] sm:h-[180px] rounded-[22px] overflow-hidden bg-surface border border-[#eadfd7] shadow-sm">
+      <div className="relative h-[170px] sm:h-[180px] rounded-[22px] overflow-hidden bg-surface border border-border-subtle shadow-sm">
         <button type="button" onClick={hasStories ? onView : undefined} className="absolute inset-x-0 top-0 h-[136px] sm:h-[148px] text-left">
           <div className="absolute inset-x-0 top-0 h-[96px] sm:h-[108px]" />
           <div className="absolute top-3 sm:top-4 left-1/2 -translate-x-1/2 w-[54px] h-[54px] sm:w-[60px] sm:h-[60px] rounded-full p-[3px] bg-white shadow-sm">
@@ -307,7 +307,7 @@ const CreateStoryCard: React.FC<CreateStoryCardProps> = React.memo(({ userStorie
           </p>
         </button>
 
-        <div className="absolute bottom-2.5 left-2.5 right-2.5 h-9 rounded-full bg-[#f0f0fb] flex items-center justify-around">
+        <div className="absolute bottom-2.5 left-2.5 right-2.5 h-9 rounded-full bg-surface-secondary flex items-center justify-around ">
           <button type="button" aria-label="Add photo story" title="Add photo story" onClick={() => imageInputRef.current?.click()} className="p-1.5 text-content-secondary hover:text-primary-600 transition-colors">
             <Camera className="w-[17px] h-[17px]" />
           </button>

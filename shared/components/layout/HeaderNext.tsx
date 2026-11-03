@@ -250,14 +250,19 @@ const Header: React.FC<HeaderProps> = ({
                   </div>
 
                   {/* User Menu */}
-                  <div className="relative group ">
+                  <div
+                    className="relative"
+                    onMouseEnter={() => setIsUserMenuOpen(true)}
+                    onMouseLeave={() => setIsUserMenuOpen(false)}
+                    onBlur={(e) => {
+                      if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+                        setIsUserMenuOpen(false);
+                      }
+                    }}
+                  >
                     <button
-                      onClick={() => setIsUserMenuOpen((prev) => !prev)}
-                      onBlur={(e) => {
-                        if (!e.currentTarget.contains(e.relatedTarget)) {
-                          setIsUserMenuOpen(false);
-                        }
-                      }}
+                      onClick={() => setIsUserMenuOpen(true)}
+                      aria-expanded={isUserMenuOpen}
                       className="flex items-center space-x-1 sm:space-x-2 p-1 sm:p-1.5 lg:p-2 rounded-lg hover:bg-surface-hover shrink-0"
                     >
                       {profile?.avatar_url ? (

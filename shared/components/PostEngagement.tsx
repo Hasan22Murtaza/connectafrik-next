@@ -218,7 +218,7 @@ const PostEngagement: React.FC<PostEngagementProps> = ({
                   userReactionKind ? KIND_TO_EMOJI[userReactionKind] : KIND_TO_EMOJI.love
                 )
               }}
-              className={`flex h-8 items-center justify-center gap-1.5 rounded-full bg-[#f3f4fb] px-3 text-sm font-medium transition-colors duration-150 ${
+              className={`flex h-8 items-center justify-center gap-1.5 rounded-full bg-surface-secondary px-3 text-sm font-medium transition-colors duration-150 ${
                 userReactionConfig
                   ? `${userReactionKind === 'love'
                     ? 'text-red-500'
@@ -248,7 +248,7 @@ const PostEngagement: React.FC<PostEngagementProps> = ({
               e.stopPropagation()
               onComment()
             }}
-            className="flex h-8 w-9 shrink-0 items-center justify-center rounded-full bg-[#f3f4fb] text-slate-400 transition-colors hover:bg-orange-50 hover:text-orange-500"
+            className="flex h-8 w-9 shrink-0 items-center justify-center rounded-full bg-surface-secondary text-slate-400 transition-colors hover:bg-orange-50 hover:text-orange-500"
             aria-label={`Comment on post${commentsCount > 0 ? `, ${commentsCount} ${commentsCount === 1 ? 'comment' : 'comments'}` : ''}`}
             title={commentsCount > 0 ? `${commentsCount} ${commentsCount === 1 ? 'comment' : 'comments'}` : 'Comment'}
           >
@@ -260,7 +260,7 @@ const PostEngagement: React.FC<PostEngagementProps> = ({
               e.stopPropagation()
               onShare()
             }}
-            className="flex h-8 w-9 shrink-0 items-center justify-center rounded-full bg-[#f3f4fb] text-green-500 transition-colors hover:bg-green-50"
+            className="flex h-8 w-9 shrink-0 items-center justify-center rounded-full bg-surface-secondary text-green-500 transition-colors hover:bg-green-50"
             aria-label={`${isShared ? 'Shared post' : 'Share post'}${sharesCount > 0 ? `, ${sharesCount} ${sharesCount === 1 ? 'share' : 'shares'}` : ''}`}
             title={sharesCount > 0 ? `${sharesCount} ${sharesCount === 1 ? 'share' : 'shares'}` : isShared ? 'Shared' : 'Share'}
             aria-pressed={isShared}
