@@ -677,6 +677,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const mediaChunksRef = useRef<Blob[]>([]);
   const mediaStreamRef = useRef<MediaStream | null>(null);
+  const voiceRecordingSessionRef = useRef<{ cancelled: boolean } | null>(null);
   const initialUnreadCountRef = useRef(0);
   const [pendingFiles, setPendingFiles] = useState<FileUploadResult[]>([]);
   const [viewOnceEnabled, setViewOnceEnabled] = useState(false);
@@ -2214,14 +2215,20 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
             : "";
       const mr = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream);
       mediaRecorderRef.current = mr;
+      const recordingSession = { cancelled: false };
+      voiceRecordingSessionRef.current = recordingSession;
       mr.ondataavailable = (e) => {
-        if (e.data.size) mediaChunksRef.current.push(e.data);
+        if (!recordingSession.cancelled && e.data.size) {
+          mediaChunksRef.current.push(e.data);
+        }
       };
       mr.onstop = () => {
+        if (recordingSession.cancelled) return;
         void (async () => {
           const mimeType = mr.mimeType || "audio/webm";
           stopMediaStream();
           mediaRecorderRef.current = null;
+          voiceRecordingSessionRef.current = null;
           setVoiceRecording(false);
           const chunks = mediaChunksRef.current;
           mediaChunksRef.current = [];
@@ -2347,6 +2354,18 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       return;
     }
     void startVoiceRecording();
+  };
+
+  const cancelVoiceRecording = () => {
+    const mr = mediaRecorderRef.current;
+    const recordingSession = voiceRecordingSessionRef.current;
+    if (recordingSession) recordingSession.cancelled = true;
+    mediaChunksRef.current = [];
+    mediaRecorderRef.current = null;
+    voiceRecordingSessionRef.current = null;
+    stopMediaStream();
+    setVoiceRecording(false);
+    if (mr?.state === "recording") mr.stop();
   };
 
   const handleSendLocation = useCallback(
@@ -3619,6 +3638,15 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
               <span className="hidden shrink-0 text-[11px] font-medium text-content-tertiary sm:inline">
                 Tap stop to send
               </span>
+              <button
+                type="button"
+                onClick={cancelVoiceRecording}
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-content-secondary transition-colors hover:bg-red-500/10 hover:text-red-600"
+                aria-label="Discard voice recording"
+                title="Discard recording"
+              >
+                <X className="h-4 w-4" />
+              </button>
             </div>
           )}
 
