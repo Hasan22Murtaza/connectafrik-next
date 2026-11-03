@@ -62,8 +62,6 @@ const Header: React.FC<HeaderProps> = ({
 
   const { unreadMessages, callBadgeCount } = useHeaderInboxCounts();
   const { friendRequestCount } = useSpaceNavCounts();
-  console.log("Unread Messages:", unreadMessages);
-  console.log("Friend Request Count:", friendRequestCount);
   const pathname = usePathname();
   const [scrolled, setScrolled] = useState(false);
   const [guestMenuOpen, setGuestMenuOpen] = useState(false);
