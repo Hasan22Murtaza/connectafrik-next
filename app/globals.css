@@ -325,7 +325,7 @@
   border-radius: 4px;
   padding: 0 3px;
   font-weight: 600;
-  background: color-mix(in srgb, var(--primary-100) 18%, transparent);
+  background: var(--primary-50);
   color: var(--primary-600);
 }
 .dark .chat-rt-mention {
