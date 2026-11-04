@@ -15,7 +15,7 @@ const RightSidebar = ({ birthdays = [], contacts = [], ads = [], onlineContacts 
           className="group flex items-center space-x-3 rounded-2xl border border-border-subtle bg-primary-50/40 dark:bg-primary-50/10 p-3 transition-all duration-300 hover:bg-primary-100/60 dark:hover:bg-primary-50/20 shadow-inner"
         >
           <img
-            src="/assets/favicon-2.png"
+            src="/assets/logo"
             alt="CribsTalk logo"
             className="h-10 w-10 rounded-full object-cover shadow-sm"
           />
