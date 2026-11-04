@@ -16,7 +16,7 @@ export const SEO_DEFAULT_DESCRIPTION =
   'CribsTalk is where every voice finds a home — a social platform for connecting with people, sharing moments, and discovering communities.'
 
 export const SEO_DEFAULT_OG_IMAGE_PATH = '/assets/images/hero.jpg'
-export const SEO_LOGO_PATH = '/assets/icons/icon-192x192.png'
+export const SEO_LOGO_PATH = '/assets/android-chrome-512x512.png'
 
 /** Google's max URLs per sitemap file. Chunk below this so we can add more files later. */
 export const SITEMAP_CHUNK_SIZE = 10_000

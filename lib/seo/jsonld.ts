@@ -33,7 +33,12 @@ export function websiteJsonLd() {
       '@type': 'Organization',
       name: SEO_SITE_NAME,
       url: site,
-      logo: absolute(SEO_LOGO_PATH),
+      logo: {
+        '@type': 'ImageObject',
+        url: absolute(SEO_LOGO_PATH),
+        width: 512,
+        height: 512,
+      },
     },
   }
 }
@@ -45,7 +50,12 @@ export function organizationJsonLd() {
     '@type': 'Organization',
     name: SEO_SITE_NAME,
     url: site,
-    logo: absolute(SEO_LOGO_PATH),
+    logo: {
+      '@type': 'ImageObject',
+      url: absolute(SEO_LOGO_PATH),
+      width: 512,
+      height: 512,
+    },
     description: SEO_DEFAULT_DESCRIPTION,
   }
 }
