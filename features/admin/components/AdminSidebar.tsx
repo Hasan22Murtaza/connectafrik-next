@@ -32,7 +32,7 @@ function Brand({ collapsed }: { collapsed?: boolean }) {
       }`}
     >
       <Image
-        src="/assets/logo"
+        src="/assets/logo.png"
         alt="CribsTalk"
         width={32}
         height={32}
