@@ -235,7 +235,7 @@ const Header: React.FC<HeaderProps> = ({
                     >
                       <Bell className="w-4 h-4 sm:w-5 sm:h-5" />
                       {unreadNotificationCount > 0 && (
-                        <span className="absolute -top-1  inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 p-1 text-xs font-medium text-white tabular-nums dark:bg-zinc-50 dark:text-zinc-950">
+                        <span className="absolute -top-1  inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 sm:p-1 p-0.5 sm:text-xs text-[10px] font-medium text-white tabular-nums dark:bg-zinc-50 dark:text-zinc-950">
                           {unreadNotificationCount > 99 ? "99+" : unreadNotificationCount}
                         </span>
                       )}
