@@ -114,13 +114,13 @@ const ProfileSkeleton = ({
   onSectionSelect: (section: FriendsSection) => void;
 }) => (
   <div className="mx-auto flex min-h-screen gap-6 px-4 pb-20 sm:pb-8">
-    <aside className="fixed top-[73px] hidden h-[calc(100dvh-73px)]  shrink-0 self-start overflow-y-auto  bg-background py-4 md:block">
+    <aside className="fixed top-[55px] hidden h-[calc(100dvh-73px)]  shrink-0 self-start overflow-y-auto  bg-background  md:block">
       <FriendsSidebar
         onSectionSelect={onSectionSelect}
       />
     </aside>
     <main className="flex-1 max-w-full py-3 sm:py-6 pr-4 md:ml-64">
-      <div className="mt-4">
+      <div >
         <div className="overflow-hidden rounded-2xl bg-surface shadow-card">
           <div className="relative h-32 animate-shimmer sm:h-48 lg:h-56">
             <div className="absolute -bottom-8 left-4 z-10 h-[76px] w-[76px] rounded-2xl border-2 border-white bg-surface-tertiary shadow-card sm:left-5 sm:h-[88px] sm:w-[88px]" />
@@ -720,24 +720,24 @@ const UserProfilePage: React.FC = () => {
     friends: { label: 'Friends', icon: UserCheck, cls: 'bg-green-100 text-green-800 hover:bg-green-200' },
     pending_sent: { label: 'Request Sent', icon: UserCheck, cls: 'bg-surface-secondary text-content-secondary hover:bg-surface-hover' },
     pending_received: { label: 'Accept Request', icon: UserPlus, cls: 'bg-[#F97316] text-white hover:bg-[#ea580c]' },
-    none: { label: 'Link Up', icon: UserPlus, cls: 'bg-[#e4e6eb] text-content hover:bg-[#d8dadf]' },
+    none: { label: 'Link Up', icon: UserPlus, cls: 'bg-surface-secondary text-content hover:bg-surface-hover' },
   }
   const fb = friendBtnConfig[friendshipStatus]
 
   const btnBase = 'inline-flex items-center justify-center gap-2 h-9 px-4 rounded-md text-sm font-semibold transition-colors'
-  const btnGray = `${btnBase} bg-[#e4e6eb] text-content hover:bg-[#d8dadf]`
+  const btnGray = `${btnBase} bg-surface-secondary text-content hover:bg-surface-hover`
 
   return (
     <div className="mx-auto flex min-h-screen gap-6 px-4 pb-20 sm:pb-8">
       {/* Left Sidebar */}
-      <aside className="fixed top-[73px]  hidden h-[calc(100dvh-73px)]  shrink-0 self-start overflow-y-auto  bg-background  py-4 md:block">
+      <aside className="fixed top-[55px]  hidden h-[calc(100dvh-73px)]  shrink-0 self-start overflow-y-auto  bg-background  py-4 md:block">
         <FriendsSidebar
           onSectionSelect={navigateToFriendsSection}
         />
       </aside>
 
       <main className="flex-1 max-w-full py-3 sm:py-6 pr-4 md:ml-64">
-        <div className="mt-4">
+        <div>
           <div className="overflow-hidden rounded-2xl bg-surface shadow-card">
             <div className="relative h-34 bg-gradient-to-br from-orange-200 via-amber-100 to-sky-100 sm:h-48 lg:h-56">
               <div className="absolute inset-0 overflow-hidden">
@@ -802,7 +802,7 @@ const UserProfilePage: React.FC = () => {
                       disabled={followLoading}
                       aria-label={isFollowing ? 'Tapped in' : 'Tap in'}
                       title={isFollowing ? 'UnTap in' : 'Tap in'}
-                      className={`${btnBase} w-9 px-0 sm:w-auto sm:px-4 disabled:opacity-50 ${isFollowing ? 'bg-[#e4e6eb] text-content hover:bg-[#d8dadf]' : 'bg-[#F97316] text-white hover:bg-[#ea580c]'}`}
+                      className={`${btnBase} w-9 px-0 sm:w-auto sm:px-4 disabled:opacity-50 ${isFollowing ? 'bg-surface-secondary text-content hover:bg-surface-hover' : 'bg-[#F97316] text-white hover:bg-[#ea580c]'}`}
                     >
                       {followLoading ? <Spinner /> : isFollowing ? <UserCheck className="h-4 w-4 shrink-0" /> : <UserPlus className="h-4 w-4 shrink-0" />}
                       <span className="hidden sm:inline">{isFollowing ? 'UnTap In' : 'Tap In'}</span>
@@ -954,7 +954,7 @@ const UserProfilePage: React.FC = () => {
                   <DetailRow icon={Calendar}><span suppressHydrationWarning>Joined {formatDistanceToNow(new Date(profile.created_at), { addSuffix: true })}</span></DetailRow>
                   <DetailRow icon={Users}><span className="font-semibold">{profile.posts_count}</span> posts</DetailRow>
                 </div>
-                <button onClick={() => setActiveTab('about')} className="w-full mt-3 py-2 text-sm font-semibold text-content bg-[#e4e6eb] hover:bg-[#d8dadf] rounded-md transition">See more details</button>
+                <button onClick={() => setActiveTab('about')} className="w-full mt-3 py-2 text-sm font-semibold text-content bg-surface-secondary hover:bg-surface-hover rounded-md transition">See more details</button>
               </div>
 
               {user && user.id !== profile.id && visibleFields.followersList && mutualFriendsCount > 0 && (
