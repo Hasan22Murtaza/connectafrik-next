@@ -1,17 +1,15 @@
 'use client'
 
-import React, { useState, useRef, useCallback, useMemo, useEffect } from 'react'
+import React, { useState, useRef, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, Upload, Sparkles, X, ImagePlus } from '@/shared/icons'
 import { createStory, CreateStoryData } from '@/features/social/services/storiesService'
 import { useFileUpload } from '@/shared/hooks/useFileUpload'
 import { useAuth } from '@/contexts/AuthContext'
 import { toast } from 'react-hot-toast'
-import StoryTypeSelector from '@/features/social/components/story/StoryTypeSelector'
-import GradientPicker, { STORY_GRADIENTS, type GradientOption } from '@/features/social/components/story/GradientPicker'
-import TextEditor, { type TextStyle } from '@/features/social/components/story/TextEditor'
-import { type StoryType } from '@/features/social/components/story/StoryTypeSelector'
 import { formatStoryRelativeTime } from '@/features/social/components/story/storyRelativeTime'
+import TextStoryEditor from '@/features/social/components/story/TextStoryEditor'
+import { DimensionValueSource } from '@aws-sdk/client-ses'
 
 interface MediaFile {
   id: string
@@ -22,7 +20,7 @@ interface MediaFile {
 }
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024
-const MAX_CAPTION_LENGTH = 200
+const MAX_CAPTION_LENGTH = 250
 
 const toSafeDisplayName = (value: unknown): string => {
   if (typeof value === 'string') {
@@ -43,53 +41,30 @@ export default function CreateStoryPage() {
   const { uploadMultipleFiles } = useFileUpload()
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const [storyType, setStoryType] = useState<StoryType>(null)
+  const [activeTab, setActiveTab] = useState<'media' | 'text'>('media')
   const [mediaFile, setMediaFile] = useState<MediaFile | null>(null)
   const [isDragging, setIsDragging] = useState(false)
-  const [selectedGradientId, setSelectedGradientId] = useState(STORY_GRADIENTS[0].id)
-  const [selectedGradientColors, setSelectedGradientColors] = useState<[string, string]>([
-    STORY_GRADIENTS[0].colors[0],
-    STORY_GRADIENTS[0].colors[1],
-  ])
-  const [selectedBackgroundColor, setSelectedBackgroundColor] = useState(STORY_GRADIENTS[0].colors[0])
-  const [textStyle, setTextStyle] = useState<TextStyle>({
-    text: '',
-    fontSize: 24,
-    fontFamily: 'ui-sans-serif, system-ui, sans-serif',
-    color: '#FFFFFF',
-    backgroundColor: 'transparent',
-    align: 'center',
-    isBold: false
-  })
   const [caption, setCaption] = useState('')
   const [isUploading, setIsUploading] = useState(false)
-  const [previewStartedAt, setPreviewStartedAt] = useState<string | null>(null)
+  const [isTextPosting, setIsTextPosting] = useState(false)
+  const [previewStartedAt] = useState(() => new Date().toISOString())
   const [, setPreviewTimeTick] = useState(0)
+
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get('tab') === 'text') {
+      setActiveTab('text')
+    }
+  }, [])
 
   const userName = toSafeDisplayName(user?.user_metadata?.full_name)
   const userAvatar = user?.user_metadata?.avatar_url
 
-  const canSubmit = useMemo(() => {
-    if (storyType === 'photo') return !!mediaFile
-    if (storyType === 'text') return !!textStyle.text.trim()
-    return false
-  }, [storyType, mediaFile, textStyle.text])
-
   useEffect(() => {
-    if (!storyType) {
-      setPreviewStartedAt(null)
-      return
-    }
-    setPreviewStartedAt((prev) => prev ?? new Date().toISOString())
-  }, [storyType])
-
-  useEffect(() => {
-    if (!storyType || !previewStartedAt) return
     const id = window.setInterval(() => setPreviewTimeTick((n) => n + 1), 60_000)
     return () => window.clearInterval(id)
-  }, [storyType, previewStartedAt])
+  }, [])
 
-  const previewTimeLabel = previewStartedAt ? formatStoryRelativeTime(previewStartedAt) : 'Just now'
+  const previewTimeLabel = formatStoryRelativeTime(previewStartedAt)
 
   const handleFileSelect = useCallback((files: FileList | null) => {
     if (!files?.length) return
@@ -145,43 +120,25 @@ export default function CreateStoryPage() {
       return
     }
 
-    if (!canSubmit) return
+    if (!mediaFile) return
 
     setIsUploading(true)
     try {
-      let mediaUrl: string | null = null
-      let mediaType: 'image' | 'video' | undefined
+      const bucket = mediaFile.type === 'video' ? 'post-videos' : 'post-images'
+      const uploadResults = await uploadMultipleFiles([mediaFile.file], {
+        bucket,
+        compress: mediaFile.type === 'image'
+      })
 
-      if (storyType === 'photo' && mediaFile) {
-        const bucket = mediaFile.type === 'video' ? 'post-videos' : 'post-images'
-        const uploadResults = await uploadMultipleFiles([mediaFile.file], {
-          bucket,
-          compress: mediaFile.type === 'image'
-        })
-
-        if (!uploadResults.length || !uploadResults[0]?.url) {
-          throw new Error('Failed to upload media')
-        }
-
-        mediaUrl = uploadResults[0].url
-        mediaType = mediaFile.type
-      } else if (storyType === 'text') {
-        mediaUrl = null
+      if (!uploadResults.length || !uploadResults[0]?.url) {
+        throw new Error('Failed to upload media')
       }
 
-      const storyData: CreateStoryData =
-        storyType === 'text'
-          ? {
-              caption: textStyle.text.trim(),
-              text_color: textStyle.color,
-              background_color: selectedBackgroundColor,
-              gradient_colors: [selectedGradientColors[0], selectedGradientColors[1]],
-            }
-          : {
-              media_url: mediaUrl!,
-              media_type: mediaType,
-              ...(caption.trim() ? { caption: caption.trim() } : {}),
-            }
+      const storyData: CreateStoryData = {
+        media_url: uploadResults[0].url,
+        media_type: mediaFile.type,
+        ...(caption.trim() ? { caption: caption.trim() } : {}),
+      }
 
       const createdStory = await createStory(storyData)
       toast.success('Story created successfully!')
@@ -196,184 +153,195 @@ export default function CreateStoryPage() {
     } finally {
       setIsUploading(false)
     }
-  }, [user, canSubmit, storyType, mediaFile, textStyle, selectedBackgroundColor, selectedGradientColors, caption, uploadMultipleFiles, router])
+  }, [user, mediaFile, caption, uploadMultipleFiles, router])
 
   const handleBack = useCallback(() => {
-    if (storyType) {
-      clearMedia()
-      setStoryType(null)
-    } else {
-      router.back()
-    }
-  }, [storyType, clearMedia, router])
+    clearMedia()
+    router.push('/feed')
+  }, [clearMedia, router])
 
   const handleDiscard = useCallback(() => {
     clearMedia()
     router.push('/feed')
   }, [clearMedia, router])
 
-  if (!storyType) {
-    return (
-      <div className="min-h-screen bg-surface ">
-        <div className="sticky top-0 z-50 bg-surface/80 backdrop-blur-md border-b border-border">
-          <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
-            <div className="flex items-center h-14 sm:h-16 gap-3 sm:gap-4">
-              <button onClick={handleBack} className="p-2 hover:bg-surface-hover rounded-full transition-colors text-content-secondary">
-                <ArrowLeft className="w-5 h-5" />
-              </button>
-              <h1 className="text-base sm:text-lg font-semibold text-content">Create Story</h1>
-            </div>
-          </div>
-        </div>
-        <div className="flex items-center justify-center min-h-[calc(100vh-120px)] sm:min-h-[calc(100vh-64px)]">
-          <StoryTypeSelector onSelect={setStoryType} userName={userName} userAvatar={userAvatar} />
-        </div>
-      </div>
-    )
-  }
-
   return (
-    <div className="min-h-screen ">
-      <div className="sticky top-0 z-50 bg-surface border-b border-border">
-        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-14 sm:h-16">
-            <div className="flex items-center gap-2 sm:gap-4">
-              <button onClick={handleBack} className="p-1.5 sm:p-2 hover:bg-surface-hover rounded-full transition-colors text-content-secondary">
-                <ArrowLeft className="w-5 h-5" />
+    <div className="min-h-screen overflow-y-auto bg-surface  lg:inset-0 lg:grid lg:h-dvh lg:grid-cols-[340px_minmax(0,1fr)] lg:grid-rows-[auto_minmax(0,1fr)] lg:overflow-hidden">
+      <aside >
+        <div className="px-3 pt-3 sm:px-5 sm:pt-4">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex min-w-0 items-center gap-2">
+              <button onClick={handleBack} aria-label="Back to feed" className="rounded-full p-1.5 text-content-secondary transition-colors hover:bg-surface-hover">
+                <ArrowLeft className="h-4 w-4" />
               </button>
-              <h1 className="text-base sm:text-lg font-semibold text-content">
-                {storyType === 'photo' ? 'Photo Story' : 'Text Story'}
-              </h1>
+              <div className="min-w-0">
+                <h1 className="text-sm font-semibold leading-tight text-content">Create Story</h1>
+              </div>
             </div>
-            <div className="flex items-center gap-2 sm:gap-3">
-              <button onClick={handleDiscard} className="px-3 sm:px-4 py-1.5 sm:py-2 text-content-secondary hover:text-content font-medium text-xs sm:text-sm">
+            <div className="flex shrink-0 items-center gap-1">
+              <button onClick={handleDiscard} className="px-2 py-1.5 text-[10px] font-medium text-content-secondary transition hover:text-content sm:px-3">
                 Discard
               </button>
-              <button
-                onClick={uploadStory}
-                disabled={isUploading || !canSubmit}
-                className="btn-primary px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isUploading ? (
-                  <>
-                    <div className="w-3.5 h-3.5 sm:w-4 sm:h-4 border-2 border-white/30 border-t-white rounded-full animate-spin " />
-                    Sharing...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                    Share
-                  </>
-                )}
-              </button>
+              {activeTab === 'media' ? (
+                <button
+                  onClick={uploadStory}
+                  disabled={isUploading || !mediaFile}
+                  className="btn-primary flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[10px] font-semibold disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {isUploading ? (
+                    <>
+                      <span className="h-3 w-3 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                      Sharing...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="h-3 w-3" />
+                      Share
+                    </>
+                  )}
+                </button>
+              ) : (
+                <button
+                  type="submit"
+                  form="text-story-form"
+                  disabled={isTextPosting}
+                  className="btn-primary flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[10px] font-semibold disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <Sparkles className="h-3 w-3" />
+                  {isTextPosting ? 'Sharing...' : 'Share'}
+                </button>
+              )}
             </div>
           </div>
         </div>
-      </div>
-
-      <div className="flex flex-col lg:flex-row h-[calc(100vh-56px)] sm:h-[calc(100vh-64px)]">
-        <div className="order-2 lg:order-1 flex-1 lg:flex-none lg:w-[340px] bg-surface lg:border-r border-t lg:border-t-0 border-border flex flex-col max-h-[40vh] lg:max-h-none">
-          <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 sm:space-y-6">
-            {storyType === 'photo' ? (
-              <>
-                <div>
-                  <h3 className="text-sm font-semibold text-content mb-2 sm:mb-3">Media</h3>
-                  {!mediaFile ? (
-                    <div
-                      onDragOver={handleDragOver}
-                      onDragLeave={handleDragLeave}
-                      onDrop={handleDrop}
-                      onClick={() => fileInputRef.current?.click()}
-                      className={`relative rounded-xl sm:rounded-2xl border-2 border-dashed p-4 sm:p-6 text-center cursor-pointer transition-all ${
-                        isDragging ? 'border-primary-500 bg-primary-50' : 'border-border hover:border-primary-300 hover:bg-surface-hover'
-                      }`}
-                    >
-                      <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-primary-100 flex items-center justify-center mx-auto mb-2 sm:mb-3">
-                        <ImagePlus className="w-5 h-5 sm:w-6 sm:h-6 text-primary-600" />
-                      </div>
-                      <p className="text-xs sm:text-sm font-medium text-content mb-0.5 sm:mb-1">Add photo or video</p>
-                      <p className="text-[10px] sm:text-xs text-content-secondary">Tap to browse</p>
-                    </div>
-                  ) : (
-                    <div className="relative rounded-xl sm:rounded-2xl overflow-hidden bg-surface-secondary aspect-video lg:aspect-[9/16]">
-                      {mediaFile.type === 'image' ? (
-                        <img src={mediaFile.preview} alt="Preview" className="w-full h-full object-cover" />
-                      ) : (
-                        <video src={mediaFile.preview} className="w-full h-full object-cover" muted loop autoPlay playsInline />
-                      )}
-                      <button
-                        onClick={clearMedia}
-                        className="absolute top-2 sm:top-3 right-2 sm:right-3 w-7 h-7 sm:w-8 sm:h-8 bg-black/50 hover:bg-black/70 rounded-full flex items-center justify-center text-white transition-colors"
-                      >
-                        <X className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                      </button>
-                      <button
-                        onClick={() => fileInputRef.current?.click()}
-                        className="absolute bottom-2 sm:bottom-3 inset-x-2 sm:inset-x-3 py-1.5 sm:py-2 bg-black/50 hover:bg-black/70 rounded-lg text-white text-[10px] sm:text-xs font-medium transition-colors"
-                      >
-                        Change
-                      </button>
-                    </div>
-                  )}
-                  <input ref={fileInputRef} type="file" accept="image/*,video/*" onChange={(e) => handleFileSelect(e.target.files)} className="hidden" />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-content mb-1.5 sm:mb-2">Caption</label>
-                  <textarea
-                    value={caption}
-                    onChange={(e) => setCaption(e.target.value)}
-                    placeholder="Write something..."
-                    maxLength={MAX_CAPTION_LENGTH}
-                    className="w-full h-16 sm:h-20  border border-border rounded-lg sm:rounded-xl px-3 py-2 sm:py-2.5 text-sm text-content placeholder:text-content-tertiary focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent resize-none"
-                  />
-                  <p className="text-[10px] sm:text-xs text-content-tertiary mt-1 text-right">{caption.length}/{MAX_CAPTION_LENGTH}</p>
-                </div>
-              </>
-            ) : (
-              <>
-                <GradientPicker
-                  selectedGradientId={selectedGradientId}
-                  onSelect={(gradient: GradientOption) => {
-                    setSelectedGradientId(gradient.id)
-                    setSelectedGradientColors([gradient.colors[0], gradient.colors[1]])
-                    setSelectedBackgroundColor(gradient.colors[0])
-                  }}
-                />
-                <TextEditor style={textStyle} onChange={(changes) => setTextStyle(prev => ({ ...prev, ...changes }))} />
-              </>
-            )}
-          </div>
+        <div role="tablist" aria-label="Story type" className="mx-3 mb-2 mt-4 flex rounded-lg bg-surface-secondary p-1 sm:mx-5">
+          <button
+            type="button"
+            id="media-story-tab"
+            role="tab"
+            aria-selected={activeTab === 'media'}
+            aria-controls="media-story-panel"
+            onClick={() => setActiveTab('media')}
+            className={`flex-1 rounded-md px-3 py-1.5 text-[10px] font-semibold transition-colors ${activeTab === 'media' ? 'bg-white text-primary-600 shadow-sm' : 'text-content-secondary hover:text-content'
+              }`}
+          >
+            Media story
+          </button>
+          <button
+            type="button"
+            id="text-story-tab"
+            role="tab"
+            aria-selected={activeTab === 'text'}
+            aria-controls="text-story-panel"
+            onClick={() => setActiveTab('text')}
+            className={`flex-1 rounded-md px-3 py-1.5 text-[10px] font-semibold transition-colors ${activeTab === 'text' ? 'bg-white text-primary-600 shadow-sm' : 'text-content-secondary hover:text-content'
+              }`}
+          >
+            Text story
+          </button>
         </div>
+      </aside>
 
-        <div className="order-1 lg:order-2 flex-1 bg-gradient-to-br from-surface-secondary to-surface-tertiary flex items-center justify-center p-4 sm:p-8 min-h-[60vh] lg:min-h-0">
-          <div className="relative">
-            <div className="w-[200px] h-[356px] sm:w-[280px] sm:h-[498px] lg:w-[300px] lg:h-[534px] bg-gray-900 rounded-[2rem] sm:rounded-[2.5rem] lg:rounded-[3rem] p-[4px] sm:p-[5px] lg:p-[6px] shadow-2xl">
-              <div className="relative w-full h-full bg-black rounded-[1.75rem] sm:rounded-[2.25rem] lg:rounded-[2.5rem] overflow-hidden">
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-20 h-5 sm:w-24 sm:h-6 lg:w-28 lg:h-7 bg-black rounded-b-2xl sm:rounded-b-3xl z-30" />
-
-                <div className="absolute top-2 sm:top-3 left-3 sm:left-4 right-3 sm:right-4 z-20 flex gap-1">
-                  <div className="flex-1 h-[2px] sm:h-[3px] bg-surface/40 rounded-full overflow-hidden">
-                    <div className="h-full w-1/2 bg-surface rounded-full" />
+      {activeTab === 'media' ? (
+        <div
+          role="tabpanel"
+          id="media-story-panel"
+          aria-labelledby="media-story-tab"
+          className="flex flex-col lg:contents"
+        >
+          <div className="order-2 flex max-h-[45vh] flex-1 flex-col border-t border-border bg-surface lg:col-start-1 lg:row-start-2 lg:order-none lg:min-h-0 lg:max-h-none lg:w-full">
+            <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 sm:space-y-6">
+              <div>
+                <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-content sm:mb-3">Media</h3>
+                {!mediaFile ? (
+                  <div
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleDrop}
+                    onClick={() => fileInputRef.current?.click()}
+                    className={`relative flex min-h-[130px] cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed p-4 text-center transition-all sm:rounded-2xl ${isDragging ? 'border-primary-500 bg-primary-50' : 'border-border hover:border-primary-300 hover:bg-surface-hover'
+                      }`}
+                  >
+                    <div className="mb-2 flex h-9 w-9 items-center justify-center rounded-xl bg-orange-50">
+                      <ImagePlus className="h-4 w-4 text-primary-600" />
+                    </div>
+                    <p className="mb-0.5 text-xs font-medium text-content">Add photo or video</p>
+                    <p className="text-[9px] text-content-secondary">Tap to browse or drop file here</p>
+                    <div className="mt-2 flex items-center gap-1.5 text-[8px] text-content-tertiary">
+                      <span className="rounded bg-surface-secondary px-1.5 py-0.5">JPG</span>
+                      <span className="rounded bg-surface-secondary px-1.5 py-0.5">PNG</span>
+                      <span className="rounded bg-surface-secondary px-1.5 py-0.5">MP4</span>
+                      <span>Up to 50MB</span>
+                    </div>
                   </div>
-                </div>
-
-                <div className="absolute top-7 sm:top-9 lg:top-10 left-3 sm:left-4 right-3 sm:right-4 z-20 flex items-center gap-2 sm:gap-2.5">
-                  <div className="w-7 h-7 sm:w-8 sm:h-8 lg:w-9 lg:h-9 rounded-full bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center ring-2 ring-white/30 overflow-hidden">
-                    {userAvatar ? (
-                      <img src={userAvatar} alt={userName} className="w-full h-full object-cover" />
+                ) : (
+                  <div className="relative rounded-xl sm:rounded-2xl overflow-hidden bg-surface-secondary aspect-video lg:aspect-[9/16]">
+                    {mediaFile.type === 'image' ? (
+                      <img src={mediaFile.preview} alt="Preview" className="w-full h-full object-cover" />
                     ) : (
-                      <span className="text-white text-xs sm:text-sm font-semibold">{getInitial(userName)}</span>
+                      <video src={mediaFile.preview} className="w-full h-full object-cover" muted loop autoPlay playsInline />
                     )}
+                    <button
+                      onClick={clearMedia}
+                      className="absolute top-2 sm:top-3 right-2 sm:right-3 w-7 h-7 sm:w-8 sm:h-8 bg-black/50 hover:bg-black/70 rounded-full flex items-center justify-center text-white transition-colors"
+                    >
+                      <X className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                    </button>
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      className="absolute bottom-2 sm:bottom-3 inset-x-2 sm:inset-x-3 py-1.5 sm:py-2 bg-black/50 hover:bg-black/70 rounded-lg text-white text-[10px] sm:text-xs font-medium transition-colors"
+                    >
+                      Change
+                    </button>
                   </div>
-                  <div>
-                    <p className="text-white text-xs sm:text-sm font-semibold drop-shadow">{userName}</p>
-                    <p className="text-white/70 text-[10px] sm:text-xs drop-shadow">{previewTimeLabel}</p>
-                  </div>
-                </div>
+                )}
+                <input ref={fileInputRef} type="file" accept="image/*,video/*" onChange={(e) => handleFileSelect(e.target.files)} className="hidden" />
+              </div>
 
-                {storyType === 'photo' ? (
-                  mediaFile ? (
+              <div>
+                <div className="mb-2 flex items-center justify-between">
+                  <label htmlFor="media-story-caption" className="text-[10px] font-semibold uppercase tracking-wide text-content">Caption</label>
+                  <span className="text-[9px] text-content-secondary">{caption.length}/{MAX_CAPTION_LENGTH}</span>
+                </div>
+                <textarea
+                  id="media-story-caption"
+                  value={caption}
+                  onChange={(e) => setCaption(e.target.value)}
+                  placeholder="What would you like to share?"
+                  maxLength={MAX_CAPTION_LENGTH}
+                  className="h-28 w-full resize-none rounded-xl border border-border px-3 py-2.5 text-xs text-content placeholder:text-content-tertiary focus:border-transparent focus:outline-none focus:ring-2 focus:ring-orange-500"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="order-1 flex min-h-[55vh] flex-1 items-center justify-center bg-transparent p-4 sm:p-8 lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:order-none lg:min-h-0 ">
+            <div className="relative">
+              <div className="w-[200px] h-[356px] sm:w-[280px] sm:h-[498px] lg:w-[300px] lg:h-[534px] bg-gray-900 rounded-[2rem] sm:rounded-[2.5rem] lg:rounded-[3rem] p-[4px] sm:p-[5px] lg:p-[6px] shadow-2xl">
+                <div className="relative w-full h-full bg-black rounded-[1.75rem] sm:rounded-[2.25rem] lg:rounded-[2.5rem] overflow-hidden">
+                  <div className="absolute top-0 left-1/2 -translate-x-1/2 w-20 h-5 sm:w-24 sm:h-6 lg:w-28 lg:h-7 bg-black rounded-b-2xl sm:rounded-b-3xl z-30" />
+
+                  <div className="absolute top-2 sm:top-3 left-3 sm:left-4 right-3 sm:right-4 z-20 flex gap-1">
+                    <div className="flex-1 h-[2px] sm:h-[3px] bg-surface/40 rounded-full overflow-hidden">
+                      <div className="h-full w-1/2 bg-surface rounded-full" />
+                    </div>
+                  </div>
+
+                  <div className="absolute top-7 sm:top-9 lg:top-10 left-3 sm:left-4 right-3 sm:right-4 z-20 flex items-center gap-2 sm:gap-2.5">
+                    <div className="w-7 h-7 sm:w-8 sm:h-8 lg:w-9 lg:h-9 rounded-full bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center ring-2 ring-white/30 overflow-hidden">
+                      {userAvatar ? (
+                        <img src={userAvatar} alt={userName} className="w-full h-full object-cover" />
+                      ) : (
+                        <span className="text-white text-xs sm:text-sm font-semibold">{getInitial(userName)}</span>
+                      )}
+                    </div>
+                    <div>
+                      <p className="text-white text-xs sm:text-sm font-semibold drop-shadow">{userName}</p>
+                      <p className="text-white/70 text-[10px] sm:text-xs drop-shadow">{previewTimeLabel}</p>
+                    </div>
+                  </div>
+
+                  {mediaFile ? (
                     <div className="absolute inset-0">
                       {mediaFile.type === 'image' ? (
                         <img src={mediaFile.preview} alt="Story" className="w-full h-full object-cover" />
@@ -389,48 +357,27 @@ export default function CreateStoryPage() {
                         <p className="text-content-secondary text-xs sm:text-sm">Add media</p>
                       </div>
                     </div>
-                  )
-                ) : (
-                  <div
-                    className="absolute inset-0 flex items-center justify-center p-4 sm:p-6"
-                    style={{
-                      backgroundImage: `linear-gradient(135deg, ${selectedGradientColors[0]}, ${selectedGradientColors[1]})`,
-                    }}
-                  >
-                    {textStyle.text ? (
-                      <p
-                        className="max-w-full break-words px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg"
-                        style={{
-                          fontSize: `${textStyle.fontSize * 0.6}px`,
-                          fontFamily: textStyle.fontFamily,
-                          color: textStyle.color,
-                          backgroundColor: textStyle.backgroundColor,
-                          textAlign: textStyle.align,
-                          fontWeight: textStyle.isBold ? 'bold' : 'normal'
-                        }}
-                      >
-                        {textStyle.text}
+                  )}
+
+                  {caption && (
+                    <div className="absolute bottom-4 sm:bottom-6 left-3 sm:left-4 right-3 sm:right-4 z-20">
+                      <p className="text-white text-xs sm:text-sm bg-black/40 backdrop-blur-sm rounded-lg px-2 sm:px-3 py-1.5 sm:py-2 line-clamp-2">
+                        {caption}
                       </p>
-                    ) : (
-                      <p className="text-white/50 text-sm sm:text-lg">Start typing...</p>
-                    )}
-                  </div>
-                )}
-
-                {caption && storyType === 'photo' && (
-                  <div className="absolute bottom-4 sm:bottom-6 left-3 sm:left-4 right-3 sm:right-4 z-20">
-                    <p className="text-white text-xs sm:text-sm bg-black/40 backdrop-blur-sm rounded-lg px-2 sm:px-3 py-1.5 sm:py-2 line-clamp-2">
-                      {caption}
-                    </p>
-                  </div>
-                )}
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
 
-            <div className="hidden lg:block absolute -inset-8 bg-gradient-to-br from-primary-400/20 to-purple-400/20 rounded-[4rem] blur-2xl -z-10" />
+              <div className="hidden lg:block absolute -inset-8 bg-gradient-to-br from-primary-400/20 to-purple-400/20 rounded-[4rem] blur-2xl -z-10" />
+            </div>
           </div>
         </div>
-      </div>
+      ) : (
+        <div role="tabpanel" id="text-story-panel" aria-labelledby="text-story-tab" className="lg:contents">
+          <TextStoryEditor onPostingChange={setIsTextPosting} />
+        </div>
+      )}
     </div>
   )
 }
