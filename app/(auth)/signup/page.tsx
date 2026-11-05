@@ -115,6 +115,7 @@ const Signup: React.FC = () => {
         gender: formData.gender === 'custom' ? formData.customGender : formData.gender,
         phone_number: null,
         is_phone_registration: false,
+        terms_accepted: acceptTerms,
       }
 
       await apiClient.post<{ sent: boolean }>('/api/auth/signup', {
@@ -258,20 +259,24 @@ const Signup: React.FC = () => {
             )}
           </div>
         </div>
-        <div className="flex items-start justify-center gap-2">
-          <label className="flex gap-2 items-center cursor-pointer relative mt-1">
+        <div className="flex items-start gap-3">
+          <label htmlFor="accept-terms" className="mt-1 flex shrink-0 cursor-pointer items-center">
             <input
-             type="checkbox"
-              className="hidden peer"
+              id="accept-terms"
+              type="checkbox"
+              className="peer sr-only"
               checked={acceptTerms}
               onChange={(e) => setAcceptTerms(e.target.checked)}
-              aria-invalid={!acceptTerms}
-             />
-            <span className="w-4 h-4 border border-slate-300 rounded relative flex items-center justify-center peer-checked:border-orange-600"></span>
-            <Check className="absolute w-3 h-3 text-orange-500 opacity-0 peer-checked:opacity-100 left-1/2 transform -translate-x-1/2" />
+              aria-label="Agree to the Terms of Service and Privacy Policy"
+              aria-describedby="terms-description"
+              required
+            />
+            <span className="flex h-5 w-5 items-center justify-center rounded border border-[#CBD5E1] bg-white text-white transition-colors peer-checked:border-[#F97316] peer-checked:bg-[#F97316] peer-focus-visible:ring-2 peer-focus-visible:ring-[#F97316]/40">
+              <Check aria-hidden="true" className="h-3.5 w-3.5" />
+            </span>
           </label>
 
-          <p className=" text-xs leading-5 text-[#6B7280]">
+          <p id="terms-description" className="text-sm leading-6 text-[#6B7280]">
             By continuing, you agree to our{' '}
             <Link
               href="/terms"

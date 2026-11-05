@@ -13,6 +13,10 @@ export async function upsertUserProfile(
   userId: string,
   metadata: SignupProfileMetadata
 ) {
+  if (!metadata.terms_accepted || !metadata.terms_accepted_at) {
+    throw new Error('Terms acceptance is required to complete signup')
+  }
+
   const fullName = `${metadata.first_name} ${metadata.last_name}`.trim()
 
   const { error } = await serviceClient.from('profiles').upsert(
@@ -30,6 +34,7 @@ export async function upsertUserProfile(
       zipcode: metadata.zipcode ?? null,
       country: metadata.country ?? null,
       phone_number: metadata.phone_number ?? null,
+      terms_accepted_at: metadata.terms_accepted_at,
       updated_at: new Date().toISOString(),
     },
     { onConflict: 'id' }
