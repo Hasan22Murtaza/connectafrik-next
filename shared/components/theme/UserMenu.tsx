@@ -17,7 +17,7 @@ const UserMenu: React.FC<UserMenuProps> = ({ isOpen, onSignOut, onClose }) => {
 
   return (
     <div
-      className={`absolute right-0 mt-1 w-56 bg-surface-elevated rounded-lg shadow-dropdown border border-border transition-all duration-200 ${
+      className={`absolute right-0  w-56 bg-surface-elevated rounded-lg shadow-dropdown border border-border transition-all duration-200 ${
         isOpen ? 'opacity-100 visible' : 'opacity-0 invisible'
       }`}
     >

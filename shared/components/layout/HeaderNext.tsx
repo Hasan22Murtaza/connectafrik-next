@@ -261,7 +261,7 @@ const Header: React.FC<HeaderProps> = ({
                     <button
                       onClick={() => setIsUserMenuOpen(true)}
                       aria-expanded={isUserMenuOpen}
-                      className="flex items-center space-x-1 sm:space-x-2 p-1 sm:p-1.5 lg:p-2 rounded-lg hover:bg-surface-hover shrink-0"
+                      className="flex items-center space-x-1 sm:space-x-2 p-1 sm:p-1.5 lg:p-2 rounded-lg  shrink-0"
                     >
                       {profile?.avatar_url ? (
                         <img

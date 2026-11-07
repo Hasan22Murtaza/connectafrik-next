@@ -1185,13 +1185,15 @@ const FriendsPageContent: React.FC = () => {
                     return (
                       <article
                         key={friend.id}
-                        className="flex items-center gap-3 rounded-[20px] border border-slate-200 bg-surface p-3.5 shadow-sm transition-shadow hover:shadow-md sm:gap-4 sm:p-4"
+                        className="flex items-center gap-3 rounded-[20px] border border-border bg-surface p-3.5 shadow-sm transition-colors hover:bg-surface-hover sm:gap-4 sm:p-4"
                       >
                         <Link
                           href={`/user/${friend.id}`}
                           aria-label={`View ${friend.full_name}'s profile`}
                           className={`flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-2xl text-sm font-bold text-white sm:h-14 sm:w-14 ${
-                            isToday ? "bg-emerald-500" : "bg-violet-100 text-violet-700"
+                            isToday
+                              ? "bg-emerald-500"
+                              : "bg-violet-100 text-violet-700 dark:bg-violet-500/20 dark:text-violet-300"
                           }`}
                         >
                           {friend.avatar_url ? (
@@ -1209,7 +1211,7 @@ const FriendsPageContent: React.FC = () => {
                               {friend.full_name}
                             </Link>
                             {isToday && (
-                              <span className="shrink-0 rounded bg-orange-100 px-1.5 py-0.5 text-[10px] font-bold uppercase text-orange-700">
+                              <span className="shrink-0 rounded bg-orange-100 px-1.5 py-0.5 text-[10px] font-bold uppercase text-orange-700 dark:bg-orange-500/20 dark:text-orange-300">
                                 Today
                               </span>
                             )}
@@ -1236,7 +1238,7 @@ const FriendsPageContent: React.FC = () => {
                           <button
                             type="button"
                             onClick={() => handleStartBirthdayChat(friend)}
-                            className="flex shrink-0 items-center gap-1.5 rounded-xl border border-orange-200 bg-orange-50 px-3 py-2 text-xs font-semibold text-orange-600 transition-colors hover:bg-orange-100 sm:px-4"
+                            className="flex shrink-0 items-center gap-1.5 rounded-xl border border-orange-200 bg-orange-50 px-3 py-2 text-xs font-semibold text-orange-600 transition-colors hover:bg-orange-100 dark:border-orange-400/30 dark:bg-orange-500/10 dark:text-orange-300 dark:hover:bg-orange-500/20 sm:px-4"
                           >
                             <PartyPopper className="h-4 w-4" />
                             <span>Wish</span>
@@ -1246,7 +1248,7 @@ const FriendsPageContent: React.FC = () => {
                             type="button"
                             onClick={() => openBirthdayCountdown(friend)}
                             aria-label={`Show countdown to ${friend.full_name}'s birthday`}
-                            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-600 transition-colors hover:bg-slate-200"
+                            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-surface-secondary text-content-secondary transition-colors hover:bg-surface-hover"
                           >
                             <Clock className="h-5 w-5" />
                           </button>
@@ -1254,7 +1256,7 @@ const FriendsPageContent: React.FC = () => {
                         <Link
                           href={`/user/${friend.id}`}
                           aria-label={`Open ${friend.full_name}'s profile`}
-                          className="flex h-10 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-50 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
+                          className="flex h-10 w-9 shrink-0 items-center justify-center rounded-xl bg-surface-secondary text-content-tertiary transition-colors hover:bg-surface-hover hover:text-content"
                         >
                           <ChevronRight className="h-5 w-5" />
                         </Link>
@@ -1268,7 +1270,7 @@ const FriendsPageContent: React.FC = () => {
                   )}
                 </div>
               ) : (
-                <div className="rounded-2xl border border-slate-200 bg-surface px-6 py-12 text-center">
+                <div className="rounded-2xl border border-border bg-surface px-6 py-12 text-center">
                   <Gift className="mx-auto mb-4 h-12 w-12 text-content-tertiary" />
                   <h3 className="mb-2 text-lg font-medium text-content">No upcoming birthdays</h3>
                   <p className="text-content-secondary">
