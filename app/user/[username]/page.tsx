@@ -113,7 +113,7 @@ const ProfileSkeleton = ({
 }: {
   onSectionSelect: (section: FriendsSection) => void;
 }) => (
-  <div className="mx-auto flex min-h-screen gap-6 px-4 pb-20 sm:pb-8">
+  <div className="mx-auto flex min-h-screen gap-6 sm:px-0 px-4 pb-20 sm:pb-8">
     <aside className="fixed top-[55px] hidden h-[calc(100dvh-73px)]  shrink-0 self-start overflow-y-auto  bg-background  md:block">
       <FriendsSidebar
         onSectionSelect={onSectionSelect}

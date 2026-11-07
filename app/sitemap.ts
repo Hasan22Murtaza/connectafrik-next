@@ -35,6 +35,15 @@ function staticEntries(): MetadataRoute.Sitemap {
       changeFrequency: 'daily',
       priority: 1,
     },
+    ...[
+      { path: '/our-story', changeFrequency: 'monthly' as const, priority: 0.7 },
+      { path: '/feedback', changeFrequency: 'yearly' as const, priority: 0.4 },
+    ].map(({ path, changeFrequency, priority }) => ({
+      url: getCanonicalUrl(path),
+      lastModified: new Date(),
+      changeFrequency,
+      priority,
+    })),
     ...legalPaths().map((path) => ({
       url: getCanonicalUrl(path),
       lastModified: new Date('2026-10-20'),

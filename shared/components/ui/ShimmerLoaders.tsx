@@ -588,6 +588,27 @@ export function FriendsGridShimmer({ count = 8 }: { count?: number }) {
   );
 }
 
+export function BirthdayListShimmer({ count = 4 }: { count?: number }) {
+  return (
+    <div className="space-y-3" aria-hidden="true">
+      {Array.from({ length: count }).map((_, index) => (
+        <div
+          key={index}
+          className="flex items-center gap-3 rounded-[20px] border border-border bg-surface p-3.5 shadow-sm sm:gap-4 sm:p-4"
+        >
+          <div className="h-12 w-12 shrink-0 animate-shimmer rounded-2xl sm:h-14 sm:w-14" />
+          <div className="min-w-0 flex-1 space-y-2">
+            <div className="h-4 w-2/3 max-w-48 animate-shimmer rounded" />
+            <div className="h-3 w-1/3 max-w-24 animate-shimmer rounded" />
+          </div>
+          <div className="h-10 w-10 shrink-0 animate-shimmer rounded-xl" />
+          <div className="h-10 w-9 shrink-0 animate-shimmer rounded-xl" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export function FriendProfileCardsShimmer({
   count = 8,
   className = "grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4",

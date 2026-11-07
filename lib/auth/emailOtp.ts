@@ -111,6 +111,10 @@ export async function storeAndSendEmailOtp(params: {
   const code = generateOtpCode()
   const otpHash = hashOtp(code, normalizedEmail)
   const expiresAt = new Date(Date.now() + OTP_TTL_MS).toISOString()
+  const storedMetadata =
+    purpose === 'signup' && metadata
+      ? { ...metadata, terms_accepted_at: new Date().toISOString() }
+      : metadata
 
   const { data: previous } = await serviceClient
     .from('auth_email_otps')
@@ -127,7 +131,7 @@ export async function storeAndSendEmailOtp(params: {
     email: normalizedEmail,
     otp_hash: otpHash,
     purpose,
-    metadata: metadata ?? {},
+    metadata: storedMetadata ?? {},
     expires_at: expiresAt,
     resend_count: resendCount,
   })
@@ -217,6 +221,10 @@ export function isSignupProfileMetadata(value: unknown): value is SignupProfileM
     typeof v.first_name === 'string' &&
     typeof v.last_name === 'string' &&
     typeof v.birthday === 'string' &&
-    typeof v.gender === 'string'
+    typeof v.gender === 'string' &&
+    v.terms_accepted === true &&
+    (v.terms_accepted_at === undefined ||
+      (typeof v.terms_accepted_at === 'string' &&
+        Number.isFinite(Date.parse(v.terms_accepted_at))))
   )
 }

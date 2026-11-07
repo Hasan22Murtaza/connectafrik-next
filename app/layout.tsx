@@ -12,10 +12,10 @@ import { JsonLd } from "@/components/seo/JsonLd";
 import {
   getSeoMetadataBase,
   organizationJsonLd,
-  SEO_DEFAULT_DESCRIPTION,
   SEO_DEFAULT_TITLE,
   SEO_SITE_NAME,
   websiteJsonLd,
+  getRootMetadata,
 } from "@/lib/seo";
 
 
@@ -50,14 +50,16 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   metadataBase: getSeoMetadataBase(),
+  ...getRootMetadata(),
   title: {
     default: SEO_DEFAULT_TITLE,
     template: `%s | ${SEO_SITE_NAME}`,
   },
-  description: SEO_DEFAULT_DESCRIPTION,
   applicationName: SEO_SITE_NAME,
   icons: {
     icon: [
+      { url: "/assets/android-chrome-512x512.png", sizes: "512x512", type: "image/png" },
+      { url: "/assets/favicon.ico", sizes: "32x32", type: "image/x-icon" },
       { url: "/favicon.ico", sizes: "any" },
       { url: "/assets/favicon-32x32.png", sizes: "32x32", type: "image/png" },
       { url: "/assets/favicon-16x16.png", sizes: "16x16", type: "image/png" },

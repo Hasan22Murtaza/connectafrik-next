@@ -19,6 +19,8 @@ export type SignupProfileMetadata = {
   country?: string | null
   phone_number?: string | null
   is_phone_registration?: boolean
+  terms_accepted: boolean
+  terms_accepted_at?: string
 }
 
 export type VerificationTokenPayload = {

@@ -4,8 +4,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useProductionChat } from "@/contexts/ProductionChatContext";
 import { apiClient } from "@/lib/api-client";
 import {
+  BirthdayListShimmer,
   FriendProfileCardsShimmer,
-  FriendsGridShimmer,
   useShimmerCount,
 } from "@/shared/components/ui/ShimmerLoaders";
 import { Friend, FriendRequest } from "@/shared/types";
@@ -16,6 +16,7 @@ import { useConfirmDialog } from "@/shared/components/ui/ConfirmDialog";
 import {
   Cake,
   ChevronDown,
+  ChevronRight,
   Clock,
   Gift,
   PartyPopper,
@@ -48,6 +49,35 @@ function mapBirthdayProfileToFriend(p: BirthdayProfileRow): Friend {
     banner_image: p.banner_image ?? null,
     birthday: p.birthday,
   };
+}
+
+function getBirthdayDate(friend: Friend, from = new Date()) {
+  const [, month, day] = String(friend.birthday).split("-").map(Number);
+  let birthday = new Date(from.getFullYear(), month - 1, day, 0, 0, 0, 0);
+  if (birthday <= from) birthday = new Date(from.getFullYear() + 1, month - 1, day, 0, 0, 0, 0);
+  return birthday;
+}
+
+function formatCountdown(target: Date, now: Date) {
+  let months = 0;
+  const addMonths = (date: Date, count: number) => {
+    const result = new Date(date);
+    const day = result.getDate();
+    result.setDate(1);
+    result.setMonth(result.getMonth() + count);
+    const lastDay = new Date(result.getFullYear(), result.getMonth() + 1, 0).getDate();
+    result.setDate(Math.min(day, lastDay));
+    return result;
+  };
+  while (addMonths(now, months + 1) <= target) months += 1;
+
+  const monthRemainder = addMonths(now, months);
+  const totalSeconds = Math.max(0, Math.floor((target.getTime() - monthRemainder.getTime()) / 1000));
+  const days = Math.floor(totalSeconds / 86400);
+  const hours = Math.floor((totalSeconds % 86400) / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  return { months, days, hours, minutes, seconds };
 }
 
 type Section = FriendsSection;
@@ -317,11 +347,13 @@ const FriendsPageContent: React.FC = () => {
   const [requestsDisplayLimit, setRequestsDisplayLimit] = useState(20);
   const [suggestionsDisplayLimit, setSuggestionsDisplayLimit] = useState(20);
   const [activeSection, setActiveSection] = useState<Section>(
-    () => parseFriendsSection(searchParams.get("tab")) ?? "home"
+    () => parseFriendsSection(searchParams.get("tab")) ?? "all"
   );
   const [birthdayDisplayLimit, setBirthdayDisplayLimit] = useState(10);
   const [birthdayTabFriends, setBirthdayTabFriends] = useState<Friend[]>([]);
   const [birthdaysLoading, setBirthdaysLoading] = useState(false);
+  const [countdownFriend, setCountdownFriend] = useState<Friend | null>(null);
+  const [countdownNow, setCountdownNow] = useState(() => new Date());
   const birthdaySentinelRef = useRef<HTMLDivElement>(null);
   const shimmerCount = useShimmerCount();
   const { confirm, dialog: confirmDialog } = useConfirmDialog();
@@ -351,16 +383,7 @@ const FriendsPageContent: React.FC = () => {
       } else if (bMonth === todayMonth && bDay > todayDay) {
         thisMonthList.push(friend);
       } else {
-        let nextBirthday = new Date(currentYear, bMonth - 1, bDay);
-        if (nextBirthday < today) {
-          nextBirthday = new Date(currentYear + 1, bMonth - 1, bDay);
-        }
-        const diffDays = Math.ceil(
-          (nextBirthday.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
-        );
-        if (diffDays <= 30 && diffDays > 0) {
-          upcomingList.push(friend);
-        }
+        upcomingList.push(friend);
       }
     });
 
@@ -388,11 +411,35 @@ const FriendsPageContent: React.FC = () => {
     [birthdayFriends]
   );
 
+
   const hasMoreBirthdays = birthdayDisplayLimit < allBirthdayFriends.length;
+
+  const countdownTarget = countdownFriend ? getBirthdayDate(countdownFriend, countdownNow) : null;
+  const countdown = countdownTarget ? formatCountdown(countdownTarget, countdownNow) : null;
+
+  useEffect(() => {
+    if (!countdownFriend) return;
+    const interval = window.setInterval(() => setCountdownNow(new Date()), 1000);
+    return () => window.clearInterval(interval);
+  }, [countdownFriend]);
+
+  useEffect(() => {
+    if (!countdownFriend) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setCountdownFriend(null);
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [countdownFriend]);
+
+  const openBirthdayCountdown = (friend: Friend) => {
+    setCountdownNow(new Date());
+    setCountdownFriend(friend);
+  };
 
   const selectSection = (section: Section) => {
     setActiveSection(section);
-    const next = section === "home" ? "/friends" : `/friends?tab=${section}`;
+    const next = `/friends?tab=${section}`;
     router.replace(next, { scroll: false });
   };
 
@@ -401,7 +448,7 @@ const FriendsPageContent: React.FC = () => {
     if (section) {
       setActiveSection(section);
     } else if (!searchParams.get("tab")) {
-      setActiveSection("home");
+      setActiveSection("all");
     }
   }, [searchParams]);
 
@@ -1103,211 +1150,135 @@ const FriendsPageContent: React.FC = () => {
               )}
             </div>
           ) : activeSection === "birthdays" ? (
-            <div>
-              <h2 className="sm:text-2xl font-semibold text-content text-lg mb-6">Birthdays</h2>
+            <section className="mx-auto max-w-3xl">
+              <div className="mb-5 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <h2 className="text-base font-bold uppercase tracking-wide text-content">Upcoming Birthdays</h2>
+                  {!birthdaysLoading && (
+                    <span className="rounded-full bg-surface-tertiary px-2.5 py-1 text-xs font-semibold text-content-secondary">
+                      {allBirthdayFriends.length}
+                    </span>
+                  )}
+                </div>
+                {allBirthdayFriends.length > birthdayDisplayLimit && (
+                  <button
+                    type="button"
+                    onClick={() => setBirthdayDisplayLimit(allBirthdayFriends.length)}
+                    className="flex shrink-0 items-center gap-1 text-sm font-semibold text-orange-600 hover:text-orange-700"
+                  >
+                    View All <ChevronRight className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
 
               {birthdaysLoading ? (
-                <FriendsGridShimmer count={shimmerCount} />
+                <BirthdayListShimmer count={shimmerCount} />
               ) : allBirthdayFriends.length > 0 ? (
-                <div className="space-y-8">
-                  {/* Today's Birthdays */}
-                  {birthdayFriends.today.length > 0 && (
-                    <div>
-                      <div className="flex items-center space-x-2 mb-4">
-                        <PartyPopper className="w-5 h-5 text-orange-500" />
-                        <h3 className="text-lg font-semibold text-content">
-                          Today's Birthdays
-                        </h3>
-                      </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {birthdayFriends.today
-                          .slice(0, birthdayDisplayLimit)
-                          .map((friend) => (
-                            <div
-                              key={friend.id}
-                              className="bg-gradient-to-r from-orange-50 to-yellow-50 border border-orange-200 rounded-xl p-4 flex items-center space-x-4 hover:shadow-md transition-shadow"
+                <div className="space-y-3">
+                  {allBirthdayFriends.slice(0, birthdayDisplayLimit).map((friend) => {
+                    const isToday = birthdayFriends.today.some((birthdayFriend) => birthdayFriend.id === friend.id);
+                    const [, month, day] = String(friend.birthday).split("-").map(Number);
+                    const birthdayLabel = new Date(2000, month - 1, day).toLocaleDateString(undefined, {
+                      month: "short",
+                      day: "numeric",
+                    });
+                    return (
+                      <article
+                        key={friend.id}
+                        className="flex items-center gap-3 rounded-[20px] border border-border bg-surface p-3.5 shadow-sm transition-colors hover:bg-surface-hover sm:gap-4 sm:p-4"
+                      >
+                        <Link
+                          href={`/user/${friend.id}`}
+                          aria-label={`View ${friend.full_name}'s profile`}
+                          className={`flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-2xl text-sm font-bold text-white sm:h-14 sm:w-14 ${
+                            isToday
+                              ? "bg-emerald-500"
+                              : "bg-violet-100 text-violet-700 dark:bg-violet-500/20 dark:text-violet-300"
+                          }`}
+                        >
+                          {friend.avatar_url ? (
+                            <img src={friend.avatar_url} alt="" className="h-full w-full object-cover" />
+                          ) : (
+                            friend.full_name?.split(/\s+/).map((part) => part[0]).slice(0, 2).join("").toUpperCase() || "?"
+                          )}
+                        </Link>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex min-w-0 items-center gap-2">
+                            <Link
+                              href={`/user/${friend.id}`}
+                              className="truncate text-sm font-semibold text-content hover:text-orange-600"
                             >
-                              <Link href={`/user/${friend.id || ""}`} className="shrink-0">
-                                {friend.avatar_url ? (
-                                  <img
-                                    src={friend.avatar_url}
-                                    alt={friend.full_name}
-                                    className="w-14 h-14 rounded-full object-cover ring-2 ring-orange-300"
-                                  />
-                                ) : (
-                                  <div className="w-14 h-14 rounded-full flex items-center justify-center text-xl font-bold text-primary-600 bg-orange-100 ring-2 ring-orange-300">
-                                    {friend.full_name?.charAt(0) || "U"}
-                                  </div>
-                                )}
-                              </Link>
-                              <div className="flex-1 min-w-0">
-                                <Link href={`/user/${friend.id || ""}`}>
-                                  <h4 className="font-semibold text-content truncate hover:text-primary-600 transition-colors">
-                                    {friend.full_name}
-                                  </h4>
-                                </Link>
-                                <p className="text-sm text-primary-600 font-medium flex items-center space-x-1">
-                                  <Cake className="w-4 h-4" />
-                                  <span>Birthday today!</span>
-                                </p>
-                              </div>
-                              <button
-                                onClick={() => handleStartBirthdayChat(friend)}
-                                className="shrink-0 btn-sm-primary text-sm"
-                              >
-                                Send Wish
-                              </button>
-                            </div>
-                          ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* This Month */}
-                  {(() => {
-                    const todayCount = birthdayFriends.today.length;
-                    const remaining = birthdayDisplayLimit - todayCount;
-                    if (remaining <= 0 || birthdayFriends.thisMonth.length === 0) return null;
-                    const visibleThisMonth = birthdayFriends.thisMonth.slice(0, remaining);
-                    return (
-                      <div>
-                        <div className="flex items-center space-x-2 mb-4">
-                          <Gift className="w-5 h-5 text-orange-500" />
-                          <h3 className="text-lg font-semibold text-content">Later This Month</h3>
+                              {friend.full_name}
+                            </Link>
+                            {isToday && (
+                              <span className="shrink-0 rounded bg-orange-100 px-1.5 py-0.5 text-[10px] font-bold uppercase text-orange-700 dark:bg-orange-500/20 dark:text-orange-300">
+                                Today
+                              </span>
+                            )}
+                          </div>
+                          <p className="mt-1 flex items-center gap-2 text-xs text-content-secondary">
+                            {isToday ? (
+                              <Cake className="h-3.5 w-3.5 text-orange-500" />
+                            ) : (
+                              <Gift className="h-3.5 w-3.5 text-content-tertiary" />
+                            )}
+                            <span>{birthdayLabel}</span>
+                            {(friend.mutual_friends_count ?? 0) > 0 && (
+                              <>
+                                <span aria-hidden="true">•</span>
+                                <span>
+                                  {friend.mutual_friends_count} mutual{" "}
+                                  {friend.mutual_friends_count === 1 ? "friend" : "friends"}
+                                </span>
+                              </>
+                            )}
+                          </p>
                         </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                          {visibleThisMonth.map((friend) => {
-                            const parts = String(friend.birthday).split("-");
-                            const bMonth = parseInt(parts[1], 10);
-                            const bDay = parseInt(parts[2], 10);
-                            const monthName = new Date(2000, bMonth - 1).toLocaleString("default", { month: "long" });
-                            const today = new Date();
-                            const next = new Date(today.getFullYear(), bMonth - 1, bDay);
-                            const diff = Math.ceil((next.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-                            return (
-                              <div
-                                key={friend.id}
-                                className="bg-surface border border-gray-200 rounded-xl p-4 flex items-center space-x-4 hover:shadow-md transition-shadow"
-                              >
-                                <Link href={`/user/${friend.id || ""}`} className="shrink-0">
-                                  {friend.avatar_url ? (
-                                    <img
-                                      src={friend.avatar_url}
-                                      alt={friend.full_name}
-                                      className="w-14 h-14 rounded-full object-cover"
-                                    />
-                                  ) : (
-                                    <div className="w-14 h-14 rounded-full flex items-center justify-center text-xl font-bold text-primary-600 bg-primary-100">
-                                      {friend.full_name?.charAt(0) || "U"}
-                                    </div>
-                                  )}
-                                </Link>
-                                <div className="flex-1 min-w-0">
-                                  <Link href={`/user/${friend.id || ""}`}>
-                                    <h4 className="font-semibold text-content truncate hover:text-primary-600 transition-colors">
-                                      {friend.full_name}
-                                    </h4>
-                                  </Link>
-                                  <p className="text-sm text-content-secondary">
-                                    {monthName} {bDay}
-                                  </p>
-                                </div>
-                                <div className="shrink-0 text-right">
-                                  <span className="text-xs font-medium text-content-tertiary">
-                                    {diff} day{diff === 1 ? "" : "s"}
-                                  </span>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
+                        {isToday ? (
+                          <button
+                            type="button"
+                            onClick={() => handleStartBirthdayChat(friend)}
+                            className="flex shrink-0 items-center gap-1.5 rounded-xl border border-orange-200 bg-orange-50 px-3 py-2 text-xs font-semibold text-orange-600 transition-colors hover:bg-orange-100 dark:border-orange-400/30 dark:bg-orange-500/10 dark:text-orange-300 dark:hover:bg-orange-500/20 sm:px-4"
+                          >
+                            <PartyPopper className="h-4 w-4" />
+                            <span>Wish</span>
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => openBirthdayCountdown(friend)}
+                            aria-label={`Show countdown to ${friend.full_name}'s birthday`}
+                            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-surface-secondary text-content-secondary transition-colors hover:bg-surface-hover"
+                          >
+                            <Clock className="h-5 w-5" />
+                          </button>
+                        )}
+                        <Link
+                          href={`/user/${friend.id}`}
+                          aria-label={`Open ${friend.full_name}'s profile`}
+                          className="flex h-10 w-9 shrink-0 items-center justify-center rounded-xl bg-surface-secondary text-content-tertiary transition-colors hover:bg-surface-hover hover:text-content"
+                        >
+                          <ChevronRight className="h-5 w-5" />
+                        </Link>
+                      </article>
                     );
-                  })()}
-
-                  {/* Upcoming (next 30 days, excluding this month) */}
-                  {(() => {
-                    const consumed = birthdayFriends.today.length + birthdayFriends.thisMonth.length;
-                    const remaining = birthdayDisplayLimit - consumed;
-                    if (remaining <= 0 || birthdayFriends.upcoming.length === 0) return null;
-                    const visibleUpcoming = birthdayFriends.upcoming.slice(0, remaining);
-                    return (
-                      <div>
-                        <div className="flex items-center space-x-2 mb-4">
-                          <Cake className="w-5 h-5 text-content-secondary" />
-                          <h3 className="text-lg font-semibold text-content">Upcoming Birthdays</h3>
-                        </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                          {visibleUpcoming.map((friend) => {
-                            const parts = String(friend.birthday).split("-");
-                            const bMonth = parseInt(parts[1], 10);
-                            const bDay = parseInt(parts[2], 10);
-                            const monthName = new Date(2000, bMonth - 1).toLocaleString("default", { month: "long" });
-                            const today = new Date();
-                            const currentYear = today.getFullYear();
-                            let next = new Date(currentYear, bMonth - 1, bDay);
-                            if (next < today) next = new Date(currentYear + 1, bMonth - 1, bDay);
-                            const diff = Math.ceil((next.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-                            return (
-                              <div
-                                key={friend.id}
-                                className="bg-surface border border-gray-200 rounded-xl p-4 flex items-center space-x-4 hover:shadow-md transition-shadow"
-                              >
-                                <Link href={`/user/${friend.id || ""}`} className="shrink-0">
-                                  {friend.avatar_url ? (
-                                    <img
-                                      src={friend.avatar_url}
-                                      alt={friend.full_name}
-                                      className="w-14 h-14 rounded-full object-cover"
-                                    />
-                                  ) : (
-                                    <div className="w-14 h-14 rounded-full flex items-center justify-center text-xl font-bold text-primary-600 bg-primary-100">
-                                      {friend.full_name?.charAt(0) || "U"}
-                                    </div>
-                                  )}
-                                </Link>
-                                <div className="flex-1 min-w-0">
-                                  <Link href={`/user/${friend.id || ""}`}>
-                                    <h4 className="font-semibold text-content truncate hover:text-primary-600 transition-colors">
-                                      {friend.full_name}
-                                    </h4>
-                                  </Link>
-                                  <p className="text-sm text-content-secondary">
-                                    {monthName} {bDay}
-                                  </p>
-                                </div>
-                                <div className="shrink-0 text-right">
-                                  <span className="text-xs font-medium text-content-tertiary">
-                                    {diff} day{diff === 1 ? "" : "s"}
-                                  </span>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Infinite scroll sentinel */}
+                  })}
                   {hasMoreBirthdays && (
-                    <div ref={birthdaySentinelRef} className="flex justify-center py-6">
-                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-orange-500" />
+                    <div ref={birthdaySentinelRef} className="flex justify-center py-4">
+                      <div className="h-6 w-6 animate-spin rounded-full border-b-2 border-orange-500" />
                     </div>
                   )}
                 </div>
               ) : (
-                <div className="text-center py-12 bg-surface rounded-lg">
-                  <Gift className="w-16 h-16 text-content-tertiary mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-content mb-2">
-                    No upcoming birthdays
-                  </h3>
+                <div className="rounded-2xl border border-border bg-surface px-6 py-12 text-center">
+                  <Gift className="mx-auto mb-4 h-12 w-12 text-content-tertiary" />
+                  <h3 className="mb-2 text-lg font-medium text-content">No upcoming birthdays</h3>
                   <p className="text-content-secondary">
-                    None of your friends have birthdays coming up in the next 30 days.
+                    None of your friends have upcoming birthdays.
                   </p>
                 </div>
               )}
-            </div>
+            </section>
           ) : (
             <div>
               <h2 className="text-2xl font-bold text-content mb-6">Custom Lists</h2>
@@ -1318,6 +1289,67 @@ const FriendsPageContent: React.FC = () => {
           )}
         </div>
       </div>
+      {countdownFriend && countdown && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4 backdrop-blur-[2px]"
+          onClick={() => setCountdownFriend(null)}
+        >
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="birthday-countdown-title"
+            className="w-full max-w-md rounded-2xl bg-surface p-5 shadow-2xl sm:p-6"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="mb-1 flex items-start justify-between gap-3">
+              <div>
+                <h2 id="birthday-countdown-title" className="sm:text-left text-center text-lg font-bold text-content">
+                  Birthday countdown
+                </h2>
+                <p className="mt-1 text-center text-sm text-content-secondary">
+                  Time left until {countdownFriend.full_name}&apos;s birthday
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setCountdownFriend(null)}
+                aria-label="Close countdown"
+                className="rounded-full p-1 text-content-tertiary hover:bg-surface-hover hover:text-content"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="mt-5 grid grid-cols-5 gap-2">
+              {([
+                [countdown.months, "months"],
+                [countdown.days, "days"],
+                [countdown.hours, "hours"],
+                [countdown.minutes, "mins"],
+                [countdown.seconds, "secs"],
+              ] as const).map(([value, label]) => (
+                <div key={label} className="rounded-xl border border-orange-200 bg-orange-50 px-1 py-2.5 text-center">
+                  <div className="text-xl font-bold text-orange-600">{value}</div>
+                  <div className="text-[10px] text-content-secondary">{label}</div>
+                </div>
+              ))}
+            </div>
+            <p className="mt-3 text-center text-xs text-content-secondary">
+              {countdown.months} month{countdown.months === 1 ? "" : "s"}{" "}
+              {countdown.days} day{countdown.days === 1 ? "" : "s"}{" "}
+              {countdown.hours} hour{countdown.hours === 1 ? "" : "s"}{" "}
+              {countdown.minutes} minute{countdown.minutes === 1 ? "" : "s"}{" "}
+              {countdown.seconds} second{countdown.seconds === 1 ? "" : "s"}
+            </p>
+            <button
+              type="button"
+              onClick={() => setCountdownFriend(null)}
+              className="mt-5 w-full rounded-full bg-orange-500 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-orange-600"
+            >
+              Close
+            </button>
+          </section>
+        </div>
+      )}
       {confirmDialog}
     </div>
   );

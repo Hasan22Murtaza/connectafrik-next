@@ -235,7 +235,7 @@ const Header: React.FC<HeaderProps> = ({
                     >
                       <Bell className="w-4 h-4 sm:w-5 sm:h-5" />
                       {unreadNotificationCount > 0 && (
-                        <span className="absolute -top-1 -right-1 w-4 h-4 sm:w-5 sm:h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-medium">
+                        <span className="absolute -top-1  inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 sm:p-1 p-0.5 sm:text-xs text-[10px] font-medium text-white tabular-nums dark:bg-zinc-50 dark:text-zinc-950">
                           {unreadNotificationCount > 99 ? "99+" : unreadNotificationCount}
                         </span>
                       )}
@@ -261,7 +261,7 @@ const Header: React.FC<HeaderProps> = ({
                     <button
                       onClick={() => setIsUserMenuOpen(true)}
                       aria-expanded={isUserMenuOpen}
-                      className="flex items-center space-x-1 sm:space-x-2 p-1 sm:p-1.5 lg:p-2 rounded-lg hover:bg-surface-hover shrink-0"
+                      className="flex items-center space-x-1 sm:space-x-2 p-1 sm:p-1.5 lg:p-2 rounded-lg  shrink-0"
                     >
                       {profile?.avatar_url ? (
                         <img
