@@ -8,6 +8,7 @@ import {
 } from '@/shared/icons'
 import { useAuth } from '@/contexts/AuthContext'
 import { useProductionChat } from '@/contexts/ProductionChatContext'
+import { useParentalControls } from '@/features/family/hooks/useParentalControls'
 import { followUser, unfollowUser, checkIsFollowing, checkIsMutual } from '@/features/social/services/followService'
 import { friendRequestService } from '@/features/social/services/friendRequestService'
 import { apiClient } from '@/lib/api-client'
@@ -205,6 +206,7 @@ const UserProfilePage: React.FC = () => {
   )
   const { user } = useAuth()
   const { startChatWithMembers, startCall } = useProductionChat()
+  const parental = useParentalControls()
   const { members } = useMembers(false)
 
   const [profile, setProfile] = useState<UserProfileWithVisibility | null>(null)
@@ -577,17 +579,42 @@ const UserProfilePage: React.FC = () => {
 
   const handleStartChat = async () => {
     if (!profile || !user) return
+    if (
+      parental.controlsActive &&
+      !parental.canSendText &&
+      !parental.canSendImage &&
+      !parental.canSendVideo &&
+      !parental.canSendAudio &&
+      !parental.canSendEmergency
+    ) {
+      toast.error('Messaging is restricted by your parent.')
+      return
+    }
     try {
-      const tid = await startChatWithMembers([{ id: profile.id, name: profile.full_name, avatarUrl: profile.avatar_url || undefined }], { participant_ids: [profile.id], openInDock: false })
+      const tid = await startChatWithMembers(
+        [{ id: profile.id, name: profile.full_name, avatarUrl: profile.avatar_url || undefined }],
+        { participant_ids: [profile.id], openInDock: false }
+      )
       if (tid) {
         router.push(`/chat/${encodeURIComponent(tid)}`)
         toast.success(`Chat opened with ${profile.full_name}`)
       }
-    } catch { toast.error('Failed to start chat') }
+    } catch {
+      toast.error('Failed to start chat')
+    }
   }
 
   const handleCall = async (isVideoCall = false) => {
     if (!profile || !user) return
+    const allowed = isVideoCall ? parental.canVideoCall : parental.canAudioCall
+    if (!allowed) {
+      toast.error(
+        isVideoCall
+          ? 'Video calls are restricted by your parent.'
+          : 'Audio calls are restricted by your parent.'
+      )
+      return
+    }
     try {
       const tid = await startChatWithMembers([{ id: profile.id, name: profile.full_name, avatarUrl: profile.avatar_url || undefined }], { participant_ids: [profile.id], openInDock: true })
       if (tid) { await startCall(tid, isVideoCall ? 'video' : 'audio', profile.id, profile.full_name, profile.avatar_url || undefined); toast.success(`${isVideoCall ? 'Video' : 'Audio'} call started`) }
@@ -697,8 +724,17 @@ const UserProfilePage: React.FC = () => {
     Boolean(isOwnProfile) ||
     (perms ? Boolean(perms.can_view) : !profile.profile_restricted && canViewProfile(viewerId, profile.id, profile.profile_visibility || 'public', isMutual))
   const showFollowBtn = perms ? Boolean(perms.can_follow) : canFollow(viewerId, profile.id, profile.allow_follows || 'everyone', isMutual)
-  const showMessageBtn = perms ? Boolean(perms.can_message) : canSendMessage(viewerId, profile.id, profile.allow_direct_messages || 'everyone', isMutual)
-  const showCallBtn = perms ? Boolean(perms.can_call) : Boolean(isMutual)
+  const showMessageBtn =
+    (perms ? Boolean(perms.can_message) : canSendMessage(viewerId, profile.id, profile.allow_direct_messages || 'everyone', isMutual)) &&
+    (!parental.controlsActive ||
+      parental.canSendText ||
+      parental.canSendImage ||
+      parental.canSendVideo ||
+      parental.canSendAudio ||
+      parental.canSendEmergency)
+  const showCallBtn =
+    (perms ? Boolean(perms.can_call) : Boolean(isMutual)) &&
+    (parental.canAudioCall || parental.canVideoCall)
   const showFriendRequestBtn = friendshipStatus !== 'none' || (perms ? Boolean(perms.can_friend_request) : true)
   const visibleFields = getVisibleProfileFields(profile as VisibleProfileFieldsInput, Boolean(isOwnProfile), Boolean(isMutual), Boolean(perms?.can_view === false))
   const canCommentOnPost = (authorId: string) => isOwnProfile || canComment(viewerId, authorId, profile.allow_comments ?? 'everyone', isMutual)
@@ -794,6 +830,28 @@ const UserProfilePage: React.FC = () => {
                     >
                       <MessageCircle className="h-4 w-4 shrink-0" />
                       <span className="hidden sm:inline">Message</span>
+                    </button>
+                  )}
+                  {showCallBtn && parental.canAudioCall && (
+                    <button
+                      onClick={() => void handleCall(false)}
+                      aria-label="Audio call"
+                      title="Audio call"
+                      className={`${btnGray} w-9 px-0 sm:w-auto sm:px-4`}
+                    >
+                      <Phone className="h-4 w-4 shrink-0" />
+                      <span className="hidden sm:inline">Call</span>
+                    </button>
+                  )}
+                  {showCallBtn && parental.canVideoCall && (
+                    <button
+                      onClick={() => void handleCall(true)}
+                      aria-label="Video call"
+                      title="Video call"
+                      className={`${btnGray} w-9 px-0 sm:w-auto sm:px-4`}
+                    >
+                      <Video className="h-4 w-4 shrink-0" />
+                      <span className="hidden sm:inline">Video</span>
                     </button>
                   )}
                   {showFollowBtn && (

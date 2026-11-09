@@ -11,4 +11,11 @@ export type {
   ParentalRestrictionFeature,
 } from '@/shared/types/family'
 
-export { PARENTAL_RESTRICTED_CODE, DEFAULT_PARENTAL_CONTROLS } from '@/shared/types/family'
+export {
+  PARENTAL_RESTRICTED_CODE,
+  DEFAULT_PARENTAL_CONTROLS,
+  areAllMessageTypesLocked,
+  isMessageKindAllowed,
+  isCallKindAllowed,
+  getAllowedReelCategories,
+} from '@/shared/types/family'

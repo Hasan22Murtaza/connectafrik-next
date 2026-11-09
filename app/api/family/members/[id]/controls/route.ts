@@ -72,10 +72,19 @@ export async function PATCH(
     const boolKeys = [
       'friend_request_approval',
       'messaging_enabled',
+      'text_messaging_enabled',
+      'image_messaging_enabled',
+      'video_messaging_enabled',
+      'audio_messaging_enabled',
+      'emergency_messaging_enabled',
       'calling_enabled',
+      'audio_calling_enabled',
+      'video_calling_enabled',
+      'group_calling_enabled',
       'group_joining_enabled',
       'marketplace_enabled',
       'screen_time_enabled',
+      'reels_restriction_enabled',
     ] as const
 
     for (const key of boolKeys) {
@@ -98,6 +107,16 @@ export async function PATCH(
 
     if (typeof body?.location_sharing === 'boolean' || body?.location_sharing === null) {
       updates.location_sharing = body.location_sharing
+    }
+
+    if (body?.reels_allowed_categories === null) {
+      updates.reels_allowed_categories = null
+    } else if (Array.isArray(body?.reels_allowed_categories)) {
+      const cats = body.reels_allowed_categories
+        .filter((c: unknown): c is string => typeof c === 'string')
+        .map((c: string) => c.trim().toLowerCase())
+        .filter(Boolean)
+      updates.reels_allowed_categories = cats
     }
 
     if (Object.keys(updates).length === 0) {

@@ -82,6 +82,17 @@ export async function PATCH(
     }
     if (Object.keys(updates).length === 0) return errorResponse('No valid fields to update', 400)
 
+    if (typeof updates.category === 'string') {
+      const resolvedCategory = updates.category.trim().toLowerCase()
+      updates.category = resolvedCategory
+      const { checkParentalRestriction, parentalDecisionResponse } = await import('@/lib/family')
+      const parental = await checkParentalRestriction(supabase, user.id, 'reels', {
+        reelCategory: resolvedCategory,
+      })
+      const parentalDenied = parentalDecisionResponse(parental)
+      if (parentalDenied) return parentalDenied
+    }
+
     const { data: reel, error } = await supabase
       .from('reels')
       .update(updates)

@@ -5,7 +5,7 @@ import { requireChatThreadAccess } from '@/lib/chat/chatThreadAccess'
 import { persistAcceptedOnAnotherDeviceChatMessage } from '@/lib/chat/persistAcceptedOnAnotherDeviceMessage'
 import { deleteLiveKitRoom, listLiveKitParticipantIdentities } from '@/lib/call-media/livekit'
 import { isCallE2eeEnabledForUser } from '@/lib/call-e2ee/flag'
-import { parseSealedKeyInputs, storeInitialCallKeys } from '@/lib/call-e2ee/persist'
+import { parseSealedKeyInputsResult, storeInitialCallKeys } from '@/lib/call-e2ee/persist'
 import { loadFriendMaps } from '@/lib/privacy/queries'
 
 /** Forward the caller's session JWT so /api/push-notifications can authz the actor. */
@@ -15,6 +15,10 @@ function pushRequestHeaders(request: NextRequest): Record<string, string> {
     'Content-Type': 'application/json',
     ...(auth ? { Authorization: auth } : {}),
   }
+}
+
+function normalizeSenderDeviceId(value: unknown): string {
+  return typeof value === 'string' ? value.trim().toLowerCase() : ''
 }
 
 type RouteContext = { params: Promise<{ threadId: string }> }
@@ -568,15 +572,23 @@ export async function POST(request: NextRequest, context: RouteContext) {
     const e2eeKeyRaw = typeof body.e2ee_key === 'string' ? body.e2ee_key.trim() : ''
     const e2eeKey = e2eeKeyRaw.length >= 16 && e2eeKeyRaw.length <= 128 ? e2eeKeyRaw : ''
     const e2eeEnabled = isCallE2eeEnabledForUser(user.id)
-    const senderDeviceId =
-      typeof body.sender_device_id === 'string' ? body.sender_device_id.trim().toLowerCase() : ''
-    const sealedKeys = e2eeEnabled ? parseSealedKeyInputs(body.sealed_keys) : null
+    const senderDeviceId = normalizeSenderDeviceId(body.sender_device_id ?? body.senderDeviceId)
+    const sealedKeysParse = e2eeEnabled
+      ? parseSealedKeyInputsResult(body.sealed_keys ?? body.sealedKeys)
+      : null
+    const sealedKeys = sealedKeysParse?.ok ? sealedKeysParse.seals : null
     if (e2eeEnabled) {
       if (provider && provider !== 'livekit') {
         return errorResponse('Encrypted calls require LiveKit.', 400)
       }
-      if (!senderDeviceId || !sealedKeys) {
+      if (!senderDeviceId) {
         return errorResponse('Encrypted call keys are missing. Update the app and try again.', 400)
+      }
+      if (!sealedKeysParse || !sealedKeysParse.ok) {
+        return errorResponse(
+          sealedKeysParse?.error || 'Encrypted call keys are missing. Update the app and try again.',
+          400,
+        )
       }
     }
     const caller_name = typeof body.caller_name === 'string' ? body.caller_name : user.email || 'Someone'
@@ -605,6 +617,24 @@ export async function POST(request: NextRequest, context: RouteContext) {
     const callDecision = await assertCanCallThread(serviceClient, user.id, threadId, is_group_call)
     const callDenied = privacyDecisionResponse(callDecision)
     if (callDenied) return callDenied
+
+    const { checkParentalRestriction, parentalDecisionResponse } = await import('@/lib/family')
+    const parentalCallKind =
+      is_group_call && call_type === 'video'
+        ? 'group_video'
+        : is_group_call
+          ? 'group_audio'
+          : call_type === 'video'
+            ? 'video'
+            : 'audio'
+    const parental = await checkParentalRestriction(serviceClient, user.id, 'calling', {
+      callKind: parentalCallKind,
+    })
+    const parentalDenied = parentalDecisionResponse(parental)
+    if (parentalDenied) return parentalDenied
+    const screenGate = await checkParentalRestriction(serviceClient, user.id, 'screen_time')
+    const screenDenied = parentalDecisionResponse(screenGate)
+    if (screenDenied) return screenDenied
 
     const live = await listLiveSessionsForThread(serviceClient, threadId)
     const nowMs = Date.now()

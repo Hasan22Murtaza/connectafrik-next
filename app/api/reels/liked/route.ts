@@ -41,10 +41,20 @@ export async function GET(request: NextRequest) {
 
     if (reelsError) throw reelsError
 
+    const { getReelsCategoryFilterForUser } = await import('@/lib/family')
+    const allowedCategories = await getReelsCategoryFilterForUser(supabase, user.id)
+    const allowedSet = Array.isArray(allowedCategories)
+      ? new Set(allowedCategories.map((c) => c.toLowerCase()))
+      : null
+
     const byId = new Map((reelsData || []).map((r: any) => [r.id, r]))
     const orderedReels = orderedIds
       .map((id) => byId.get(id))
       .filter(Boolean)
+      .filter((reel: any) => {
+        if (!allowedSet) return true
+        return allowedSet.has(String(reel.category || '').toLowerCase())
+      })
       .map((reel: any) => ({ ...reel, is_liked: true }))
 
     return jsonResponse({

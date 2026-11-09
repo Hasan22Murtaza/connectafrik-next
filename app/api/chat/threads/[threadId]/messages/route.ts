@@ -285,10 +285,21 @@ export async function POST(request: NextRequest, context: RouteContext) {
     const messageDenied = privacyDecisionResponse(messageDecision)
     if (messageDenied) return messageDenied
 
-    const { checkParentalRestriction, parentalDecisionResponse, recordActivityEvent } = await import(
-      '@/lib/family'
-    )
-    const parental = await checkParentalRestriction(serviceClient, user.id, 'messaging')
+    const {
+      checkParentalRestriction,
+      parentalDecisionResponse,
+      recordActivityEvent,
+      resolveParentalMessageKind,
+    } = await import('@/lib/family')
+    const parentalMessageKind = resolveParentalMessageKind({
+      message_type,
+      content,
+      attachments,
+      metadata: metadata && typeof metadata === 'object' ? metadata : null,
+    })
+    const parental = await checkParentalRestriction(serviceClient, user.id, 'messaging', {
+      messageKind: parentalMessageKind,
+    })
     const parentalDenied = parentalDecisionResponse(parental)
     if (parentalDenied) return parentalDenied
     // Screen-time gate (only when enabled for managed child/teen)

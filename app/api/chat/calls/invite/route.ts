@@ -3,7 +3,7 @@ import { getAuthenticatedUser, createServiceClient } from '@/lib/supabase-server
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
 import { listLiveKitParticipantIdentities } from '@/lib/call-media/livekit'
 import { isE2eeSessionRecord } from '@/lib/call-e2ee/protocol'
-import { parseSealedKeyInputs, storeInviteeCallKeys } from '@/lib/call-e2ee/persist'
+import { parseSealedKeyInputsResult, storeInviteeCallKeys } from '@/lib/call-e2ee/persist'
 import { getBusyMapForUserIds } from '@/lib/call-media/session-busy'
 import { canMessage } from '@/lib/privacy/access'
 import { privacyDecisionResponse } from '@/lib/privacy/http'
@@ -219,7 +219,10 @@ export async function POST(request: NextRequest) {
     const { checkParentalRestriction, parentalDecisionResponse, recordActivityEvent } = await import(
       '@/lib/family'
     )
-    const parental = await checkParentalRestriction(serviceClient, user.id, 'calling')
+    // Inviting someone into a live call is always a group-call action.
+    const parental = await checkParentalRestriction(serviceClient, user.id, 'calling', {
+      callKind: call_type === 'video' ? 'group_video' : 'group_audio',
+    })
     const parentalDenied = parentalDecisionResponse(parental)
     if (parentalDenied) return parentalDenied
     const screenGate = await checkParentalRestriction(serviceClient, user.id, 'screen_time')
@@ -273,10 +276,22 @@ export async function POST(request: NextRequest) {
           })
           .find((key) => key.length >= 16 && key.length <= 128) || ''
     const senderDeviceId =
-      typeof body.sender_device_id === 'string' ? body.sender_device_id.trim().toLowerCase() : ''
-    const sealedKeys = sourceIsE2ee ? parseSealedKeyInputs(body.sealed_keys) : null
+      typeof body.sender_device_id === 'string'
+        ? body.sender_device_id.trim().toLowerCase()
+        : typeof body.senderDeviceId === 'string'
+          ? body.senderDeviceId.trim().toLowerCase()
+          : ''
+    const sealedKeysParse = sourceIsE2ee
+      ? parseSealedKeyInputsResult(body.sealed_keys ?? body.sealedKeys)
+      : null
+    const sealedKeys = sealedKeysParse?.ok ? sealedKeysParse.seals : null
     if (sourceIsE2ee && (!senderDeviceId || !sealedKeys)) {
-      return errorResponse('Encrypted call key was not sealed for the new participant.', 400)
+      return errorResponse(
+        sealedKeysParse && !sealedKeysParse.ok
+          ? sealedKeysParse.error
+          : 'Encrypted call key was not sealed for the new participant.',
+        400,
+      )
     }
     const sourceProvider =
       provider ||

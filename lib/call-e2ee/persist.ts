@@ -1,10 +1,13 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import {
+  MAX_CALL_SEALS,
   SEALED_CALL_KEY_BYTES,
   X25519_KEY_BYTES,
   base64ToBytes,
   canonicalBase64,
 } from './protocol'
+
+export { MAX_CALL_SEALS }
 
 export type CallDeviceRecord = {
   userId: string
@@ -18,32 +21,66 @@ export type SealedKeyInput = {
   sealedKey: string
 }
 
-const MAX_SEALS = 64
+export type ParseSealedKeysResult =
+  | { ok: true; seals: SealedKeyInput[] }
+  | { ok: false; error: string }
 
 export function normalizeId(value: unknown): string {
   return typeof value === 'string' ? value.trim().toLowerCase() : ''
 }
 
-export function parseSealedKeyInputs(value: unknown): SealedKeyInput[] | null {
-  if (!Array.isArray(value) || value.length === 0 || value.length > MAX_SEALS) return null
+export function parseSealedKeyInputsResult(value: unknown): ParseSealedKeysResult {
+  if (value == null) {
+    return { ok: false, error: 'Encrypted call keys are missing. Update the app and try again.' }
+  }
+  if (!Array.isArray(value)) {
+    return { ok: false, error: 'Encrypted call keys are invalid.' }
+  }
+  if (value.length === 0) {
+    return { ok: false, error: 'Encrypted call keys are missing. Update the app and try again.' }
+  }
+  if (value.length > MAX_CALL_SEALS) {
+    return {
+      ok: false,
+      error: `This group call has too many encrypted devices (max ${MAX_CALL_SEALS}).`,
+    }
+  }
   const seals: SealedKeyInput[] = []
   const seen = new Set<string>()
   for (const entry of value) {
-    if (!entry || typeof entry !== 'object') return null
+    if (!entry || typeof entry !== 'object') {
+      return { ok: false, error: 'Encrypted call keys are invalid.' }
+    }
     const row = entry as Record<string, unknown>
     const recipientUserId = normalizeId(row.recipient_user_id ?? row.recipientUserId)
     const recipientDeviceId = normalizeId(row.recipient_device_id ?? row.recipientDeviceId)
-    const sealedRaw = typeof row.sealed_key === 'string' ? row.sealed_key : typeof row.sealedKey === 'string' ? row.sealedKey : ''
+    const sealedRaw =
+      typeof row.sealed_key === 'string'
+        ? row.sealed_key
+        : typeof row.sealedKey === 'string'
+          ? row.sealedKey
+          : ''
     const sealedKey = canonicalBase64(sealedRaw)
     const packed = sealedKey ? base64ToBytes(sealedKey) : null
-    if (!recipientUserId || !recipientDeviceId || !sealedKey || !packed) return null
-    if (packed.length !== SEALED_CALL_KEY_BYTES || packed[0] !== 1) return null
+    if (!recipientUserId || !recipientDeviceId || !sealedKey || !packed) {
+      return { ok: false, error: 'Encrypted call keys are invalid.' }
+    }
+    if (packed.length !== SEALED_CALL_KEY_BYTES || packed[0] !== 1) {
+      return { ok: false, error: 'Encrypted call keys are invalid.' }
+    }
     const dedupe = `${recipientUserId}:${recipientDeviceId}`
-    if (seen.has(dedupe)) return null
+    if (seen.has(dedupe)) {
+      return { ok: false, error: 'Encrypted call keys are invalid.' }
+    }
     seen.add(dedupe)
     seals.push({ recipientUserId, recipientDeviceId, sealedKey })
   }
-  return seals
+  return { ok: true, seals }
+}
+
+export function parseSealedKeyInputs(value: unknown): SealedKeyInput[] | null {
+  const parsed = parseSealedKeyInputsResult(value)
+  return parsed.ok ? parsed.seals : null
 }
 
 export function canonicalPublicKey(value: unknown): string | null {
@@ -73,17 +110,32 @@ export async function listActiveCallDevices(
 ): Promise<CallDeviceRecord[]> {
   const ids = [...new Set(userIds.map((id) => id.trim().toLowerCase()).filter(Boolean))]
   if (ids.length === 0) return []
-  const { data, error } = await service
-    .from('user_devices')
-    .select('user_id, device_id, public_key')
-    .in('user_id', ids)
-    .is('revoked_at', null)
-  if (error) throw new Error(error.message)
-  return (data || []).map((row) => ({
-    userId: normalizeId(row.user_id),
-    deviceId: normalizeId(row.device_id),
-    publicKey: String(row.public_key),
-  }))
+  // Chunk `.in()` filters — large group chats can exceed PostgREST URL limits.
+  const chunkSize = 100
+  const rows: CallDeviceRecord[] = []
+  for (let i = 0; i < ids.length; i += chunkSize) {
+    const chunk = ids.slice(i, i + chunkSize)
+    const { data, error } = await service
+      .from('user_devices')
+      .select('user_id, device_id, public_key')
+      .in('user_id', chunk)
+      .is('revoked_at', null)
+    if (error) throw new Error(error.message)
+    for (const row of data || []) {
+      rows.push({
+        userId: normalizeId(row.user_id),
+        deviceId: normalizeId(row.device_id),
+        publicKey: String(row.public_key),
+      })
+    }
+  }
+  const seen = new Set<string>()
+  return rows.filter((device) => {
+    const key = `${device.userId}:${device.deviceId}`
+    if (!device.userId || !device.deviceId || seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
 }
 
 export function usersMissingDevices(userIds: string[], devices: CallDeviceRecord[]): string[] {

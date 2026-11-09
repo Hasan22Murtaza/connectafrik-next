@@ -22,6 +22,11 @@ interface ChatAttachmentMenuProps {
   onOpenCamera?: () => void;
   /** Opens WhatsApp-style location picker (same Places API as post create). */
   onOpenLocation?: () => void;
+  allowCamera?: boolean;
+  allowImages?: boolean;
+  allowVideos?: boolean;
+  allowDocuments?: boolean;
+  allowLocation?: boolean;
 }
 
 const stopMenuPointerBubble = (e: React.SyntheticEvent) => {
@@ -43,6 +48,11 @@ const ChatAttachmentMenu: React.FC<ChatAttachmentMenuProps> = ({
   onClose,
   onOpenCamera,
   onOpenLocation,
+  allowCamera = true,
+  allowImages = true,
+  allowVideos = true,
+  allowDocuments = true,
+  allowLocation = true,
 }) => {
   const uid = useId();
   const docInputId = `${uid}-doc`;
@@ -77,42 +87,52 @@ const ChatAttachmentMenu: React.FC<ChatAttachmentMenuProps> = ({
   };
 
   const sheetItems: SheetItem[] = [
-    {
-      id: "camera",
-      label: "Camera",
-      Icon: Camera,
-      color: "bg-pink-500",
-      onClick: handleCameraClick,
-    },
-    {
-      id: "gallery",
-      label: "Gallery",
-      Icon: ImageIcon,
-      color: "bg-violet-500",
-      inputId: galleryInputId,
-    },
-    {
-      id: "video",
-      label: "Video",
-      Icon: Video,
-      color: "bg-rose-500",
-      inputId: videoInputId,
-    },
-    {
-      id: "document",
-      label: "Document",
-      Icon: FileText,
-      color: "bg-sky-500",
-      inputId: docInputId,
-    },
-    {
-      id: "location",
-      label: "Location",
-      Icon: MapPin,
-      color: "bg-emerald-500",
-      onClick: handleLocationClick,
-    },
-  ];
+    allowCamera || allowImages
+      ? {
+          id: "camera",
+          label: "Camera",
+          Icon: Camera,
+          color: "bg-pink-500",
+          onClick: handleCameraClick,
+        }
+      : null,
+    allowImages
+      ? {
+          id: "gallery",
+          label: "Gallery",
+          Icon: ImageIcon,
+          color: "bg-violet-500",
+          inputId: galleryInputId,
+        }
+      : null,
+    allowVideos
+      ? {
+          id: "video",
+          label: "Video",
+          Icon: Video,
+          color: "bg-rose-500",
+          inputId: videoInputId,
+        }
+      : null,
+    allowDocuments
+      ? {
+          id: "document",
+          label: "Document",
+          Icon: FileText,
+          color: "bg-sky-500",
+          inputId: docInputId,
+        }
+      : null,
+    allowLocation
+      ? {
+          id: "location",
+          label: "Location",
+          Icon: MapPin,
+          color: "bg-emerald-500",
+          onClick: handleLocationClick,
+        }
+      : null,
+  ].filter(Boolean) as SheetItem[];
 
   return (
     <>

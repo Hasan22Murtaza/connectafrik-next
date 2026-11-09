@@ -18,7 +18,9 @@ import {
   ChevronDown,
 } from '@/shared/icons'
 import { useProductionChat } from '@/contexts/ProductionChatContext'
+import { useParentalControls } from '@/features/family/hooks/useParentalControls'
 import { useHeaderInboxCounts } from '@/shared/hooks/useHeaderInboxCounts'
+import toast from 'react-hot-toast'
 import { ChatParticipant } from '@/shared/types/chat'
 import {
   supabaseMessagingService,
@@ -278,6 +280,7 @@ export default function CallsPageView() {
     recentCallEntries,
     setRecentCallEntries,
   } = useProductionChat()
+  const parental = useParentalControls()
   const { markCallsViewed } = useHeaderInboxCounts()
 
   const [recentCallsLoading, setRecentCallsLoading] = useState(
@@ -589,6 +592,22 @@ export default function CallsPageView() {
     targetUserAvatarUrl?: string,
     options?: { forceGroupCall?: boolean }
   ) => {
+    const isGroup = options?.forceGroupCall === true || !targetUserId
+    const allowed = isGroup
+      ? type === 'video'
+        ? parental.canGroupVideoCall
+        : parental.canGroupAudioCall
+      : type === 'video'
+        ? parental.canVideoCall
+        : parental.canAudioCall
+    if (!allowed) {
+      toast.error(
+        type === 'video'
+          ? 'Video calls are restricted by your parent.'
+          : 'Audio calls are restricted by your parent.'
+      )
+      return
+    }
     const lockKey = `${threadId}:${type}:${targetUserId || 'group'}`
     if (startingCallKey) return
     setStartingCallKey(lockKey)
@@ -606,6 +625,15 @@ export default function CallsPageView() {
     type: 'audio' | 'video'
   ) => {
     if (!participant.id || participant.is_self || startingCallKey) return
+    const allowed = type === 'video' ? parental.canVideoCall : parental.canAudioCall
+    if (!allowed) {
+      toast.error(
+        type === 'video'
+          ? 'Video calls are restricted by your parent.'
+          : 'Audio calls are restricted by your parent.'
+      )
+      return
+    }
     const lockKey = `1to1:${participant.id}:${type}`
     setStartingCallKey(lockKey)
     try {

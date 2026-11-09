@@ -1,7 +1,8 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useMemo, useState } from 'react'
 import { Camera, X } from '@/shared/icons'
+import { REEL_CATEGORIES, type ReelCategory } from '@/shared/types/reels'
 import type { CapturedReelMedia } from './reelMediaUtils'
 import type { ReelEditState } from './ReelMediaEditor'
 
@@ -9,7 +10,9 @@ type Props = {
   media: CapturedReelMedia
   edit: ReelEditState
   caption: string
+  category: ReelCategory
   onCaptionChange: (value: string) => void
+  onCategoryChange: (value: ReelCategory) => void
   onPublicChange: (value: boolean) => void
   onClose: () => void
   onOpenCamera: () => void
@@ -17,6 +20,8 @@ type Props = {
   onEditMedia: () => void
   onShare: () => void
   isSharing: boolean
+  /** When set, only these category values are selectable (parental filter). */
+  allowedCategories?: string[] | null
 }
 
 const MAX_CAPTION = 200
@@ -41,7 +46,9 @@ export default function ReelCaptionShare({
   media,
   edit,
   caption,
+  category,
   onCaptionChange,
+  onCategoryChange,
   onPublicChange,
   onClose,
   onOpenCamera,
@@ -49,8 +56,15 @@ export default function ReelCaptionShare({
   onEditMedia,
   onShare,
   isSharing,
+  allowedCategories = null,
 }: Props) {
   const [showPrivacy, setShowPrivacy] = useState(false)
+  const categoryOptions = useMemo(() => {
+    if (!Array.isArray(allowedCategories)) return REEL_CATEGORIES
+    const allowed = new Set(allowedCategories.map((c) => c.toLowerCase()))
+    const filtered = REEL_CATEGORIES.filter((c) => allowed.has(c.value))
+    return filtered.length > 0 ? filtered : REEL_CATEGORIES
+  }, [allowedCategories])
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-black text-white">
@@ -103,6 +117,24 @@ export default function ReelCaptionShare({
                   'linear-gradient(135deg, transparent 50%, #B0B3B8 50%)',
               }}
             />
+          </div>
+
+          <div className="mb-3">
+            <label htmlFor="reel-category" className="mb-1.5 block text-[13px] font-medium text-[#B0B3B8]">
+              Category
+            </label>
+            <select
+              id="reel-category"
+              value={category}
+              onChange={(e) => onCategoryChange(e.target.value as ReelCategory)}
+              className="w-full rounded-[12px] border-0 bg-[#3A3B3C] px-4 py-3 text-[15px] text-white outline-none"
+            >
+              {categoryOptions.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div className="mt-1">

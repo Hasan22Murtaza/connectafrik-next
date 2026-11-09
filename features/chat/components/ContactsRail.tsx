@@ -1,7 +1,9 @@
 import React, { useMemo } from 'react'
+import toast from 'react-hot-toast'
 import { MessageCircle, Phone, Video } from '@/shared/icons'
 import { useMembers } from '@/shared/hooks/useMembers'
 import { useProductionChat } from '@/contexts/ProductionChatContext'
+import { useParentalControls } from '@/features/family/hooks/useParentalControls'
 import { ChatParticipant } from '@/shared/types/chat'
 import { ChatThread } from '@/features/chat/services/supabaseMessagingService'
 import { formatContactPresenceLine } from '@/shared/hooks/usePresence'
@@ -9,6 +11,7 @@ import { formatContactPresenceLine } from '@/shared/hooks/usePresence'
 const ContactsRail: React.FC = () => {
   const { members, loading } = useMembers()
   const { threads, startChatWithMembers, startCall } = useProductionChat()
+  const parental = useParentalControls()
 
   const memberMap = useMemo(() => new Map(members.map((member) => [member.id, member])), [members])
 
@@ -43,6 +46,15 @@ const ContactsRail: React.FC = () => {
   }
 
   const handleStartCall = async (contact: ChatParticipant, type: 'audio' | 'video') => {
+    const allowed = type === 'video' ? parental.canVideoCall : parental.canAudioCall
+    if (!allowed) {
+      toast.error(
+        type === 'video'
+          ? 'Video calls are restricted by your parent.'
+          : 'Audio calls are restricted by your parent.'
+      )
+      return
+    }
     try {
       const threadId = await ensureThread(contact)
       if (threadId) {
@@ -107,15 +119,21 @@ const ContactsRail: React.FC = () => {
             </button>
             <button
               onClick={() => handleStartCall(contact, 'audio')}
-              className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-secondary text-content-secondary transition-colors hover:bg-primary-100 hover:text-orange-500"
-              title="Start voice call"
+              disabled={!parental.canAudioCall}
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-secondary text-content-secondary transition-colors hover:bg-primary-100 hover:text-orange-500 disabled:cursor-not-allowed disabled:opacity-40"
+              title={
+                parental.canAudioCall ? 'Start voice call' : 'Audio calls restricted by parent'
+              }
             >
               <Phone className="h-4 w-4" />
             </button>
             <button
               onClick={() => handleStartCall(contact, 'video')}
-              className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-secondary text-content-secondary transition-colors hover:bg-primary-100 hover:text-orange-500"
-              title="Start video call"
+              disabled={!parental.canVideoCall}
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-secondary text-content-secondary transition-colors hover:bg-primary-100 hover:text-orange-500 disabled:cursor-not-allowed disabled:opacity-40"
+              title={
+                parental.canVideoCall ? 'Start video call' : 'Video calls restricted by parent'
+              }
             >
               <Video className="h-4 w-4" />
             </button>

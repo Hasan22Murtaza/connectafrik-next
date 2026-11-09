@@ -108,7 +108,26 @@ export async function GET(request: NextRequest) {
         .eq('is_public', true)
         .in('author_id', followingIds)
 
-      if (category) fq = fq.eq('category', category)
+      let allowedCategories: string[] | null = null
+      if (userId) {
+        const { getReelsCategoryFilterForUser } = await import('@/lib/family')
+        allowedCategories = await getReelsCategoryFilterForUser(supabase, userId)
+      }
+      if (Array.isArray(allowedCategories)) {
+        if (allowedCategories.length === 0) {
+          return jsonResponse({ data: [], page, pageSize: limit, hasMore: false })
+        }
+        if (category) {
+          if (!allowedCategories.map((c) => c.toLowerCase()).includes(category.toLowerCase())) {
+            return jsonResponse({ data: [], page, pageSize: limit, hasMore: false })
+          }
+          fq = fq.eq('category', category)
+        } else {
+          fq = fq.in('category', allowedCategories)
+        }
+      } else if (category) {
+        fq = fq.eq('category', category)
+      }
       if (is_featured !== undefined && is_featured !== '') fq = fq.eq('is_featured', is_featured === 'true')
       if (min_duration != null && min_duration !== '') fq = fq.gte('duration', parseInt(min_duration, 10))
       if (max_duration != null && max_duration !== '') fq = fq.lte('duration', parseInt(max_duration, 10))
@@ -172,7 +191,26 @@ export async function GET(request: NextRequest) {
       query = query.eq('is_public', true)
     }
 
-    if (category) query = query.eq('category', category)
+    let allowedCategories: string[] | null = null
+    if (userId) {
+      const { getReelsCategoryFilterForUser } = await import('@/lib/family')
+      allowedCategories = await getReelsCategoryFilterForUser(supabase, userId)
+    }
+    if (Array.isArray(allowedCategories)) {
+      if (allowedCategories.length === 0) {
+        return jsonResponse({ data: [], page, pageSize: limit, hasMore: false })
+      }
+      if (category) {
+        if (!allowedCategories.map((c) => c.toLowerCase()).includes(category.toLowerCase())) {
+          return jsonResponse({ data: [], page, pageSize: limit, hasMore: false })
+        }
+        query = query.eq('category', category)
+      } else {
+        query = query.in('category', allowedCategories)
+      }
+    } else if (category) {
+      query = query.eq('category', category)
+    }
     if (author_id) query = query.eq('author_id', author_id)
     if (is_featured !== undefined && is_featured !== '') query = query.eq('is_featured', is_featured === 'true')
     if (min_duration != null && min_duration !== '') query = query.gte('duration', parseInt(min_duration, 10))
@@ -268,6 +306,15 @@ export async function POST(request: NextRequest) {
       return errorResponse('title, video_url, and duration are required', 400)
     }
 
+    const resolvedCategory =
+      typeof category === 'string' && category.trim() ? category.trim().toLowerCase() : 'other'
+    const { checkParentalRestriction, parentalDecisionResponse } = await import('@/lib/family')
+    const parental = await checkParentalRestriction(supabase, user.id, 'reels', {
+      reelCategory: resolvedCategory,
+    })
+    const parentalDenied = parentalDecisionResponse(parental)
+    if (parentalDenied) return parentalDenied
+
     const { data: reel, error } = await supabase
       .from('reels')
       .insert({
@@ -278,7 +325,7 @@ export async function POST(request: NextRequest) {
         thumbnail_url: thumbnail_url ?? null,
         duration: Number(duration),
         aspect_ratio: aspect_ratio ?? null,
-        category: category ?? null,
+        category: resolvedCategory,
         tags: Array.isArray(tags) ? tags : tags ? [tags] : [],
         is_public: is_public !== false,
       })

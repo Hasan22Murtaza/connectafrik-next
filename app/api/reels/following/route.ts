@@ -59,7 +59,9 @@ export async function GET(request: NextRequest) {
       .eq('is_public', true)
       .in('author_id', followingIds)
 
-    query = applyReelFilters(query, params)
+    const { getReelsCategoryFilterForUser } = await import('@/lib/family')
+    const allowedCategories = await getReelsCategoryFilterForUser(supabase, userId)
+    query = applyReelFilters(query, params, { allowedCategories })
     query = query
       .order(params.sort_field, { ascending: params.sort_order === 'asc' })
       .range(params.from, params.to)

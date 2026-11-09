@@ -5,7 +5,12 @@ import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
 import { useCreateReel } from '@/shared/hooks/useReels'
 import { useFileUpload } from '@/shared/hooks/useFileUpload'
-import { MAX_REEL_DURATION, MAX_REEL_TITLE_LENGTH } from '@/shared/types/reels'
+import { useParentalControls } from '@/features/family/hooks/useParentalControls'
+import {
+  MAX_REEL_DURATION,
+  MAX_REEL_TITLE_LENGTH,
+  type ReelCategory,
+} from '@/shared/types/reels'
 import ReelCameraCapture from './components/ReelCameraCapture'
 import ReelMediaEditor, {
   DEFAULT_REEL_EDIT,
@@ -25,13 +30,23 @@ const CreateReelPage: React.FC = () => {
   const router = useRouter()
   const { createReel } = useCreateReel()
   const { uploadFile } = useFileUpload()
+  const parental = useParentalControls()
   const galleryInputRef = useRef<HTMLInputElement>(null)
 
   const [step, setStep] = useState<Step>('capture')
   const [media, setMedia] = useState<CapturedReelMedia | null>(null)
   const [edit, setEdit] = useState<ReelEditState>(DEFAULT_REEL_EDIT)
   const [caption, setCaption] = useState('')
+  const [category, setCategory] = useState<ReelCategory>('entertainment')
   const [submitStage, setSubmitStage] = useState<SubmitStage>('idle')
+
+  useEffect(() => {
+    const allowed = parental.allowedReelCategories
+    if (!Array.isArray(allowed) || allowed.length === 0) return
+    if (!allowed.map((c) => c.toLowerCase()).includes(category)) {
+      setCategory(allowed[0] as ReelCategory)
+    }
+  }, [parental.allowedReelCategories, category])
 
   const isSharing = submitStage !== 'idle'
 
@@ -150,7 +165,7 @@ const CreateReelPage: React.FC = () => {
         thumbnail_url: uploadedThumbnailUrl,
         duration: media.duration || 1,
         aspect_ratio: '9:16',
-        category: 'other',
+        category,
         tags: [],
         is_public: edit.isPublic,
       })
@@ -169,7 +184,7 @@ const CreateReelPage: React.FC = () => {
     } finally {
       setSubmitStage('idle')
     }
-  }, [media, caption, edit, uploadFile, dataUrlToFile, createReel, replaceMedia, router])
+  }, [media, caption, category, edit, uploadFile, dataUrlToFile, createReel, replaceMedia, router])
 
   return (
     <>
@@ -219,7 +234,9 @@ const CreateReelPage: React.FC = () => {
           media={media}
           edit={edit}
           caption={caption}
+          category={category}
           onCaptionChange={setCaption}
+          onCategoryChange={setCategory}
           onPublicChange={(v) => setEdit((prev) => ({ ...prev, isPublic: v }))}
           onClose={exit}
           onOpenCamera={() => {
@@ -230,6 +247,7 @@ const CreateReelPage: React.FC = () => {
           onEditMedia={() => setStep('edit')}
           onShare={shareReel}
           isSharing={isSharing}
+          allowedCategories={parental.allowedReelCategories}
         />
       )}
     </>

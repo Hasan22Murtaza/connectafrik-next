@@ -28,6 +28,8 @@ export const CALL_E2EE_NONCE_BYTES = 24
 export const CALL_MEDIA_KEY_BYTES = 32
 export const X25519_KEY_BYTES = 32
 export const SEALED_CALL_KEY_BYTES = 1 + CALL_E2EE_NONCE_BYTES + CALL_MEDIA_KEY_BYTES + 16
+/** Per-device seals for one call. Group chats with many members/devices need headroom. */
+export const MAX_CALL_SEALS = 512
 
 export const HKDF_SALT = 'cribstalk-call-e2ee-v1'
 export const HKDF_INFO = 'cribstalk.call.seal.v1'

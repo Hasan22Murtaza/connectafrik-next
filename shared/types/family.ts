@@ -75,13 +75,26 @@ export interface ParentalControls {
   family_member_id: string
   friend_request_approval: boolean
   messaging_enabled: boolean
+  /** Per-type messaging locks (effective only when messaging_enabled is true). */
+  text_messaging_enabled: boolean
+  image_messaging_enabled: boolean
+  video_messaging_enabled: boolean
+  audio_messaging_enabled: boolean
+  /** Shown/used when all message types are locked — emergency-only escape hatch. */
+  emergency_messaging_enabled: boolean
   calling_enabled: boolean
+  audio_calling_enabled: boolean
+  video_calling_enabled: boolean
+  group_calling_enabled: boolean
   group_joining_enabled: boolean
   marketplace_enabled: boolean
   screen_time_enabled: boolean
   content_filter_level: ContentFilterLevel | null
   profile_visibility: string | null
   location_sharing: boolean | null
+  /** When true, child reels are limited to reels_allowed_categories. */
+  reels_restriction_enabled: boolean
+  reels_allowed_categories: string[] | null
   created_at: string
   updated_at: string
 }
@@ -154,6 +167,9 @@ export type ParentalRestrictionFeature =
   | 'marketplace'
   | 'friend_request_accept'
   | 'screen_time'
+  | 'reels'
+
+export type ParentalCallKind = 'audio' | 'video' | 'group_audio' | 'group_video'
 
 export const PARENTAL_RESTRICTED_CODE = 'PARENTAL_RESTRICTED'
 
@@ -163,11 +179,105 @@ export const DEFAULT_PARENTAL_CONTROLS: Omit<
 > = {
   friend_request_approval: false,
   messaging_enabled: true,
+  text_messaging_enabled: true,
+  image_messaging_enabled: true,
+  video_messaging_enabled: true,
+  audio_messaging_enabled: true,
+  emergency_messaging_enabled: true,
   calling_enabled: true,
+  audio_calling_enabled: true,
+  video_calling_enabled: true,
+  group_calling_enabled: true,
   group_joining_enabled: true,
   marketplace_enabled: true,
   screen_time_enabled: false,
   content_filter_level: null,
   profile_visibility: null,
   location_sharing: null,
+  reels_restriction_enabled: false,
+  reels_allowed_categories: null,
+}
+
+/** True when every regular message channel is locked (emergency may still apply). */
+export function areAllMessageTypesLocked(
+  controls: Pick<
+    ParentalControls,
+    | 'messaging_enabled'
+    | 'text_messaging_enabled'
+    | 'image_messaging_enabled'
+    | 'video_messaging_enabled'
+    | 'audio_messaging_enabled'
+  > | null
+    | undefined
+): boolean {
+  if (!controls) return false
+  if (controls.messaging_enabled === false) return true
+  return (
+    controls.text_messaging_enabled === false &&
+    controls.image_messaging_enabled === false &&
+    controls.video_messaging_enabled === false &&
+    controls.audio_messaging_enabled === false
+  )
+}
+
+export function isMessageKindAllowed(
+  controls: ParentalControls | null | undefined,
+  kind: 'text' | 'image' | 'video' | 'audio' | 'emergency' | 'other'
+): boolean {
+  if (!controls) return true
+
+  if (kind === 'emergency') {
+    return areAllMessageTypesLocked(controls) && controls.emergency_messaging_enabled !== false
+  }
+
+  if (controls.messaging_enabled === false) return false
+
+  switch (kind) {
+    case 'text':
+    case 'other':
+      return controls.text_messaging_enabled !== false
+    case 'image':
+      return controls.image_messaging_enabled !== false
+    case 'video':
+      return controls.video_messaging_enabled !== false
+    case 'audio':
+      return controls.audio_messaging_enabled !== false
+    default:
+      return true
+  }
+}
+
+export function isCallKindAllowed(
+  controls: ParentalControls | null | undefined,
+  kind: ParentalCallKind
+): boolean {
+  if (!controls) return true
+  if (controls.calling_enabled === false) return false
+
+  const audioOk = controls.audio_calling_enabled !== false
+  const videoOk = controls.video_calling_enabled !== false
+  const groupOk = controls.group_calling_enabled !== false
+
+  switch (kind) {
+    case 'audio':
+      return audioOk
+    case 'video':
+      return videoOk
+    case 'group_audio':
+      return groupOk && audioOk
+    case 'group_video':
+      return groupOk && videoOk
+    default:
+      return true
+  }
+}
+
+export function getAllowedReelCategories(
+  controls: ParentalControls | null | undefined
+): string[] | null {
+  if (!controls?.reels_restriction_enabled) return null
+  const list = Array.isArray(controls.reels_allowed_categories)
+    ? controls.reels_allowed_categories.filter((c) => typeof c === 'string' && c.trim())
+    : []
+  return list
 }

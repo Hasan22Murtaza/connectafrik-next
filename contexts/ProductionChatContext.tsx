@@ -1120,7 +1120,10 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
         }
       }
 
-      const e2eeStatus = await apiClient.get<{ enabled: boolean }>('/api/call-e2ee/status')
+      const e2eeStatus = await apiClient.get<{ enabled?: boolean }>('/api/call-e2ee/status')
+      if (!e2eeStatus || typeof e2eeStatus.enabled !== 'boolean') {
+        throw new Error('Could not read call encryption status. Please try again.')
+      }
       let sealedCallPayload:
         | {
             sender_device_id: string
@@ -1135,6 +1138,9 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
       let e2eeSealed = false
       if (e2eeStatus.enabled) {
         const prepared = await prepareSealedCall(threadId, callId)
+        if (!prepared.senderDeviceId || !prepared.sealedKeys.length) {
+          throw new Error('Encrypted call keys are missing. Update the app and try again.')
+        }
         draftedE2eeKey = prepared.mediaKeyB64
         sealedCallPayload = {
           sender_device_id: prepared.senderDeviceId,

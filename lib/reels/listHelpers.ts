@@ -67,9 +67,30 @@ export async function authorIdsMatchingCountry(
 }
 
 /** Apply shared filters to a reels query builder. */
-export function applyReelFilters(query: any, params: ReelListParams) {
+export function applyReelFilters(
+  query: any,
+  params: ReelListParams,
+  options?: { allowedCategories?: string[] | null }
+) {
   let q = query
-  if (params.category) q = q.eq('category', params.category)
+  const allowed = options?.allowedCategories
+  if (Array.isArray(allowed)) {
+    if (allowed.length === 0) {
+      // Restriction on with no categories → empty result set
+      q = q.eq('id', '00000000-0000-0000-0000-000000000000')
+    } else if (params.category) {
+      const cat = params.category.toLowerCase()
+      if (!allowed.map((c) => c.toLowerCase()).includes(cat)) {
+        q = q.eq('id', '00000000-0000-0000-0000-000000000000')
+      } else {
+        q = q.eq('category', params.category)
+      }
+    } else {
+      q = q.in('category', allowed)
+    }
+  } else if (params.category) {
+    q = q.eq('category', params.category)
+  }
   if (params.is_featured !== undefined && params.is_featured !== '') {
     q = q.eq('is_featured', params.is_featured === 'true')
   }

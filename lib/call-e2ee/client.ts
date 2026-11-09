@@ -5,7 +5,13 @@ import {
   readLocalCallDevice,
   replaceRevokedCallDevice,
 } from './device-store'
-import { CALL_E2EE_JOIN_ERROR, base64ToBytes, bytesToBase64, isE2eeSessionRecord } from './protocol'
+import {
+  CALL_E2EE_JOIN_ERROR,
+  MAX_CALL_SEALS,
+  base64ToBytes,
+  bytesToBase64,
+  isE2eeSessionRecord,
+} from './protocol'
 import { generateCallMediaKey, openCallMediaKey, sealCallMediaKey } from './seal'
 
 export type SealedKeyPayload = {
@@ -18,6 +24,46 @@ type RemoteDevice = {
   userId: string
   deviceId: string
   publicKey: string
+}
+
+function normalizeRemoteDevice(raw: unknown): RemoteDevice | null {
+  if (!raw || typeof raw !== 'object') return null
+  const row = raw as Record<string, unknown>
+  const userId =
+    typeof row.userId === 'string'
+      ? row.userId.trim().toLowerCase()
+      : typeof row.user_id === 'string'
+        ? row.user_id.trim().toLowerCase()
+        : ''
+  const deviceId =
+    typeof row.deviceId === 'string'
+      ? row.deviceId.trim().toLowerCase()
+      : typeof row.device_id === 'string'
+        ? row.device_id.trim().toLowerCase()
+        : ''
+  const publicKey =
+    typeof row.publicKey === 'string'
+      ? row.publicKey
+      : typeof row.public_key === 'string'
+        ? row.public_key
+        : ''
+  if (!userId || !deviceId || !publicKey) return null
+  return { userId, deviceId, publicKey }
+}
+
+function normalizeRemoteDevices(raw: unknown): RemoteDevice[] {
+  if (!Array.isArray(raw)) return []
+  const seen = new Set<string>()
+  const devices: RemoteDevice[] = []
+  for (const entry of raw) {
+    const device = normalizeRemoteDevice(entry)
+    if (!device) continue
+    const key = `${device.userId}:${device.deviceId}`
+    if (seen.has(key)) continue
+    seen.add(key)
+    devices.push(device)
+  }
+  return devices
 }
 
 async function registerStoredDevice(record: { deviceId: string; publicKey: string }): Promise<void> {
@@ -75,12 +121,16 @@ export async function prepareSealedCall(threadId: string, callId: string): Promi
   const privateKey = base64ToBytes(device.privateKey)
   if (!privateKey) throw new Error('Could not read this device’s call key.')
 
-  const listed = await apiClient.get<{ devices: RemoteDevice[]; missingUserIds: string[] }>(
+  const listed = await apiClient.get<{ devices: unknown; missingUserIds?: string[] }>(
     '/api/call-e2ee/devices',
     { thread_id: threadId },
   )
-  if ((listed.missingUserIds || []).length > 0 || !listed.devices?.length) {
+  const devices = normalizeRemoteDevices(listed?.devices)
+  if ((listed?.missingUserIds || []).length > 0 || devices.length === 0) {
     throw new Error('Encrypted calling is not set up for every person in this chat yet.')
+  }
+  if (devices.length > MAX_CALL_SEALS) {
+    throw new Error(`This group call has too many encrypted devices (max ${MAX_CALL_SEALS}).`)
   }
 
   const mediaKey = generateCallMediaKey()
@@ -92,7 +142,7 @@ export async function prepareSealedCall(threadId: string, callId: string): Promi
       senderDeviceId: device.deviceId,
       senderPrivateKey: privateKey,
       mediaKey,
-      devices: listed.devices,
+      devices,
     }),
   }
 }
@@ -110,10 +160,11 @@ export async function sealExistingCallKeyForUser(options: {
     throw new Error(CALL_E2EE_JOIN_ERROR)
   }
 
-  const listed = await apiClient.get<{ devices: RemoteDevice[] }>('/api/call-e2ee/devices', {
+  const listed = await apiClient.get<{ devices: unknown }>('/api/call-e2ee/devices', {
     user_id: options.targetUserId,
   })
-  if (!listed.devices?.length) {
+  const devices = normalizeRemoteDevices(listed?.devices)
+  if (devices.length === 0) {
     throw new Error('This person has not set up encrypted calling on a device yet.')
   }
 
@@ -124,7 +175,7 @@ export async function sealExistingCallKeyForUser(options: {
       senderDeviceId: device.deviceId,
       senderPrivateKey: privateKey,
       mediaKey,
-      devices: listed.devices,
+      devices,
     }),
   }
 }

@@ -1,6 +1,7 @@
 export * from './auth'
 export * from './age'
 export * from './controls'
+export * from './messageKinds'
 export * from './screenTime'
 export * from './activity'
 export * from './http'

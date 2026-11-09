@@ -33,7 +33,12 @@ export async function GET(request: NextRequest) {
       .eq('is_deleted', false)
       .eq('is_public', true)
 
-    query = applyReelFilters(query, params)
+    let allowedCategories: string[] | null = null
+    if (userId) {
+      const { getReelsCategoryFilterForUser } = await import('@/lib/family')
+      allowedCategories = await getReelsCategoryFilterForUser(supabase, userId)
+    }
+    query = applyReelFilters(query, params, { allowedCategories })
     query = query.order(sortField, { ascending: params.sort_order === 'asc' }).range(params.from, params.to)
 
     const { data, error } = await query

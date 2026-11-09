@@ -7,9 +7,11 @@ import {
   AlertTriangle,
   Clock,
   Eye,
-  Filter,
+  Film,
+  Image,
   Mail,
   MessageSquare,
+  Mic,
   Phone,
   Shield,
   ShoppingBag,
@@ -18,7 +20,9 @@ import {
   UserCheck,
   UserPlus,
   Users,
+  Video,
 } from '@/shared/icons'
+import { REEL_CATEGORIES } from '@/shared/types/reels'
 import {
   SettingsCard,
   SettingsSectionHeader,
@@ -27,15 +31,16 @@ import {
   settingsLabelClass,
 } from './SettingsPrimitives'
 import { familyService, type FamilyMeStatus, type FamilyOverview } from '../services/familyService'
-import type {
-  ActivitySummary,
-  FamilyInvitation,
-  FamilyMember,
-  FamilyMemberRole,
-  ParentalControls,
-  SafetyAlert,
-  ScreenTimeDailyHistory,
-  ScreenTimeRules,
+import {
+  areAllMessageTypesLocked,
+  type ActivitySummary,
+  type FamilyInvitation,
+  type FamilyMember,
+  type FamilyMemberRole,
+  type ParentalControls,
+  type SafetyAlert,
+  type ScreenTimeDailyHistory,
+  type ScreenTimeRules,
 } from '@/shared/types/family'
 import { ApiError } from '@/lib/api-client'
 import { useProfile } from '@/shared/hooks/useProfile'
@@ -273,7 +278,24 @@ export function FamilySettingsPanel() {
     setSaving(true)
     try {
       if (view === 'controls') {
-        setControls(await familyService.getControls(member.id))
+        const loaded = await familyService.getControls(member.id)
+        setControls(
+          loaded
+            ? {
+                ...loaded,
+                text_messaging_enabled: loaded.text_messaging_enabled ?? true,
+                image_messaging_enabled: loaded.image_messaging_enabled ?? true,
+                video_messaging_enabled: loaded.video_messaging_enabled ?? true,
+                audio_messaging_enabled: loaded.audio_messaging_enabled ?? true,
+                emergency_messaging_enabled: loaded.emergency_messaging_enabled ?? true,
+                audio_calling_enabled: loaded.audio_calling_enabled ?? true,
+                video_calling_enabled: loaded.video_calling_enabled ?? true,
+                group_calling_enabled: loaded.group_calling_enabled ?? true,
+                reels_restriction_enabled: loaded.reels_restriction_enabled ?? false,
+                reels_allowed_categories: loaded.reels_allowed_categories ?? null,
+              }
+            : null
+        )
       } else if (view === 'screen-time') {
         const data = await familyService.getScreenTime(member.id, screenTimeRangeDays)
         setScreenTime(data?.rules ?? null)
@@ -619,17 +641,83 @@ export function FamilySettingsPanel() {
               <SettingsToggleRow
                 icon={MessageSquare}
                 title="Direct messaging"
-                description="Allow or block DMs for this account"
+                description="Master switch for messaging. Turn off to lock all message types."
                 checked={controls.messaging_enabled}
                 onChange={(v) => setControls({ ...controls, messaging_enabled: v })}
               />
+              {controls.messaging_enabled ? (
+                <div className="space-y-0 border-l-2 border-primary/20 bg-surface-secondary/40">
+                  <SettingsToggleRow
+                    icon={MessageSquare}
+                    title="Text messages"
+                    description="Allow plain text and location messages"
+                    checked={controls.text_messaging_enabled !== false}
+                    onChange={(v) => setControls({ ...controls, text_messaging_enabled: v })}
+                  />
+                  <SettingsToggleRow
+                    icon={Image}
+                    title="Image messages"
+                    description="Allow photos and image attachments"
+                    checked={controls.image_messaging_enabled !== false}
+                    onChange={(v) => setControls({ ...controls, image_messaging_enabled: v })}
+                  />
+                  <SettingsToggleRow
+                    icon={Video}
+                    title="Video messages"
+                    description="Allow video attachments"
+                    checked={controls.video_messaging_enabled !== false}
+                    onChange={(v) => setControls({ ...controls, video_messaging_enabled: v })}
+                  />
+                  <SettingsToggleRow
+                    icon={Mic}
+                    title="Audio messages"
+                    description="Allow voice notes and audio clips"
+                    checked={controls.audio_messaging_enabled !== false}
+                    onChange={(v) => setControls({ ...controls, audio_messaging_enabled: v })}
+                  />
+                </div>
+              ) : null}
+              {areAllMessageTypesLocked(controls) ? (
+                <SettingsToggleRow
+                  icon={AlertTriangle}
+                  title="Emergency messages"
+                  description="When every message type is locked, allow emergency-only messages"
+                  checked={controls.emergency_messaging_enabled !== false}
+                  onChange={(v) => setControls({ ...controls, emergency_messaging_enabled: v })}
+                />
+              ) : null}
               <SettingsToggleRow
                 icon={Phone}
                 title="Calling"
-                description="Allow or block voice and video calls"
+                description="Master switch for calls. Turn off to block all call types."
                 checked={controls.calling_enabled}
                 onChange={(v) => setControls({ ...controls, calling_enabled: v })}
               />
+              {controls.calling_enabled ? (
+                <div className="space-y-0 border-l-2 border-primary/20 bg-surface-secondary/40">
+                  <SettingsToggleRow
+                    icon={Phone}
+                    title="Audio calls"
+                    description="Allow 1:1 voice calls"
+                    checked={controls.audio_calling_enabled !== false}
+                    onChange={(v) => setControls({ ...controls, audio_calling_enabled: v })}
+                  />
+                  <SettingsToggleRow
+                    icon={Video}
+                    title="Video calls"
+                    description="Allow 1:1 video calls"
+                    checked={controls.video_calling_enabled !== false}
+                    onChange={(v) => setControls({ ...controls, video_calling_enabled: v })}
+                  />
+                  <SettingsToggleRow
+                    icon={Users}
+                    title="Group calls"
+                    description="Allow starting or inviting people to group calls"
+                    checked={controls.group_calling_enabled !== false}
+                    onChange={(v) => setControls({ ...controls, group_calling_enabled: v })}
+                  />
+                </div>
+              ) : null}
               <SettingsToggleRow
                 icon={Users}
                 title="Joining groups"
@@ -651,6 +739,55 @@ export function FamilySettingsPanel() {
                 checked={controls.screen_time_enabled}
                 onChange={(v) => setControls({ ...controls, screen_time_enabled: v })}
               />
+              <SettingsToggleRow
+                icon={Film}
+                title="Restrict Reels categories"
+                description="Only show and allow creating reels in selected categories"
+                checked={controls.reels_restriction_enabled === true}
+                onChange={(v) =>
+                  setControls({
+                    ...controls,
+                    reels_restriction_enabled: v,
+                    reels_allowed_categories: v
+                      ? controls.reels_allowed_categories?.length
+                        ? controls.reels_allowed_categories
+                        : REEL_CATEGORIES.map((c) => c.value)
+                      : controls.reels_allowed_categories,
+                  })
+                }
+              />
+              {controls.reels_restriction_enabled ? (
+                <div className="space-y-3 px-4 py-3 sm:px-5">
+                  <p className={`${settingsLabelClass} mb-1`}>Allowed reel categories</p>
+                  <div className="flex flex-wrap gap-2">
+                    {REEL_CATEGORIES.map((cat) => {
+                      const selected = (controls.reels_allowed_categories || []).includes(cat.value)
+                      return (
+                        <button
+                          key={cat.value}
+                          type="button"
+                          onClick={() => {
+                            const current = new Set(controls.reels_allowed_categories || [])
+                            if (current.has(cat.value)) current.delete(cat.value)
+                            else current.add(cat.value)
+                            setControls({
+                              ...controls,
+                              reels_allowed_categories: Array.from(current),
+                            })
+                          }}
+                          className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${
+                            selected
+                              ? 'border-primary bg-primary text-white'
+                              : 'border-border-subtle bg-surface text-content-secondary hover:border-primary/40'
+                          }`}
+                        >
+                          {cat.label}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              ) : null}
               <div className="space-y-3 px-4 py-3 sm:px-5">
                 <div>
                   <label
@@ -674,34 +811,6 @@ export function FamilySettingsPanel() {
                     <option value="public">Public</option>
                     <option value="friends">Friends only</option>
                     <option value="private">Private</option>
-                  </select>
-                </div>
-                <div>
-                  <label
-                    className={`${settingsLabelClass} inline-flex items-center gap-2`}
-                    htmlFor="content-filter"
-                  >
-                    <Filter className="h-4 w-4 text-content-secondary" aria-hidden />
-                    Restrict content categories
-                  </label>
-                  <select
-                    id="content-filter"
-                    className={settingsInputClass}
-                    value={controls.content_filter_level ?? 'off'}
-                    onChange={(e) =>
-                      setControls({
-                        ...controls,
-                        content_filter_level:
-                          e.target.value === 'off'
-                            ? 'off'
-                            : (e.target.value as 'low' | 'medium' | 'high'),
-                      })
-                    }
-                  >
-                    <option value="off">Off</option>
-                    <option value="low">Low</option>
-                    <option value="medium">Medium</option>
-                    <option value="high">High</option>
                   </select>
                 </div>
               </div>
