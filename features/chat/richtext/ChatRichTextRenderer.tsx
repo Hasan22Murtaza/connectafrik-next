@@ -11,6 +11,8 @@ interface ChatRichTextRendererProps {
   maxChars?: number;
   expanded?: boolean;
   onToggleExpand?: () => void;
+  inheritColor?: boolean;
+  contentClassName?: string;
 }
 
 const ChatRichTextRenderer: React.FC<ChatRichTextRendererProps> = ({
@@ -20,6 +22,8 @@ const ChatRichTextRenderer: React.FC<ChatRichTextRendererProps> = ({
   maxChars,
   expanded = true,
   onToggleExpand,
+  inheritColor = false,
+  contentClassName,
 }) => {
   const plain = stripMarkdown(content || "");
   const shouldTruncate = Boolean(maxChars && plain.length > maxChars && !expanded);
@@ -40,7 +44,9 @@ const ChatRichTextRenderer: React.FC<ChatRichTextRendererProps> = ({
   return (
     <div className={`chat-rt-body ${isOwnMessage ? "chat-rt-own" : ""} ${className}`}>
       <div
-        className={`chat-rt-content break-words text-[14px] leading-[1.45] ${isOwnMessage ? "text-white" : "text-content"} sm:text-[14.5px]`}
+        className={`chat-rt-content break-words leading-[1.45] ${
+          inheritColor ? "" : isOwnMessage ? "text-white" : "text-content"
+        } ${contentClassName ?? "text-[14px] sm:text-[14.5px]"}`}
         dangerouslySetInnerHTML={{ __html: html }}
       />
       {maxChars && plain.length > maxChars && onToggleExpand ? (
