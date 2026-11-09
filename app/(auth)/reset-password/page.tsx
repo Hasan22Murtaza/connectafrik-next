@@ -104,7 +104,7 @@ const ResetPassword: React.FC = () => {
                 required
                 value={formData.password}
                 onChange={handleInputChange}
-                className="w-full h-12 rounded-xl border border-[#E5E7EB] bg-white pl-11 pr-11 text-sm text-[#111827] placeholder:text-[#9CA3AF] outline-none transition-shadow focus:border-[#F97316] focus:ring-2 focus:ring-[#F97316]/20"
+                className="w-full h-12 rounded-xl border border-[#E5E7EB] bg-white pl-11 pr-11 text-sm text-[#111827] placeholder:text-[#9CA3AF] outline-none transition-shadow focus:border-[#F97316] focus:ring-2 focus:ring-[#F97316]/20 dark:text-slate-100"
                 placeholder="Enter your new password"
                 minLength={6}
               />

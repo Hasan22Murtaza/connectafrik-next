@@ -216,7 +216,7 @@ const SigninForm: React.FC = () => {
     <div className="rounded-[28px] border border-black/[0.06] bg-white px-5 py-8 shadow-[0_12px_40px_rgba(15,23,42,0.08)] sm:px-8 sm:py-5">
       <div className="mb-4 text-center">
         <h1 className="text-[1.60rem] font-extrabold leading-tight tracking-tight text-[#111827] dark:text-slate-100 sm:text-[1.85rem]">
-          Welcome back <span aria-hidden="true">👋</span>
+          Welcome back 
         </h1>
       </div>
 
@@ -255,7 +255,7 @@ const SigninForm: React.FC = () => {
                   required
                   value={formData.email}
                   onChange={handleInputChange}
-                  className="w-full h-12 rounded-xl border border-[#E5E7EB] bg-white pl-11 pr-4 text-sm text-[#111827] placeholder:text-[#9CA3AF] outline-none transition-shadow focus:border-[#F97316] focus:ring-2 focus:ring-[#F97316]/20"
+                  className="w-full h-12 rounded-xl border border-[#E5E7EB] bg-white pl-11 pr-4 text-sm text-[#111827] placeholder:text-[#9CA3AF] outline-none transition-shadow focus:border-[#F97316] focus:ring-2 focus:ring-[#F97316]/20 dark:text-slate-100"
                   placeholder="Enter your email address"
                   autoComplete="email"
                 />
@@ -275,7 +275,7 @@ const SigninForm: React.FC = () => {
                   required
                   value={formData.password}
                   onChange={handleInputChange}
-                  className="w-full h-12 rounded-xl border border-[#E5E7EB] bg-white pl-11 pr-11 text-sm text-[#111827] placeholder:text-[#9CA3AF] outline-none transition-shadow focus:border-[#F97316] focus:ring-2 focus:ring-[#F97316]/20"
+                  className="w-full h-12 rounded-xl border border-[#E5E7EB] bg-white pl-11 pr-11 text-sm text-[#111827] placeholder:text-[#9CA3AF] outline-none transition-shadow focus:border-[#F97316] focus:ring-2 focus:ring-[#F97316]/20 dark:text-slate-100"
                   placeholder="Enter your password"
                   autoComplete="current-password"
                 />
