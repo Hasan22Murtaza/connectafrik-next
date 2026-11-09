@@ -284,7 +284,7 @@ const CreatePost: React.FC<CreatePostProps> = ({
           />
           <div
             role="listbox"
-            className="absolute left-0 top-full z-50 mt-1 min-w-[9rem] overflow-hidden rounded-xl border border-border bg-surface shadow-lg"
+            className="absolute right-0 top-full z-50 mt-1 min-w-[8rem] overflow-hidden rounded-xl border border-border bg-surface shadow-lg"
           >
             {POST_VISIBILITY_OPTIONS.map((option) => {
               const Icon = VISIBILITY_ICONS[option.value]
@@ -752,6 +752,7 @@ const CreatePost: React.FC<CreatePostProps> = ({
                   <span className="text-sm font-semibold text-white">{profile?.full_name?.charAt(0).toUpperCase() || 'U'}</span>
                 </div>
               )}
+              <div className="flex flex-1 items-center justify-between gap-3">
               <div className="min-w-0 flex-1">
                 <p className="flex min-w-0 items-baseline text-[15px] font-semibold leading-tight text-content">
                   <span className="shrink-0">{profile?.full_name || 'User'}</span>
@@ -768,7 +769,9 @@ const CreatePost: React.FC<CreatePostProps> = ({
                   )}
                 </p>
                 <p className="shrink-0 text-xs text-secondary">{profile?.username}</p>
+              </div>
                 {visibilityPicker}
+
               </div>
             </div>
           </>
