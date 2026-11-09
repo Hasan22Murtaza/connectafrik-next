@@ -160,7 +160,7 @@ const Signup: React.FC = () => {
               value={formData.firstName}
               onChange={handleInputChange}
               placeholder="First name"
-              className="w-full h-12 rounded-xl border border-[#E5E7EB] bg-white px-4 text-sm text-[#111827] placeholder:text-[#9CA3AF] outline-none transition-shadow focus:border-[#F97316] focus:ring-2 focus:ring-[#F97316]/20"
+              className="w-full h-12 rounded-xl border border-[#E5E7EB] bg-white px-4 text-sm text-[#111827] placeholder:text-[#9CA3AF] outline-none transition-shadow focus:border-[#F97316] focus:ring-2 focus:ring-[#F97316]/20 dark:text-slate-100"
               aria-invalid={!!fieldErrors.firstName}
             />
             {fieldErrors.firstName && (
@@ -174,7 +174,7 @@ const Signup: React.FC = () => {
               value={formData.lastName}
               onChange={handleInputChange}
               placeholder="Last name"
-              className="w-full h-12 rounded-xl border border-[#E5E7EB] bg-white px-4 text-sm text-[#111827] placeholder:text-[#9CA3AF] outline-none transition-shadow focus:border-[#F97316] focus:ring-2 focus:ring-[#F97316]/20"
+              className="w-full h-12 rounded-xl border border-[#E5E7EB] bg-white px-4 text-sm text-[#111827] placeholder:text-[#9CA3AF] outline-none transition-shadow focus:border-[#F97316] focus:ring-2 focus:ring-[#F97316]/20 dark:text-slate-100"
               aria-invalid={!!fieldErrors.lastName}
             />
             {fieldErrors.lastName && (
@@ -190,7 +190,7 @@ const Signup: React.FC = () => {
             value={formData.username}
             onChange={handleInputChange}
             placeholder="Username"
-            className="w-full h-12 rounded-xl border border-[#E5E7EB] bg-white px-4 text-sm text-[#111827] placeholder:text-[#9CA3AF] outline-none transition-shadow focus:border-[#F97316] focus:ring-2 focus:ring-[#F97316]/20"
+            className="w-full h-12 rounded-xl border border-[#E5E7EB] bg-white px-4 text-sm text-[#111827] placeholder:text-[#9CA3AF] outline-none transition-shadow focus:border-[#F97316] focus:ring-2 focus:ring-[#F97316]/20 dark:text-slate-100"
             aria-invalid={!!fieldErrors.username}
           />
           {fieldErrors.username && (
@@ -205,7 +205,7 @@ const Signup: React.FC = () => {
             value={formData.emailOrPhone}
             onChange={handleInputChange}
             placeholder="Email address"
-            className="w-full h-12 rounded-xl border border-[#E5E7EB] bg-white px-4 text-sm text-[#111827] placeholder:text-[#9CA3AF] outline-none transition-shadow focus:border-[#F97316] focus:ring-2 focus:ring-[#F97316]/20"
+            className="w-full h-12 rounded-xl border border-[#E5E7EB] bg-white px-4 text-sm text-[#111827] placeholder:text-[#9CA3AF] outline-none transition-shadow focus:border-[#F97316] focus:ring-2 focus:ring-[#F97316]/20 dark:text-slate-100"
             aria-invalid={!!fieldErrors.emailOrPhone}
           />
           {fieldErrors.emailOrPhone && (
@@ -222,7 +222,7 @@ const Signup: React.FC = () => {
               value={formData.birthday}
               onChange={handleInputChange}
               max={maxBirthday}
-              className="w-full h-12 rounded-xl border border-[#E5E7EB] bg-white px-4 text-sm text-[#111827] placeholder:text-[#9CA3AF] outline-none transition-shadow focus:border-[#F97316] focus:ring-2 focus:ring-[#F97316]/20"
+              className="w-full h-12 rounded-xl border border-[#E5E7EB] bg-white px-4 text-sm text-[#111827] placeholder:text-[#9CA3AF] outline-none transition-shadow focus:border-[#F97316] focus:ring-2 focus:ring-[#F97316]/20 dark:text-slate-100"
               aria-invalid={!!fieldErrors.birthday}
             />
             {fieldErrors.birthday && (
@@ -251,7 +251,7 @@ const Signup: React.FC = () => {
                 value={formData.customGender}
                 onChange={handleInputChange}
                 placeholder="Enter your gender (optional)"
-                className="w-full h-12 rounded-xl border border-[#E5E7EB] bg-white px-4 text-sm text-[#111827] placeholder:text-[#9CA3AF] outline-none transition-shadow focus:border-[#F97316] focus:ring-2 focus:ring-[#F97316]/20 mt-2"
+                className="w-full h-12 rounded-xl border border-[#E5E7EB] bg-white px-4 text-sm text-[#111827] placeholder:text-[#9CA3AF] outline-none transition-shadow focus:border-[#F97316] focus:ring-2 focus:ring-[#F97316]/20 dark:text-slate-100 mt-2"
               />
             )}
             {fieldErrors.gender && (
