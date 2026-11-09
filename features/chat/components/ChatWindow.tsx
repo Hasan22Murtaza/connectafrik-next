@@ -1534,7 +1534,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       );
       const hasAudio = filesSnapshot.some(
         (f) =>
-          f.type === "audio" ||
           (f.mimeType || "").startsWith("audio/") ||
           (f.name || "").startsWith("voice-")
       );
