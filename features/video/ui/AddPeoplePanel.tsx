@@ -48,7 +48,7 @@ const AddPeoplePanel: React.FC<AddPeoplePanelProps> = ({
 
   return (
     <aside
-      className="z-50 flex h-full max-h-full min-h-0 w-full shrink-0 flex-col overflow-hidden border-l border-border bg-surface shadow-2xl sm:w-80 max-sm:absolute max-sm:inset-0"
+      className="call-add-people-panel z-50 flex h-full max-h-full min-h-0 w-full shrink-0 flex-col overflow-hidden border-l border-border bg-surface shadow-2xl sm:w-80"
       aria-label="Add people to call"
     >
       <header className="flex shrink-0 items-center justify-between border-b border-border px-3 py-2.5">

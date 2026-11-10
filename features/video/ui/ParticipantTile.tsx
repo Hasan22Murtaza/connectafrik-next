@@ -38,7 +38,7 @@ const ParticipantTile = React.memo(function ParticipantTile({
       className={`group relative w-full h-full overflow-hidden transition-all duration-200 ${
         isActiveSpeaker && !isLocal ? 'ring-2 ring-inset ring-green-400' : ''
       }`}
-      style={{ background: 'rgba(15, 23, 42, 0.58)' }}
+      style={{ background: 'var(--call-card)' }}
     >
       {media}
       <ParticipantInfo

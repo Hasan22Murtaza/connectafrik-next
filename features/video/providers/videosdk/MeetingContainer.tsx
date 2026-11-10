@@ -23,6 +23,7 @@ import React, {
 } from 'react';
 import { useMeeting } from '@videosdk.live/react-sdk';
 import { PhoneOff } from '@/shared/icons';
+import { Users } from '@/shared/icons';
 import toast from 'react-hot-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { getSessionIdFromAccessToken } from '@/shared/utils/sessionDeviceLabel';
@@ -54,6 +55,10 @@ import CallReactionOverlay from '@/features/video/ui/CallReactionOverlay';
 import RaisedHandsBanner from '@/features/video/ui/RaisedHandsBanner';
 import GroupCallParticipantsStrip from '@/features/video/ui/GroupCallParticipantsStrip';
 import type { CallParticipantProfile } from '@/features/video/ui/GroupCallParticipantsStrip';
+import CallParticipantsPanel from '@/features/video/ui/CallParticipantsPanel';
+import type { CallPanelParticipant } from '@/features/video/ui/CallParticipantsPanel';
+import CallSettingsPanel from '@/features/video/ui/CallSettingsPanel';
+import CallFullscreenButton from '@/features/video/ui/CallFullscreenButton';
 import { LocalAdaptiveSendQuality } from '@/features/video/providers/videosdk/LocalAdaptiveSendQuality';
 import { useCallHeartbeat } from '@/shared/hooks/useCallHeartbeat';
 import { useVideoSDKCallEngagement } from '@/features/video/hooks/useVideoSDKCallEngagement';
@@ -148,6 +153,8 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
   const [showMessageInput, setShowMessageInput] = useState(false);
   const [messageText, setMessageText] = useState('');
   const [showAddPeople, setShowAddPeople] = useState(false);
+  const [showParticipants, setShowParticipants] = useState(false);
+  const [showCallSettings, setShowCallSettings] = useState(false);
   const [addPeopleSearch, setAddPeopleSearch] = useState('');
   const [addPeopleFriends, setAddPeopleFriends] = useState<any[]>([]);
   const [addPeopleLoading, setAddPeopleLoading] = useState(false);
@@ -303,7 +310,7 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
     };
     void load();
     return () => { cancelled = true; };
-  }, [isOpen, threadId, callIdHint, normalizeSignalMeta]);
+  }, [isOpen, threadId, callIdHint, normalizeSignalMeta, callStatus]);
 
   const closeCall = useCallback(
     (delayMs = 1000) => {
@@ -361,10 +368,13 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
     leave,
     toggleMic,
     toggleWebcam,
+    changeMic,
+    changeWebcam,
     enableScreenShare,
     disableScreenShare,
     participants,         // remote participants only
     localParticipant,
+    activeSpeakerId,
     localMicOn,
     localWebcamOn,
     localScreenShareOn,  // true when local user is screen-sharing
@@ -1281,6 +1291,32 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
   }, [remoteParticipantIds, localId, groupPage]);
 
   const inCallUi = isInCallUiStatus(callStatus);
+  const callPanelParticipants = useMemo<CallPanelParticipant[]>(() => {
+    const profilesById = new Map(participantProfiles.map((profile) => [profile.id, profile]));
+    const remote: CallPanelParticipant[] = Array.from(participants.values()).map((participant) => {
+      const profile = profilesById.get(String(participant.id));
+      return {
+        id: String(participant.id),
+        name: participant.displayName || profile?.full_name || profile?.username || 'Participant',
+        avatarUrl: profile?.avatar_url || undefined,
+        isMuted: !participant.micOn,
+        isSpeaking: participant.id === activeSpeakerId,
+        isHost: String(participant.id) === sessionHostId,
+      };
+    });
+    if (localId && !remote.some((participant) => participant.id === localId)) {
+      remote.push({
+        id: localId,
+        name: user?.user_metadata?.full_name || 'You',
+        avatarUrl: user?.user_metadata?.avatar_url || undefined,
+        isMuted,
+        isSpeaking: localId === activeSpeakerId,
+        isHost: localId === sessionHostId,
+        isLocal: true,
+      });
+    }
+    return remote;
+  }, [participantProfiles, participants, localId, sessionHostId, isMuted, user, activeSpeakerId]);
   const remoteMediaVisible =
     inCallUi &&
     (effectiveCallType === 'video' || !!remotePresenter || isLocalPresenting) &&
@@ -1356,15 +1392,49 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
   // Render
   // --------------------------------------------------------------------------
   return (
-    <div className="flex h-full w-full overflow-hidden">
+    <div
+      className="call-experience dark flex h-full w-full overflow-hidden"
+    >
       <div
-        className="flex h-screen min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
-        style={{ background: 'linear-gradient(135deg, #ddd3c5 0%, #c7d9d1 100%)' }}
+        className="call-stage flex h-screen min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
       >
       <div
         ref={meetingSurfaceRef}
-        className="relative min-h-0 min-w-0 flex-1 overflow-hidden"
+        className="call-meeting-surface relative min-h-0 min-w-0 flex-1 overflow-hidden"
       >
+        {callStatus !== 'ringing' && (
+          <header className="call-topbar">
+            <div className="call-brand-mark" aria-hidden="true">C</div>
+            <div className="call-topbar-title">
+              <strong>CribsTalk call</strong>
+              <span>{callStatus === 'connected' ? 'Live meeting' : callStatus.replace('_', ' ')}</span>
+            </div>
+            <span className="call-topbar-divider" />
+            <span className="call-timer">{formatDuration(callDuration)}</span>
+            <div className="call-network-status" aria-label="Network quality">
+              {localId ? <VideoSDKLocalNetworkChip participantId={localId} /> : null}
+            </div>
+            <button
+              type="button"
+              className="call-topbar-people"
+              onClick={() => {
+                setShowAddPeople(false);
+                setShowMessageInput(false);
+                setShowCallSettings(false);
+                setShowParticipants((open) => !open);
+              }}
+              aria-pressed={showParticipants}
+              aria-expanded={showParticipants}
+              aria-controls="call-people-panel"
+              aria-label={`Show participants, ${participantCount} in this call`}
+            >
+              <Users className="h-4 w-4" />
+              <span className="call-topbar-people-label">People</span>
+              <span>{participantCount}</span>
+            </button>
+            <CallFullscreenButton />
+          </header>
+        )}
         {/* Every remote participant's audio, mounted once, OUTSIDE every layout
             branch below. Pagination (MAX_PER_PAGE), screen share replacing the
             whole grid, and the 1:1 status/type gates all used to unmount
@@ -1477,7 +1547,7 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
               gap: 6,
               gridTemplateColumns: `repeat(${gridLayout.cols}, minmax(0, 1fr))`,
               gridTemplateRows: `repeat(${gridLayout.rows}, minmax(0, 1fr))`,
-              background: 'linear-gradient(135deg, #ddd3c5 0%, #c7d9d1 100%)',
+              background: 'var(--call-canvas)',
             }}
           >
             {gridLayout.allTiles.map((pid, index) => {
@@ -1666,42 +1736,72 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
           </div>
         )}
 
-        {inCallUi && (
-          <CallControls
-            isMuted={isMuted}
-            isVideoEnabled={isVideoEnabled}
-            isScreenSharing={isLocalPresenting}
-            remoteScreenShareStream={remoteScreenShareMarkerRef.current}
-            screenShareParticipantName={presenterName}
-            speakerLevel={speakerLevel}
-            callType={effectiveCallType}
-            showMessageInput={showMessageInput}
-            showAddPeople={showAddPeople}
-            onToggleMute={handleToggleMic}
-            onToggleVideo={handleToggleVideo}
-            onToggleScreenShare={handleToggleScreenShare}
-            onToggleSpeaker={handleToggleSpeaker}
-            onToggleMessageInput={() => {
-              setShowAddPeople(false);
-              setShowMessageInput((p) => !p);
-            }}
-            onToggleAddPeople={() => {
-              setShowMessageInput(false);
-              setShowAddPeople((p) => !p);
-            }}
-            onToggleHand={engagement.toggleHand}
-            onSendReaction={engagement.sendReaction}
-            onEndCall={handleEndCall}
-            onEndCallForAll={isCallHost && (isGroupCall || isGroupCallSession) ? handleEndCallForAll : undefined}
-            isGroupCall={isGroupCall || isGroupCallSession}
-            handRaised={engagement.handRaised}
-            networkIndicator={
-              localId ? <VideoSDKLocalNetworkChip participantId={localId} /> : undefined
-            }
-          />
-        )}
       </div>
       </div>
+
+      {inCallUi && (
+        <CallControls
+          isMuted={isMuted}
+          isVideoEnabled={isVideoEnabled}
+          isScreenSharing={isLocalPresenting}
+          remoteScreenShareStream={remoteScreenShareMarkerRef.current}
+          screenShareParticipantName={presenterName}
+          callType={effectiveCallType}
+          showMessageInput={showMessageInput}
+          showParticipants={showParticipants}
+          showSettings={showCallSettings}
+          onToggleMute={handleToggleMic}
+          onToggleVideo={handleToggleVideo}
+          onToggleScreenShare={handleToggleScreenShare}
+          onToggleMessageInput={() => {
+            setShowAddPeople(false);
+            setShowParticipants(false);
+            setShowCallSettings(false);
+            setShowMessageInput((p) => !p);
+          }}
+          onToggleParticipants={() => {
+            setShowAddPeople(false);
+            setShowMessageInput(false);
+            setShowCallSettings(false);
+            setShowParticipants((open) => !open);
+          }}
+          onToggleSettings={() => {
+            setShowAddPeople(false);
+            setShowMessageInput(false);
+            setShowParticipants(false);
+            setShowCallSettings((open) => !open);
+          }}
+          onToggleHand={engagement.toggleHand}
+          onSendReaction={engagement.sendReaction}
+          onEndCall={handleEndCall}
+          onEndCallForAll={isCallHost && (isGroupCall || isGroupCallSession) ? handleEndCallForAll : undefined}
+          isGroupCall={isGroupCall || isGroupCallSession}
+          handRaised={engagement.handRaised}
+        />
+      )}
+
+      {showCallSettings && (
+        <CallSettingsPanel
+          onClose={() => setShowCallSettings(false)}
+          speakerLevel={speakerLevel}
+          onToggleSpeaker={handleToggleSpeaker}
+          onSelectInput={(kind, deviceId) => {
+            if (kind === 'audioinput') changeMic(deviceId);
+            else changeWebcam(deviceId);
+          }}
+        />
+      )}
+
+      {showParticipants && (
+        <CallParticipantsPanel
+          participants={callPanelParticipants}
+          onClose={() => setShowParticipants(false)}
+          onInvite={() => {
+            setShowParticipants(false);
+            setShowAddPeople(true);
+          }}
+        />
+      )}
 
       {/* ── Add-people slide-over panel ───────────────────────────────────── */}
       {showAddPeople && (

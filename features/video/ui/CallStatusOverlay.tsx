@@ -87,14 +87,8 @@ const CallStatusOverlay: React.FC<CallStatusOverlayProps> = ({
     ) : callStatus === 'reconnecting' ? (
       <>
         <div className="text-base sm:text-lg md:text-xl font-semibold">Reconnecting...</div>
-        <div className="text-xs sm:text-sm text-content-secondary mt-1">
-          {formatDuration(callDuration)} · network issue
-        </div>
+       
       </>
-    ) : callStatus === 'connected' ? (
-      <div className="text-xs sm:text-sm md:text-base font-bold tracking-wider text-content font-mono tabular-nums">
-        {formatDuration(callDuration)}
-      </div>
     ) : null;
 
   return (

@@ -13,18 +13,27 @@ import {
 import { stripMarkdown } from '@/features/chat/richtext';
 import CallChatInput from './CallChatInput';
 
+/** Call signaling / system rows — never show these in the in-call chat drawer. */
 const HIDDEN_MESSAGE_TYPES = new Set([
   'initiated',
   'ringing',
   'active',
   'ended',
   'failed',
+  'declined',
+  'missed',
+  'accepted_on_another_device',
   'call_notification',
   'hand_raised',
   'reaction',
   'screen_share_started',
   'screen_share_stopped',
 ]);
+
+const HIDDEN_CONTENT_PATTERNS = [
+  /^accepted on another device$/i,
+  /^call (started|ended|missed|declined)/i,
+];
 
 interface CallChatPanelProps {
   threadId?: string;
@@ -37,10 +46,14 @@ interface CallChatPanelProps {
 }
 
 function isVisibleChatMessage(message: ChatMessage, currentUserId?: string): boolean {
-  if (HIDDEN_MESSAGE_TYPES.has((message.message_type || '').toLowerCase())) return false;
+  const type = (message.message_type || '').toLowerCase();
+  if (HIDDEN_MESSAGE_TYPES.has(type)) return false;
+  if (type.startsWith('call_') || type.includes('signal')) return false;
   if (message.is_deleted && currentUserId && message.deleted_for?.includes(currentUserId)) {
     return false;
   }
+  const body = stripMarkdown(message.content || '').trim();
+  if (body && HIDDEN_CONTENT_PATTERNS.some((re) => re.test(body))) return false;
   return true;
 }
 
@@ -69,7 +82,7 @@ const CallChatPanel: React.FC<CallChatPanelProps> = ({
     let cancelled = false;
     setLoading(true);
     void supabaseMessagingService
-      .getThreadMessages(threadId, { limit: 40 })
+      .getThreadMessages(threadId, { limit: 60 })
       .then(({ messages: list }) => {
         if (cancelled) return;
         const sorted = [...list].sort(
@@ -103,7 +116,6 @@ const CallChatPanel: React.FC<CallChatPanelProps> = ({
       cancelled = true;
       unsubscribe();
     };
-    // currentUser is derived from ids; listing it would resubscribe every render
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [threadId, currentUserId]);
 
@@ -119,38 +131,26 @@ const CallChatPanel: React.FC<CallChatPanelProps> = ({
   }, [visible.length, loading]);
 
   return (
-    <aside
-      className="z-40 flex h-[min(58vh,28rem)] w-full flex-col border-t border-border bg-surface shadow-2xl sm:h-screen sm:w-[360px] sm:border-l sm:border-t-0 max-sm:absolute max-sm:inset-x-0 max-sm:bottom-0 max-sm:rounded-t-2xl"
-      aria-label="Meeting chat"
-    >
-      <header className="flex shrink-0 items-center justify-between border-b border-border bg-primary-600 px-3 py-2.5">
+    <aside className="call-chat-panel" aria-label="Meeting chat">
+      <header className="call-chat-header">
         <div>
-          <h2 className="text-sm font-semibold text-white">Chat</h2>
-          <p className="text-[11px] text-white">Visible to everyone in this thread</p>
+          <h2>Chat</h2>
+          <span>Visible to everyone in this call</span>
         </div>
-        <button
-          type="button"
-          onClick={onClose}
-          className="rounded-full p-1.5 text-content-secondary transition  hover:text-content"
-          aria-label="Close chat"
-        >
-          <X className="h-4 w-4 text-white hover:text-gray-200" />
+        <button type="button" onClick={onClose} aria-label="Close chat">
+          <X className="h-4 w-4" />
         </button>
       </header>
 
-      <div ref={scrollerRef} className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
+      <div ref={scrollerRef} className="call-chat-messages">
         {!threadId ? (
-          <p className="px-2 py-8 text-center text-xs text-content-secondary">
-            Chat is unavailable for this call.
-          </p>
+          <p className="call-chat-empty">Chat is unavailable for this call.</p>
         ) : loading && visible.length === 0 ? (
-          <p className="px-2 py-8 text-center text-xs text-content-secondary">Loading messages…</p>
+          <p className="call-chat-empty">Loading messages…</p>
         ) : visible.length === 0 ? (
-          <p className="px-2 py-8 text-center text-xs text-content-secondary">
-            No messages yet. Say hello to everyone on the call.
-          </p>
+          <p className="call-chat-empty">No messages yet. Say hello to everyone on the call.</p>
         ) : (
-          <ul className="space-y-3">
+          <ul className="call-chat-list">
             {visible.map((message) => {
               const own = chatUserIdsEqual(getChatMessageAuthorId(message), currentUserId);
               const name = own ? 'You' : message.sender?.name || 'Participant';
@@ -159,22 +159,17 @@ const CallChatPanel: React.FC<CallChatPanelProps> = ({
                 : stripMarkdown(message.content || '').trim() ||
                   (message.attachments?.length ? 'Attachment' : '');
               return (
-                <li
-                  key={message.id}
-                  className={`flex flex-col ${own ? 'items-end' : 'items-start'}`}
-                >
-                  <div className="mb-0.5 flex max-w-[92%] items-baseline gap-1.5 px-0.5">
-                    <span className="truncate text-[11px] font-semibold text-content">{name}</span>
-                    <span className="shrink-0 text-[10px] tabular-nums text-content-tertiary">
+                <li key={message.id} className={`call-chat-row ${own ? 'is-own' : 'is-peer'}`}>
+                  <div className="call-chat-meta">
+                    <strong>{name}</strong>
+                    <time dateTime={message.created_at}>
                       {format(new Date(message.created_at), 'HH:mm')}
-                    </span>
+                    </time>
                   </div>
                   <div
-                    className={`max-w-[92%] rounded-2xl px-3 py-2 text-[13px] leading-snug shadow-sm ${
-                      own
-                        ? 'chat-bubble-own text-content'
-                        : 'chat-bubble-in text-content ring-1 ring-black/[0.04]'
-                    } ${message.is_deleted ? 'italic text-content-tertiary' : ''}`}
+                    className={`call-chat-bubble ${own ? 'is-own' : 'is-peer'} ${
+                      message.is_deleted ? 'is-deleted' : ''
+                    }`}
                   >
                     {body || 'Message'}
                   </div>
@@ -185,14 +180,14 @@ const CallChatPanel: React.FC<CallChatPanelProps> = ({
         )}
       </div>
 
-      <div className="shrink-0 border-t border-border p-2.5">
+      <footer className="call-chat-composer" data-call-chat-composer>
         <CallChatInput
           messageText={messageText}
           onMessageChange={onMessageChange}
           onSend={onSend}
           disabled={!threadId}
         />
-      </div>
+      </footer>
     </aside>
   );
 };

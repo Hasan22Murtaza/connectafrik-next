@@ -14,7 +14,7 @@ import React, {
 import { RoomAudioRenderer, useLocalParticipant, useParticipants, useRoomContext } from '@livekit/components-react';
 import type { Participant } from 'livekit-client';
 import { RoomEvent, Track } from 'livekit-client';
-import { PhoneOff } from '@/shared/icons';
+import { PhoneOff, Users } from '@/shared/icons';
 import { CALL_AUDIO_CAPTURE } from '@/features/video/providers/livekit/prepareCallAudio';
 import toast from 'react-hot-toast';
 import { useAuth } from '@/contexts/AuthContext';
@@ -34,6 +34,10 @@ import { broadcastCallUiStatus } from '@/features/video/hooks/broadcastCallUiSta
 import type { CallStatus, SpeakerLevel } from '@/features/video/core/types';
 import { SPEAKER_VOLUMES, isInCallUiStatus } from '@/features/video/core/types';
 import CallControls from '@/features/video/ui/CallControls';
+import CallParticipantsPanel from '@/features/video/ui/CallParticipantsPanel';
+import type { CallPanelParticipant } from '@/features/video/ui/CallParticipantsPanel';
+import CallSettingsPanel from '@/features/video/ui/CallSettingsPanel';
+import CallFullscreenButton from '@/features/video/ui/CallFullscreenButton';
 import CallStatusOverlay from '@/features/video/ui/CallStatusOverlay';
 import ScreenShareView from '@/features/video/ui/ScreenShareView';
 import AddPeoplePanel from '@/features/video/ui/AddPeoplePanel';
@@ -117,6 +121,8 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
   const [showMessageInput, setShowMessageInput] = useState(false);
   const [messageText, setMessageText] = useState('');
   const [showAddPeople, setShowAddPeople] = useState(false);
+  const [showParticipants, setShowParticipants] = useState(false);
+  const [showCallSettings, setShowCallSettings] = useState(false);
   const [addPeopleSearch, setAddPeopleSearch] = useState('');
   const [addPeopleFriends, setAddPeopleFriends] = useState<any[]>([]);
   const [addPeopleLoading, setAddPeopleLoading] = useState(false);
@@ -1090,17 +1096,68 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
     }
     return list;
   }, [localId, localParticipantInfo, remoteParticipants]);
+  const callPanelParticipants = useMemo<CallPanelParticipant[]>(
+    () =>
+      sidebarParticipants.map((participant) => {
+        const isLocal = participant.identity === localId;
+        const normalized = normalizeLiveKitParticipant(participant, isLocal);
+        return {
+          id: participant.identity,
+          name: normalized.displayName || (isLocal ? 'You' : 'Participant'),
+          avatarUrl: normalized.avatarUrl || undefined,
+          isLocal,
+          isMuted: !normalized.isMicOn,
+          isSpeaking: !!normalized.isActiveSpeaker,
+          isHost: participant.identity === sessionHostId,
+        };
+      }),
+    [sidebarParticipants, localId, sessionHostId],
+  );
 
   return (
-    <div className="flex h-full w-full overflow-hidden">
+    <div
+      className="call-experience dark flex h-full w-full overflow-hidden"
+    >
       <div
-        className="flex h-screen min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
-        style={{ background: 'linear-gradient(135deg, #ddd3c5 0%, #c7d9d1 100%)' }}
+        className="call-stage flex h-screen min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
       >
       <div
         ref={meetingSurfaceRef}
-        className="relative min-h-0 min-w-0 flex-1 overflow-hidden"
+        className="call-meeting-surface relative min-h-0 min-w-0 flex-1 overflow-hidden"
       >
+        {callStatus !== 'ringing' && (
+          <header className="call-topbar">
+            <div className="call-brand-mark" aria-hidden="true">C</div>
+            <div className="call-topbar-title">
+              <strong>CribsTalk call</strong>
+              <span>{callStatus === 'connected' ? 'Live meeting' : callStatus.replace('_', ' ')}</span>
+            </div>
+            <span className="call-topbar-divider" />
+            <span className="call-timer">{formatDuration(callDuration)}</span>
+            <div className="call-network-status" aria-label="Network quality">
+              <LiveKitLocalNetworkChip participant={localParticipantInfo} />
+            </div>
+            <button
+              type="button"
+              className="call-topbar-people"
+              onClick={() => {
+                setShowAddPeople(false);
+                setShowMessageInput(false);
+                setShowCallSettings(false);
+                setShowParticipants((open) => !open);
+              }}
+              aria-pressed={showParticipants}
+              aria-expanded={showParticipants}
+              aria-controls="call-people-panel"
+              aria-label={`Show participants, ${participantCount} in this call`}
+            >
+              <Users className="h-4 w-4" />
+              <span className="call-topbar-people-label">People</span>
+              <span>{participantCount}</span>
+            </button>
+            <CallFullscreenButton />
+          </header>
+        )}
         {/* Every remote participant's audio, mounted once, OUTSIDE every layout
             branch below. Pagination (MAX_PER_PAGE), screen share replacing the
             whole grid, and the 1:1 status/type gates all used to unmount
@@ -1189,7 +1246,7 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
               gap: 6,
               gridTemplateColumns: `repeat(${gridLayout.cols}, minmax(0, 1fr))`,
               gridTemplateRows: `repeat(${gridLayout.rows}, minmax(0, 1fr))`,
-              background: 'linear-gradient(135deg, #ddd3c5 0%, #c7d9d1 100%)',
+              background: 'var(--call-canvas)',
             }}
           >
             {gridLayout.allTiles.map((identity, index) => {
@@ -1341,39 +1398,71 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
           </div>
         )}
 
-        {inCallUi && (
-          <CallControls
-            isMuted={isMuted}
-            isVideoEnabled={isVideoEnabled}
-            isScreenSharing={isLocalPresenting}
-            remoteScreenShareStream={remoteScreenShareMarkerRef.current}
-            screenShareParticipantName={presenterName}
-            speakerLevel={speakerLevel}
-            callType={effectiveCallType}
-            showMessageInput={showMessageInput}
-            showAddPeople={showAddPeople}
-            onToggleMute={handleToggleMute}
-            onToggleVideo={handleToggleVideo}
-            onToggleScreenShare={handleToggleScreenShare}
-            onToggleSpeaker={handleToggleSpeaker}
-            onToggleMessageInput={() => {
-              setShowAddPeople(false);
-              setShowMessageInput((v) => !v);
-            }}
-            onToggleAddPeople={() => {
-              setShowMessageInput(false);
-              setShowAddPeople((v) => !v);
-            }}
-            onToggleHand={engagement.toggleHand}
-            onSendReaction={engagement.sendReaction}
-            onEndCall={handleEndCall}
-            isGroupCall={isGroupCall}
-            handRaised={engagement.handRaised}
-            networkIndicator={<LiveKitLocalNetworkChip participant={localParticipantInfo} />}
-          />
-        )}
       </div>
       </div>
+
+      {inCallUi && (
+        <CallControls
+          isMuted={isMuted}
+          isVideoEnabled={isVideoEnabled}
+          isScreenSharing={isLocalPresenting}
+          remoteScreenShareStream={remoteScreenShareMarkerRef.current}
+          screenShareParticipantName={presenterName}
+          callType={effectiveCallType}
+          showMessageInput={showMessageInput}
+          showParticipants={showParticipants}
+          showSettings={showCallSettings}
+          onToggleMute={handleToggleMute}
+          onToggleVideo={handleToggleVideo}
+          onToggleScreenShare={handleToggleScreenShare}
+          onToggleMessageInput={() => {
+            setShowAddPeople(false);
+            setShowParticipants(false);
+            setShowCallSettings(false);
+            setShowMessageInput((v) => !v);
+          }}
+          onToggleParticipants={() => {
+            setShowAddPeople(false);
+            setShowMessageInput(false);
+            setShowCallSettings(false);
+            setShowParticipants((open) => !open);
+          }}
+          onToggleSettings={() => {
+            setShowAddPeople(false);
+            setShowMessageInput(false);
+            setShowParticipants(false);
+            setShowCallSettings((open) => !open);
+          }}
+          onToggleHand={engagement.toggleHand}
+          onSendReaction={engagement.sendReaction}
+          onEndCall={handleEndCall}
+          isGroupCall={isGroupCall}
+          handRaised={engagement.handRaised}
+        />
+      )}
+
+      {showCallSettings && (
+        <CallSettingsPanel
+          onClose={() => setShowCallSettings(false)}
+          speakerLevel={speakerLevel}
+          onToggleSpeaker={handleToggleSpeaker}
+          onSelectInput={async (kind, deviceId) => {
+            const switched = await room.switchActiveDevice(kind, deviceId);
+            if (!switched) throw new Error('The active device could not be changed.');
+          }}
+        />
+      )}
+
+      {showParticipants && (
+        <CallParticipantsPanel
+          participants={callPanelParticipants}
+          onClose={() => setShowParticipants(false)}
+          onInvite={() => {
+            setShowParticipants(false);
+            setShowAddPeople(true);
+          }}
+        />
+      )}
 
       {showAddPeople && (
         <AddPeoplePanel
@@ -1421,4 +1510,3 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
 };
 
 export default LiveKitMeetingContainer;
-

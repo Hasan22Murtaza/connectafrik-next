@@ -5,16 +5,16 @@ import {
   MicOff,
   MonitorOff,
   MonitorUp,
+  MoreHorizontal,
   Phone,
   Smile,
-  UserPlus,
   Video,
   VideoOff,
-  Volume1,
-  Volume2,
+  Users,
+  Settings,
 } from '@/shared/icons';
-import React, { useEffect, useRef, useState } from 'react';
-import type { SpeakerLevel } from '@/features/video/core/types';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { CALL_LIVE_REACTIONS } from '@/features/video/core/callEngagement';
 
 interface CallControlsProps {
@@ -23,32 +23,29 @@ interface CallControlsProps {
   isScreenSharing: boolean;
   remoteScreenShareStream: MediaStream | null;
   screenShareParticipantName: string;
-  speakerLevel: SpeakerLevel;
   callType: 'audio' | 'video';
   showMessageInput: boolean;
-  showAddPeople: boolean;
+  showParticipants?: boolean;
+  showSettings?: boolean;
   isGroupCall?: boolean;
   handRaised?: boolean;
   onToggleMute: () => void;
   onToggleVideo: () => void;
   onToggleScreenShare: () => void;
-  onToggleSpeaker: () => void;
   onToggleMessageInput: () => void;
-  onToggleAddPeople: () => void;
+  onToggleParticipants?: () => void;
+  onToggleSettings?: () => void;
   onToggleHand?: () => void;
   onSendReaction?: (emoji: string) => void;
   onEndCall: () => void;
   onEndCallForAll?: () => void;
-  networkIndicator?: React.ReactNode;
 }
 
 const iconBtn =
-  'flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-content-secondary transition hover:bg-surface-hover hover:text-content focus:outline-none touch-manipulation sm:h-10 sm:w-10';
+  'call-toolbar-button flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-content-secondary transition hover:bg-surface-hover hover:text-content focus:outline-none touch-manipulation sm:h-12 sm:w-12';
 const iconBtnActive = 'bg-primary/15 text-primary hover:bg-primary/20 hover:text-primary';
-const devicePillOn = 'bg-surface-secondary text-content hover:bg-surface-tertiary';
-const devicePillOff = 'bg-primary text-content-inverse hover:bg-primary-hover';
-const glassCluster =
-  'flex items-center gap-0.5 rounded-full border border-border bg-surface/90 px-1 py-1 shadow-[0_8px_24px_rgba(0,0,0,0.08)] backdrop-blur-xl sm:gap-1.5 sm:px-2 sm:py-2';
+
+type AnchorBox = { left: number; bottom: number; width: number };
 
 const CallControls: React.FC<CallControlsProps> = ({
   isMuted,
@@ -56,21 +53,20 @@ const CallControls: React.FC<CallControlsProps> = ({
   isScreenSharing,
   remoteScreenShareStream,
   screenShareParticipantName,
-  speakerLevel,
   callType,
   showMessageInput,
-  showAddPeople,
+  showParticipants = false,
+  showSettings = false,
   onToggleMute,
   onToggleVideo,
   onToggleScreenShare,
-  onToggleSpeaker,
   onToggleMessageInput,
-  onToggleAddPeople,
+  onToggleParticipants,
+  onToggleSettings,
   onToggleHand,
   onSendReaction,
   onEndCall,
   onEndCallForAll,
-  networkIndicator,
   isGroupCall = false,
   handRaised = false,
 }) => {
@@ -83,27 +79,314 @@ const CallControls: React.FC<CallControlsProps> = ({
         ? 'Turn off camera'
         : 'Turn on camera';
   const endCallLabel = isGroupCall ? 'Leave call' : 'End call';
+  const screenShareTitle = screenShareDisabled
+    ? `${screenShareParticipantName} is already presenting`
+    : isScreenSharing
+      ? 'Stop sharing'
+      : 'Share screen';
+
   const [reactionOpen, setReactionOpen] = useState(false);
-  const reactionWrapRef = useRef<HTMLDivElement>(null);
+  const [moreOpen, setMoreOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  const [anchor, setAnchor] = useState<AnchorBox | null>(null);
+
+  const shellRef = useRef<HTMLDivElement>(null);
+  const popupRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!reactionOpen) return;
-    const onPointerDown = (event: MouseEvent | TouchEvent) => {
-      const el = reactionWrapRef.current;
-      if (el && event.target instanceof Node && !el.contains(event.target)) {
-        setReactionOpen(false);
-      }
+    setMounted(true);
+  }, []);
+
+  const closeMenus = () => {
+    setReactionOpen(false);
+    setMoreOpen(false);
+  };
+
+  const measureAnchor = () => {
+    const el = shellRef.current;
+    if (!el) return null;
+    const rect = el.getBoundingClientRect();
+    return {
+      left: rect.left + rect.width / 2,
+      bottom: Math.max(8, window.innerHeight - rect.top + 10),
+      width: rect.width,
     };
-    document.addEventListener('mousedown', onPointerDown);
-    document.addEventListener('touchstart', onPointerDown);
+  };
+
+  useLayoutEffect(() => {
+    if (!reactionOpen && !moreOpen) {
+      setAnchor(null);
+      return;
+    }
+    setAnchor(measureAnchor());
+    const onReposition = () => setAnchor(measureAnchor());
+    window.addEventListener('resize', onReposition);
+    window.addEventListener('scroll', onReposition, true);
     return () => {
+      window.removeEventListener('resize', onReposition);
+      window.removeEventListener('scroll', onReposition, true);
+    };
+  }, [reactionOpen, moreOpen]);
+
+  useEffect(() => {
+    if (!reactionOpen && !moreOpen) return;
+
+    const onPointerDown = (event: MouseEvent | TouchEvent) => {
+      const target = event.target;
+      if (!(target instanceof Node)) return;
+      if (shellRef.current?.contains(target)) return;
+      if (popupRef.current?.contains(target)) return;
+      closeMenus();
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') closeMenus();
+    };
+
+    const timer = window.setTimeout(() => {
+      document.addEventListener('mousedown', onPointerDown);
+      document.addEventListener('touchstart', onPointerDown);
+    }, 0);
+    document.addEventListener('keydown', onKeyDown);
+
+    return () => {
+      window.clearTimeout(timer);
       document.removeEventListener('mousedown', onPointerDown);
       document.removeEventListener('touchstart', onPointerDown);
+      document.removeEventListener('keydown', onKeyDown);
     };
-  }, [reactionOpen]);
+  }, [reactionOpen, moreOpen]);
+
+  const renderMute = (key: string) => (
+    <button
+      key={key}
+      type="button"
+      onClick={onToggleMute}
+      className={`${iconBtn} ${isMuted ? 'call-toolbar-button-danger' : 'call-toolbar-button-on'}`}
+      title={isMuted ? 'Unmute microphone' : 'Mute microphone'}
+      aria-label={isMuted ? 'Unmute microphone' : 'Mute microphone'}
+      aria-pressed={!isMuted}
+    >
+      {isMuted ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
+    </button>
+  );
+
+  const renderVideo = (key: string) => (
+    <button
+      key={key}
+      type="button"
+      onClick={onToggleVideo}
+      className={`${iconBtn} ${cameraOn ? 'call-toolbar-button-on' : 'call-toolbar-button-danger'}`}
+      title={videoButtonTitle}
+      aria-label={videoButtonTitle}
+      aria-pressed={cameraOn}
+    >
+      {cameraOn ? <Video className="h-5 w-5" /> : <VideoOff className="h-5 w-5" />}
+    </button>
+  );
+
+  const renderEndCall = (key: string) => (
+    <button
+      key={key}
+      type="button"
+      onClick={onEndCall}
+      className="call-toolbar-leave"
+      title={endCallLabel}
+      aria-label={endCallLabel}
+    >
+      <Phone className="h-5 w-5" />
+      <span>{endCallLabel}</span>
+    </button>
+  );
+
+  const renderScreenShare = (key: string) => (
+    <button
+      key={key}
+      type="button"
+      onClick={() => {
+        onToggleScreenShare();
+        setMoreOpen(false);
+      }}
+      disabled={screenShareDisabled}
+      className={`${iconBtn} ${
+        screenShareDisabled
+          ? 'cursor-not-allowed opacity-40 hover:bg-transparent'
+          : isScreenSharing
+            ? iconBtnActive
+            : ''
+      }`}
+      title={screenShareTitle}
+      aria-label={
+        screenShareDisabled
+          ? 'Screen share unavailable - someone is presenting'
+          : isScreenSharing
+            ? 'Stop sharing screen'
+            : 'Share screen'
+      }
+      aria-pressed={isScreenSharing}
+    >
+      {isScreenSharing ? <MonitorOff className="h-5 w-5" /> : <MonitorUp className="h-5 w-5" />}
+    </button>
+  );
+
+  const renderReaction = (key: string) =>
+    onSendReaction ? (
+      <button
+        key={key}
+        type="button"
+        onClick={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          setMoreOpen(false);
+          setReactionOpen((open) => !open);
+        }}
+        className={`${iconBtn} ${reactionOpen ? iconBtnActive : ''}`}
+        title="Send a reaction"
+        aria-label="Send a reaction"
+        aria-expanded={reactionOpen}
+        aria-haspopup="menu"
+      >
+        <Smile className="h-5 w-5" />
+      </button>
+    ) : null;
+
+  const renderHand = (key: string) =>
+    isGroupCall && onToggleHand ? (
+      <button
+        key={key}
+        type="button"
+        onClick={() => {
+          onToggleHand();
+          setMoreOpen(false);
+        }}
+        className={`${iconBtn} ${handRaised ? 'bg-primary/20 text-primary hover:bg-primary/25 hover:text-primary' : ''}`}
+        title={handRaised ? 'Lower hand' : 'Raise hand'}
+        aria-label={handRaised ? 'Lower hand' : 'Raise hand'}
+        aria-pressed={handRaised}
+      >
+        <Hand className="h-5 w-5" />
+      </button>
+    ) : null;
+
+  const renderParticipants = (key: string) =>
+    onToggleParticipants ? (
+      <button
+        key={key}
+        type="button"
+        onClick={() => {
+          onToggleParticipants();
+          closeMenus();
+        }}
+        className={`${iconBtn} ${showParticipants ? iconBtnActive : ''}`}
+        title="Participants"
+        aria-label="Show participants"
+        aria-pressed={showParticipants}
+        aria-expanded={showParticipants}
+        aria-controls="call-people-panel"
+      >
+        <Users className="h-5 w-5" />
+      </button>
+    ) : null;
+
+  const renderChat = (key: string) => (
+    <button
+      key={key}
+      type="button"
+      onClick={() => {
+        onToggleMessageInput();
+        closeMenus();
+      }}
+      className={`${iconBtn} ${showMessageInput ? iconBtnActive : ''}`}
+      title="Meeting chat"
+      aria-label={showMessageInput ? 'Hide meeting chat' : 'Show meeting chat'}
+      aria-pressed={showMessageInput}
+    >
+      <MessageSquare className="h-5 w-5" />
+    </button>
+  );
+
+  const renderSettings = (key: string) =>
+    onToggleSettings ? (
+      <button
+        key={key}
+        type="button"
+        onClick={() => {
+          onToggleSettings();
+          closeMenus();
+        }}
+        className={`${iconBtn} ${showSettings ? iconBtnActive : ''}`}
+        title="Call settings"
+        aria-label="Call settings"
+        aria-pressed={showSettings}
+        aria-expanded={showSettings}
+        aria-controls="call-settings-panel"
+      >
+        <Settings className="h-5 w-5" />
+      </button>
+    ) : null;
+
+  const moreMenuActive =
+    showParticipants || showMessageInput || showSettings || isScreenSharing || handRaised || reactionOpen;
+
+  const portalMenus =
+    mounted &&
+    anchor &&
+    (reactionOpen || moreOpen) &&
+    createPortal(
+      <div
+        ref={popupRef}
+        className="call-floating-menus"
+        style={{
+          position: 'fixed',
+          left: anchor.left,
+          bottom: anchor.bottom,
+          transform: 'translateX(-50%)',
+          zIndex: 2147483000,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: 8,
+          pointerEvents: 'auto',
+        }}
+      >
+        {reactionOpen && onSendReaction ? (
+          <div className="call-reaction-picker call-reaction-picker--portal" role="menu" aria-label="Live reactions">
+            {CALL_LIVE_REACTIONS.map((reaction) => (
+              <button
+                key={reaction.emoji}
+                type="button"
+                role="menuitem"
+                onClick={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  onSendReaction(reaction.emoji);
+                  closeMenus();
+                }}
+                className="call-reaction-picker-item noto-color-emoji-regular"
+                title={reaction.label}
+                aria-label={reaction.label}
+              >
+                {reaction.emoji}
+              </button>
+            ))}
+          </div>
+        ) : null}
+
+        {moreOpen ? (
+          <div className="call-more-menu-row call-more-menu-row--portal" role="menu" aria-label="More call actions">
+            {renderScreenShare('more-share')}
+            {renderReaction('more-reaction')}
+            {renderHand('more-hand')}
+            {renderParticipants('more-people')}
+            {renderChat('more-chat')}
+            {renderSettings('more-settings')}
+          </div>
+        ) : null}
+      </div>,
+      document.body,
+    );
 
   return (
-    <div className="pointer-events-none absolute inset-x-0 bottom-0 z-40">
+    <div className="call-controls pointer-events-none">
       {onEndCallForAll && (
         <div className="pointer-events-auto flex justify-center px-3 pb-2 sm:justify-end sm:px-5">
           <button
@@ -116,174 +399,47 @@ const CallControls: React.FC<CallControlsProps> = ({
         </div>
       )}
 
-      <div className="pointer-events-auto flex flex-wrap items-center justify-between gap-2 px-2 pb-[max(0.75rem,env(safe-area-inset-bottom,0px))] sm:grid sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:items-end sm:gap-3 sm:px-5">
-        <div className={`${glassCluster} order-1 justify-self-start`}>
-          <button
-            onClick={onToggleVideo}
-            className={`flex h-10 shrink-0 items-center justify-center rounded-full px-2.5 transition focus:outline-none touch-manipulation sm:h-12 sm:px-4 ${
-              cameraOn ? devicePillOn : devicePillOff
-            }`}
-            title={videoButtonTitle}
-            aria-label={videoButtonTitle}
-          >
-            {cameraOn ? (
-              <Video className="h-5 w-5" />
-            ) : (
-              <VideoOff className="h-5 w-5" />
-            )}
-          </button>
-
-          <button
-            onClick={onToggleMute}
-            className={`flex h-10 shrink-0 items-center justify-center rounded-full px-2.5 transition focus:outline-none touch-manipulation sm:h-12 sm:px-4 ${
-              isMuted ? devicePillOff : devicePillOn
-            }`}
-            title={isMuted ? 'Unmute' : 'Mute'}
-            aria-label={isMuted ? 'Unmute microphone' : 'Mute microphone'}
-          >
-            {isMuted ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
-          </button>
-        </div>
-
-        <div className={`${glassCluster} order-3 min-w-0 max-w-full basis-full justify-center  [scrollbar-width:none] sm:order-2 sm:basis-auto sm:justify-center [&::-webkit-scrollbar]:hidden`}>
-          {onSendReaction ? (
-            <div className="relative" ref={reactionWrapRef}>
-              <button
-                onClick={() => setReactionOpen((open) => !open)}
-                className={`${iconBtn} ${reactionOpen ? iconBtnActive : ''}`}
-                title="Send a reaction"
-                aria-label="Send a reaction"
-                aria-expanded={reactionOpen}
-                aria-haspopup="true"
-              >
-                <Smile className="h-5 w-5 sm:h-6 sm:w-6" />
-              </button>
-              {reactionOpen ? (
-                <div
-                  className="absolute bottom-full left-1/2 z-50 mb-2 flex max-w-[calc(100vw-1.5rem)] -translate-x-1/2 items-center gap-0.5 overflow-x-auto rounded-full border border-border bg-surface px-1.5 py-1 shadow-dropdown [scrollbar-width:none]"
-                  role="menu"
-                  aria-label="Live reactions"
-                >
-                  {CALL_LIVE_REACTIONS.map((reaction) => (
-                    <button
-                      key={reaction.emoji}
-                      type="button"
-                      role="menuitem"
-                      onClick={() => {
-                        onSendReaction(reaction.emoji);
-                        setReactionOpen(false);
-                      }}
-                      className="flex h-9 w-9 items-center justify-center rounded-full text-xl transition hover:bg-surface-hover hover:scale-110 active:scale-95 noto-color-emoji-regular"
-                      title={reaction.label}
-                      aria-label={reaction.label}
-                    >
-                      {reaction.emoji}
-                    </button>
-                  ))}
-                </div>
-              ) : null}
-            </div>
-          ) : null}
-
-          <button
-            onClick={onToggleScreenShare}
-            disabled={screenShareDisabled}
-            className={`${iconBtn} ${
-              screenShareDisabled
-                ? 'cursor-not-allowed opacity-40 hover:bg-transparent'
-                : isScreenSharing
-                  ? iconBtnActive
-                  : ''
-            }`}
-            title={
-              screenShareDisabled
-                ? `${screenShareParticipantName} is already presenting`
-                : isScreenSharing
-                  ? 'Stop sharing'
-                  : 'Share screen'
-            }
-            aria-label={
-              screenShareDisabled
-                ? 'Screen share unavailable - someone is presenting'
-                : isScreenSharing
-                  ? 'Stop sharing screen'
-                  : 'Share screen'
-            }
-          >
-            {isScreenSharing ? (
-              <MonitorOff className="h-5 w-5 sm:h-6 sm:w-6" />
-            ) : (
-              <MonitorUp className="h-5 w-5 sm:h-6 sm:w-6" />
-            )}
-          </button>
-
-          <button
-            onClick={onToggleAddPeople}
-            className={`${iconBtn} ${showAddPeople ? iconBtnActive : ''}`}
-            title="Add people to call"
-            aria-label="Add people to call"
-          >
-            <UserPlus className="h-5 w-5 sm:h-6 sm:w-6" />
-          </button>
-
-          <button
-            onClick={onToggleMessageInput}
-            className={`${iconBtn} ${showMessageInput ? iconBtnActive : ''}`}
-            title="Meeting chat"
-            aria-label={showMessageInput ? 'Hide meeting chat' : 'Show meeting chat'}
-            aria-pressed={showMessageInput}
-          >
-            <MessageSquare className="h-5 w-5 sm:h-6 sm:w-6" />
-          </button>
-
-          {isGroupCall && onToggleHand ? (
-            <button
-              onClick={onToggleHand}
-              className={`${iconBtn} ${handRaised ? 'bg-primary/20 text-primary hover:bg-primary/25 hover:text-primary' : ''}`}
-              title={handRaised ? 'Lower hand' : 'Raise hand'}
-              aria-label={handRaised ? 'Lower hand' : 'Raise hand'}
-              aria-pressed={handRaised}
-            >
-              <Hand className="h-5 w-5 sm:h-6 sm:w-6" />
-            </button>
-          ) : null}
-
-          <button
-            onClick={onToggleSpeaker}
-            className={iconBtn}
-            title={
-              speakerLevel === 'normal'
-                ? 'Speaker: normal'
-                : speakerLevel === 'loud'
-                  ? 'Speaker: loud'
-                  : 'Speaker: low'
-            }
-            aria-label={`Speaker ${speakerLevel}`}
-          >
-            {speakerLevel === 'low' ? (
-              <Volume1 className="h-5 w-5 sm:h-6 sm:w-6" />
-            ) : (
-              <Volume2 className="h-5 w-5 sm:h-6 sm:w-6" />
-            )}
-          </button>
-          <button
-            onClick={onEndCall}
-            className="flex h-10 w-12 shrink-0 items-center justify-center rounded-full bg-danger text-content-inverse transition hover:opacity-90 focus:outline-none touch-manipulation sm:h-12 sm:w-18"
-            title={endCallLabel}
-            aria-label={endCallLabel}
-          >
-            <Phone className="h-5 w-5 sm:h-6 sm:w-6" />
-          </button>
-        </div>
-
-        {networkIndicator ? (
-          <div className={`${glassCluster} order-2 h-10 w-10 justify-center px-0 sm:order-3 sm:h-12 sm:w-12 sm:justify-self-end`}>
-            {networkIndicator}
+      <div className="call-toolbar-wrap pointer-events-auto">
+        <div className="call-toolbar-shell" ref={shellRef}>
+          <div className="call-toolbar call-toolbar-desktop-only">
+            {renderMute('desk-mute')}
+            {renderVideo('desk-video')}
+            <span className="call-toolbar-separator" aria-hidden="true" />
+            {renderScreenShare('desk-share')}
+            {renderReaction('desk-reaction')}
+            {renderHand('desk-hand')}
+            <span className="call-toolbar-separator" aria-hidden="true" />
+            {renderParticipants('desk-people')}
+            {renderChat('desk-chat')}
+            {renderSettings('desk-settings')}
+            {renderEndCall('desk-end')}
           </div>
-        ) : (
-          <div />
-        )}
+
+          <div className="call-toolbar call-toolbar-mobile-only">
+            {renderMute('mob-mute')}
+            {renderVideo('mob-video')}
+            <span className="call-toolbar-separator" aria-hidden="true" />
+            <button
+              type="button"
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                setReactionOpen(false);
+                setMoreOpen((open) => !open);
+              }}
+              className={`${iconBtn} ${moreOpen || moreMenuActive ? iconBtnActive : ''}`}
+              title="More actions"
+              aria-label="More call actions"
+              aria-expanded={moreOpen}
+              aria-haspopup="menu"
+            >
+              <MoreHorizontal className="h-5 w-5" />
+            </button>
+            {renderEndCall('mob-end')}
+          </div>
+        </div>
       </div>
+      {portalMenus}
     </div>
   );
 };

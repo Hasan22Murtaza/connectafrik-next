@@ -14,7 +14,6 @@ export interface ParticipantInfoProps {
     | 'isLocal'
     | 'isMicOn'
     | 'isCameraOn'
-    | 'isActiveSpeaker'
     | 'avatarUrl'
     | 'handRaised'
     | 'connectionQuality'
@@ -150,7 +149,6 @@ const ParticipantInfo = React.memo(function ParticipantInfo({
     displayName,
     isLocal,
     isMicOn,
-    isActiveSpeaker,
     avatarUrl,
     handRaised,
     connectionQuality,
@@ -165,12 +163,12 @@ const ParticipantInfo = React.memo(function ParticipantInfo({
 
   const avatarSizeClass =
     tileCount <= 2
-      ? 'w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 text-2xl sm:text-3xl'
+      ? 'h-24 w-24 text-3xl sm:h-28 sm:w-28 sm:text-4xl md:h-32 md:w-32'
       : tileCount <= 4
-        ? 'w-14 h-14 sm:w-18 sm:h-18 md:w-20 md:h-20 text-xl sm:text-2xl'
+        ? 'h-20 w-20 text-2xl sm:h-24 sm:w-24 sm:text-3xl md:h-28 md:w-28'
         : tileCount <= 9
-          ? 'w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 text-base sm:text-lg'
-          : 'w-8 h-8 sm:w-10 sm:h-10 text-sm';
+          ? 'h-16 w-16 text-xl sm:h-20 sm:w-20 sm:text-2xl md:h-24 md:w-24'
+          : 'h-12 w-12 text-base sm:h-16 sm:w-16 sm:text-xl';
 
   return (
     <>
@@ -240,10 +238,6 @@ const ParticipantInfo = React.memo(function ParticipantInfo({
         >
           <MicOff className="h-3 w-3 sm:h-3.5 sm:w-3.5" aria-hidden />
         </div>
-      )}
-
-      {isActiveSpeaker && !isLocal && (
-        <div className="absolute top-1.5 right-1.5 w-2 h-2 bg-green-400 rounded-full animate-pulse shadow-lg sm:right-2" />
       )}
     </>
   );

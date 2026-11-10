@@ -18,7 +18,7 @@ const CallChatInput: React.FC<CallChatInputProps> = ({
   const canSend = !disabled && messageText.trim().length > 0;
 
   return (
-    <div className="flex items-end gap-2">
+    <div className="call-chat-input">
       <label className="sr-only" htmlFor="call-chat-input">
         Type a message
       </label>
@@ -35,16 +35,16 @@ const CallChatInput: React.FC<CallChatInputProps> = ({
           }
         }}
         placeholder="Type a message"
-        className="max-h-24 min-h-[40px] flex-1 resize-none rounded-2xl border border-border bg-surface-secondary px-3.5 py-2.5 text-sm text-content outline-none transition placeholder:text-content-tertiary focus:border-orange-400 focus:ring-2 focus:ring-orange-100 disabled:opacity-50"
+        className="call-chat-input-field"
       />
       <button
         type="button"
         onClick={onSend}
         disabled={!canSend}
-        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-500 text-white shadow-sm transition hover:bg-primary-600 active:scale-95 disabled:cursor-not-allowed disabled:bg-surface-tertiary disabled:text-content-tertiary disabled:shadow-none"
+        className="call-chat-send"
         aria-label="Send message"
       >
-        <Send className="h-4 w-4 text-white" />
+        <Send className="h-4 w-4" />
       </button>
     </div>
   );
