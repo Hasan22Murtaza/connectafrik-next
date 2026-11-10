@@ -45,6 +45,7 @@ const THREAD_SELECT = `
   group_id,
   product_id,
   seller_id,
+  disappearing_duration_sec,
   product:products!chat_threads_product_id_fkey(id, title, images),
   group_banner:groups!chat_threads_group_id_fkey(banner_url),
   last_message_preview,

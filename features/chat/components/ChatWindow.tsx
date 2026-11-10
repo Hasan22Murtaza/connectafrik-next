@@ -61,6 +61,7 @@ import {
   Send,
   Smile,
   Square,
+  Timer,
   Trash2,
   UserMinus,
   UserPlus,
@@ -101,7 +102,12 @@ import ChatMediaComposer from "./ChatMediaComposer";
 import MessageAttachments from "./MessageAttachments";
 import { ChatDateDivider, ChatUnreadDivider, MessageBubble } from "./MessageBubble";
 import { ReportChatUserModal } from "./ReportChatUserModal";
+import { DisappearingMessagesModal } from "./DisappearingMessagesModal";
 import TypingIndicator from "./TypingIndicator";
+import {
+  disappearingDurationLabel,
+  type DisappearingDurationSec,
+} from "@/lib/chat/chatDisappearingMessages";
 import type { ChatReportedMessageSnapshot } from "@/lib/reports/types";
 import {
   fileExtensionLabel,
@@ -340,6 +346,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     setMessagesForThread,
     setThreadPinned,
     setThreadBlocked,
+    setThreadDisappearingDuration,
     threads,
     startChatWithMembers,
     closeThread,
@@ -381,17 +388,34 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const thread = getThreadById(threadId);
   const messages = getMessagesForThread(threadId);
   const isMessagesLoading = isMessagesLoadingForThread(threadId);
+  const [nowMs, setNowMs] = useState(() => Date.now());
+  useEffect(() => {
+    const hasExpiring = messages.some(
+      (m) => typeof m.expires_at === "string" && m.expires_at && !m.is_deleted
+    );
+    if (!hasExpiring) return;
+    const id = window.setInterval(() => setNowMs(Date.now()), 30_000);
+    return () => window.clearInterval(id);
+  }, [messages]);
+
   const visibleMessages = useMemo(() => {
     if (!currentUser) return messages;
     return messages.filter((message: ChatMessage) => {
       if (message.deleted_for?.includes(currentUser.id)) return false;
+      if (
+        typeof message.expires_at === "string" &&
+        message.expires_at &&
+        new Date(message.expires_at).getTime() <= nowMs
+      ) {
+        return false;
+      }
       return shouldShowAcceptedOnAnotherDeviceMessage(
         message,
         currentUser.id,
         localAuthSessionId,
       );
     });
-  }, [messages, currentUser, localAuthSessionId]);
+  }, [messages, currentUser, localAuthSessionId, nowMs]);
 
   const [showMessageSearch, setShowMessageSearch] = useState(false);
   const [messageSearchDraft, setMessageSearchDraft] = useState("");
@@ -405,13 +429,20 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     if (!currentUser) return searchMessages;
     return searchMessages.filter((message: ChatMessage) => {
       if (message.deleted_for?.includes(currentUser.id)) return false;
+      if (
+        typeof message.expires_at === "string" &&
+        message.expires_at &&
+        new Date(message.expires_at).getTime() <= nowMs
+      ) {
+        return false;
+      }
       return shouldShowAcceptedOnAnotherDeviceMessage(
         message,
         currentUser.id,
         localAuthSessionId,
       );
     });
-  }, [searchMessages, currentUser, localAuthSessionId]);
+  }, [searchMessages, currentUser, localAuthSessionId, nowMs]);
 
   const displayMessages = messageSearchKeyword.trim()
     ? searchVisibleMessages
@@ -696,6 +727,8 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const composerEditorRef = useRef<ChatRichTextEditorHandle>(null);
   const [showOptionsMenu, setShowOptionsMenu] = useState(false);
   const [showReportUserModal, setShowReportUserModal] = useState(false);
+  const [showDisappearingModal, setShowDisappearingModal] = useState(false);
+  const [savingDisappearing, setSavingDisappearing] = useState(false);
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedMessageIds, setSelectedMessageIds] = useState<string[]>([]);
   const [showMediaGallery, setShowMediaGallery] = useState(false);
@@ -2841,6 +2874,10 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
   const chatHeaderOptionsMenuSections = useMemo((): ChatHeaderOptionsMenuSection[] => {
 
+    const disappearingLabel = disappearingDurationLabel(
+      thread?.disappearing_duration_sec ?? null
+    );
+
     const primary: ChatHeaderOptionsMenuItem[] = [
 
       {
@@ -2864,8 +2901,19 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           } satisfies ChatHeaderOptionsMenuItem,
         ]
         : []),
-
-
+      {
+        id: "disappearing",
+        label: "Disappearing messages",
+        Icon: Timer,
+        trailing:
+          disappearingLabel !== "Off" ? (
+            <span className="text-[11px] text-orange-500">{disappearingLabel}</span>
+          ) : undefined,
+        onClick: () => {
+          setShowOptionsMenu(false);
+          setShowDisappearingModal(true);
+        },
+      },
       {
         id: "close",
         label: "Close chat",
@@ -2921,6 +2969,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     thread?.pinned,
     thread?.is_block,
     thread?.is_locked,
+    thread?.disappearing_duration_sec,
     canBlockContact,
     isGroupThread,
     visibleMessages.length,
@@ -4306,6 +4355,31 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           onClose={() => setShowReportUserModal(false)}
         />
       ) : null}
+
+      <DisappearingMessagesModal
+        isOpen={showDisappearingModal}
+        currentDurationSec={thread?.disappearing_duration_sec ?? null}
+        saving={savingDisappearing}
+        onClose={() => {
+          if (!savingDisappearing) setShowDisappearingModal(false);
+        }}
+        onSelect={async (durationSec: DisappearingDurationSec) => {
+          setSavingDisappearing(true);
+          try {
+            await setThreadDisappearingDuration(threadId, durationSec);
+            toast.success(
+              durationSec
+                ? `Disappearing messages: ${disappearingDurationLabel(durationSec)}`
+                : "Disappearing messages turned off"
+            );
+            setShowDisappearingModal(false);
+          } catch {
+            toast.error("Could not update disappearing messages");
+          } finally {
+            setSavingDisappearing(false);
+          }
+        }}
+      />
 
       {dialog}
     </div>

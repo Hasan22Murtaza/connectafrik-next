@@ -163,6 +163,7 @@ interface ProductionChatContextType {
   setThreadArchived: (threadId: string, archived: boolean) => Promise<void>
   setThreadBlocked: (threadId: string, is_block: boolean) => Promise<void>
   setThreadPinned: (threadId: string, pinned: boolean) => Promise<void>
+  setThreadDisappearingDuration: (threadId: string, durationSec: number) => Promise<void>
   clearMessagesForUser: (threadId: string, userId: string) => void
   markMessageDeletedForUser: (threadId: string, messageId: string, userId: string) => void
   setMessagesForThread: (threadId: string, messages: ChatMessage[]) => void
@@ -1478,6 +1479,36 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
     })
   }, [currentUser])
 
+  const setThreadDisappearingDuration = useCallback(async (threadId: string, durationSec: number) => {
+    if (!currentUser) return
+    const result = await supabaseMessagingService.setThreadDisappearingDuration(
+      threadId,
+      currentUser.id,
+      durationSec
+    )
+    if (!result) return
+    const { thread: updated, systemMessage } = result
+    setThreads((prev) => {
+      const idx = prev.findIndex((t) => t.id === threadId)
+      if (idx >= 0) {
+        const next = [...prev]
+        next[idx] = updated
+        return next
+      }
+      return [...prev, updated]
+    })
+    if (systemMessage) {
+      setMessages((prev) => {
+        const current = prev[threadId] || []
+        if (current.some((m) => m.id === systemMessage.id)) return prev
+        return {
+          ...prev,
+          [threadId]: sortChatMessagesByCreatedAt([...current, systemMessage]),
+        }
+      })
+    }
+  }, [currentUser])
+
   const tryDispatchIncomingFromCallSession = useCallback(
     (row: Record<string, any>) => {
       if (!currentUser) return
@@ -1753,6 +1784,24 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
             clearCallRequest(threadId)
           }
         }
+
+        if (message.message_type === 'disappearing_messages') {
+          const meta = (message.metadata || {}) as { disappearing_duration_sec?: number | null }
+          const nextDuration =
+            typeof meta.disappearing_duration_sec === 'number' &&
+            Number.isFinite(meta.disappearing_duration_sec) &&
+            meta.disappearing_duration_sec > 0
+              ? meta.disappearing_duration_sec
+              : null
+          setThreads((prev) => {
+            const idx = prev.findIndex((t) => t.id === threadId)
+            if (idx < 0) return prev
+            if ((prev[idx].disappearing_duration_sec ?? null) === nextDuration) return prev
+            const next = [...prev]
+            next[idx] = { ...prev[idx], disappearing_duration_sec: nextDuration }
+            return next
+          })
+        }
       }, currentUser)
       unsubscribeCallbacks.push(unsubscribe)
     })
@@ -2014,6 +2063,7 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
     setThreadArchived,
     setThreadBlocked,
     setThreadPinned,
+    setThreadDisappearingDuration,
     clearMessagesForUser,
     markMessageDeletedForUser,
     setMessagesForThread

@@ -16,6 +16,11 @@ import {
   sanitizeViewOnceMessage,
   viewOnceThreadPreview,
 } from '@/lib/chat/chatViewOnce'
+import {
+  computeMessageExpiresAt,
+  normalizeDisappearingDurationSec,
+  purgeExpiredMessagesForThread,
+} from '@/lib/chat/chatDisappearingMessages'
 import { isEncodedMessage } from '@/lib/chat/messageCodec'
 import { isMessageE2eeEnabledForUser } from '@/lib/message-e2ee/flag'
 
@@ -130,6 +135,8 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
     const lockedDenial = await requireUnlockedLockedThread(request, serviceClient, user.id, threadId)
     if (lockedDenial) return lockedDenial
+
+    await purgeExpiredMessagesForThread(serviceClient, threadId)
 
     const { searchParams } = new URL(request.url)
     const parsedLimit = parseInt(searchParams.get('limit') || '20', 10)
@@ -403,6 +410,29 @@ export async function POST(request: NextRequest, context: RouteContext) {
     const normalizedMessageType = message_type || 'text'
     const incomingIdentity = extractCallIdentity(metadata)
 
+    const { data: threadTimer } = await serviceClient
+      .from('chat_threads')
+      .select('disappearing_duration_sec')
+      .eq('id', threadId)
+      .maybeSingle()
+    const disappearingDurationSec = normalizeDisappearingDurationSec(
+      threadTimer?.disappearing_duration_sec
+    )
+    const skipDisappearingExpiry =
+      DEDUPED_CALL_SIGNAL_TYPES.has(normalizedMessageType) ||
+      normalizedMessageType === 'initiated' ||
+      normalizedMessageType === 'ringing' ||
+      normalizedMessageType === 'failed' ||
+      normalizedMessageType === 'call_notification' ||
+      normalizedMessageType === 'accepted_on_another_device' ||
+      normalizedMessageType === 'group_member_joined' ||
+      normalizedMessageType === 'group_member_left' ||
+      normalizedMessageType === 'disappearing_messages' ||
+      normalizedMessageType === 'marketplace_system'
+    const messageExpiresAt = skipDisappearingExpiry
+      ? null
+      : computeMessageExpiresAt(disappearingDurationSec, new Date(now))
+
     if (DEDUPED_CALL_SIGNAL_TYPES.has(normalizedMessageType)) {
       const { data: sameTypeMessages, error: sameTypeError } = await serviceClient
         .from('chat_messages')
@@ -509,6 +539,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
         reply_to_id: reply_to_id || null,
         ...(typeof is_forward === 'boolean' ? { is_forward } : {}),
         ...(wantsViewOnce ? { view_once: true } : {}),
+        ...(messageExpiresAt ? { expires_at: messageExpiresAt } : {}),
         ...(wantsE2ee
           ? {
               ciphertext: sealedCiphertext,

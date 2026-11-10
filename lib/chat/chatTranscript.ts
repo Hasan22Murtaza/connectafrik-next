@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { GROUP_MEMBER_JOINED, GROUP_MEMBER_LEFT } from '@/lib/groupChatSystemMessages'
 import { MARKETPLACE_SYSTEM } from '@/lib/chat/marketplaceChat'
+import { DISAPPEARING_MESSAGES } from '@/lib/chat/chatDisappearingMessages'
 import { deepseekChatCompletion } from '@/lib/deepseek'
 import { decodeMessageContent } from '@/lib/chat/messageCodec'
 
@@ -24,6 +25,7 @@ const EXCLUDED_MESSAGE_TYPES = new Set([
   GROUP_MEMBER_JOINED,
   GROUP_MEMBER_LEFT,
   MARKETPLACE_SYSTEM,
+  DISAPPEARING_MESSAGES,
 ])
 
 export type ChatTranscriptRow = {
