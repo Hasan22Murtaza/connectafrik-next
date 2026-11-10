@@ -5,6 +5,8 @@ import { Send, Trash2, Flag, Smile, Edit2, Check, X, Loader2, CheckCircle } from
 import { useComments, Comment, CommentAttachment, CommentAttachmentInput, UpdateCommentPayload } from '@/shared/hooks/useComments'
 import { useAuth } from '@/contexts/AuthContext'
 import EmojiPicker from '@/shared/components/ui/EmojiPicker'
+import TextFieldSelectionToolbar from '@/features/chat/richtext/TextFieldSelectionToolbar'
+import ChatRichTextRenderer from '@/features/chat/richtext/ChatRichTextRenderer'
 import toast from 'react-hot-toast'
 import type { User } from '@supabase/supabase-js'
 
@@ -33,6 +35,10 @@ type ComposerAttachment =
 
 const MAX_IMAGE_ATTACHMENTS = 4
 const MAX_REPLY_DEPTH = 5
+const resizeCommentField = (field: HTMLTextAreaElement) => {
+  field.style.height = 'auto'
+  field.style.height = `${field.scrollHeight}px`
+}
 
 const flattenReplies = (replies: Comment[]): Comment[] =>
   replies.flatMap(reply => [reply, ...flattenReplies(reply.replies || [])])
@@ -102,6 +108,7 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({
   const [isReplySubmitting, setIsReplySubmitting] = useState(false)
   const [isComposerEmojiOpen, setIsComposerEmojiOpen] = useState(false)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
+  const newCommentInputRef = useRef<HTMLTextAreaElement | null>(null)
   const draftAttachmentsRef = useRef<ComposerAttachment[]>([])
 
   const commenterInitial = useMemo(() => getUserInitial(user), [user])
@@ -130,6 +137,7 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({
     draftAttachmentsRef.current.forEach(revokePreview)
     setDraftAttachments([])
     setNewComment('')
+    newCommentInputRef.current?.style.removeProperty('height')
     setIsComposerEmojiOpen(false)
   }, [revokePreview])
 
@@ -226,7 +234,7 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({
     }
   }
 
-  const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key === 'Enter' && !event.shiftKey && composerHasContent) {
       event.preventDefault()
       handleSubmitComment(event as unknown as React.FormEvent)
@@ -381,15 +389,23 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({
 
           {/* Input bubble */}
           <form onSubmit={handleSubmitComment} className="relative flex flex-1 items-center">
-            <input
+            <textarea
+              ref={newCommentInputRef}
               id={composerInputId}
-              type="text"
+              rows={1}
               value={newComment}
-              onChange={(e) => setNewComment(e.target.value)}
+              onChange={(e) => {
+                setNewComment(e.target.value)
+                resizeCommentField(e.currentTarget)
+              }}
               onKeyDown={handleKeyDown}
               placeholder="Write a comment..."
-              className="w-full rounded-full bg-gray-100 py-2 pl-4 pr-16 text-sm text-gray-700 outline-none placeholder:text-gray-400 focus:bg-gray-50 focus:ring-1 focus:ring-gray-200"
+              className="w-full min-h-9 max-h-28 resize-none rounded-2xl bg-gray-100 py-2 pl-4 pr-16 text-sm text-gray-700 outline-none placeholder:text-gray-400 focus:bg-gray-50 focus:ring-1 focus:ring-gray-200"
               maxLength={1000}
+            />
+            <TextFieldSelectionToolbar
+              editorRef={newCommentInputRef}
+              onChange={setNewComment}
             />
             <div className="absolute right-2 flex items-center gap-1">
               <div className="relative">
@@ -484,6 +500,7 @@ const FBCommentItem: React.FC<FBCommentItemProps> = ({
   const [editContent, setEditContent] = useState(comment.content)
   const [isUpdating, setIsUpdating] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
+  const replyInputRef = useRef<HTMLTextAreaElement | null>(null)
 
   useEffect(() => {
     if (!isEditing) setEditContent(comment.content)
@@ -520,7 +537,7 @@ const FBCommentItem: React.FC<FBCommentItemProps> = ({
     finally { setIsUpdating(false) }
   }
 
-  const handleReplyKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+  const handleReplyKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key === 'Enter' && !event.shiftKey && replyContent.trim()) {
       event.preventDefault()
       onSubmitReply(comment.id)
@@ -600,7 +617,11 @@ const FBCommentItem: React.FC<FBCommentItemProps> = ({
                 {comment.is_deleted ? (
                   <p className="text-[13px] italic text-gray-400 leading-snug">This comment has been deleted</p>
                 ) : (
-                  <p className="text-[13px] text-gray-700 leading-snug whitespace-pre-wrap break-words">{comment.content}</p>
+                  <ChatRichTextRenderer
+                    content={comment.content}
+                    inheritColor
+                    contentClassName="text-[13px] text-gray-700 leading-snug whitespace-pre-wrap break-words"
+                  />
                 )}
               </div>
 
@@ -692,15 +713,23 @@ const FBCommentItem: React.FC<FBCommentItemProps> = ({
                 {(currentUser?.user_metadata?.full_name || currentUser?.email || 'U').charAt(0).toUpperCase()}
               </div>
               <div className="relative flex flex-1 items-center">
-                <input
-                  type="text"
+                <textarea
+                  ref={replyInputRef}
+                  rows={1}
                   value={replyContent}
-                  onChange={(e) => setReplyContent(e.target.value)}
+                  onChange={(e) => {
+                    setReplyContent(e.target.value)
+                    resizeCommentField(e.currentTarget)
+                  }}
                   onKeyDown={handleReplyKeyDown}
                   placeholder={`Reply to ${comment.author.full_name}...`}
-                  className="w-full rounded-full bg-gray-100 py-1.5 pl-3 pr-10 text-xs text-gray-700 outline-none placeholder:text-gray-400 focus:ring-1 focus:ring-gray-200"
+                  className="w-full min-h-8 max-h-28 resize-none rounded-2xl bg-gray-100 py-1.5 pl-3 pr-10 text-xs text-gray-700 outline-none placeholder:text-gray-400 focus:ring-1 focus:ring-gray-200"
                   maxLength={500}
                   autoFocus
+                />
+                <TextFieldSelectionToolbar
+                  editorRef={replyInputRef}
+                  onChange={setReplyContent}
                 />
                 <div className="absolute right-1.5 flex items-center">
                   {replyContent.trim() && (

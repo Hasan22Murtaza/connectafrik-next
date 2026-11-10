@@ -10,6 +10,7 @@ import GroupPostCommentsSection from '@/features/groups/components/GroupPostComm
 import { useGroupPostReactions, GroupReactionGroup, GroupPostReactionsData } from '@/shared/hooks/useGroupPostReactions'
 import PostEngagement from '@/shared/components/PostEngagement'
 import CreatePost, { type PostSubmitData } from '@/features/social/components/CreatePost'
+import ChatRichTextRenderer from '@/features/chat/richtext/ChatRichTextRenderer'
 import { getPostBackgroundPreset } from '@/features/social/constants/postBackgrounds'
 import { canModerateGroupContent, type GroupPostModerationAction } from '@/lib/groups/roles'
 import { POST_REPORT_REASON_OPTIONS, type PostReportReason } from '@/lib/reports/types'
@@ -397,14 +398,20 @@ const GroupPostCard: React.FC<GroupPostCardProps> = ({
                 {post.title}
               </h3>
             )}
-            <p className={`whitespace-pre-wrap break-words text-lg font-semibold leading-relaxed sm:text-xl ${backgroundPreset.textClass} drop-shadow-lg`}>
-              {post.content}
-            </p>
+            <ChatRichTextRenderer
+              content={post.content}
+              inheritColor
+              contentClassName={`whitespace-pre-wrap break-words text-lg font-semibold leading-relaxed sm:text-xl ${backgroundPreset.textClass} drop-shadow-lg`}
+            />
           </div>
         ) : (
           <>
             <h3 className="font-semibold text-gray-900 mb-2">{post.title}</h3>
-            <p className="text-gray-700 whitespace-pre-wrap mb-4">{post.content}</p>
+            <ChatRichTextRenderer
+              content={post.content}
+              inheritColor
+              contentClassName="text-gray-700 whitespace-pre-wrap mb-4"
+            />
           </>
         )}
 

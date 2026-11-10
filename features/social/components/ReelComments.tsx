@@ -1,12 +1,14 @@
 'use client'
 
-import React, { useCallback, useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { AtSign, ChevronDown, Heart, MessageCircle, Reply, Send, Smile, Trash2, X } from '@/shared/icons'
 import { useAuth } from '@/contexts/AuthContext'
 import { useReelComments } from '@/shared/hooks/useReels'
 import { ReelComment } from '@/shared/types/reels'
 import { formatDistanceToNow } from 'date-fns'
+import TextFieldSelectionToolbar from '@/features/chat/richtext/TextFieldSelectionToolbar'
+import ChatRichTextRenderer from '@/features/chat/richtext/ChatRichTextRenderer'
 import toast from 'react-hot-toast'
 
 interface ReelCommentsProps {
@@ -18,6 +20,11 @@ interface ReelCommentsProps {
   desktopContainer?: HTMLElement | null
   /** Use inline desktop panel slot instead of fixed right overlay. */
   inlineDesktopPanel?: boolean
+}
+
+const resizeCommentField = (field: HTMLTextAreaElement) => {
+  field.style.height = 'auto'
+  field.style.height = `${field.scrollHeight}px`
 }
 
 function CommentAvatar({
@@ -179,6 +186,7 @@ function CommentRow({
   logic: CommentsLogic
   isReply?: boolean
 }) {
+  const replyInputRef = useRef<HTMLTextAreaElement | null>(null)
   const author = logic.getCommentAuthor(comment)
   const {
     isOwnComment,
@@ -210,9 +218,12 @@ function CommentRow({
 
         <div className="min-w-0 flex-1">
           <p className="text-[13px] font-semibold leading-tight text-content">{displayName}</p>
-          <p className="mt-1 text-sm leading-relaxed text-content break-words whitespace-pre-wrap">
-            {comment.content}
-          </p>
+          <ChatRichTextRenderer
+            content={comment.content}
+            className="mt-1"
+            inheritColor
+            contentClassName="text-sm leading-relaxed text-content break-words whitespace-pre-wrap"
+          />
           <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
             <span className="text-xs text-content-tertiary">
               {formatDistanceToNow(new Date(comment.created_at), { addSuffix: true })}
@@ -257,17 +268,29 @@ function CommentRow({
 
       {replyingTo === comment.id && (
         <div className={`${contentIndent} mb-2 flex gap-2.5`}>
-          <input
-            type="text"
+          <textarea
+            ref={replyInputRef}
+            rows={1}
             value={replyText}
-            onChange={(e) => setReplyText(e.target.value)}
+            onChange={(e) => {
+              setReplyText(e.target.value)
+              resizeCommentField(e.currentTarget)
+            }}
             onKeyDown={(e) => {
-              if (e.key === 'Enter') void handleSubmitReply(comment.id)
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault()
+                void handleSubmitReply(comment.id)
+              }
               if (e.key === 'Escape') setReplyingTo(null)
             }}
             placeholder={`Reply to ${displayName}...`}
-            className="flex-1 rounded-2xl border border-border  px-4 py-2.5 text-sm text-content placeholder:text-content-tertiary focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/30"
+            className="min-h-10 max-h-28 flex-1 resize-none rounded-2xl border border-border px-4 py-2.5 text-sm text-content placeholder:text-content-tertiary focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/30"
             autoFocus
+          />
+          <TextFieldSelectionToolbar
+            editorRef={replyInputRef}
+            onChange={setReplyText}
+            disabled={isSubmitting}
           />
           <button
             type="button"
@@ -352,6 +375,11 @@ function CommentsList({
 
 function CommentComposer({ logic }: { logic: CommentsLogic }) {
   const { user, userAvatarUrl, newComment, setNewComment, handleSubmitComment, isSubmitting } = logic
+  const commentInputRef = useRef<HTMLTextAreaElement | null>(null)
+
+  useEffect(() => {
+    if (!newComment) commentInputRef.current?.style.removeProperty('height')
+  }, [newComment])
 
   if (!user) {
     return (
@@ -380,13 +408,28 @@ function CommentComposer({ logic }: { logic: CommentsLogic }) {
           />
         </div>
         <div className="relative min-w-0 flex-1">
-          <input
-            type="text"
+          <textarea
+            ref={commentInputRef}
+            rows={1}
             value={newComment}
-            onChange={(e) => setNewComment(e.target.value)}
+            onChange={(e) => {
+              setNewComment(e.target.value)
+              resizeCommentField(e.currentTarget)
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey && newComment.trim()) {
+                e.preventDefault()
+                void handleSubmitComment()
+              }
+            }}
             placeholder="Add comment..."
             maxLength={500}
-            className="w-full rounded-2xl border border-border  py-2.5 pl-4 pr-[4.5rem] text-sm text-content placeholder:text-content-tertiary transition focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/30"
+            className="min-h-10 max-h-28 w-full resize-none rounded-2xl border border-border py-2.5 pl-4 pr-[4.5rem] text-sm text-content placeholder:text-content-tertiary transition focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/30"
+          />
+          <TextFieldSelectionToolbar
+            editorRef={commentInputRef}
+            onChange={setNewComment}
+            disabled={isSubmitting}
           />
           <div className="pointer-events-none absolute right-3 top-1/2 flex -translate-y-1/2 items-center gap-2">
             <AtSign className="h-4 w-4 text-content-tertiary" aria-hidden />
