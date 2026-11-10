@@ -68,6 +68,11 @@ const TextFieldSelectionToolbar: React.FC<TextFieldSelectionToolbarProps> = ({
 
     const start = field.selectionStart;
     const end = field.selectionEnd;
+    if (start == null || end == null) {
+      setPosition(null);
+      setActive({});
+      return;
+    }
     const value = field.value;
     const selectedLines = value
       .slice(value.lastIndexOf("\n", start - 1) + 1, value.indexOf("\n", Math.max(start, end - 1)) === -1
@@ -178,7 +183,7 @@ const TextFieldSelectionToolbar: React.FC<TextFieldSelectionToolbarProps> = ({
 
     const start = field.selectionStart;
     const end = field.selectionEnd;
-    if (start === end) return;
+    if (start == null || end == null || start === end) return;
 
     const currentValue = field.value;
     const selected = currentValue.slice(start, end);
