@@ -386,7 +386,7 @@ const CallControls: React.FC<CallControlsProps> = ({
     );
 
   return (
-    <div className="call-controls pointer-events-none">
+    <div className="call-controls pointer-events-none fixed inset-x-0 bottom-0 z-[60] w-full overflow-visible pt-2.5">
       {onEndCallForAll && (
         <div className="pointer-events-auto flex justify-center px-3 pb-2 sm:justify-end sm:px-5">
           <button
@@ -399,9 +399,9 @@ const CallControls: React.FC<CallControlsProps> = ({
         </div>
       )}
 
-      <div className="call-toolbar-wrap pointer-events-auto">
-        <div className="call-toolbar-shell" ref={shellRef}>
-          <div className="call-toolbar call-toolbar-desktop-only">
+      <div className="call-toolbar-wrap pointer-events-auto relative z-[1] flex w-full justify-center overflow-visible px-2 pb-[max(0.85rem,env(safe-area-inset-bottom,0px))]">
+        <div className="call-toolbar-shell relative flex flex-col items-center overflow-visible" ref={shellRef}>
+          <div className="call-toolbar call-toolbar-desktop-only hidden max-w-[calc(100vw-24px)] items-center gap-0.5 overflow-visible rounded-full border border-[color:var(--call-border)] bg-[color-mix(in_srgb,var(--call-panel)_94%,transparent)] px-2 py-1.5 shadow-[0_12px_40px_rgb(0_0_0/18%)] backdrop-blur-xl max-[720px]:!hidden min-[721px]:flex">
             {renderMute('desk-mute')}
             {renderVideo('desk-video')}
             <span className="call-toolbar-separator" aria-hidden="true" />
@@ -415,7 +415,7 @@ const CallControls: React.FC<CallControlsProps> = ({
             {renderEndCall('desk-end')}
           </div>
 
-          <div className="call-toolbar call-toolbar-mobile-only">
+          <div className="call-toolbar call-toolbar-mobile-only flex max-w-[calc(100vw-24px)] items-center gap-0.5 overflow-visible rounded-full border border-[color:var(--call-border)] bg-[color-mix(in_srgb,var(--call-panel)_94%,transparent)] px-1.5 py-1 shadow-[0_12px_40px_rgb(0_0_0/18%)] backdrop-blur-xl max-[720px]:!flex min-[721px]:!hidden">
             {renderMute('mob-mute')}
             {renderVideo('mob-video')}
             <span className="call-toolbar-separator" aria-hidden="true" />

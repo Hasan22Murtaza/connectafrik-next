@@ -756,7 +756,7 @@ const CallModal: React.FC<CallModalProps> = (props) => {
     }
 
     return (
-      <div className="fixed inset-0 z-[9999]">
+      <div className="fixed inset-0 z-[9999] dark bg-[color:var(--call-canvas,#08090b)]">
         <LiveKitRoom
           room={livekitRoom}
           serverUrl={serverUrl}
@@ -789,7 +789,7 @@ const CallModal: React.FC<CallModalProps> = (props) => {
   }
 
   return (
-    <div className="fixed inset-0 z-[9999]">
+    <div className="fixed inset-0 z-[9999] dark bg-[color:var(--call-canvas,#08090b)]">
       <MeetingProvider
         config={{
           meetingId,

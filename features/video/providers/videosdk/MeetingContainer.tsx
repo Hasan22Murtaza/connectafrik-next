@@ -1393,25 +1393,25 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
   // --------------------------------------------------------------------------
   return (
     <div
-      className="call-experience dark flex h-full w-full overflow-hidden"
+      className="call-experience dark relative flex h-full w-full flex-col overflow-hidden"
     >
       <div
-        className="call-stage flex h-screen min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
+        className="call-stage flex h-screen min-h-0 min-w-0 w-full flex-1 flex-col overflow-hidden"
       >
       <div
         ref={meetingSurfaceRef}
         className="call-meeting-surface relative min-h-0 min-w-0 flex-1 overflow-hidden"
       >
         {callStatus !== 'ringing' && (
-          <header className="call-topbar">
+          <header className="call-topbar absolute inset-x-0 top-0 z-[35] flex min-h-16 items-center gap-2 px-4 py-2">
             <div className="call-brand-mark" aria-hidden="true">C</div>
-            <div className="call-topbar-title">
+            <div className="call-topbar-title flex min-w-0 flex-col gap-0.5">
               <strong>CribsTalk call</strong>
               <span>{callStatus === 'connected' ? 'Live meeting' : callStatus.replace('_', ' ')}</span>
             </div>
             <span className="call-topbar-divider" />
             <span className="call-timer">{formatDuration(callDuration)}</span>
-            <div className="call-network-status" aria-label="Network quality">
+            <div className="call-network-status ml-auto" aria-label="Network quality">
               {localId ? <VideoSDKLocalNetworkChip participantId={localId} /> : null}
             </div>
             <button
