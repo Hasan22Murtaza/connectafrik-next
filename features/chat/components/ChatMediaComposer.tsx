@@ -7,6 +7,7 @@ import {
   Smile,
   X,
 } from "@/shared/icons";
+import { useConfirmDialog } from "@/shared/components/ui/ConfirmDialog";
 import {
   fileUploadService,
   type FileUploadResult,
@@ -80,14 +81,34 @@ const ChatMediaComposer: React.FC<ChatMediaComposerProps> = ({
   disabled = false,
   compact = false,
 }) => {
+  const { confirm, dialog } = useConfirmDialog();
   const [activeIndex, setActiveIndex] = useState(0);
   const [emojiOpen, setEmojiOpen] = useState(false);
   const addInputRef = useRef<HTMLInputElement>(null);
   const captionRef = useRef<HTMLTextAreaElement>(null);
   const prevLenRef = useRef(files.length);
+  const confirmingCloseRef = useRef(false);
 
   const current = files[Math.min(activeIndex, Math.max(0, files.length - 1))];
   const previewSrc = current?.previewUrl || current?.url;
+
+  const requestClose = useCallback(async () => {
+    if (confirmingCloseRef.current) return;
+    setEmojiOpen(false);
+    confirmingCloseRef.current = true;
+    try {
+      const confirmed = await confirm({
+        title: "Discard selection?",
+        message: "Your selected media will be removed from this chat.",
+        confirmLabel: "Discard",
+        cancelLabel: "Cancel",
+        variant: "danger",
+      });
+      if (confirmed) onClose();
+    } finally {
+      confirmingCloseRef.current = false;
+    }
+  }, [confirm, onClose]);
 
   useEffect(() => {
     if (files.length > prevLenRef.current) {
@@ -104,18 +125,18 @@ const ChatMediaComposer: React.FC<ChatMediaComposerProps> = ({
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        e.preventDefault();
-        if (emojiOpen) {
-          setEmojiOpen(false);
-          return;
-        }
-        onClose();
+      if (e.key !== "Escape") return;
+      if (confirmingCloseRef.current) return;
+      e.preventDefault();
+      if (emojiOpen) {
+        setEmojiOpen(false);
+        return;
       }
+      void requestClose();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [emojiOpen, onClose]);
+  }, [emojiOpen, requestClose]);
 
   const handleAddFiles = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const picked = Array.from(e.target.files ?? []);
@@ -172,8 +193,9 @@ const ChatMediaComposer: React.FC<ChatMediaComposerProps> = ({
       aria-modal="true"
       aria-label="Preview selected media"
     >
+      {dialog}
       <div className="flex shrink-0 items-center gap-0.5 px-1.5 py-1.5 sm:px-2">
-        <ToolButton label="Close" onClick={onClose}>
+        <ToolButton label="Close" onClick={() => void requestClose()}>
           <X className="h-5 w-5" strokeWidth={1.75} />
         </ToolButton>
       </div>
