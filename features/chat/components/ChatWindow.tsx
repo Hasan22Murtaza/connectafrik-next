@@ -54,6 +54,7 @@ import {
   Play,
   Phone,
   Ban,
+  Flag,
   Pin,
   PinOff,
   Search,
@@ -99,7 +100,9 @@ import ChatWebcamCapture from "./ChatWebcamCapture";
 import ChatMediaComposer from "./ChatMediaComposer";
 import MessageAttachments from "./MessageAttachments";
 import { ChatDateDivider, ChatUnreadDivider, MessageBubble } from "./MessageBubble";
+import { ReportChatUserModal } from "./ReportChatUserModal";
 import TypingIndicator from "./TypingIndicator";
+import type { ChatReportedMessageSnapshot } from "@/lib/reports/types";
 import {
   fileExtensionLabel,
   formatMediaDuration,
@@ -692,6 +695,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const draftBeforeComposerEditRef = useRef("");
   const composerEditorRef = useRef<ChatRichTextEditorHandle>(null);
   const [showOptionsMenu, setShowOptionsMenu] = useState(false);
+  const [showReportUserModal, setShowReportUserModal] = useState(false);
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedMessageIds, setSelectedMessageIds] = useState<string[]>([]);
   const [showMediaGallery, setShowMediaGallery] = useState(false);
@@ -2121,6 +2125,24 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     !parental.canSendAudio &&
     !parental.canSendEmergency;
   const canBlockContact = isDirectBlockableThread(thread, currentUser?.id);
+  const reportableUserId =
+    canBlockContact && primaryParticipant?.id ? String(primaryParticipant.id) : null;
+  const reportMessageSnapshot = useMemo((): ChatReportedMessageSnapshot[] => {
+    return [...visibleMessages]
+      .slice(-5)
+      .reverse()
+      .map((message) => ({
+        id: message.id,
+        sender_id: getChatMessageAuthorId(message),
+        content:
+          typeof message.content === "string"
+            ? message.content.slice(0, 2000)
+            : null,
+        created_at: message.created_at,
+        message_type: message.message_type || null,
+        has_attachments: Boolean(message.attachments?.length),
+      }));
+  }, [visibleMessages]);
   const messagingBlocked = isThreadMessagingBlocked(thread) || parentalMessagingBlocked;
   const blockedByMe = Boolean(thread?.is_block);
   const blockedByOther = Boolean(thread?.blocked_by_other);
@@ -2863,6 +2885,15 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       },
       ...(canBlockContact
         ? [
+          {
+            id: "report",
+            label: "Report",
+            Icon: Flag,
+            onClick: () => {
+              setShowOptionsMenu(false);
+              setShowReportUserModal(true);
+            },
+          } satisfies ChatHeaderOptionsMenuItem,
           {
             id: "block",
             label: thread?.is_block ? "Unblock contact" : "Block contact",
@@ -4262,6 +4293,17 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           onMetaUpdated={(meta) => {
             setThreadMetaOverride((prev) => ({ ...(prev || {}), ...meta }));
           }}
+        />
+      ) : null}
+
+      {reportableUserId ? (
+        <ReportChatUserModal
+          threadId={threadId}
+          reportedUserId={reportableUserId}
+          userName={displayThreadName}
+          messageSnapshot={reportMessageSnapshot}
+          isOpen={showReportUserModal}
+          onClose={() => setShowReportUserModal(false)}
         />
       ) : null}
 

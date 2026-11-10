@@ -155,6 +155,107 @@ export interface CreatePostReportInput {
   reason: PostReportReason
 }
 
+export interface ChatReportedMessageSnapshot {
+  id: string
+  sender_id: string
+  content: string | null
+  created_at: string
+  message_type: string | null
+  has_attachments: boolean
+}
+
+export interface CreateChatUserReportInput {
+  thread_id: string
+  reported_user_id: string
+  reported_by: string
+  reason: PostReportReason
+  notes?: string | null
+  message_snapshot?: ChatReportedMessageSnapshot[]
+}
+
+export interface ChatUserReportRow {
+  id: string
+  thread_id: string
+  reported_user_id: string
+  reported_by: string | null
+  reason: PostReportReason
+  notes: string | null
+  message_snapshot: ChatReportedMessageSnapshot[]
+  status: PostReportStatus
+  created_at: string
+  updated_at: string
+  reviewed_by: string | null
+  reviewed_at: string | null
+}
+
+export const CHAT_USER_REPORT_ACTIONS = [
+  'dismiss',
+  'warn_user',
+  'suspend_user',
+] as const
+
+export type ChatUserReportActionType = (typeof CHAT_USER_REPORT_ACTIONS)[number]
+
+export const CHAT_USER_REPORT_ACTION_LABELS: Record<ChatUserReportActionType, string> = {
+  dismiss: 'Dismiss report',
+  warn_user: 'Warn user',
+  suspend_user: 'Suspend user',
+}
+
+export interface ChatUserReportWithReporter extends ChatUserReportRow {
+  reporter: ReportProfile | null
+}
+
+export interface ChatUserReportActionRow {
+  id: string
+  thread_id: string
+  admin_id: string | null
+  action: ChatUserReportActionType
+  notes: string | null
+  metadata: Record<string, unknown>
+  created_at: string
+  admin: ReportProfile | null
+}
+
+export interface ChatUserReportGroup {
+  thread_id: string
+  reported_user_id: string
+  report_count: number
+  first_reported_at: string
+  last_reported_at: string
+  latest_report_id: string
+  latest_reason: PostReportReason
+  latest_reporter_id: string | null
+  status: PostReportStatus
+  reason_counts: ReasonCounts
+  reported_user: ReportProfile | null
+  latest_reporter: ReportProfile | null
+}
+
+export interface ChatUserReportGroupDetail extends ChatUserReportGroup {
+  reports: ChatUserReportWithReporter[]
+  actions: ChatUserReportActionRow[]
+}
+
+export interface ListChatReportGroupsFilters {
+  status?: PostReportStatus | 'all'
+  reason?: PostReportReason | 'all'
+  search?: string
+  date_from?: string
+  date_to?: string
+  reported_user?: string
+  min_reports?: number
+  page?: number
+  limit?: number
+}
+
+export interface ApplyChatReportActionInput {
+  thread_id: string
+  admin_id: string
+  action: ChatUserReportActionType
+  notes?: string | null
+}
+
 export interface ApplyReportActionInput {
   post_id: string
   admin_id: string

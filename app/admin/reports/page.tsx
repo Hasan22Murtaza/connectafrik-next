@@ -1,13 +1,15 @@
 'use client'
 
-import React, { useCallback, useEffect, useState } from 'react'
+import React, { Suspense, useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import {
   CheckCircle2,
   Clock,
   Eye,
   Flag,
   Inbox,
+  MessageSquare,
   RefreshCw,
   Search,
   XCircle,
@@ -29,7 +31,10 @@ import {
 import { AdminTableSkeleton } from '@/features/admin/components/skeletons/AdminShimmerLoaders'
 import { useAdminAuth } from '@/features/admin/hooks/useAdminAuth'
 import { AP } from '@/features/admin/constants/adminLayout'
-import { listAdminReportGroups } from '@/features/social/services/reportService'
+import {
+  listAdminChatReportGroups,
+  listAdminReportGroups,
+} from '@/features/social/services/reportService'
 import {
   AdminAuditActionsCard,
   AdminRecentContentCard,
@@ -45,6 +50,7 @@ import {
   POST_REPORT_REASON_OPTIONS,
   POST_REPORT_STATUS_LABELS,
   POST_REPORT_STATUS_OPTIONS,
+  type ChatUserReportGroup,
   type PostReportGroup,
   type PostReportReason,
   type PostReportStats,
@@ -54,6 +60,8 @@ import {
 } from '@/lib/reports/types'
 
 const LIMIT = 20
+
+type ReportsTab = 'posts' | 'chats'
 
 const emptyStats: PostReportStats = {
   total: 0,
@@ -104,9 +112,19 @@ function reasonBreakdown(counts: ReasonCounts) {
   }))
 }
 
-export default function AdminReportsPage() {
+function parseTab(value: string | null): ReportsTab {
+  return value === 'chats' ? 'chats' : 'posts'
+}
+
+function AdminReportsPageInner() {
   const { isReady, authLoading } = useAdminAuth('/admin/reports')
-  const [items, setItems] = useState<PostReportGroup[]>([])
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const tab = parseTab(searchParams.get('tab'))
+
+  const [postItems, setPostItems] = useState<PostReportGroup[]>([])
+  const [chatItems, setChatItems] = useState<ChatUserReportGroup[]>([])
   const [stats, setStats] = useState<PostReportStats>(emptyStats)
   const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(0)
@@ -125,25 +143,50 @@ export default function AdminReportsPage() {
   const [recentContent, setRecentContent] = useState<MonitoringContentRow[]>([])
   const [adminActions, setAdminActions] = useState<MonitoringAdminAction[]>([])
 
+  const setTab = (next: ReportsTab) => {
+    const params = new URLSearchParams(searchParams.toString())
+    if (next === 'posts') params.delete('tab')
+    else params.set('tab', next)
+    const qs = params.toString()
+    router.replace(qs ? `${pathname}?${qs}` : pathname)
+    setPage(0)
+  }
+
   const loadReports = useCallback(async () => {
     try {
       setLoading(true)
+      const common = {
+        status,
+        reason,
+        search: search || undefined,
+        date_from: dateFrom || undefined,
+        date_to: dateTo ? `${dateTo}T23:59:59.999Z` : undefined,
+        min_reports: Number(minReports) || 1,
+        page,
+        limit: LIMIT,
+        include_stats: true,
+      } as const
+
       const [result, monitoring] = await Promise.all([
-        listAdminReportGroups({
-          status,
-          reason,
-          search: search || undefined,
-          date_from: dateFrom || undefined,
-          date_to: dateTo ? `${dateTo}T23:59:59.999Z` : undefined,
-          author: author.trim() || undefined,
-          min_reports: Number(minReports) || 1,
-          page,
-          limit: LIMIT,
-          include_stats: true,
-        }),
+        tab === 'chats'
+          ? listAdminChatReportGroups({
+              ...common,
+              reported_user: author.trim() || undefined,
+            })
+          : listAdminReportGroups({
+              ...common,
+              author: author.trim() || undefined,
+            }),
         fetchMonitoringSnapshot({ range: '7d' }).catch(() => null),
       ])
-      setItems(result.items)
+
+      if (tab === 'chats') {
+        setChatItems(result.items as ChatUserReportGroup[])
+        setPostItems([])
+      } else {
+        setPostItems(result.items as PostReportGroup[])
+        setChatItems([])
+      }
       setTotal(result.total)
       setStats(result.stats || emptyStats)
       if (monitoring) {
@@ -154,12 +197,13 @@ export default function AdminReportsPage() {
       }
     } catch {
       toast.error('Unable to load reports — admin access required')
-      setItems([])
+      setPostItems([])
+      setChatItems([])
       setTotal(0)
     } finally {
       setLoading(false)
     }
-  }, [status, reason, search, dateFrom, dateTo, author, minReports, page])
+  }, [tab, status, reason, search, dateFrom, dateTo, author, minReports, page])
 
   useEffect(() => {
     if (!isReady) return
@@ -178,13 +222,18 @@ export default function AdminReportsPage() {
   }
 
   const totalPages = Math.max(1, Math.ceil(total / LIMIT))
+  const isChats = tab === 'chats'
 
   return (
     <div className="max-w-7xl mx-auto">
       <AdminPageHeader
         title="Reports"
         icon={Flag}
-        description="Review reported posts, grouped by post so repeat reports surface together"
+        description={
+          isChats
+            ? 'Review reported chats, grouped by thread so repeat reports surface together'
+            : 'Review reported posts, grouped by post so repeat reports surface together'
+        }
         action={
           <button type="button" onClick={loadReports} className={AP.btnSecondary}>
             <RefreshCw className="w-4 h-4" aria-hidden="true" />
@@ -192,6 +241,33 @@ export default function AdminReportsPage() {
           </button>
         }
       />
+
+      <div className="mb-5 inline-flex rounded-xl border border-gray-200 bg-white p-1 shadow-sm">
+        <button
+          type="button"
+          onClick={() => setTab('posts')}
+          className={`inline-flex items-center gap-2 rounded-lg px-3.5 py-2 text-sm font-medium transition ${
+            !isChats
+              ? 'bg-primary-600 text-white shadow-sm'
+              : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+          }`}
+        >
+          <Flag className="h-4 w-4" aria-hidden />
+          Posts
+        </button>
+        <button
+          type="button"
+          onClick={() => setTab('chats')}
+          className={`inline-flex items-center gap-2 rounded-lg px-3.5 py-2 text-sm font-medium transition ${
+            isChats
+              ? 'bg-primary-600 text-white shadow-sm'
+              : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+          }`}
+        >
+          <MessageSquare className="h-4 w-4" aria-hidden />
+          Chats
+        </button>
+      </div>
 
       <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4 mb-6">
         <AdminStatCard label="Total" value={stats.total} icon={Inbox} />
@@ -236,7 +312,11 @@ export default function AdminReportsPage() {
             <input
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
-              placeholder="Search post title, post ID, username, or reporter…"
+              placeholder={
+                isChats
+                  ? 'Search thread ID, username, or reporter…'
+                  : 'Search post title, post ID, username, or reporter…'
+              }
               className={AP.searchInput}
             />
           </div>
@@ -307,9 +387,9 @@ export default function AdminReportsPage() {
           <input
             value={authorInput}
             onChange={(e) => setAuthorInput(e.target.value)}
-            placeholder="Filter by post author"
+            placeholder={isChats ? 'Filter by reported user' : 'Filter by post author'}
             className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm"
-            aria-label="Post author"
+            aria-label={isChats ? 'Reported user' : 'Post author'}
           />
           <button type="submit" className={AP.btnSecondary}>
             Apply filters
@@ -322,12 +402,131 @@ export default function AdminReportsPage() {
           <div className="p-4">
             <AdminTableSkeleton rows={8} />
           </div>
-        ) : items.length === 0 ? (
+        ) : (isChats ? chatItems.length === 0 : postItems.length === 0) ? (
           <AdminEmptyState
-            icon={Flag}
+            icon={isChats ? MessageSquare : Flag}
             title="No reports found"
-            description="Try adjusting filters, or check back when users report posts."
+            description={
+              isChats
+                ? 'Try adjusting filters, or check back when users report chats.'
+                : 'Try adjusting filters, or check back when users report posts.'
+            }
           />
+        ) : isChats ? (
+          <>
+            <div className={AP.tableWrap}>
+              <table className={`${AP.table} table-fixed min-w-[920px]`}>
+                <colgroup>
+                  <col className="w-[88px]" />
+                  <col className="w-[160px]" />
+                  <col className="w-[140px]" />
+                  <col className="w-[140px]" />
+                  <col className="w-[160px]" />
+                  <col className="w-[80px]" />
+                  <col className="w-[150px]" />
+                  <col className="w-[110px]" />
+                  <col className="w-[88px]" />
+                </colgroup>
+                <AdminTableHead>
+                  <AdminTableHeadCell>Report ID</AdminTableHeadCell>
+                  <AdminTableHeadCell>Chat</AdminTableHeadCell>
+                  <AdminTableHeadCell>Reported user</AdminTableHeadCell>
+                  <AdminTableHeadCell>Reported by</AdminTableHeadCell>
+                  <AdminTableHeadCell>Reason</AdminTableHeadCell>
+                  <AdminTableHeadCell>Reports</AdminTableHeadCell>
+                  <AdminTableHeadCell>Date</AdminTableHeadCell>
+                  <AdminTableHeadCell>Status</AdminTableHeadCell>
+                  <AdminTableHeadCell>Actions</AdminTableHeadCell>
+                </AdminTableHead>
+                <AdminTableBody>
+                  {chatItems.map((group) => {
+                    const breakdown = reasonBreakdown(group.reason_counts)
+                    return (
+                      <AdminTableRow key={group.thread_id}>
+                        <AdminTableCell className="font-mono text-xs text-gray-600 align-middle">
+                          {shortId(group.latest_report_id)}
+                        </AdminTableCell>
+                        <AdminTableCell className="align-middle">
+                          <p className="text-sm font-semibold text-gray-900">
+                            Thread #{shortId(group.thread_id)}
+                          </p>
+                          <p className="text-xs text-gray-500 mt-0.5">Direct chat report</p>
+                        </AdminTableCell>
+                        <AdminTableCell className="truncate align-middle">
+                          {profileName(group.reported_user)}
+                        </AdminTableCell>
+                        <AdminTableCell className="truncate align-middle">
+                          {group.report_count > 1
+                            ? `${group.report_count} users`
+                            : profileName(group.latest_reporter)}
+                        </AdminTableCell>
+                        <AdminTableCell className="align-middle">
+                          <div className="space-y-0.5 min-w-0">
+                            {breakdown.length > 0 ? (
+                              breakdown.map((item) => (
+                                <p key={item.value} className="text-xs text-gray-700 truncate">
+                                  {item.count} × {item.label}
+                                </p>
+                              ))
+                            ) : (
+                              <p className="text-xs text-gray-700 truncate">
+                                {POST_REPORT_REASON_LABELS[group.latest_reason]}
+                              </p>
+                            )}
+                          </div>
+                        </AdminTableCell>
+                        <AdminTableCell className="font-semibold tabular-nums align-middle">
+                          {group.report_count}
+                        </AdminTableCell>
+                        <AdminTableCell className="whitespace-nowrap text-gray-600 align-middle">
+                          {formatDate(group.last_reported_at)}
+                        </AdminTableCell>
+                        <AdminTableCell className="align-middle">
+                          <AdminStatusBadge
+                            status={POST_REPORT_STATUS_LABELS[group.status]}
+                          />
+                        </AdminTableCell>
+                        <AdminTableCell className="align-middle">
+                          <Link
+                            href={`/admin/reports/chat/${group.thread_id}`}
+                            className="text-sm font-medium text-primary-600 hover:text-orange-500"
+                          >
+                            Review
+                          </Link>
+                        </AdminTableCell>
+                      </AdminTableRow>
+                    )
+                  })}
+                </AdminTableBody>
+              </table>
+            </div>
+            <div className="flex items-center justify-between gap-3 px-4 py-3 border-t border-gray-100 bg-gray-50/60">
+              <p className="text-xs text-gray-500">
+                Showing {chatItems.length} of {total}
+              </p>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  disabled={page <= 0}
+                  onClick={() => setPage((p) => Math.max(0, p - 1))}
+                  className={AP.btnSecondary}
+                >
+                  Previous
+                </button>
+                <span className="text-xs text-gray-500">
+                  {page + 1} / {totalPages}
+                </span>
+                <button
+                  type="button"
+                  disabled={page + 1 >= totalPages}
+                  onClick={() => setPage((p) => p + 1)}
+                  className={AP.btnSecondary}
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          </>
         ) : (
           <>
             <div className={AP.tableWrap}>
@@ -355,7 +554,7 @@ export default function AdminReportsPage() {
                   <AdminTableHeadCell>Actions</AdminTableHeadCell>
                 </AdminTableHead>
                 <AdminTableBody>
-                  {items.map((group) => {
+                  {postItems.map((group) => {
                     const thumb = postThumbnail(group)
                     const breakdown = reasonBreakdown(group.reason_counts)
                     return (
@@ -444,7 +643,7 @@ export default function AdminReportsPage() {
             </div>
             <div className="flex items-center justify-between gap-3 px-4 py-3 border-t border-gray-100 bg-gray-50/60">
               <p className="text-xs text-gray-500">
-                Showing {items.length} of {total}
+                Showing {postItems.length} of {total}
               </p>
               <div className="flex items-center gap-2">
                 <button
@@ -472,12 +671,23 @@ export default function AdminReportsPage() {
         )}
       </AdminMotion>
 
-      <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-2 mb-6">
-        <AdminDonutChart title="Report reasons (7 days)" data={reportReasons} />
-        <AdminAuditActionsCard actions={adminActions} />
-      </div>
-
-      <AdminRecentContentCard items={recentContent} />
+      {!isChats ? (
+        <>
+          <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-2 mb-6">
+            <AdminDonutChart title="Report reasons (7 days)" data={reportReasons} />
+            <AdminAuditActionsCard actions={adminActions} />
+          </div>
+          <AdminRecentContentCard items={recentContent} />
+        </>
+      ) : null}
     </div>
+  )
+}
+
+export default function AdminReportsPage() {
+  return (
+    <Suspense fallback={<AdminLoading variant="users" />}>
+      <AdminReportsPageInner />
+    </Suspense>
   )
 }

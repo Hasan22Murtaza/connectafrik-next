@@ -9,6 +9,9 @@ import {
   POST_REPORT_REASON_LABELS,
   POST_REPORT_STATUSES,
   type ApplyReportActionInput,
+  type ChatReportedMessageSnapshot,
+  type ChatUserReportRow,
+  type CreateChatUserReportInput,
   type CreatePostReportInput,
   type ListReportGroupsFilters,
   type PostReportActionRow,
@@ -246,6 +249,198 @@ export async function createPostReport(
     })
   } catch (familyError) {
     console.error('Failed to create family safety alert from report:', familyError)
+  }
+
+  return report
+}
+
+function sanitizeReportNotes(value: unknown): string | null {
+  if (typeof value !== 'string') return null
+  const trimmed = value.trim().slice(0, 2000)
+  return trimmed.length > 0 ? trimmed : null
+}
+
+function sanitizeMessageSnapshot(
+  value: unknown
+): ChatReportedMessageSnapshot[] {
+  if (!Array.isArray(value)) return []
+  const out: ChatReportedMessageSnapshot[] = []
+  for (const item of value.slice(0, 5)) {
+    if (!item || typeof item !== 'object') continue
+    const row = item as Record<string, unknown>
+    if (typeof row.id !== 'string' || typeof row.sender_id !== 'string') continue
+    out.push({
+      id: row.id,
+      sender_id: row.sender_id,
+      content:
+        typeof row.content === 'string'
+          ? row.content.slice(0, 2000)
+          : null,
+      created_at: typeof row.created_at === 'string' ? row.created_at : '',
+      message_type:
+        typeof row.message_type === 'string' ? row.message_type : null,
+      has_attachments: Boolean(row.has_attachments),
+    })
+  }
+  return out
+}
+
+export async function createChatUserReport(
+  client: SupabaseClient,
+  input: CreateChatUserReportInput
+): Promise<ChatUserReportRow> {
+  if (!isUuid(input.thread_id)) {
+    throw new Error('Invalid chat')
+  }
+  if (!isUuid(input.reported_user_id)) {
+    throw new Error('Invalid user')
+  }
+  if (!isPostReportReason(input.reason)) {
+    throw new Error('Please select a valid report reason')
+  }
+  if (input.reported_user_id === input.reported_by) {
+    throw new Error('You cannot report yourself')
+  }
+
+  const { data: participants, error: participantsError } = await client
+    .from('chat_participants')
+    .select('user_id')
+    .eq('thread_id', input.thread_id)
+
+  if (participantsError) throw new Error(participantsError.message)
+
+  const participantIds = (participants || [])
+    .map((row) => row.user_id as string)
+    .filter(Boolean)
+
+  if (!participantIds.includes(input.reported_by)) {
+    throw new Error('Thread not found or access denied')
+  }
+  if (!participantIds.includes(input.reported_user_id)) {
+    throw new Error('User is not in this chat')
+  }
+
+  const { data: thread, error: threadError } = await client
+    .from('chat_threads')
+    .select('id, type, group_id')
+    .eq('id', input.thread_id)
+    .maybeSingle()
+
+  if (threadError) throw new Error(threadError.message)
+  if (!thread) {
+    throw new Error('Thread not found')
+  }
+
+  const isGroup =
+    thread.type === 'group' ||
+    Boolean(thread.group_id) ||
+    participantIds.filter((id) => id !== input.reported_by).length > 1
+
+  if (isGroup) {
+    throw new Error('Reporting is only available in direct chats')
+  }
+
+  let messageSnapshot = sanitizeMessageSnapshot(input.message_snapshot)
+  if (messageSnapshot.length === 0) {
+    const { data: recentMessages, error: messagesError } = await client
+      .from('chat_messages')
+      .select('id, sender_id, content, created_at, message_type')
+      .eq('thread_id', input.thread_id)
+      .eq('is_deleted', false)
+      .order('created_at', { ascending: false })
+      .limit(5)
+
+    if (messagesError) throw new Error(messagesError.message)
+
+    messageSnapshot = (recentMessages || []).map((msg) => ({
+      id: msg.id as string,
+      sender_id: msg.sender_id as string,
+      content: typeof msg.content === 'string' ? msg.content.slice(0, 2000) : null,
+      created_at: typeof msg.created_at === 'string' ? msg.created_at : '',
+      message_type:
+        typeof msg.message_type === 'string' ? msg.message_type : null,
+      has_attachments: false,
+    }))
+  }
+
+  const notes = sanitizeReportNotes(input.notes)
+
+  const { data, error } = await client
+    .from('chat_user_reports')
+    .insert({
+      thread_id: input.thread_id,
+      reported_user_id: input.reported_user_id,
+      reported_by: input.reported_by,
+      reason: input.reason,
+      notes,
+      message_snapshot: messageSnapshot,
+      status: 'pending',
+    })
+    .select('*')
+    .single()
+
+  if (error) {
+    if (error.code === '23505') {
+      throw new Error('You have already reported this chat for this reason')
+    }
+    throw new Error(error.message || 'Failed to submit report')
+  }
+
+  const report = {
+    ...(data as Omit<ChatUserReportRow, 'message_snapshot'>),
+    message_snapshot: sanitizeMessageSnapshot(
+      (data as { message_snapshot?: unknown }).message_snapshot
+    ),
+  } as ChatUserReportRow
+
+  try {
+    const [admins, reporter] = await Promise.all([
+      lookupAdminContacts(client),
+      lookupUserContact(client, input.reported_by),
+    ])
+    const reasonLabel = POST_REPORT_REASON_LABELS[input.reason]
+    await Promise.all(
+      admins.map((admin) =>
+        sendReportReceivedEmail(admin.email, {
+          adminName: admin.name,
+          reasonLabel,
+          threadId: input.thread_id,
+          reportedUserId: input.reported_user_id,
+          reporterName: reporter?.name,
+        })
+      )
+    )
+  } catch (emailError) {
+    console.error('Failed to send chat report received email:', emailError)
+  }
+
+  try {
+    const { createSafetyAlertForUser } = await import('@/lib/family/alerts')
+    const alertType =
+      input.reason === 'sexual_content' || input.reason === 'child_abuse'
+        ? 'sexual_content'
+        : input.reason === 'harmful_or_dangerous'
+          ? 'dangerous_content'
+          : input.reason === 'hateful_or_abusive'
+            ? 'bullying'
+            : 'reported_content'
+    await createSafetyAlertForUser(client, {
+      userId: input.reported_user_id,
+      alertType,
+      severity: input.reason === 'child_abuse' ? 'high' : 'medium',
+      title: 'This account was reported in chat',
+      description: `A chat was reported for: ${POST_REPORT_REASON_LABELS[input.reason]}. This is a signal for review, not an automatic finding.`,
+      source: 'chat_user_reports',
+      relatedUserId: input.reported_by,
+      relatedContentId: input.thread_id,
+    })
+    const { recordActivityEvent } = await import('@/lib/family/activity')
+    await recordActivityEvent(client, input.reported_user_id, 'report', 1, {
+      thread_id: input.thread_id,
+      reason: input.reason,
+    })
+  } catch (familyError) {
+    console.error('Failed to create family safety alert from chat report:', familyError)
   }
 
   return report
