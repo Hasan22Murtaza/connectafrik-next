@@ -3977,7 +3977,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
         {infoMessage ? (
           <div
-            className="absolute inset-0 z-[95] flex flex-col overflow-hidden rounded-2xl bg-surface"
+            className="absolute inset-0 z-[95] flex flex-col "
             role="dialog"
             aria-modal="true"
             aria-label="Message info"

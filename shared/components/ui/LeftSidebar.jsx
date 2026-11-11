@@ -1,25 +1,24 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { useSpaceNavCounts } from "@/shared/hooks/useSpaceNavCounts";
 import { useHeaderInboxCounts } from "@/shared/hooks/useHeaderInboxCounts";
+import { useSpaceNavCounts } from "@/shared/hooks/useSpaceNavCounts";
 import { UserRoundGroup } from "@/shared/icons";
+import PlayMedia from "@/shared/icons/PlayMedia";
 import {
   Bookmark,
   Check,
+  Handbag,
   Home,
+  Megaphone,
   MessageCircle,
-  MessageSquareText,
   PanelLeft,
   Phone,
   Settings,
-  Handbag,
-  UsersRound,
-  Video,
+  UsersRound
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import PlayMedia from "@/shared/icons/PlayMedia";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 const STORAGE_KEY = "connectafrik.sidebar-mode";
 
@@ -40,7 +39,7 @@ const shortcuts = [
   { name: "Calls", to: "/calls", icon: Phone, badgeKey: "calls" },
   { name: "TradeHub", to: "/marketplace", icon: Handbag },
   { name: "Saved", to: "/saved", icon: Bookmark },
-  { name: "Feedback", to: "/feedback", icon: MessageSquareText },
+  { name: "Feedback", to: "/feedback", icon: Megaphone },
   { name: "Settings", to: "/settings", icon: Settings },
 ];
 
@@ -135,13 +134,13 @@ const LeftSidebar = () => {
       "group relative flex w-full items-center rounded-lg text-[15px] font-medium transition-colors duration-150",
       showLabels ? "gap-3 px-3 py-2.5" : "justify-center px-2 py-2.5",
       isActive
-        ? "bg-surface-hover text-content"
+        ? "bg-primary-50 text-orange-500 hover:bg-primary-100"
         : "text-content-secondary hover:bg-surface-hover hover:text-content",
     ].join(" ");
 
   return (
     <aside
-      className={`sticky top-[62px] z-30 hidden h-[calc(100dvh-62px)] shrink-0 self-start lg:block ${railClass}`}
+      className={`sticky top-[62px] z-30 hidden h-[calc(100dvh-65px)] shrink-0 self-start lg:block ${railClass}`}
       onMouseEnter={() => mode === "hover" && setHovered(true)}
       onMouseLeave={() => {
         if (mode === "hover") {
