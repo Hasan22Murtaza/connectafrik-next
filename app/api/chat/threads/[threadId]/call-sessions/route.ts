@@ -618,23 +618,28 @@ export async function POST(request: NextRequest, context: RouteContext) {
     const callDenied = privacyDecisionResponse(callDecision)
     if (callDenied) return callDenied
 
-    const { checkParentalRestriction, parentalDecisionResponse } = await import('@/lib/family')
-    const parentalCallKind =
-      is_group_call && call_type === 'video'
-        ? 'group_video'
-        : is_group_call
-          ? 'group_audio'
-          : call_type === 'video'
-            ? 'video'
-            : 'audio'
-    const parental = await checkParentalRestriction(serviceClient, user.id, 'calling', {
-      callKind: parentalCallKind,
-    })
-    const parentalDenied = parentalDecisionResponse(parental)
-    if (parentalDenied) return parentalDenied
-    const screenGate = await checkParentalRestriction(serviceClient, user.id, 'screen_time')
-    const screenDenied = parentalDecisionResponse(screenGate)
-    if (screenDenied) return screenDenied
+    const { checkParentalRestriction, isThreadWithFamilyParent, parentalDecisionResponse } =
+      await import('@/lib/family')
+    // Child/teen may always call a family parent even when calling is locked.
+    const callingParent = await isThreadWithFamilyParent(serviceClient, user.id, threadId)
+    if (!callingParent) {
+      const parentalCallKind =
+        is_group_call && call_type === 'video'
+          ? 'group_video'
+          : is_group_call
+            ? 'group_audio'
+            : call_type === 'video'
+              ? 'video'
+              : 'audio'
+      const parental = await checkParentalRestriction(serviceClient, user.id, 'calling', {
+        callKind: parentalCallKind,
+      })
+      const parentalDenied = parentalDecisionResponse(parental)
+      if (parentalDenied) return parentalDenied
+      const screenGate = await checkParentalRestriction(serviceClient, user.id, 'screen_time')
+      const screenDenied = parentalDecisionResponse(screenGate)
+      if (screenDenied) return screenDenied
+    }
 
     const live = await listLiveSessionsForThread(serviceClient, threadId)
     const nowMs = Date.now()

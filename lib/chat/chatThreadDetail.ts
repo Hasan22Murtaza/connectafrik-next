@@ -68,7 +68,11 @@ export async function getMyThreadUnreadCount(
   return prefs.unread_count
 }
 
-export function threadToResponseBody(thread: Record<string, unknown>, prefs: ThreadParticipantPrefs) {
+export function threadToResponseBody(
+  thread: Record<string, unknown>,
+  prefs: ThreadParticipantPrefs,
+  options?: { is_parent?: boolean }
+) {
   const {
     group_banner,
     banner_url: threadBanner,
@@ -91,6 +95,8 @@ export function threadToResponseBody(thread: Record<string, unknown>, prefs: Thr
       is_locked: prefs.is_locked,
       locked_at: prefs.locked_at,
       blocked_by_other: prefs.blocked_by_other,
+      /** True when this 1:1 thread is with a family parent of the current managed child/teen. */
+      is_parent: options?.is_parent === true,
     },
     meta: {
       page: 0,

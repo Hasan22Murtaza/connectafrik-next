@@ -6,6 +6,7 @@ import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-uti
 
 import { requireChatThreadAccess } from '@/lib/chat/chatThreadAccess'
 import { requireUnlockedLockedThread } from '@/lib/chat/chatLock'
+import { isThreadWithFamilyParent } from '@/lib/family'
 
 import {
 
@@ -67,8 +68,11 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
 
     const prefs = await getMyThreadParticipantPrefs(serviceClient, user.id, threadId)
+    const is_parent = await isThreadWithFamilyParent(serviceClient, user.id, threadId)
 
-    return jsonResponse(threadToResponseBody(thread as Record<string, unknown>, prefs))
+    return jsonResponse(
+      threadToResponseBody(thread as Record<string, unknown>, prefs, { is_parent })
+    )
 
   } catch (error: any) {
 
@@ -181,8 +185,11 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 
 
     const prefs = await getMyThreadParticipantPrefs(serviceClient, user.id, threadId)
+    const is_parent = await isThreadWithFamilyParent(serviceClient, user.id, threadId)
 
-    return jsonResponse(threadToResponseBody(thread as Record<string, unknown>, prefs))
+    return jsonResponse(
+      threadToResponseBody(thread as Record<string, unknown>, prefs, { is_parent })
+    )
 
   } catch (error: any) {
 

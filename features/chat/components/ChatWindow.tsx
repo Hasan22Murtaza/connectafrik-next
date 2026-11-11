@@ -1548,43 +1548,46 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     if (richTextIsEmpty(text) && pendingFiles.length === 0) return;
 
     const filesSnapshot = [...pendingFiles];
-    const emergencyOnly = parental.onlyEmergencyMessaging;
-    if (emergencyOnly) {
-      if (filesSnapshot.length > 0) {
-        toast.error("Only emergency text messages are allowed.");
-        return;
-      }
-      if (!parental.canSendEmergency) {
-        toast.error("Messaging is restricted by your parent.");
-        return;
-      }
-    } else if (parental.controlsActive) {
-      if (filesSnapshot.length === 0 && !parental.canSendText) {
-        toast.error("Text messages are restricted by your parent.");
-        return;
-      }
-      const hasImage = filesSnapshot.some(
-        (f) => f.type === "image" || (f.mimeType || "").startsWith("image/")
-      );
-      const hasVideo = filesSnapshot.some(
-        (f) => f.type === "video" || (f.mimeType || "").startsWith("video/")
-      );
-      const hasAudio = filesSnapshot.some(
-        (f) =>
-          (f.mimeType || "").startsWith("audio/") ||
-          (f.name || "").startsWith("voice-")
-      );
-      if (hasAudio && !parental.canSendAudio) {
-        toast.error("Audio messages are restricted by your parent.");
-        return;
-      }
-      if (hasVideo && !parental.canSendVideo) {
-        toast.error("Video messages are restricted by your parent.");
-        return;
-      }
-      if (hasImage && !parental.canSendImage) {
-        toast.error("Image messages are restricted by your parent.");
-        return;
+    // Parent DMs bypass parental media/text locks so a child can always reach them.
+    const emergencyOnly = !thread?.is_parent && parental.onlyEmergencyMessaging;
+    if (!thread?.is_parent) {
+      if (emergencyOnly) {
+        if (filesSnapshot.length > 0) {
+          toast.error("Only emergency text messages are allowed.");
+          return;
+        }
+        if (!parental.canSendEmergency) {
+          toast.error("Messaging is restricted by your parent.");
+          return;
+        }
+      } else if (parental.controlsActive) {
+        if (filesSnapshot.length === 0 && !parental.canSendText) {
+          toast.error("Text messages are restricted by your parent.");
+          return;
+        }
+        const hasImage = filesSnapshot.some(
+          (f) => f.type === "image" || (f.mimeType || "").startsWith("image/")
+        );
+        const hasVideo = filesSnapshot.some(
+          (f) => f.type === "video" || (f.mimeType || "").startsWith("video/")
+        );
+        const hasAudio = filesSnapshot.some(
+          (f) =>
+            (f.mimeType || "").startsWith("audio/") ||
+            (f.name || "").startsWith("voice-")
+        );
+        if (hasAudio && !parental.canSendAudio) {
+          toast.error("Audio messages are restricted by your parent.");
+          return;
+        }
+        if (hasVideo && !parental.canSendVideo) {
+          toast.error("Video messages are restricted by your parent.");
+          return;
+        }
+        if (hasImage && !parental.canSendImage) {
+          toast.error("Image messages are restricted by your parent.");
+          return;
+        }
       }
     }
 
@@ -2144,13 +2147,19 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     }
   };
 
-  const canStartAudioCall = isGroupThread
-    ? parental.canGroupAudioCall
-    : parental.canAudioCall;
-  const canStartVideoCall = isGroupThread
-    ? parental.canGroupVideoCall
-    : parental.canVideoCall;
+  const chatWithParent = Boolean(thread?.is_parent);
+  const canStartAudioCall = chatWithParent
+    ? true
+    : isGroupThread
+      ? parental.canGroupAudioCall
+      : parental.canAudioCall;
+  const canStartVideoCall = chatWithParent
+    ? true
+    : isGroupThread
+      ? parental.canGroupVideoCall
+      : parental.canVideoCall;
   const parentalMessagingBlocked =
+    !chatWithParent &&
     parental.controlsActive &&
     !parental.canSendText &&
     !parental.canSendImage &&
@@ -2330,7 +2339,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       toast.error("Voice recording is not supported here");
       return;
     }
-    if (!parental.canSendAudio) {
+    if (!chatWithParent && !parental.canSendAudio) {
       toast.error("Audio messages are restricted by your parent.");
       return;
     }
@@ -3636,11 +3645,11 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
             onClose={() => setAttachmentMenuOpen(false)}
             onOpenCamera={() => setWebcamOpen(true)}
             onOpenLocation={() => setLocationPickerOpen(true)}
-            allowCamera={parental.canSendImage}
-            allowImages={parental.canSendImage}
-            allowVideos={parental.canSendVideo}
-            allowDocuments={parental.canSendText}
-            allowLocation={parental.canSendText}
+            allowCamera={chatWithParent || parental.canSendImage}
+            allowImages={chatWithParent || parental.canSendImage}
+            allowVideos={chatWithParent || parental.canSendVideo}
+            allowDocuments={chatWithParent || parental.canSendText}
+            allowLocation={chatWithParent || parental.canSendText}
           />
 
           {emojiPickerOpen ? (
@@ -3834,7 +3843,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                     : parentalMessagingBlocked
                       ? "Messaging restricted"
                       : "Messaging unavailable"
-                  : parental.onlyEmergencyMessaging
+                  : !chatWithParent && parental.onlyEmergencyMessaging
                     ? "Emergency message only"
                     : editingMessage
                       ? "Edit message"
@@ -3847,7 +3856,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                     type="button"
                     onClick={() => {
                       if (editingMessage) return;
-                      if (parental.onlyEmergencyMessaging) {
+                      if (!chatWithParent && parental.onlyEmergencyMessaging) {
                         toast.error("Only emergency text messages are allowed.");
                         return;
                       }
@@ -3856,10 +3865,11 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                     }}
                     disabled={
                       !!editingMessage ||
-                      parental.onlyEmergencyMessaging ||
-                      (!parental.canSendImage &&
-                        !parental.canSendVideo &&
-                        !parental.canSendText)
+                      (!chatWithParent &&
+                        (parental.onlyEmergencyMessaging ||
+                          (!parental.canSendImage &&
+                            !parental.canSendVideo &&
+                            !parental.canSendText)))
                     }
                     className={`flex h-9 w-9 items-center justify-center rounded-full text-[#54656f] transition hover:bg-[#f0f2f5] disabled:pointer-events-none disabled:opacity-40 dark:text-content-secondary dark:hover:bg-surface-hover ${attachmentMenuOpen ? "text-[#F97316]" : ""
                       }`}
@@ -3868,7 +3878,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                     title={
                       editingMessage
                         ? "Finish editing before attaching files"
-                        : parental.onlyEmergencyMessaging
+                        : !chatWithParent && parental.onlyEmergencyMessaging
                           ? "Attachments unavailable in emergency mode"
                           : undefined
                     }
@@ -3915,7 +3925,11 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                 <button
                   type="button"
                   onClick={toggleVoiceRecording}
-                  disabled={isSending || !!editingMessage || !parental.canSendAudio}
+                  disabled={
+                    isSending ||
+                    !!editingMessage ||
+                    (!chatWithParent && !parental.canSendAudio)
+                  }
                   className={`absolute inset-0 flex items-center justify-center rounded-full transition active:scale-95 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-40 animate-[chatFadeIn_140ms_ease-out] ${voiceRecording
                     ? "bg-red-500 text-white hover:bg-red-600"
                     : "bg-transparent text-[#111b21] hover:bg-[#f0f2f5] dark:text-content dark:hover:bg-surface-hover"
@@ -3924,7 +3938,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                   title={
                     editingMessage
                       ? "Finish editing before sending a voice message"
-                      : !parental.canSendAudio
+                      : !chatWithParent && !parental.canSendAudio
                         ? "Audio messages restricted by parent"
                       : voiceRecording
                         ? "Stop and send"

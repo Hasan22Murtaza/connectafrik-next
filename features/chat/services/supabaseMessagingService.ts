@@ -128,6 +128,11 @@ export interface ChatThread {
   /** From current user's `chat_participants.is_locked` */
   is_locked?: boolean
   locked_at?: string | null
+  /**
+   * True when this 1:1 thread is with a family parent of the current managed
+   * child/teen (parental messaging/call locks do not apply).
+   */
+  is_parent?: boolean
   created_at: string
   updated_at: string
   /** Set when this thread is the canonical chat for a group */
@@ -424,6 +429,7 @@ const createLocalThread = (currentUser: ChatParticipant, options: CreateThreadOp
     blocked_by_other: false,
     pinned: false,
     pinned_at: null,
+    is_parent: false,
     created_at: timestamp,
     updated_at: timestamp,
   }
@@ -732,6 +738,7 @@ const formatThread = async (thread: any, currentUserId: string): Promise<ChatThr
     pinned_at: typeof thread.pinned_at === 'string' ? thread.pinned_at : null,
     is_locked: typeof thread.is_locked === 'boolean' ? thread.is_locked : false,
     locked_at: typeof thread.locked_at === 'string' ? thread.locked_at : null,
+    is_parent: typeof thread.is_parent === 'boolean' ? thread.is_parent : false,
     created_at: thread.created_at,
     updated_at: thread.updated_at || lastMessageAt,
     group_id: thread.group_id ?? null,
