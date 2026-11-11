@@ -5,6 +5,74 @@ import {
   getSupabaseAuthCookieNames,
 } from '@/lib/auth/supabaseAuthCookies'
 
+/** Exact path or nested under route — avoids `/feed` matching `/feedback`. */
+function matchesRoute(pathname: string, route: string): boolean {
+  return pathname === route || pathname.startsWith(`${route}/`)
+}
+
+function isLoopbackHost(hostname: string): boolean {
+  return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1'
+}
+
+/**
+ * Prefer `NEXT_PUBLIC_APP_URL` / `NEXT_PUBLIC_SITE_URL`, then forwarded Host,
+ * so auth redirects never leak an internal bind address (localhost:3000).
+ */
+function resolvePublicOrigin(request: NextRequest): string {
+  const configured =
+    process.env.NEXT_PUBLIC_APP_URL?.trim() ||
+    process.env.NEXT_PUBLIC_SITE_URL?.trim()
+
+  if (configured) {
+    try {
+      const origin = new URL(configured).origin
+      if (!isLoopbackHost(new URL(configured).hostname)) return origin
+    } catch {
+      // fall through to request headers
+    }
+  }
+
+  const forwardedHost = request.headers.get('x-forwarded-host')?.split(',')[0]?.trim()
+  const hostHeader = forwardedHost || request.headers.get('host')?.trim()
+  if (hostHeader) {
+    const hostname = hostHeader.split(':')[0]
+    if (!isLoopbackHost(hostname)) {
+      const forwardedProto = request.headers
+        .get('x-forwarded-proto')
+        ?.split(',')[0]
+        ?.trim()
+      const proto = forwardedProto || 'https'
+      return `${proto}://${hostHeader}`
+    }
+  }
+
+  if (configured) {
+    try {
+      return new URL(configured).origin
+    } catch {
+      // fall through
+    }
+  }
+
+  return request.nextUrl.origin
+}
+
+/** Absolute redirect URL on the public origin (never trust internal nextUrl host alone). */
+function publicUrl(
+  request: NextRequest,
+  pathname: string,
+  searchParams?: Record<string, string>
+): URL {
+  const url = new URL(pathname, `${resolvePublicOrigin(request)}/`)
+  url.search = ''
+  if (searchParams) {
+    for (const [key, value] of Object.entries(searchParams)) {
+      url.searchParams.set(key, value)
+    }
+  }
+  return url
+}
+
 /** Clear Supabase auth cookies (base key + chunked keys) so user is treated as signed out. */
 function clearSupabaseAuthCookies(
   request: NextRequest,
@@ -25,9 +93,8 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   if (pathname === '/memories' || pathname.startsWith('/memories/')) {
-    const url = request.nextUrl.clone()
-    url.pathname = pathname.replace(/^\/memories/, '/reels') || '/reels'
-    return NextResponse.redirect(url, 308)
+    const nextPath = pathname.replace(/^\/memories/, '/reels') || '/reels'
+    return NextResponse.redirect(publicUrl(request, nextPath), 308)
   }
   if (pathname === '/api/memories' || pathname.startsWith('/api/memories/')) {
     const url = request.nextUrl.clone()
@@ -207,15 +274,15 @@ export async function middleware(request: NextRequest) {
     /^\/marketplace\/[^/]+$/.test(pathname) && !isMarketplaceHubRoute
 
   const isAuthRouteThatRedirectsWhenLoggedIn = authRoutesThatRedirectWhenLoggedIn.some((route) =>
-    pathname.startsWith(route)
+    matchesRoute(pathname, route)
   )
-  
+
   // Check if the current path is a protected route
   const isProtectedRoute =
     !isPublicSeoContentPath &&
-    (protectedRoutes.some((route) => pathname.startsWith(route)) ||
+    (protectedRoutes.some((route) => matchesRoute(pathname, route)) ||
       pathname.startsWith('/user/') ||
-      pathname.startsWith('/admin') ||
+      matchesRoute(pathname, '/admin') ||
       isMarketplaceHubRoute)
 
   // Check if the current path is a public route
@@ -226,24 +293,23 @@ export async function middleware(request: NextRequest) {
 
   // If user is authenticated and tries to access sign-in/sign-up routes, redirect to feed
   if (session && isAuthRouteThatRedirectsWhenLoggedIn) {
-    const url = request.nextUrl.clone()
-    url.pathname = '/feed'
-    return applyClearedAuthCookiesIfNeeded(NextResponse.redirect(url))
+    return applyClearedAuthCookiesIfNeeded(
+      NextResponse.redirect(publicUrl(request, '/feed'))
+    )
   }
 
   // If user is authenticated and lands on home page, send them to feed
   if (session && pathname === '/') {
-    const url = request.nextUrl.clone()
-    url.pathname = '/feed'
-    return applyClearedAuthCookiesIfNeeded(NextResponse.redirect(url))
+    return applyClearedAuthCookiesIfNeeded(
+      NextResponse.redirect(publicUrl(request, '/feed'))
+    )
   }
 
   // If user is not authenticated and tries to access protected routes, redirect to signin
   if (!session && isProtectedRoute) {
-    const url = request.nextUrl.clone()
-    url.pathname = '/signin'
-    url.searchParams.set('redirect', pathname)
-    return applyClearedAuthCookiesIfNeeded(NextResponse.redirect(url))
+    return applyClearedAuthCookiesIfNeeded(
+      NextResponse.redirect(publicUrl(request, '/signin', { redirect: pathname }))
+    )
   }
 
   // Allow access to public routes, protected routes (if authenticated), and API routes
