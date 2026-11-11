@@ -1,10 +1,4 @@
 import Link from 'next/link'
-import { Caveat } from 'next/font/google'
-
-const caveat = Caveat({
-  subsets: ['latin'],
-  weight: ['600', '700'],
-})
 
 export function AuthIllustration() {
   return (
@@ -29,7 +23,7 @@ export function AuthIllustration() {
           draggable={false}
         />
         <div
-          className={`pointer-events-none absolute inset-0 hidden ${caveat.className} xl:block`}
+          className="pointer-events-none absolute inset-0 hidden font-[family-name:var(--font-caveat),cursive] xl:block"
           aria-hidden="true"
         >
           <p className="absolute left-[32%] top-[11%] -rotate-[8deg] text-[1.35rem] font-bold leading-tight text-[#3F2A14]">

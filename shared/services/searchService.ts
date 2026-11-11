@@ -62,6 +62,7 @@ export interface SearchResults {
 export interface SearchOptions {
   limit?: number
   minQueryLength?: number
+  signal?: AbortSignal
 }
 
 const DEFAULT_SEARCH_LIMIT = 5
@@ -200,7 +201,11 @@ export const searchService = {
     query: string,
     options: SearchOptions = {}
   ): Promise<SearchResults> {
-    const { limit = DEFAULT_SEARCH_LIMIT, minQueryLength = DEFAULT_MIN_QUERY_LENGTH } = options
+    const {
+      limit = DEFAULT_SEARCH_LIMIT,
+      minQueryLength = DEFAULT_MIN_QUERY_LENGTH,
+      signal,
+    } = options
     const normalizedQuery = normalizeQuery(query, minQueryLength)
     
     if (!normalizedQuery) {
@@ -208,11 +213,18 @@ export const searchService = {
     }
 
     try {
-      return await apiClient.get<SearchResults>('/api/search/global', {
-        q: normalizedQuery,
-        limit,
-      })
+      return await apiClient.get<SearchResults>(
+        '/api/search/global',
+        {
+          q: normalizedQuery,
+          limit,
+        },
+        { signal, bypassCache: true }
+      )
     } catch (error) {
+      if (signal?.aborted || (error instanceof DOMException && error.name === 'AbortError')) {
+        throw error
+      }
       console.error('[SearchService] Global search API failed:', error)
       return { users: [], posts: [], groups: [], products: [] }
     }

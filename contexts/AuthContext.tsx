@@ -12,9 +12,23 @@ import React, {
 import { User, Session, AuthError } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
-import { checkAndSetupFCMTokenOnLogin, deactivateTokenOnLogout } from '@/shared/utils/fcmClient'
 import { flushUserPresenceOnLeave } from '@/lib/flushUserPresenceOnLeave'
+import {
+  clearCachedAuthSession,
+  ensureAuthSessionCacheListener,
+  setCachedAuthSession,
+} from '@/lib/auth-session-cache'
 import { useTheme } from '@/shared/theme/useTheme'
+
+async function setupFcmOnLogin() {
+  const { checkAndSetupFCMTokenOnLogin } = await import('@/shared/utils/fcmClient')
+  return checkAndSetupFCMTokenOnLogin()
+}
+
+async function deactivateFcmOnLogout() {
+  const { deactivateTokenOnLogout } = await import('@/shared/utils/fcmClient')
+  return deactivateTokenOnLogout()
+}
 
 interface AuthContextType {
   user: User | null
@@ -70,18 +84,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [])
 
   useEffect(() => {
-    // Get initial session (guard against refresh_token_not_found / invalid session)
+    ensureAuthSessionCacheListener()
+
+    // Get initial session once (guard against refresh_token_not_found / invalid session)
     supabase.auth
       .getSession()
       .then(({ data: { session: initialSession } }) => {
+        setCachedAuthSession(initialSession)
         setSession(initialSession)
         setUser((prev) => nextStableUser(prev, initialSession?.user ?? null, 'INITIAL_SESSION'))
         setLoading(false)
         if (initialSession?.user && typeof window !== 'undefined') {
-          checkAndSetupFCMTokenOnLogin()
+          void setupFcmOnLogin()
         }
       })
       .catch(() => {
+        clearCachedAuthSession()
         setSession(null)
         setUser(null)
         setLoading(false)
@@ -92,17 +110,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, nextSession) => {
       try {
+        // Keep memory token in sync so apiClient never re-hits /auth/v1/user per request.
+        setCachedAuthSession(nextSession)
         // Always refresh session tokens; stabilize user identity separately.
         setSession(nextSession ?? null)
         setUser((prev) => nextStableUser(prev, nextSession?.user ?? null, event))
         setLoading(false)
         if (event === 'SIGNED_IN' && nextSession?.user && typeof window !== 'undefined') {
-          checkAndSetupFCMTokenOnLogin()
+          void setupFcmOnLogin()
         }
         if (event === 'SIGNED_OUT') {
+          clearCachedAuthSession()
           resetThemeToLight()
         }
       } catch {
+        clearCachedAuthSession()
         setSession(null)
         setUser(null)
         setLoading(false)
@@ -188,16 +210,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signOut = useCallback(async () => {
     resetThemeToLight()
-    await deactivateTokenOnLogout().catch(() => {})
+    await deactivateFcmOnLogout().catch(() => {})
     await flushUserPresenceOnLeave()
+    clearCachedAuthSession()
     await supabase.auth.signOut({ scope: 'local' })
     router.push('/')
   }, [resetThemeToLight, router])
 
   const signOutAllDevices = useCallback(async () => {
     resetThemeToLight()
-    await deactivateTokenOnLogout().catch(() => {})
+    await deactivateFcmOnLogout().catch(() => {})
     await flushUserPresenceOnLeave()
+    clearCachedAuthSession()
     await supabase.auth.signOut({ scope: 'global' })
     router.push('/')
   }, [resetThemeToLight, router])

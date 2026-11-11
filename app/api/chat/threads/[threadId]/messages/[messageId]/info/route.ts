@@ -84,8 +84,11 @@ export async function GET(_request: NextRequest, context: RouteContext) {
     })()
 
     const [readsRes, attachmentsRes, reactionsRes, participantsRes, replyRes] = await Promise.all([
-      serviceClient.from('message_reads').select('*').eq('message_id', messageId),
-      serviceClient.from('message_attachments').select('*').eq('message_id', messageId),
+      serviceClient.from('message_reads').select('message_id, user_id, created_at').eq('message_id', messageId),
+      serviceClient
+        .from('message_attachments')
+        .select('id, message_id, file_name, file_size, file_type, file_url')
+        .eq('message_id', messageId),
       serviceClient.from('message_reactions').select('message_id, emoji, user_id').eq('message_id', messageId),
       serviceClient
         .from('chat_participants')

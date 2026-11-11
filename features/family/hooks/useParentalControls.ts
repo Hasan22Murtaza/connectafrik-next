@@ -2,10 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
-import {
-  familyService,
-  type FamilyMeStatus,
-} from '@/features/settings/services/familyService'
+import { familyMeStore } from '@/features/family/services/familyMeStore'
+import { type FamilyMeStatus } from '@/features/settings/services/familyService'
 import {
   areAllMessageTypesLocked,
   isCallKindAllowed,
@@ -13,8 +11,6 @@ import {
   type ParentalCallKind,
   type ParentalControls,
 } from '@/shared/types/family'
-
-const STATUS_POLL_MS = 60_000
 
 export type ParentalCapabilities = {
   loading: boolean
@@ -41,40 +37,28 @@ export type ParentalCapabilities = {
 /**
  * Client-side parental capability flags for managed child/teen accounts.
  * Non-managed users get everything allowed.
+ * Shares /api/family/me with ScreenTimeGate via familyMeStore.
  */
 export function useParentalControls(): ParentalCapabilities {
   const { user, loading: authLoading } = useAuth()
-  const [me, setMe] = useState<FamilyMeStatus | null>(null)
+  const [me, setMe] = useState<FamilyMeStatus | null>(() => familyMeStore.getMe())
   const [loading, setLoading] = useState(true)
-
-  const refresh = useCallback(async () => {
-    if (!user) {
-      setMe(null)
-      setLoading(false)
-      return
-    }
-    try {
-      const status = await familyService.getMe()
-      setMe(status)
-    } catch {
-      // Non-fatal offline / auth edge cases
-    } finally {
-      setLoading(false)
-    }
-  }, [user])
 
   useEffect(() => {
     if (authLoading) return
-    void refresh()
-  }, [authLoading, refresh])
+    familyMeStore.setUser(user?.id ?? null)
+  }, [authLoading, user?.id])
 
   useEffect(() => {
-    if (!user || !me?.controls_active) return
-    const id = window.setInterval(() => {
-      void refresh()
-    }, STATUS_POLL_MS)
-    return () => window.clearInterval(id)
-  }, [user, me?.controls_active, refresh])
+    return familyMeStore.subscribe((next, nextLoading) => {
+      setMe(next)
+      setLoading(nextLoading)
+    })
+  }, [])
+
+  const refresh = useCallback(async () => {
+    await familyMeStore.refresh()
+  }, [])
 
   const controls = me?.controls_active ? me.controls : null
 

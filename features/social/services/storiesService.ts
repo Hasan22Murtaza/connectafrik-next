@@ -114,7 +114,7 @@ export async function getStoryRecommendations(_userId: string): Promise<Story[]>
   while (hasMore) {
     const res = await apiClient.get<{ data: Record<string, unknown>[]; hasMore?: boolean }>('/api/stories', {
       page,
-      limit: 5,
+      limit: 25,
     })
     const items = res.data || []
     const flattened = flattenStoryData(items)

@@ -885,8 +885,9 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
         }
       } catch { /* ignore */ }
     };
-    const interval = setInterval(poll, 8000);
-    const initial = setTimeout(poll, 4000);
+    // Pre-answer only — stops once connected/connecting_media. Realtime is primary.
+    const interval = setInterval(poll, 12_000);
+    const initial = setTimeout(poll, 5_000);
     return () => { cancelled = true; clearInterval(interval); clearTimeout(initial); };
   }, [isOpen, threadId, callStatus, shouldHandleSignal, closeCall, callIdHint]);
 

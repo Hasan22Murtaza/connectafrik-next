@@ -1,10 +1,10 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { useProfile } from '@/shared/hooks/useProfile'
 import { apiClient } from '@/lib/api-client'
+import { getAccessToken, getCachedAccessTokenSync } from '@/lib/auth-session-cache'
 import {
   initChatPresenceRealtime,
   cleanupChatPresenceRealtime,
@@ -22,6 +22,13 @@ export type PresenceListItem = {
 
 const HEARTBEAT_INTERVAL = 45 * 1000
 const DATABASE_HEARTBEAT_INTERVAL = 60 * 1000
+/** During /call, call-session heartbeat already proves liveness — slow profile presence writes. */
+const DATABASE_HEARTBEAT_DURING_CALL_MS = 120_000
+
+function isOnCallRoute(): boolean {
+  if (typeof window === 'undefined') return false
+  return window.location.pathname.startsWith('/call')
+}
 
 /**
  * From `last_seen` only: recent → online, else offline (no away/busy).
@@ -126,35 +133,25 @@ export const usePresence = () => {
   const lastDatabaseUpdateAt = useRef(0)
   const statusIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
-  const cachedAccessToken = useRef<string | null>(null)
   const lifecycleUserId = useRef<string | null>(null)
   const onPagehide = useRef<((e: PageTransitionEvent) => void) | null>(null)
   const onPageshow = useRef<((e: PageTransitionEvent) => void) | null>(null)
-
-  const refreshCachedAccessToken = useCallback(async () => {
-    try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession()
-      cachedAccessToken.current = session?.access_token ?? null
-    } catch {
-      cachedAccessToken.current = null
-    }
-  }, [])
 
   const patchMyPresence = useCallback(
     async (status: PresenceStatusType, options: { force?: boolean } = {}): Promise<void> => {
       if (!user?.id) return
       const now = Date.now()
       const statusChanged = status !== lastDatabaseStatus.current
-      const heartbeatDue = now - lastDatabaseUpdateAt.current >= DATABASE_HEARTBEAT_INTERVAL
+      const heartbeatInterval = isOnCallRoute()
+        ? DATABASE_HEARTBEAT_DURING_CALL_MS
+        : DATABASE_HEARTBEAT_INTERVAL
+      const heartbeatDue = now - lastDatabaseUpdateAt.current >= heartbeatInterval
       const shouldPersist =
         options.force === true || statusChanged || (status === 'online' && heartbeatDue)
 
       if (!shouldPersist) return
 
       try {
-        await refreshCachedAccessToken()
         const iso = new Date().toISOString()
         const body: {
           status: 'online' | null
@@ -167,6 +164,7 @@ export const usePresence = () => {
             : { status: 'online' as const, last_active_at: iso }),
         }
 
+        // apiClient reads the shared auth session cache — no getSession per heartbeat.
         await apiClient.patch('/api/users/me', body)
         lastDatabaseStatus.current = status
         lastDatabaseUpdateAt.current = now
@@ -174,7 +172,7 @@ export const usePresence = () => {
         console.error('Failed to update presence (API):', error)
       }
     },
-    [user?.id, refreshCachedAccessToken]
+    [user?.id]
   )
 
   const sendOfflineKeepalive = useCallback(() => {
@@ -192,14 +190,12 @@ export const usePresence = () => {
         body: JSON.stringify({ status: null, last_seen: iso }),
       }).catch(() => {})
     }
-    if (cachedAccessToken.current) {
-      run(cachedAccessToken.current)
+    const cached = getCachedAccessTokenSync()
+    if (cached) {
+      run(cached)
       return
     }
-    void supabase.auth.getSession().then(({ data: { session } }) => {
-      cachedAccessToken.current = session?.access_token ?? null
-      run(cachedAccessToken.current)
-    })
+    void getAccessToken().then(run)
   }, [])
 
   const detachLifecycle = useCallback(() => {
@@ -243,11 +239,9 @@ export const usePresence = () => {
     }
     lastDatabaseStatus.current = null
     lastDatabaseUpdateAt.current = 0
-    await refreshCachedAccessToken()
     await cleanupChatPresenceRealtime()
     sendOfflineKeepalive()
-    cachedAccessToken.current = null
-  }, [detachLifecycle, sendOfflineKeepalive, refreshCachedAccessToken])
+  }, [detachLifecycle, sendOfflineKeepalive])
 
   useEffect(() => {
     if (!user?.id) {
@@ -259,7 +253,6 @@ export const usePresence = () => {
     let cancelled = false
 
     const run = async () => {
-      await refreshCachedAccessToken()
       await patchMyPresence('online', { force: true })
       if (cancelled) return
       try {

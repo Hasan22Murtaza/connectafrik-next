@@ -108,10 +108,15 @@ export function useActiveCallSession(
 
   useEffect(() => {
     if (!threadId) return
+    // Realtime is primary; slow HTTP fallback only (was 15s and competed with
+    // in-call heartbeat + MeetingContainer session GETs during active calls).
     const unsub = supabaseMessagingService.subscribeToCallSignals(threadId, () => {
       void fetchActive()
     })
-    const interval = setInterval(() => void fetchActive(), 15_000)
+    const interval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return
+      void fetchActive()
+    }, 45_000)
     return () => {
       unsub()
       clearInterval(interval)

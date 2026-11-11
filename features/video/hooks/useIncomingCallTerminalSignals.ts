@@ -115,8 +115,9 @@ export function useIncomingCallTerminalSignals({
       }
     };
 
-    const interval = setInterval(poll, 4000);
-    const initial = setTimeout(poll, 1500);
+    // Realtime + FCM are primary; keep a slower HTTP fallback while ringing.
+    const interval = setInterval(poll, 10_000);
+    const initial = setTimeout(poll, 2_500);
 
     const handleFcm = (event: Event) => {
       const detail = (event as CustomEvent<{ data?: Record<string, string> }>).detail;

@@ -65,6 +65,7 @@ export const useSearch = (options: UseSearchOptions = {}): UseSearchReturn => {
       try {
         const results = await searchService.search(normalizedQuery, {
           minQueryLength,
+          signal: abortControllerRef.current.signal,
         })
 
         // Only update if request wasn't aborted
@@ -72,6 +73,12 @@ export const useSearch = (options: UseSearchOptions = {}): UseSearchReturn => {
           setSearchResults(results)
         }
       } catch (error) {
+        if (
+          abortControllerRef.current?.signal.aborted ||
+          (error instanceof DOMException && error.name === 'AbortError')
+        ) {
+          return
+        }
         console.error('[useSearch] Search error:', error)
         if (!abortControllerRef.current?.signal.aborted) {
           setSearchResults(null)

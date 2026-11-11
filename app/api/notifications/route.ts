@@ -10,14 +10,15 @@ export async function GET(request: NextRequest) {
     const parsedPage = parseInt(searchParams.get('page') || '0', 10)
     const parsedLimit = parseInt(searchParams.get('limit') || '20', 10)
     const page = Number.isNaN(parsedPage) ? 0 : Math.max(parsedPage, 0)
-    const limit = Number.isNaN(parsedLimit) ? 20 : Math.min(Math.max(parsedLimit, 1), 200)
+    // Cap page size — clients historically requested up to 200 which inflates payload/DB cost.
+    const limit = Number.isNaN(parsedLimit) ? 20 : Math.min(Math.max(parsedLimit, 1), 50)
     const from = page * limit
     const to = from + limit - 1
     const includeRead = searchParams.get('include_read') === 'true'
 
     let query = supabase
       .from('notifications')
-      .select('*')
+      .select('id, user_id, type, title, message, data, is_read, created_at, updated_at')
       .eq('user_id', user.id)
       .order('created_at', { ascending: false })
 

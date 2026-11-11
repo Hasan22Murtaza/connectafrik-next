@@ -7,6 +7,14 @@ if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Missing Supabase environment variables')
 }
 
-// Create a browser client that uses cookies (compatible with middleware)
-export const supabase = createBrowserClient(supabaseUrl, supabaseAnonKey)
+// Single browser client (cookie storage, compatible with middleware).
+// Do not create additional createBrowserClient() instances — that multiplies auth/v1/user traffic.
+export const supabase = createBrowserClient(supabaseUrl, supabaseAnonKey, {
+  isSingleton: true,
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+  },
+})
 

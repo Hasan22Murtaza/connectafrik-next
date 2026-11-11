@@ -3,8 +3,12 @@
 import { useCallback, useEffect, useRef } from 'react'
 import { apiClient } from '@/lib/api-client'
 
-/** Send every 20–30s; 25s balances traffic vs 90s server timeout (3 missed beats). */
-const HEARTBEAT_INTERVAL_MS = 25_000
+/**
+ * Keep the call session alive vs the ~90s server reaper.
+ * This PATCH is intentional during active calls — do not remove.
+ * 30s ≈ ≤3 missed beats before reaper; lowers traffic vs prior 25s.
+ */
+const HEARTBEAT_INTERVAL_MS = 30_000
 
 export type UseCallHeartbeatOptions = {
   threadId?: string

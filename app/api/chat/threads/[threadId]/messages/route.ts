@@ -100,7 +100,10 @@ const loadSignalEnvelopes = async (serviceClient: any, message: any, readerId: s
 const enrichMessageResponse = async (serviceClient: any, message: any, fallbackReaderId: string) => {
   const [readsRes, attachmentsRes, withEnvelopes] = await Promise.all([
     serviceClient.from('message_reads').select('user_id').eq('message_id', message.id),
-    serviceClient.from('message_attachments').select('*').eq('message_id', message.id),
+    serviceClient
+      .from('message_attachments')
+      .select('id, message_id, file_name, file_size, file_type, file_url')
+      .eq('message_id', message.id),
     loadSignalEnvelopes(serviceClient, message, fallbackReaderId),
   ])
   const rawReadBy = (readsRes.data || []).map((r: any) => r.user_id)
@@ -193,7 +196,10 @@ export async function GET(request: NextRequest, context: RouteContext) {
     const messageIds = list.map((m: any) => m.id)
     const [readsRes, attachmentsRes, reactionsRes] = await Promise.all([
       serviceClient.from('message_reads').select('message_id, user_id').in('message_id', messageIds),
-      serviceClient.from('message_attachments').select('*').in('message_id', messageIds),
+      serviceClient
+        .from('message_attachments')
+        .select('id, message_id, file_name, file_size, file_type, file_url')
+        .in('message_id', messageIds),
       serviceClient.from('message_reactions').select('message_id, emoji, user_id').in('message_id', messageIds),
     ])
 
@@ -615,7 +621,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
     const { data: attData } = await serviceClient
       .from('message_attachments')
-      .select('*')
+      .select('id, message_id, file_name, file_size, file_type, file_url')
       .eq('message_id', message.id)
 
     const result = sanitizeViewOnceMessage({
