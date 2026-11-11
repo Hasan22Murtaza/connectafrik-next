@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { getAuthenticatedUser, createServiceClient } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
 import { filterThreadIdsAccessibleToUser } from '@/lib/chat/chatThreadAccess'
+import { getFamilyParentUserIds } from '@/lib/family'
 import { loadFriendMaps } from '@/lib/privacy/queries'
 
 /** Align API message_type with call_sessions.status (Postgres check constraint). */
@@ -265,7 +266,7 @@ export async function GET(request: NextRequest) {
       .map((r: any) => (typeof r.created_by === 'string' ? r.created_by : null))
       .filter(Boolean) as string[]
     const participantUserIds = [...new Set([...threadParticipantIds, ...rosterUserIds, ...creatorIds])]
-    const [{ data: profiles }, friendMaps] = await Promise.all([
+    const [{ data: profiles }, friendMaps, familyParentIds] = await Promise.all([
       participantUserIds.length
         ? serviceClient
             .from('profiles')
@@ -273,6 +274,7 @@ export async function GET(request: NextRequest) {
             .in('id', participantUserIds)
         : Promise.resolve({ data: [] as any[] }),
       loadFriendMaps(user.id, participantUserIds, serviceClient),
+      getFamilyParentUserIds(serviceClient, user.id),
     ])
 
     const threadMap = new Map((threads || []).map((t: any) => [t.id, t]))
@@ -362,6 +364,11 @@ export async function GET(request: NextRequest) {
             )
           : null
 
+      const is_parent =
+        !isMultiParty &&
+        typeof otherId === 'string' &&
+        familyParentIds.has(otherId)
+
       return {
         session_id: sessionId,
         thread_id: r.thread_id,
@@ -381,6 +388,7 @@ export async function GET(request: NextRequest) {
         created_by: r.created_by ?? null,
         duration_seconds: durationFromRow ?? durationFromRange,
         participants: callParticipants,
+        is_parent,
       }
     })
     result.sort((a, b) => toTime(b.created_at) - toTime(a.created_at))

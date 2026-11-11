@@ -1,7 +1,8 @@
 import { NextRequest } from 'next/server'
-import { getAuthenticatedUser } from '@/lib/supabase-server'
+import { createServiceClient, getAuthenticatedUser } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
 import { lookupDirectThreadIdBetweenUsers } from '@/lib/chat/chatThreadLookup'
+import { isUserFamilyParentOf } from '@/lib/family'
 import { getRelationship } from '@/lib/privacy/access'
 import { sanitizeProfileForViewer } from '@/lib/privacy/sanitize'
 import { getSupabaseAndViewer, UUID_RE } from './_shared/resolve-user-request'
@@ -24,7 +25,9 @@ export async function GET(
       if (error || !profile) {
         return errorResponse('Profile not found', 404)
       }
-      return jsonResponse({ data: { ...profile, threadId: null, profile_restricted: false } })
+      return jsonResponse({
+        data: { ...profile, threadId: null, profile_restricted: false, is_parent: false },
+      })
     }
 
     if (!UUID_RE.test(identifier)) {
@@ -50,7 +53,12 @@ export async function GET(
         ? (await lookupDirectThreadIdBetweenUsers(viewerId, profile.id)) ?? null
         : null
 
-    return jsonResponse({ data: { ...sanitized, threadId } })
+    const is_parent =
+      viewerId && viewerId !== profile.id
+        ? await isUserFamilyParentOf(createServiceClient(), viewerId, profile.id)
+        : false
+
+    return jsonResponse({ data: { ...sanitized, threadId, is_parent } })
   } catch (error: any) {
     if (error.message === 'Unauthorized' || error.message === 'Missing Authorization header') {
       return unauthorizedResponse()
@@ -89,7 +97,7 @@ export async function PATCH(
       return errorResponse(error.message, 400)
     }
 
-    return jsonResponse({ data: { ...profile, threadId: null } })
+    return jsonResponse({ data: { ...profile, threadId: null, is_parent: false } })
   } catch (error: any) {
     if (error.message === 'Unauthorized' || error.message === 'Missing Authorization header') {
       return unauthorizedResponse()

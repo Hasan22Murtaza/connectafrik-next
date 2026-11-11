@@ -209,6 +209,8 @@ export interface RecentCallEntry {
   banner_url?: string | null
   duration_seconds?: number | null
   participants?: RecentCallParticipant[]
+  /** True when this 1:1 call is with a family parent of the current managed child/teen. */
+  is_parent?: boolean
 }
 
 type ThreadSubscriber = (thread: ChatThread) => void
@@ -1545,6 +1547,7 @@ export const supabaseMessagingService = {
                 is_friend: Boolean(p.is_friend),
               }))
             : [],
+          is_parent: Boolean(r.is_parent),
         }
       })
       return { entries, hasMore, page: res?.meta?.page ?? page }
