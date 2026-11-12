@@ -4036,7 +4036,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                         </div>
                         <div className="mb-2 flex justify-end">
                           <div
-                            className={`max-w-[min(100%,320px)] overflow-hidden rounded-xl rounded-br-sm bg-emerald-500 text-sm text-white ${hasMedia ? "p-1.5" : "px-3 py-2"
+                            className={`max-w-[min(100%,320px)] overflow-hidden rounded-xl rounded-br-sm bg-orange-500 text-sm text-white ${hasMedia ? "p-1.5" : "px-3 py-2"
                               }`}
                           >
                             {hasMedia ? (
