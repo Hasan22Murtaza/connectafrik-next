@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
           allowedIds.push(targetId)
           continue
         }
-        const decision = await canCall(authedUserId, targetId, serviceClient)
+        const decision = await canCall(authedUserId, targetId, { client: serviceClient })
         if (decision.allowed) allowedIds.push(targetId)
       }
       const busy = await getBusyMapForUserIds(serviceClient, allowedIds, exclude_call_id)
