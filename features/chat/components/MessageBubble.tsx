@@ -40,11 +40,16 @@ import {
   Share2,
   Smile,
   Square,
+  Timer,
   Trash2,
   UserPlus,
   Video,
   MessageSquare,
 } from '@/shared/icons';
+import {
+  disappearingSystemContentForViewer,
+  normalizeDisappearingDurationSec,
+} from "@/lib/chat/chatDisappearingMessages";
 import React, { Fragment, useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { toast } from "react-hot-toast";
 import ReactionIcon, {
@@ -860,6 +865,31 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
       <div className="mb-2 flex justify-center animate-[chatMsgIn_200ms_ease-out]">
         <div className="flex items-center gap-2 rounded-[7px] border border-[#e9edef] bg-white px-3.5 py-1.5 text-xs font-medium text-[#54656f] shadow-[0_1px_0.5px_rgba(11,20,26,0.08)] dark:border-border dark:bg-surface dark:text-content-secondary">
           <span>{message.content}</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (message.message_type === "disappearing_messages") {
+    const meta = (message.metadata || {}) as {
+      disappearing_duration_sec?: number | null
+      actor_name?: string | null
+    }
+    const durationSec = normalizeDisappearingDurationSec(meta.disappearing_duration_sec)
+    const actorName =
+      typeof meta.actor_name === "string" && meta.actor_name.trim()
+        ? meta.actor_name.trim()
+        : message.sender?.name || null
+    const systemText = disappearingSystemContentForViewer({
+      actorName,
+      durationSec,
+      isOwnMessage,
+    })
+    return (
+      <div className="mb-2 flex justify-center animate-[chatMsgIn_200ms_ease-out]">
+        <div className="flex max-w-[min(92%,22rem)] items-start gap-2 rounded-[8px] border border-[#e9edef] bg-[#fff5eb] px-3 py-2 text-left text-[12px] leading-snug text-[#54656f] shadow-[0_1px_0.5px_rgba(11,20,26,0.08)] dark:border-border dark:bg-orange-500/10 dark:text-content-secondary">
+          <Timer className="mt-0.5 h-3.5 w-3.5 shrink-0 text-orange-500" aria-hidden />
+          <span>{systemText}</span>
         </div>
       </div>
     );

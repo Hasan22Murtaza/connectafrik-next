@@ -8,9 +8,9 @@ import {
   familyService,
   type FamilyMeStatus,
 } from '@/features/settings/services/familyService'
+import { familyMeStore } from '@/features/family/services/familyMeStore'
 
 const PING_INTERVAL_MS = 60_000
-const STATUS_POLL_MS = 30_000
 
 function isScreenTimeBlocked(me: FamilyMeStatus | null): boolean {
   if (!me?.controls_active) return false
@@ -37,41 +37,28 @@ function blockTitle(reason?: string) {
 /**
  * App-wide CribsTalk usage gate for managed child/teen accounts.
  * Tracks session minutes and shows a blocking modal when limits apply.
+ * Status GETs are shared with useParentalControls via familyMeStore.
  */
 export default function ScreenTimeGate() {
   const { user, loading: authLoading, signOut } = useAuth()
-  const [me, setMe] = useState<FamilyMeStatus | null>(null)
+  const [me, setMe] = useState<FamilyMeStatus | null>(() => familyMeStore.getMe())
   const [ready, setReady] = useState(false)
-
-  const refreshStatus = useCallback(async () => {
-    if (!user) {
-      setMe(null)
-      setReady(true)
-      return
-    }
-    try {
-      const status = await familyService.getMe()
-      setMe(status)
-    } catch {
-      // Non-fatal: existing users / offline should not break the app.
-    } finally {
-      setReady(true)
-    }
-  }, [user])
 
   useEffect(() => {
     if (authLoading) return
-    void refreshStatus()
-  }, [authLoading, refreshStatus])
+    familyMeStore.setUser(user?.id ?? null)
+  }, [authLoading, user?.id])
 
-  // Periodic status refresh (picks up parent rule changes without waiting for a ping).
   useEffect(() => {
-    if (!user || !me?.controls_active) return
-    const id = window.setInterval(() => {
-      void refreshStatus()
-    }, STATUS_POLL_MS)
-    return () => window.clearInterval(id)
-  }, [user, me?.controls_active, refreshStatus])
+    return familyMeStore.subscribe((next, loading) => {
+      setMe(next)
+      if (!loading) setReady(true)
+    })
+  }, [])
+
+  const refreshStatus = useCallback(async () => {
+    await familyMeStore.refresh()
+  }, [])
 
   // Usage pings while managed + rules enabled and the child is still allowed.
   useEffect(() => {
@@ -82,6 +69,7 @@ export default function ScreenTimeGate() {
     let cancelled = false
 
     const ping = async () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return
       try {
         const result = await familyService.pingUsage()
         if (cancelled) return

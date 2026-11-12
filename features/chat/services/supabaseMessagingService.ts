@@ -13,6 +13,7 @@ import {
 } from '@/features/chat/services/callSessionRealtime'
 import { GROUP_MEMBER_JOINED, GROUP_MEMBER_LEFT } from '@/lib/groupChatSystemMessages'
 import { MARKETPLACE_SYSTEM, isMarketplaceMessageType } from '@/lib/chat/marketplaceChat'
+import { DISAPPEARING_MESSAGES } from '@/lib/chat/chatDisappearingMessages'
 import { decodeMessageContent, encodeMessageContent } from '@/lib/chat/messageCodec'
 
 /** call_sessions.status-aligned message_type values (signaling; excluded from generic chat push). */
@@ -26,6 +27,7 @@ const SKIP_GENERIC_CHAT_PUSH_MESSAGE_TYPES = new Set<string>([
   GROUP_MEMBER_JOINED,
   GROUP_MEMBER_LEFT,
   MARKETPLACE_SYSTEM,
+  DISAPPEARING_MESSAGES,
 ])
 
 export interface ChatParticipant extends BaseParticipant {}
@@ -77,6 +79,8 @@ export interface ChatMessage {
   view_once_opened?: boolean
   view_once_opened_at?: string | null
   view_once_opened_by?: string | null
+  /** When set, message is removed for everyone after this time. */
+  expires_at?: string | null
   ciphertext?: string | null
   sender_device_id?: string | null
   e2ee_version?: number | null
@@ -124,6 +128,11 @@ export interface ChatThread {
   /** From current user's `chat_participants.is_locked` */
   is_locked?: boolean
   locked_at?: string | null
+  /**
+   * True when this 1:1 thread is with a family parent of the current managed
+   * child/teen (parental messaging/call locks do not apply).
+   */
+  is_parent?: boolean
   created_at: string
   updated_at: string
   /** Set when this thread is the canonical chat for a group */
@@ -135,6 +144,8 @@ export interface ChatThread {
   product_title?: string | null
   product_image?: string | null
   seller_id?: string | null
+  /** Thread timer for new messages: 86400 | 604800 | 7776000, or null/undefined when off. */
+  disappearing_duration_sec?: number | null
 }
 
 export interface CreateThreadOptions {
@@ -167,6 +178,7 @@ export function shouldSkipOptimisticMessageSend(
   const mt = payload?.message_type || 'text'
   if (ALL_CALL_SIGNAL_MESSAGE_TYPES.includes(mt)) return true
   if (mt === GROUP_MEMBER_JOINED || mt === GROUP_MEMBER_LEFT) return true
+  if (mt === DISAPPEARING_MESSAGES) return true
   if (isMarketplaceMessageType(mt)) return true
   return false
 }
@@ -197,6 +209,8 @@ export interface RecentCallEntry {
   banner_url?: string | null
   duration_seconds?: number | null
   participants?: RecentCallParticipant[]
+  /** True when this 1:1 call is with a family parent of the current managed child/teen. */
+  is_parent?: boolean
 }
 
 type ThreadSubscriber = (thread: ChatThread) => void
@@ -417,6 +431,7 @@ const createLocalThread = (currentUser: ChatParticipant, options: CreateThreadOp
     blocked_by_other: false,
     pinned: false,
     pinned_at: null,
+    is_parent: false,
     created_at: timestamp,
     updated_at: timestamp,
   }
@@ -567,6 +582,12 @@ const initializeSubscriptions = (currentUser: ChatParticipant) => {
           unread_count: typeof row.unread_count === 'number' ? row.unread_count : 0,
           created_at: typeof row.created_at === 'string' ? row.created_at : now,
           updated_at: typeof row.updated_at === 'string' ? row.updated_at : now,
+          disappearing_duration_sec:
+            typeof row.disappearing_duration_sec === 'number' &&
+            Number.isFinite(row.disappearing_duration_sec) &&
+            row.disappearing_duration_sec > 0
+              ? row.disappearing_duration_sec
+              : null,
         })
       }
     )
@@ -719,6 +740,7 @@ const formatThread = async (thread: any, currentUserId: string): Promise<ChatThr
     pinned_at: typeof thread.pinned_at === 'string' ? thread.pinned_at : null,
     is_locked: typeof thread.is_locked === 'boolean' ? thread.is_locked : false,
     locked_at: typeof thread.locked_at === 'string' ? thread.locked_at : null,
+    is_parent: typeof thread.is_parent === 'boolean' ? thread.is_parent : false,
     created_at: thread.created_at,
     updated_at: thread.updated_at || lastMessageAt,
     group_id: thread.group_id ?? null,
@@ -727,6 +749,12 @@ const formatThread = async (thread: any, currentUserId: string): Promise<ChatThr
     product_title: productTitle,
     product_image: productImage,
     seller_id: thread.seller_id ?? null,
+    disappearing_duration_sec:
+      typeof thread.disappearing_duration_sec === 'number' &&
+      Number.isFinite(thread.disappearing_duration_sec) &&
+      thread.disappearing_duration_sec > 0
+        ? thread.disappearing_duration_sec
+        : null,
   }
 }
 
@@ -866,6 +894,24 @@ const loadThreadsViaRpc = async (
           if (!t.is_block) t.is_block = p.is_block
         }
       }
+
+      const { data: durationRows } = await supabase
+        .from('chat_threads')
+        .select('id, disappearing_duration_sec')
+        .in('id', threadIds)
+
+      const durationMap = new Map(
+        (durationRows ?? []).map((r: { id: string; disappearing_duration_sec?: number | null }) => [
+          r.id,
+          typeof r.disappearing_duration_sec === 'number' && r.disappearing_duration_sec > 0
+            ? r.disappearing_duration_sec
+            : null,
+        ])
+      )
+      for (const t of rpcThreads) {
+        ;(t as { disappearing_duration_sec?: number | null }).disappearing_duration_sec =
+          durationMap.get(t.id) ?? null
+      }
     }
 
     const formattedThreads = await Promise.all(
@@ -938,6 +984,7 @@ const mapApiMessageToChatMessage = (message: any): ChatMessage => {
     view_once_opened: Boolean(message.view_once_opened),
     view_once_opened_at: message.view_once_opened_at ?? null,
     view_once_opened_by: message.view_once_opened_by ?? null,
+    expires_at: typeof message.expires_at === 'string' ? message.expires_at : null,
     sender: senderProfile ? {
       id: senderProfile.id,
       name: senderProfile.full_name || senderProfile.username || 'Loading...',
@@ -1287,6 +1334,34 @@ export const supabaseMessagingService = {
     }
   },
 
+  async setThreadDisappearingDuration(
+    threadId: string,
+    currentUserId: string,
+    durationSec: number
+  ): Promise<{ thread: ChatThread; systemMessage: ChatMessage | null } | null> {
+    if (!threadId?.trim() || !currentUserId) return null
+    try {
+      const res = await apiClient.post<{
+        data: any
+        meta?: unknown
+        system_message?: any
+      }>(`/api/chat/threads/${threadId}/disappearing`, {
+        duration_sec: durationSec,
+      })
+      const raw = (res as any)?.data
+      if (!raw?.id) return null
+      const thread = await formatThread(raw, currentUserId)
+      const systemRaw = (res as any)?.system_message
+      const systemMessage = systemRaw?.id
+        ? await showStoredMessage(systemRaw)
+        : null
+      return { thread, systemMessage }
+    } catch (error) {
+      console.error('setThreadDisappearingDuration:', error)
+      throw error
+    }
+  },
+
   async getLockedThreads(
     currentUser?: ChatParticipant | null,
     options?: { limit?: number; page?: number }
@@ -1472,6 +1547,7 @@ export const supabaseMessagingService = {
                 is_friend: Boolean(p.is_friend),
               }))
             : [],
+          is_parent: Boolean(r.is_parent),
         }
       })
       return { entries, hasMore, page: res?.meta?.page ?? page }

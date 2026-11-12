@@ -101,6 +101,7 @@ async function canNotifyRecipient(actorId: string, recipientId: string): Promise
   const { data: friendship } = await supabase
     .from('friend_requests')
     .select('id')
+    .eq('status', 'accepted')
     .or(
       `and(sender_id.eq.${actorId},receiver_id.eq.${recipientId}),and(sender_id.eq.${recipientId},receiver_id.eq.${actorId})`,
     )

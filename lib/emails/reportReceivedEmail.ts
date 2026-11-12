@@ -15,7 +15,9 @@ import { getEmailCopy, getLabels, t } from './content'
 export type ReportReceivedDetails = {
   adminName: string
   reasonLabel: string
-  postId: string
+  postId?: string
+  threadId?: string
+  reportedUserId?: string
   reporterName?: string | null
 }
 
@@ -23,7 +25,10 @@ export function getReportReceivedEmailHtml(details: ReportReceivedDetails): stri
   const copy = getEmailCopy('reportReceived')
   const labels = getLabels()
   const vars = { adminName: details.adminName, reasonLabel: details.reasonLabel }
-  const url = `${getAppBaseUrl()}/admin/reports/${details.postId}`
+  const isChat = Boolean(details.threadId)
+  const url = isChat
+    ? `${getAppBaseUrl()}/admin/reports/chat/${details.threadId}`
+    : `${getAppBaseUrl()}/admin/reports/${details.postId || ''}`
 
   return `
     ${emailHeadlineHtml(t(copy.headline, vars, true))}
@@ -33,7 +38,15 @@ export function getReportReceivedEmailHtml(details: ReportReceivedDetails): stri
         (details.reporterName
           ? emailDetailRowHtml(labels.reportedBy, escapeHtml(details.reporterName))
           : '') +
-        emailDetailRowHtml(labels.postId, escapeHtml(details.postId))
+        (details.postId
+          ? emailDetailRowHtml(labels.postId, escapeHtml(details.postId))
+          : '') +
+        (details.threadId
+          ? emailDetailRowHtml('Chat thread', escapeHtml(details.threadId))
+          : '') +
+        (details.reportedUserId
+          ? emailDetailRowHtml('Reported user', escapeHtml(details.reportedUserId))
+          : '')
     )}
     ${emailAccentBoxHtml({
       variant: 'warn',
@@ -48,11 +61,14 @@ export function getReportReceivedEmailHtml(details: ReportReceivedDetails): stri
 
 export function getReportReceivedEmailText(details: ReportReceivedDetails): string {
   const copy = getEmailCopy('reportReceived')
+  const isChat = Boolean(details.threadId)
   return t(copy.text, {
     adminName: details.adminName,
     reasonLabel: details.reasonLabel,
-    postId: details.postId,
+    postId: details.postId || details.threadId || details.reportedUserId || '',
     reporterLine: details.reporterName ? `Reported by: ${details.reporterName}\n` : '',
-    url: `${getAppBaseUrl()}/admin/reports/${details.postId}`,
+    url: isChat
+      ? `${getAppBaseUrl()}/admin/reports/chat/${details.threadId}`
+      : `${getAppBaseUrl()}/admin/reports/${details.postId || ''}`,
   })
 }

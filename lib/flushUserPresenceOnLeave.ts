@@ -1,7 +1,7 @@
 'use client'
 
-import { supabase } from '@/lib/supabase'
 import { apiClient } from '@/lib/api-client'
+import { getAccessToken } from '@/lib/auth-session-cache'
 
 /**
  * Clears profile `status` (sets null) and updates `last_seen` so other users
@@ -10,10 +10,8 @@ import { apiClient } from '@/lib/api-client'
  */
 export async function flushUserPresenceOnLeave(): Promise<void> {
   try {
-    const {
-      data: { session },
-    } = await supabase.auth.getSession()
-    if (!session?.access_token) return
+    const token = await getAccessToken()
+    if (!token) return
     const iso = new Date().toISOString()
     await apiClient.patch('/api/users/me', {
       status: null,

@@ -1,8 +1,7 @@
-import { PeopleYouMayKnow } from '@/features/social/components/PeopleYouMayKnow';
 import ArtOfInksAd from '@/shared/components/ui/ArtOfInksAd';
 import OnlineContactsSection from '@/shared/components/ui/OnlineContactsSection';
 
-const RightSidebar = ({ birthdays = [], contacts = [], ads = [], onlineContacts = [] }) => {
+const RightSidebar = ({ birthdays = [], contacts = [], ads = [] }) => {
 
   return (
     <aside className="w-65 xl:w-80 2xl:w-[24rem] shrink-0 h-full overflow-y-auto py-6 scrollbar-hover">

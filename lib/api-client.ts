@@ -1,6 +1,7 @@
-import { supabase } from './supabase'
 import { CHAT_LOCKED_CODE } from '@/features/chat/chatLockEvents'
 import { PARENTAL_RESTRICTED_CODE } from '@/shared/types/family'
+import { getAccessToken } from './auth-session-cache'
+import { cachedGet, invalidateRequestCache } from './request-cache'
 
 export const PRIVACY_DENIED_CODE = 'PRIVACY_DENIED'
 
@@ -44,13 +45,15 @@ export function setApiClientExtraHeaders(provider: (endpoint?: string) => Record
 }
 
 async function getAuthHeaders(endpoint?: string): Promise<Record<string, string>> {
-  const { data: { session } } = await supabase.auth.getSession()
+  // Use in-memory session cache — do not call supabase.auth.getSession()/getUser()
+  // per request (that spammed GET /auth/v1/user in DevTools).
+  const accessToken = await getAccessToken()
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...extraHeaderProvider(endpoint),
   }
-  if (session?.access_token) {
-    headers['Authorization'] = `Bearer ${session.access_token}`
+  if (accessToken) {
+    headers['Authorization'] = `Bearer ${accessToken}`
   }
   return headers
 }
@@ -89,52 +92,84 @@ async function handleResponse<T>(response: Response): Promise<T> {
   return body.data as T
 }
 
+type GetOptions = {
+  signal?: AbortSignal
+  /** Skip short TTL cache / still dedupe in-flight */
+  bypassCache?: boolean
+}
+
 export const apiClient = {
-  async get<T>(endpoint: string, params?: Record<string, string | number | boolean | undefined>): Promise<T> {
-    const headers = await getAuthHeaders(endpoint)
+  async get<T>(
+    endpoint: string,
+    params?: Record<string, string | number | boolean | undefined>,
+    options?: GetOptions
+  ): Promise<T> {
     const url = buildUrl(endpoint, params)
-    const response = await fetch(url, { headers, cache: 'no-store' })
-    return handleResponse<T>(response)
+    const run = async () => {
+      const headers = await getAuthHeaders(endpoint)
+      const response = await fetch(url, {
+        headers,
+        cache: 'no-store',
+        signal: options?.signal,
+      })
+      return handleResponse<T>(response)
+    }
+
+    if (options?.bypassCache) return run()
+    return cachedGet(url, run, { signal: options?.signal })
   },
 
-  async post<T>(endpoint: string, body?: unknown): Promise<T> {
+  async post<T>(endpoint: string, body?: unknown, options?: { signal?: AbortSignal }): Promise<T> {
     const headers = await getAuthHeaders(endpoint)
     const response = await fetch(endpoint, {
       method: 'POST',
       headers,
       body: body ? JSON.stringify(body) : undefined,
+      signal: options?.signal,
     })
+    // Mutations invalidate related GET caches
+    invalidateRequestCache(endpoint.split('?')[0])
     return handleResponse<T>(response)
   },
 
-  async patch<T>(endpoint: string, body: unknown, options?: { keepalive?: boolean }): Promise<T> {
+  async patch<T>(
+    endpoint: string,
+    body: unknown,
+    options?: { keepalive?: boolean; signal?: AbortSignal }
+  ): Promise<T> {
     const headers = await getAuthHeaders(endpoint)
     const response = await fetch(endpoint, {
       method: 'PATCH',
       headers,
       body: JSON.stringify(body),
+      signal: options?.signal,
       ...(options?.keepalive ? { keepalive: true } : {}),
     })
+    invalidateRequestCache(endpoint.split('?')[0])
     return handleResponse<T>(response)
   },
 
-  async put<T>(endpoint: string, body: unknown): Promise<T> {
+  async put<T>(endpoint: string, body: unknown, options?: { signal?: AbortSignal }): Promise<T> {
     const headers = await getAuthHeaders(endpoint)
     const response = await fetch(endpoint, {
       method: 'PUT',
       headers,
       body: JSON.stringify(body),
+      signal: options?.signal,
     })
+    invalidateRequestCache(endpoint.split('?')[0])
     return handleResponse<T>(response)
   },
 
-  async delete<T>(endpoint: string, body?: unknown): Promise<T> {
+  async delete<T>(endpoint: string, body?: unknown, options?: { signal?: AbortSignal }): Promise<T> {
     const headers = await getAuthHeaders(endpoint)
     const response = await fetch(endpoint, {
       method: 'DELETE',
       headers,
       body: body ? JSON.stringify(body) : undefined,
+      signal: options?.signal,
     })
+    invalidateRequestCache(endpoint.split('?')[0])
     return handleResponse<T>(response)
   },
 
@@ -161,5 +196,10 @@ export const apiClient = {
       }
     }
     return response.blob()
+  },
+
+  /** Drop short-lived GET caches (e.g. after profile update). */
+  invalidateCache(matcher?: string | RegExp) {
+    invalidateRequestCache(matcher)
   },
 }

@@ -318,6 +318,7 @@ export {
   Strikethrough,
   Sun,
   Theater,
+  Timer,
   Truck,
   Twitter,
   Upload,

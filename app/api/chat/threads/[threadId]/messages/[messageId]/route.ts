@@ -40,7 +40,10 @@ const loadSignalEnvelopes = async (serviceClient: any, message: any, readerId: s
 const enrichMessageResponse = async (serviceClient: any, message: any, fallbackReaderId: string) => {
   const [readsRes, attachmentsRes, withEnvelopes] = await Promise.all([
     serviceClient.from('message_reads').select('user_id').eq('message_id', message.id),
-    serviceClient.from('message_attachments').select('*').eq('message_id', message.id),
+    serviceClient
+      .from('message_attachments')
+      .select('id, message_id, file_name, file_size, file_type, file_url')
+      .eq('message_id', message.id),
     loadSignalEnvelopes(serviceClient, message, fallbackReaderId),
   ])
   const rawReadBy = (readsRes.data || []).map((r: any) => r.user_id)

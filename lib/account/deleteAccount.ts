@@ -222,6 +222,9 @@ export async function deleteUserAccount(
         })
         .eq('sender_id', userId),
   })
+  await ignore(delEq('chat_user_report_actions', 'admin_id'))
+  await ignore(delEq('chat_user_reports', 'reported_by'))
+  await ignore(delEq('chat_user_reports', 'reported_user_id'))
   await ignore(delEq('chat_participants', 'user_id'))
   await ignore(delEq('chat_transcripts', 'generated_by'))
   await ignore(delEq('signal_message_envelopes', 'recipient_user_id'))

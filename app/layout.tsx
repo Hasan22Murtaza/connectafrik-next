@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Poppins } from "next/font/google";
+import { Caveat, Geist, Geist_Mono, Poppins } from "next/font/google";
 import "./globals.css";
-import "slick-carousel/slick/slick.css";
-import "slick-carousel/slick/slick-theme.css";
 import { Providers } from "./providers";
 import ConditionalHeader from "./components/ConditionalHeader";
 import ConditionalFooter from "./components/ConditionalFooter";
@@ -23,18 +21,16 @@ import {
 const poppins = Poppins({
   variable: "--font-poppins",
   subsets: ["latin"],
-  weight: [
-    "100",
-    "200",
-    "300",
-    "400",
-    "500",
-    "600",
-    "700",
-    "800",
-    "900"
-  ],
-  style: ["normal", "italic"],
+  // Load only weights used by the UI (avoid 100–300 + italic download cost).
+  weight: ["400", "500", "600", "700", "800", "900"],
+  style: ["normal"],
+  display: "swap",
+});
+
+const caveat = Caveat({
+  variable: "--font-caveat",
+  subsets: ["latin"],
+  weight: ["600", "700"],
   display: "swap",
 });
 
@@ -80,7 +76,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} ${poppins.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} ${poppins.variable} ${caveat.variable} antialiased`}
       >
         <Providers>
           <JsonLd data={[websiteJsonLd(), organizationJsonLd()]} />

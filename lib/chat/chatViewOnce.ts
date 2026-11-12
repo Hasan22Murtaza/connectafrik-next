@@ -1,6 +1,7 @@
 import jwt from 'jsonwebtoken'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { deleteFromBunny, fetchFromBunny } from '@/lib/bunny'
+import { requireSigningSecret } from '@/lib/security/secrets'
 
 export const VIEW_ONCE_ALREADY_OPENED = 'VIEW_ONCE_ALREADY_OPENED'
 export const VIEW_ONCE_FORBIDDEN = 'VIEW_ONCE_FORBIDDEN'
@@ -26,12 +27,12 @@ export type ViewOnceAttachmentInput = {
 export type ViewOnceKind = 'photo' | 'video'
 
 function getViewOnceSecret(): string {
-  return (
-    process.env.CHAT_VIEW_ONCE_SECRET ||
-    process.env.CHAT_LOCK_SECRET ||
-    process.env.AUTH_OTP_SECRET ||
-    process.env.SUPABASE_SERVICE_ROLE_KEY ||
-    'cribstalk-view-once-dev'
+  return requireSigningSecret(
+    ['CHAT_VIEW_ONCE_SECRET', 'CHAT_LOCK_SECRET', 'AUTH_OTP_SECRET'],
+    {
+      label: 'CHAT_VIEW_ONCE_SECRET',
+      allowDevFallback: 'cribstalk-view-once-dev',
+    }
   )
 }
 

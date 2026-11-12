@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabase'
 import { initializeApp, getApps, FirebaseApp } from 'firebase/app'
 import { getMessaging, getToken as getFCMToken, onMessage, Messaging, deleteToken } from 'firebase/messaging'
+import { getAccessToken, getCachedUserIdSync } from '@/lib/auth-session-cache'
 import { getSessionIdFromAccessToken } from '@/shared/utils/sessionDeviceLabel'
 import type { CallPushNotificationData } from '@/shared/types/callPush'
 import { isAcceptedOnAnotherDevicePush } from '@/shared/types/callPush'
@@ -246,8 +247,9 @@ export const getFCMTokenFromFirebase = async (): Promise<string | null> => {
  */
 export const registerToken = async (token: string): Promise<boolean> => {
   try {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
+    const authToken = await getAccessToken()
+    const userId = getCachedUserIdSync()
+    if (!authToken || !userId) {
       return false
     }
 
@@ -256,21 +258,19 @@ export const registerToken = async (token: string): Promise<boolean> => {
       return false
     }
 
-    const { data: { session } } = await supabase.auth.getSession()
-    const authToken = session?.access_token
-    const auth_session_id = getSessionIdFromAccessToken(authToken ?? null)
+    const auth_session_id = getSessionIdFromAccessToken(authToken)
 
     const response = await fetch('/api/fcm/register', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        ...(authToken && { 'Authorization': `Bearer ${authToken}` }),
+        Authorization: `Bearer ${authToken}`,
       },
       body: JSON.stringify({
         fcm_token: token,
         device_type,
         device_id,
-        user_id: user.id,
+        user_id: userId,
         ...(auth_session_id ? { auth_session_id } : {}),
       }),
     })
@@ -294,17 +294,25 @@ export const registerToken = async (token: string): Promise<boolean> => {
  */
 export const removeToken = async (): Promise<boolean> => {
   try {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
+    const userId = getCachedUserIdSync()
+    if (!userId) {
       return false
     }
 
     const { device_id } = getDeviceInfo()
 
-    const url = `/api/fcm/token?user_id=${encodeURIComponent(user.id)}${device_id ? `&device_id=${encodeURIComponent(device_id)}` : ''}`
+    const authToken = await getAccessToken()
+    if (!authToken) {
+      return false
+    }
+
+    const url = `/api/fcm/token?user_id=${encodeURIComponent(userId)}${device_id ? `&device_id=${encodeURIComponent(device_id)}` : ''}`
     
     const response = await fetch(url, {
       method: 'DELETE',
+      headers: {
+        Authorization: `Bearer ${authToken}`,
+      },
     })
 
     if (!response.ok) {
@@ -331,8 +339,9 @@ export const deactivateTokenOnLogout = async (): Promise<void> => {
   try {
     if (typeof window === 'undefined') return
 
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
+    const userId = getCachedUserIdSync()
+    if (!userId) return
+    const user = { id: userId }
 
     // Prefer existing localStorage id only — do not mint a new device_id on logout,
     // which would miss the row that was registered under the previous id.
@@ -357,12 +366,21 @@ export const deactivateTokenOnLogout = async (): Promise<void> => {
       fcmToken = null
     }
 
+    const authToken = await getAccessToken()
+    if (!authToken) {
+      console.warn('⚠️ Skipping FCM deactivate on logout: no access token')
+      return
+    }
+
     const params = new URLSearchParams({ user_id: user.id })
     if (device_id) params.set('device_id', device_id)
     if (fcmToken) params.set('fcm_token', fcmToken)
 
     const response = await fetch(`/api/fcm/token?${params.toString()}`, {
       method: 'DELETE',
+      headers: {
+        Authorization: `Bearer ${authToken}`,
+      },
     })
 
     if (response.ok) {
@@ -446,14 +464,14 @@ function markRecentTokenStatusCheck(cooldownKey: string, timestampMs: number): v
  */
 export const checkTokenStatus = async (): Promise<boolean> => {
   try {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
+    const userId = getCachedUserIdSync()
+    if (!userId) {
       return false
     }
 
     const { device_id } = getDeviceInfo()
-    const cacheKey = `${user.id}:${device_id || ''}`
-    const cooldownKey = getTokenStatusCooldownKey(user.id, device_id)
+    const cacheKey = `${userId}:${device_id || ''}`
+    const cooldownKey = getTokenStatusCooldownKey(userId, device_id)
     const now = Date.now()
     if (
       tokenStatusCache &&
@@ -479,14 +497,13 @@ export const checkTokenStatus = async (): Promise<boolean> => {
     }
 
     const requestPromise = (async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      const authToken = session?.access_token
+      const authToken = await getAccessToken()
 
       const response = await fetch(
-        `/api/fcm/token?user_id=${user.id}${device_id ? `&device_id=${encodeURIComponent(device_id)}` : ''}`,
+        `/api/fcm/token?user_id=${userId}${device_id ? `&device_id=${encodeURIComponent(device_id)}` : ''}`,
         {
           headers: {
-            ...(authToken && { 'Authorization': `Bearer ${authToken}` }),
+            ...(authToken && { Authorization: `Bearer ${authToken}` }),
           },
         }
       )
@@ -608,13 +625,13 @@ export const sendLocalNotification = async (payload: NotificationPayload): Promi
  */
 export const checkAndSetupFCMTokenOnLogin = async (): Promise<void> => {
   try {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
+    const userId = getCachedUserIdSync()
+    if (!userId) {
       return
     }
 
     const { device_id } = getDeviceInfo()
-    const setupKey = `${user.id}:${device_id || ''}`
+    const setupKey = `${userId}:${device_id || ''}`
     const activeSetup = setupInFlight.get(setupKey)
     if (activeSetup) {
       await activeSetup

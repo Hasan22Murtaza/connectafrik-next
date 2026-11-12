@@ -52,6 +52,12 @@ function applyInlineMarkdown(escaped: string): string {
     '<mark class="chat-rt-mark">$1</mark>'
   );
 
+  // Bold + italic ***text***
+  s = s.replace(
+    /\*\*\*([^*]+)\*\*\*/g,
+    '<strong class="chat-rt-b"><em class="chat-rt-i">$1</em></strong>'
+  );
+
   // Underline via <u>…</u> (already escaped as &lt;u&gt; etc — use literal markers)
   // Use ++text++ for underline to avoid HTML in storage
   s = s.replace(/\+\+([^+]+)\+\+/g, '<u class="chat-rt-u">$1</u>');

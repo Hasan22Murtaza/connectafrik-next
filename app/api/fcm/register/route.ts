@@ -9,25 +9,26 @@ const corsHeaders = {
 }
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
 if (!supabaseUrl || !supabaseServiceKey) {
-  console.error('Missing Supabase environment variables')
+  console.error('Missing Supabase environment variables (SUPABASE_SERVICE_ROLE_KEY required for FCM)')
 }
 
-const supabase = createClient(supabaseUrl, supabaseServiceKey)
+const supabase = supabaseServiceKey
+  ? createClient(supabaseUrl, supabaseServiceKey)
+  : null
 
-// Helper to get authenticated user from request
 async function getAuthenticatedUser(request: NextRequest) {
   const authHeader = request.headers.get('authorization')
-  
+
   if (!authHeader) {
     return null
   }
 
   try {
-    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+    const authClient = createClient(supabaseUrl, supabaseAnonKey, {
       global: {
         headers: {
           Authorization: authHeader,
@@ -35,8 +36,11 @@ async function getAuthenticatedUser(request: NextRequest) {
       },
     })
 
-    const { data: { user }, error } = await supabase.auth.getUser()
-    
+    const {
+      data: { user },
+      error,
+    } = await authClient.auth.getUser()
+
     if (error || !user) {
       return null
     }
@@ -54,6 +58,27 @@ export async function OPTIONS() {
 
 export async function POST(request: NextRequest) {
   try {
+    if (!supabase) {
+      return NextResponse.json(
+        { success: false, error: 'Server misconfigured' },
+        { status: 500, headers: corsHeaders }
+      )
+    }
+
+    const user = await getAuthenticatedUser(request)
+    if (!user) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Unauthorized. Valid authorization token is required',
+        },
+        {
+          status: 401,
+          headers: corsHeaders,
+        }
+      )
+    }
+
     const body = await request.json()
     const {
       fcm_token,
@@ -68,30 +93,47 @@ export async function POST(request: NextRequest) {
         ? incomingVoipToken.trim()
         : null
 
-    // Validate required fields
-    if (!fcm_token || !device_type || !device_id) {
+    // Identity comes only from the verified session — never trust body user_id.
+    const user_id = user.id
+    if (
+      typeof providedUserId === 'string' &&
+      providedUserId.trim() &&
+      providedUserId.trim() !== user_id
+    ) {
       return NextResponse.json(
-        { 
+        {
           success: false,
-          error: 'Missing required fields: fcm_token, device_type, and device_id are required' 
+          error: 'user_id does not match authenticated user',
         },
-        { 
-          status: 400,
-          headers: corsHeaders
+        {
+          status: 403,
+          headers: corsHeaders,
         }
       )
     }
 
-    // Validate device_type
+    if (!fcm_token || !device_type || !device_id) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Missing required fields: fcm_token, device_type, and device_id are required',
+        },
+        {
+          status: 400,
+          headers: corsHeaders,
+        }
+      )
+    }
+
     if (!['web', 'ios', 'android'].includes(device_type)) {
       return NextResponse.json(
-        { 
+        {
           success: false,
-          error: 'Invalid device_type. Must be one of: web, ios, android' 
+          error: 'Invalid device_type. Must be one of: web, ios, android',
         },
-        { 
+        {
           status: 400,
-          headers: corsHeaders
+          headers: corsHeaders,
         }
       )
     }
@@ -100,32 +142,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          error: 'voip_token is only supported for ios device_type'
+          error: 'voip_token is only supported for ios device_type',
         },
         {
           status: 400,
-          headers: corsHeaders
+          headers: corsHeaders,
         }
       )
-    }
-
-    // Get user_id from authenticated user or from request body
-    let user_id = providedUserId
-    if (!user_id) {
-      const user = await getAuthenticatedUser(request)
-      if (!user) {
-        return NextResponse.json(
-          { 
-            success: false,
-            error: 'Unauthorized. Please provide user_id or valid authorization token' 
-          },
-          { 
-            status: 401,
-            headers: corsHeaders
-          }
-        )
-      }
-      user_id = user.id
     }
 
     let auth_session_id: string | null =
@@ -147,7 +170,6 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // One row per (user_id, device_id). Same user re-registering the same device updates in place.
     const { data: existingByUserDevice, error: checkError } = await supabase
       .from('fcm_tokens')
       .select('id, fcm_token, voip_token, is_active, user_id, device_id')
@@ -160,19 +182,17 @@ export async function POST(request: NextRequest) {
     if (checkError && checkError.code !== 'PGRST116') {
       console.error('❌ Error checking for existing device token:', checkError)
       return NextResponse.json(
-        { 
+        {
           success: false,
           error: 'Error checking for existing token',
-          data: { error: checkError.message }
         },
-        { 
+        {
           status: 400,
-          headers: corsHeaders
+          headers: corsHeaders,
         }
       )
     }
 
-    // Same FCM string can be sent again with a new device_id; DB unique is (user_id, fcm_token).
     let existingByUserToken: {
       id: string
       fcm_token: string
@@ -197,11 +217,10 @@ export async function POST(request: NextRequest) {
           {
             success: false,
             error: 'Error checking for existing token',
-            data: { error: byTokenError.message }
           },
           {
             status: 400,
-            headers: corsHeaders
+            headers: corsHeaders,
           }
         )
       }
@@ -213,7 +232,6 @@ export async function POST(request: NextRequest) {
     let resultData: any = null
 
     if (existingTokenRow) {
-      // Update the canonical row for this user+device, or the row holding this user+FCM token.
       const { data: updatedData, error: updateError } = await supabase
         .from('fcm_tokens')
         .update({
@@ -224,7 +242,7 @@ export async function POST(request: NextRequest) {
           auth_session_id,
           is_active: true,
           device_type: device_type,
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         })
         .eq('id', existingTokenRow.id)
         .select()
@@ -232,14 +250,13 @@ export async function POST(request: NextRequest) {
       if (updateError) {
         console.error('❌ Error updating FCM token:', updateError)
         return NextResponse.json(
-          { 
+          {
             success: false,
             error: 'Error updating FCM token',
-            data: { error: updateError.message }
           },
-          { 
+          {
             status: 400,
-            headers: corsHeaders
+            headers: corsHeaders,
           }
         )
       }
@@ -250,14 +267,13 @@ export async function POST(request: NextRequest) {
           .from('fcm_tokens')
           .update({
             is_active: false,
-            updated_at: new Date().toISOString()
+            updated_at: new Date().toISOString(),
           })
           .eq('user_id', user_id)
           .eq('device_id', device_id)
           .neq('id', resultData.id)
       }
     } else {
-      // No row for this user+device (and no user+token row), insert
       const tokenRecord = {
         user_id,
         fcm_token,
@@ -266,7 +282,7 @@ export async function POST(request: NextRequest) {
         device_id,
         auth_session_id,
         is_active: true,
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       }
 
       const { data: insertedData, error: insertError } = await supabase
@@ -276,9 +292,12 @@ export async function POST(request: NextRequest) {
 
       if (insertError) {
         console.error('❌ Error inserting FCM token:', insertError)
-        
-        // Race or legacy row: resolve by (user_id, device_id) or (user_id, fcm_token)
-        if (insertError.code === '23505' || insertError.message?.includes('duplicate') || insertError.message?.includes('unique')) {
+
+        if (
+          insertError.code === '23505' ||
+          insertError.message?.includes('duplicate') ||
+          insertError.message?.includes('unique')
+        ) {
           const { data: byUserDevice, error: errUserDevice } = await supabase
             .from('fcm_tokens')
             .select('id, user_id, fcm_token, voip_token, is_active, device_id')
@@ -305,14 +324,13 @@ export async function POST(request: NextRequest) {
                 : null
           if (recheckError) {
             return NextResponse.json(
-              { 
+              {
                 success: false,
                 error: 'Error rechecking token',
-                data: { error: recheckError.message }
               },
-              { 
+              {
                 status: 400,
-                headers: corsHeaders
+                headers: corsHeaders,
               }
             )
           }
@@ -330,21 +348,20 @@ export async function POST(request: NextRequest) {
                 auth_session_id,
                 is_active: true,
                 device_type: device_type,
-                updated_at: new Date().toISOString()
+                updated_at: new Date().toISOString(),
               })
               .eq('id', checkAgain.id)
               .select()
 
             if (updateError2) {
               return NextResponse.json(
-                { 
+                {
                   success: false,
                   error: 'Error updating token after insert failure',
-                  data: { error: updateError2.message }
                 },
-                { 
+                {
                   status: 400,
-                  headers: corsHeaders
+                  headers: corsHeaders,
                 }
               )
             }
@@ -355,7 +372,7 @@ export async function POST(request: NextRequest) {
                 .from('fcm_tokens')
                 .update({
                   is_active: false,
-                  updated_at: new Date().toISOString()
+                  updated_at: new Date().toISOString(),
                 })
                 .eq('user_id', user_id)
                 .eq('device_id', device_id)
@@ -363,27 +380,25 @@ export async function POST(request: NextRequest) {
             }
           } else {
             return NextResponse.json(
-              { 
+              {
                 success: false,
                 error: 'Error inserting FCM token',
-                data: { error: insertError.message }
               },
-              { 
+              {
                 status: 400,
-                headers: corsHeaders
+                headers: corsHeaders,
               }
             )
           }
         } else {
           return NextResponse.json(
-            { 
+            {
               success: false,
               error: 'Error inserting FCM token',
-              data: { error: insertError.message }
             },
-            { 
+            {
               status: 400,
-              headers: corsHeaders
+              headers: corsHeaders,
             }
           )
         }
@@ -394,7 +409,7 @@ export async function POST(request: NextRequest) {
             .from('fcm_tokens')
             .update({
               is_active: false,
-              updated_at: new Date().toISOString()
+              updated_at: new Date().toISOString(),
             })
             .eq('user_id', user_id)
             .eq('device_id', device_id)
@@ -406,8 +421,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         success: true,
-        message: existingTokenRow ? 'FCM token updated successfully' : 'FCM token registered successfully',
-        data: resultData
+        message: existingTokenRow
+          ? 'FCM token updated successfully'
+          : 'FCM token registered successfully',
+        data: resultData,
       },
       {
         headers: corsHeaders,
@@ -415,11 +432,10 @@ export async function POST(request: NextRequest) {
     )
   } catch (error) {
     console.error('❌ Error in FCM register API:', error)
-    const errorMessage = error instanceof Error ? error.message : String(error)
     return NextResponse.json(
-      { 
+      {
         success: false,
-        error: errorMessage 
+        error: 'Internal server error',
       },
       {
         status: 500,

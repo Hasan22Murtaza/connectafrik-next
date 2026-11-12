@@ -28,6 +28,7 @@ import dynamic from "next/dynamic";
 import { apiClient, ApiError } from "@/lib/api-client";
 import ImageViewer from "@/shared/components/ui/ImageViewer";
 import CommentsSection from "./CommentsSection";
+import ChatRichTextRenderer from "@/features/chat/richtext/ChatRichTextRenderer";
 import PostEngagement from "@/shared/components/PostEngagement";
 import CreatePost, { type PostSubmitData } from "./CreatePost";
 import { ReportPostModal } from "./ReportPostModal";
@@ -794,9 +795,12 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
         : `${plainContent.slice(0, plainPreviewLen).trimEnd()}…`;
     return (
       <div className="mb-2">
-        <p className="text-content leading-relaxed  break-words text-sm sm:text-base">
-          {plainVisibleContent}
-          {showPlainReadToggle && (
+        <ChatRichTextRenderer
+          content={plainVisibleContent}
+          inheritColor
+          contentClassName="text-content leading-relaxed break-words text-sm sm:text-base"
+        />
+        {showPlainReadToggle && (
           <button
             type="button"
             className="mt-1 text-sm font-semibold text-orange-500 hover:underline"
@@ -808,8 +812,6 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
             {isContentExpanded ? "Read less" : "Read more"}
           </button>
         )}
-        </p>
-        
       </div>
     );
   };
@@ -1331,9 +1333,11 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
                 style={{ background: blockBg }}
               >
                 <div className={preset && longBody ? "w-full" : "text-center w-full"}>
-                  <p className={textClass}>
-                    {post.content}
-                  </p>
+                  <ChatRichTextRenderer
+                    content={post.content}
+                    inheritColor
+                    contentClassName={textClass}
+                  />
                  
                 </div>
               </div>
@@ -1390,9 +1394,11 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
                 </div>
               ) : null}
               {(post.reposted_post.content || "").trim() ? (
-                <p className="text-sm text-content line-clamp-4 whitespace-pre-wrap break-words">
-                  {post.reposted_post.content}
-                </p>
+                <ChatRichTextRenderer
+                  content={post.reposted_post.content}
+                  inheritColor
+                  contentClassName="text-sm text-content line-clamp-4 whitespace-pre-wrap break-words"
+                />
               ) : null}
               {post.reposted_post.media_urls &&
                 post.reposted_post.media_urls.length > 0 &&

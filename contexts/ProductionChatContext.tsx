@@ -1,6 +1,7 @@
 'use client'
 
 import React, { createContext, useContext, useState, useCallback, useEffect, useRef, useMemo } from 'react'
+import { usePathname } from 'next/navigation'
 import {
   ChatMessage,
   ChatThread,
@@ -163,6 +164,7 @@ interface ProductionChatContextType {
   setThreadArchived: (threadId: string, archived: boolean) => Promise<void>
   setThreadBlocked: (threadId: string, is_block: boolean) => Promise<void>
   setThreadPinned: (threadId: string, pinned: boolean) => Promise<void>
+  setThreadDisappearingDuration: (threadId: string, durationSec: number) => Promise<void>
   clearMessagesForUser: (threadId: string, userId: string) => void
   markMessageDeletedForUser: (threadId: string, messageId: string, userId: string) => void
   setMessagesForThread: (threadId: string, messages: ChatMessage[]) => void
@@ -193,6 +195,8 @@ export const useProductionChat = () => {
 
 export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user } = useAuth()
+  const pathname = usePathname()
+  const isChatRoute = Boolean(pathname?.startsWith('/chat'))
   const { isThreadUnlocked, unlockedThreadKey } = useChatLock()
   usePresence()
   const [callRequests, setCallRequests] = useState<Record<string, CallRequest>>({})
@@ -305,7 +309,9 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
     threadsRef.current = threads
   }, [threads])
 
-  // Preload call-related chunks/sdk during idle time so call startup is faster.
+  // Warm only lightweight call helpers after idle. Heavy VideoSDK/LiveKit bundles
+  // load on demand when a call starts — preloading them on every authenticated page
+  // competed with feed/chat for bandwidth and main-thread time.
   useEffect(() => {
     if (typeof window === 'undefined' || !userId) return
     let cancelled = false
@@ -315,20 +321,18 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
     }
     const preload = () => {
       if (cancelled) return
-      void import('@videosdk.live/js-sdk')
       void import('@/shared/utils/callWindow')
-      void import('@/features/video/CallModal')
     }
 
     if (windowWithIdle.requestIdleCallback) {
-      const idleId = windowWithIdle.requestIdleCallback(preload, { timeout: 1500 })
+      const idleId = windowWithIdle.requestIdleCallback(preload, { timeout: 8000 })
       return () => {
         cancelled = true
         try { windowWithIdle.cancelIdleCallback?.(idleId) } catch {}
       }
     }
 
-    const timer = window.setTimeout(preload, 400)
+    const timer = window.setTimeout(preload, 5000)
     return () => {
       cancelled = true
       window.clearTimeout(timer)
@@ -1376,9 +1380,10 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
     })
   }, [])
 
-  // Track active calls across threads for chat list indicators
+  // Track active calls across threads for chat list indicators.
+  // Only while on /chat — feed/settings/call window must not fan out ≤30 call-session GETs.
   useEffect(() => {
-    if (!currentUser?.id) {
+    if (!currentUser?.id || !isChatRoute || pathname?.startsWith('/call')) {
       setActiveCallsByThread({})
       return
     }
@@ -1415,7 +1420,8 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
     }
 
     void refresh()
-    const interval = setInterval(() => void refresh(), 20_000)
+    // Realtime below is primary; keep a slow fallback poll only.
+    const interval = setInterval(() => void refresh(), 60_000)
 
     const channel = supabase
       .channel(`active_calls:${currentUser.id}`)
@@ -1431,7 +1437,7 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
       clearInterval(interval)
       try { supabase.removeChannel(channel) } catch { /* ignore */ }
     }
-  }, [currentUser?.id, threads])
+  }, [currentUser?.id, isChatRoute, pathname, threads])
 
   const setThreadArchived = useCallback(async (threadId: string, archived: boolean) => {
     if (!currentUser) return
@@ -1476,6 +1482,36 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
       }
       return [...prev, updated]
     })
+  }, [currentUser])
+
+  const setThreadDisappearingDuration = useCallback(async (threadId: string, durationSec: number) => {
+    if (!currentUser) return
+    const result = await supabaseMessagingService.setThreadDisappearingDuration(
+      threadId,
+      currentUser.id,
+      durationSec
+    )
+    if (!result) return
+    const { thread: updated, systemMessage } = result
+    setThreads((prev) => {
+      const idx = prev.findIndex((t) => t.id === threadId)
+      if (idx >= 0) {
+        const next = [...prev]
+        next[idx] = updated
+        return next
+      }
+      return [...prev, updated]
+    })
+    if (systemMessage) {
+      setMessages((prev) => {
+        const current = prev[threadId] || []
+        if (current.some((m) => m.id === systemMessage.id)) return prev
+        return {
+          ...prev,
+          [threadId]: sortChatMessagesByCreatedAt([...current, systemMessage]),
+        }
+      })
+    }
   }, [currentUser])
 
   const tryDispatchIncomingFromCallSession = useCallback(
@@ -1753,6 +1789,24 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
             clearCallRequest(threadId)
           }
         }
+
+        if (message.message_type === 'disappearing_messages') {
+          const meta = (message.metadata || {}) as { disappearing_duration_sec?: number | null }
+          const nextDuration =
+            typeof meta.disappearing_duration_sec === 'number' &&
+            Number.isFinite(meta.disappearing_duration_sec) &&
+            meta.disappearing_duration_sec > 0
+              ? meta.disappearing_duration_sec
+              : null
+          setThreads((prev) => {
+            const idx = prev.findIndex((t) => t.id === threadId)
+            if (idx < 0) return prev
+            if ((prev[idx].disappearing_duration_sec ?? null) === nextDuration) return prev
+            const next = [...prev]
+            next[idx] = { ...prev[idx], disappearing_duration_sec: nextDuration }
+            return next
+          })
+        }
       }, currentUser)
       unsubscribeCallbacks.push(unsubscribe)
     })
@@ -2014,6 +2068,7 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
     setThreadArchived,
     setThreadBlocked,
     setThreadPinned,
+    setThreadDisappearingDuration,
     clearMessagesForUser,
     markMessageDeletedForUser,
     setMessagesForThread

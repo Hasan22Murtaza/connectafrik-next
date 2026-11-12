@@ -1,19 +1,18 @@
 import React, { useEffect, useState } from 'react'
 import { X, Check, UserPlus } from '@/shared/icons'
 import { friendRequestService, FriendRequest } from '@/features/social/services/friendRequestService'
-import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/contexts/AuthContext'
 
 const FriendRequestNotifications: React.FC = () => {
+  const { user } = useAuth()
   const [pendingRequests, setPendingRequests] = useState<FriendRequest[]>([])
   const [processing, setProcessing] = useState<Record<string, boolean>>({})
 
   useEffect(() => {
     loadPendingRequests()
 
-    // Subscribe to new friend requests
+    // Subscribe to new friend requests — use AuthContext user (no /auth/v1/user per event)
     const unsubscribe = friendRequestService.subscribeToPendingRequests(async (request) => {
-      const { data: { user } } = await supabase.auth.getUser()
-
       if (user && request.receiver_id === user.id) {
         setPendingRequests((prev) => [request, ...prev])
 
@@ -30,7 +29,7 @@ const FriendRequestNotifications: React.FC = () => {
     return () => {
       unsubscribe()
     }
-  }, [])
+  }, [user])
 
   const loadPendingRequests = async () => {
     const requests = await friendRequestService.getPendingRequests()

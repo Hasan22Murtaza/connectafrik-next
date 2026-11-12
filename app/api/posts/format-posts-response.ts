@@ -115,9 +115,11 @@ function nestCommentPreviews(
 }
 
 export const POST_SELECT = `
-  *,
+  id, author_id, content, category, tags, visibility, background_id,
+  media_urls, media_type, likes_count, comments_count, shares_count,
+  views_count, location, feeling, created_at, updated_at, repost_of_id, is_deleted,
   author:profiles!posts_author_id_fkey(
-    id, username, full_name, avatar_url, banner_image, country,
+    id, username, full_name, avatar_url, country,
     post_visibility, allow_comments, allow_follows
   ),
   comments(count)
@@ -161,7 +163,7 @@ function mapEmbeddedRepostPost(row: any) {
           username: row.author.username,
           full_name: row.author.full_name,
           avatar_url: row.author.avatar_url,
-          banner_image: row.author.banner_image ?? null,
+          banner_image: null,
           country: row.author.country,
         }
       : null,
@@ -415,7 +417,7 @@ export async function formatPostsForClient(
         `
         id, content, category, media_urls, media_type, background_id, location, feeling, created_at,
         author:profiles!posts_author_id_fkey(
-          id, username, full_name, avatar_url, banner_image, country
+          id, username, full_name, avatar_url, country
         )
       `
       )
@@ -480,7 +482,7 @@ export async function formatPostsForClient(
             username: post.author.username,
             full_name: post.author.full_name,
             avatar_url: post.author.avatar_url,
-            banner_image: post.author.banner_image ?? null,
+            banner_image: null,
             country: post.author.country,
           }
         : null,

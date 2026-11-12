@@ -904,7 +904,7 @@ export default function ChatSidebar({
                   onClick={() => setFilter(chip.key)}
                   className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-medium transition ${active
                     ? "bg-orange-50 text-orange-500 border-orange-500 border"
-                    : "border border-border text-content-secondary hover:bg-orange-50 hover:border-orange-100 hover:text-orange-500 dark:hover:bg-surface-hover dark:hover:border-border-strong dark:hover:text-orange-300"
+                    : "border border-border text-content-secondary hover:bg-surface-hover hover:border-orange-100 hover:text-orange-500 dark:hover:bg-surface-hover dark:hover:border-border-strong dark:hover:text-orange-300"
                     }`}
                 >
                   <span>{chip.label}</span>
@@ -924,13 +924,13 @@ export default function ChatSidebar({
                 setSearch("");
                 void openLockedFolder();
               }}
-              className="relative flex w-full shrink-0 items-center gap-3 px-3 py-2 text-left transition hover:bg-orange-50 dark:hover:bg-surface-hover"
+              className="relative flex w-full shrink-0 items-center gap-3 px-3 py-2 text-left transition hover:bg-surface-hover dark:hover:bg-surface-hover"
             >
               <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#111b21] text-white dark:bg-surface-secondary">
                 <Lock className="h-5 w-5" aria-hidden />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="truncate text-[15px] font-medium text-content">Locked Chats</p>
+                <p className="truncate text-[14px]  text-content">Locked Chats</p>
                 <p className="truncate text-sm text-content-secondary">
                   {lockedCount} locked conversation{lockedCount === 1 ? "" : "s"}
                 </p>
@@ -953,13 +953,13 @@ export default function ChatSidebar({
                 setSearch("");
                 setMenuThreadId(null);
               }}
-              className="relative flex w-full shrink-0 items-center gap-3 px-3 py-2 text-left transition hover:bg-orange-50 dark:hover:bg-surface-hover"
+              className="relative flex w-full shrink-0 items-center gap-3 px-3 py-2 text-left transition hover:bg-surface-hover dark:hover:bg-surface-hover"
             >
               <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-surface-secondary text-content-secondary">
                 <Archive className="h-5 w-5" aria-hidden />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="truncate text-[15px] font-medium text-content">Archived</p>
+                <p className="truncate text-[14px] text-content">Archived</p>
                 <p className="truncate text-sm text-content-secondary">
                   {archivedThreads.length} archived chat
                   {archivedThreads.length === 1 ? "" : "s"}
@@ -981,13 +981,13 @@ export default function ChatSidebar({
               setView("marketplace");
               setSearch("");
             }}
-            className="relative flex w-full shrink-0 items-center gap-3 px-3 py-2 text-left transition hover:bg-orange-50 dark:hover:bg-surface-hover"
+            className="relative flex w-full shrink-0 items-center gap-3 px-3 py-2 text-left transition hover:bg-surface-hover dark:hover:bg-surface-hover"
           >
             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary-100 text-orange-500">
               <Store className="h-5 w-5" aria-hidden />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-[15px] font-medium text-content">TradeHub messages</p>
+              <p className="truncate text-[14px] text-content">TradeHub messages</p>
               <p className="truncate text-sm text-content-secondary">Buying &amp; selling conversations</p>
             </div>
             {marketplaceUnread > 0 ? (
@@ -1037,7 +1037,7 @@ export default function ChatSidebar({
                   }}
                   role="button"
                   tabIndex={0}
-                  className={`group relative flex w-full cursor-pointer items-center gap-3 px-3 py-2 text-left transition hover:bg-orange-50 dark:hover:bg-surface-hover ${selected ? "bg-orange-50 dark:bg-orange-500/15 dark:hover:bg-orange-500/15" : "bg-transparent"
+                  className={`group relative flex w-full cursor-pointer items-center gap-3 px-3 py-2 text-left transition ${selected ? "bg-primary-50 text-orange-500 hover:bg-primary-100" : "bg-transparent hover:bg-surface-hover"
                     }`}
                 >
                   <div className="h-12 w-12 shrink-0">
@@ -1051,12 +1051,12 @@ export default function ChatSidebar({
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between gap-2">
-                      <span className="min-w-0 truncate text-[15px] font-medium text-content">{displayName}</span>
+                      <span className={`min-w-0 truncate text-base ${selected ? "text-orange-500" : "text-content"}`}>{displayName}</span>
                       <span className="shrink-0 text-xs tabular-nums text-content-tertiary">
                         {formatThreadListTime(thread.last_message_at)}
                       </span>
                     </div>
-                    <div className="mt-0.5 flex items-center justify-between gap-2">
+                    <div className=" flex items-center justify-between gap-2">
                       <p className="truncate text-sm text-content-secondary">
                         {sessionUnlocked && thread.last_message_preview ? (
                           <ChatRichTextPreview content={thread.last_message_preview} />
@@ -1083,7 +1083,7 @@ export default function ChatSidebar({
                         e.stopPropagation();
                         setMenuThreadId((prev) => (prev === thread.id ? null : thread.id));
                       }}
-                      className="rounded-full p-1.5 text-content-tertiary opacity-60 transition hover:bg-orange-50 hover:text-content dark:hover:bg-surface-hover sm:opacity-0 sm:group-hover:opacity-100"
+                      className="rounded-full p-1.5 text-content-tertiary opacity-60 transition hover:bg-surface-hover hover:text-content dark:hover:bg-surface-hover sm:opacity-0 sm:group-hover:opacity-100"
                     >
                       <MoreVertical className="h-4 w-4" />
                     </button>
@@ -1155,7 +1155,7 @@ export default function ChatSidebar({
                   }}
                   role="button"
                   tabIndex={0}
-                  className={`group relative flex w-full cursor-pointer items-center gap-3 px-3 py-2 text-left transition hover:bg-surface-hover ${selected ? "bg-surface-hover" : "bg-transparent"
+                  className={`group relative flex w-full cursor-pointer items-center gap-3 px-3 py-2 text-left transition ${selected ? "bg-primary-50 text-orange-500 hover:bg-primary-100" : "bg-transparent hover:bg-surface-hover"
                     }`}
                 >
                   <div className="h-12 w-12 shrink-0">
@@ -1176,7 +1176,7 @@ export default function ChatSidebar({
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between gap-2">
-                      <span className="text-[15px] font-medium text-content">
+                      <span className={`text-[15px] font-medium ${selected ? "text-orange-500" : "text-content"}`}>
                         {thread.pinned ? (
                           <Pin className="h-3.5 w-3.5 shrink-0 text-content-tertiary" aria-hidden />
                         ) : null}
@@ -1328,7 +1328,7 @@ export default function ChatSidebar({
                   }}
                   role="button"
                   tabIndex={0}
-                  className={`group relative flex w-full cursor-pointer items-center gap-3 px-3 py-3 text-left transition hover:bg-orange-50 dark:hover:bg-surface-hover ${selected ? "bg-surface-hover" : "bg-transparent"
+                  className={`group relative flex w-full cursor-pointer items-center gap-3 px-3 py-3 text-left transition ${selected ? "bg-primary-50 text-orange-500 hover:bg-primary-100" : "bg-transparent hover:bg-surface-hover"
                     }`}
                 >
                   <div className="h-12 w-12 shrink-0">
@@ -1342,7 +1342,7 @@ export default function ChatSidebar({
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between gap-2">
-                      <p className="min-w-0 truncate text-[15px] font-medium text-content">{displayName}</p>
+                      <p className={`min-w-0 truncate text-[15px] ${selected ? "text-orange-500" : "text-content"}`}>{displayName}</p>
                       <span
                         className={`shrink-0 text-xs tabular-nums ${thread.unread_count > 0 ? "text-orange-500" : "text-content-tertiary"
                           }`}
@@ -1424,7 +1424,7 @@ export default function ChatSidebar({
                     }}
                     role="button"
                     tabIndex={0}
-                    className={`group cursor-pointer relative flex w-full items-center gap-3 px-3 py-2 text-left transition hover:bg-orange-50 dark:hover:bg-surface-hover ${selected ? "bg-orange-50 dark:bg-orange-500/15 dark:hover:bg-orange-500/15" : "bg-transparent"
+                    className={`group cursor-pointer relative flex w-full items-center gap-3 px-3 py-2 text-left transition ${selected ? "bg-primary-50 text-orange-500 hover:bg-primary-100" : "bg-transparent hover:bg-surface-hover"
                       }`}
                   >
                     <div className="h-12 w-12 shrink-0">
@@ -1443,7 +1443,7 @@ export default function ChatSidebar({
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between gap-2">
-                        <span className="min-w-0 truncate text-[15px] font-medium text-content">{displayName}</span>
+                        <span className={`min-w-0 truncate text-[15px] ${selected ? "text-orange-500" : "text-content"}`}>{displayName}</span>
                         <div className="flex gap-1 items-center">
                           <div>
                             <button
@@ -1454,7 +1454,7 @@ export default function ChatSidebar({
                                 e.stopPropagation();
                                 setMenuThreadId((prev) => (prev === thread.id ? null : thread.id));
                               }}
-                              className="rounded-full m-0 text-content-tertiary opacity-60 transition hover:bg-orange-50 hover:text-content dark:hover:bg-surface-hover sm:opacity-0 sm:group-hover:opacity-100"
+                              className="rounded-full m-0 text-content-tertiary opacity-60 transition hover:bg-surface-hover hover:text-content dark:hover:bg-surface-hover sm:opacity-0 sm:group-hover:opacity-100"
                             >
                               <MoreVertical className="h-4 w-4" />
                             </button>
@@ -1572,7 +1572,7 @@ export default function ChatSidebar({
                           onClick={() => onOpenThread(thread.id, thread)}
                           role="button"
                           tabIndex={0}
-                          className={`group relative flex w-full cursor-pointer items-start gap-3 border-b border-border-subtle py-3 text-left opacity-80 transition hover:bg-orange-50 dark:hover:bg-surface-hover ${selected ? "bg-primary-50 text-orange-500 dark:bg-orange-500/15 dark:text-orange-300 dark:hover:bg-orange-500/15" : ""
+                          className={`group relative flex w-full cursor-pointer items-start gap-3 border-b border-border-subtle py-3 text-left opacity-80 transition ${selected ? "bg-primary-50 text-orange-500 hover:bg-primary-100" : "hover:bg-surface-hover"
                             }`}
                         >
                           <div className="h-12 w-12 shrink-0">
@@ -1585,7 +1585,7 @@ export default function ChatSidebar({
                             )}
                           </div>
                           <div className="min-w-0 flex-1">
-                            <p className="truncate text-[15px] font-medium text-content">{displayName}</p>
+                            <p className={`truncate text-[14px] ${selected ? "text-orange-500" : "text-content"}`}>{displayName}</p>
                             <p className="truncate text-xs text-content-secondary">Blocked · tap to manage</p>
                           </div>
                           <button
@@ -1595,7 +1595,7 @@ export default function ChatSidebar({
                               e.stopPropagation();
                               setMenuThreadId((prev) => (prev === thread.id ? null : thread.id));
                             }}
-                            className="rounded-full p-1.5 text-content-tertiary hover:bg-orange-50 dark:hover:bg-surface-hover"
+                            className="rounded-full p-1.5 text-content-tertiary hover:bg-surface-hover dark:hover:bg-surface-hover"
                           >
                             <MoreVertical className="h-4 w-4" />
                           </button>

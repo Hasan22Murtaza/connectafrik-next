@@ -9,6 +9,7 @@ import { readCallBootstrap } from '@/lib/call-media/bootstrap'
 import { readCallE2eeKey } from '@/lib/call-media/e2ee-key'
 import type { CallMediaProviderName } from '@/lib/call-media/types'
 import { parseProviderName } from '@/lib/call-media/resolve'
+import { buildCallUrl, parseCallSearchParams } from '@/shared/utils/callWindow'
 
 const CallModal = dynamic(() => import('@/features/video/CallModal'), {
   ssr: false,
@@ -98,13 +99,16 @@ export default function CallWindowPage() {
   >(undefined)
 
   const roomId = params?.roomId as string
-  const callParam = searchParams?.get('call') ?? 'true'
-  const isOpen = callParam === 'true'
-  const callType = (searchParams?.get('type') || 'video') as 'audio' | 'video'
-  const threadId = searchParams?.get('threadId') || ''
-  const isGroupCallHint = searchParams?.get('isGroupCall') === 'true'
-  const isIncoming = searchParams?.get('isIncoming') === 'true'
-  const callId = searchParams?.get('callId') || ''
+  const callQuery = useMemo(
+    () => parseCallSearchParams(searchParams ?? new URLSearchParams()),
+    [searchParams],
+  )
+  const isOpen = callQuery.call
+  const callType = callQuery.callType
+  const threadId = callQuery.threadId
+  const isGroupCallHint = callQuery.isGroupCall
+  const isIncoming = callQuery.isIncoming
+  const callId = callQuery.callId
 
   const currentUserName = useMemo(() => {
     if (!user) return 'You'
@@ -309,9 +313,19 @@ export default function CallWindowPage() {
 
   const handleCallEnd = () => {
     notifyParentCallEnded(threadId, callId || undefined)
-    const newParams = new URLSearchParams(searchParams?.toString() || '')
-    newParams.set('call', 'false')
-    router.replace(`/call/${roomId}?${newParams.toString()}`)
+    const endedUrl = new URL(
+      buildCallUrl({
+        roomId,
+        callType,
+        threadId,
+        isGroupCall: isGroupCallHint,
+        isIncoming,
+        callerId: callQuery.callerId || undefined,
+        callId: callId || undefined,
+        call: false,
+      }),
+    )
+    router.replace(`${endedUrl.pathname}${endedUrl.search}`)
     setTimeout(() => {
       closeCallWindowOrRedirect(threadId, router)
     }, 1500)

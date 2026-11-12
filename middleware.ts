@@ -201,12 +201,17 @@ export async function middleware(request: NextRequest) {
   ]
   const protectedRoutes = [
     '/feed',
+    '/chat',
+    '/calls',
+    '/call',
+    '/notifications',
     '/friends',
     '/groups',
     '/profile',
     '/settings',
     '/saved',
     '/reels',
+    '/stories',
     '/my-orders',
     '/culture',
     '/politics',

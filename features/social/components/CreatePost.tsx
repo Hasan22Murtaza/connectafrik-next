@@ -13,6 +13,7 @@ import { sanitizePostFeeling, type PostFeeling } from '@/features/social/utils/p
 import { feelingSubtitle } from '@/features/social/constants/postFeelings'
 import PostFeelingPicker from '@/features/social/components/PostFeelingPicker'
 import PostPeopleTagPicker, { type TaggedPerson } from '@/features/social/components/PostPeopleTagPicker'
+import ChatRichTextEditor, { type ChatRichTextEditorHandle } from '@/features/chat/richtext/ChatRichTextEditor'
 import {
   POST_VISIBILITY_OPTIONS,
   normalizePostVisibility,
@@ -236,7 +237,7 @@ const CreatePost: React.FC<CreatePostProps> = ({
   const [showFeelingModal, setShowFeelingModal] = useState(false)
   const [showPeopleTagModal, setShowPeopleTagModal] = useState(false)
 
-  const contentRef = useRef<HTMLTextAreaElement>(null)
+  const contentRef = useRef<ChatRichTextEditorHandle>(null)
   const locationInputRef = useRef<HTMLInputElement>(null)
   const autocompleteServiceRef = useRef<any>(null)
   const placesServiceRef = useRef<any>(null)
@@ -284,7 +285,7 @@ const CreatePost: React.FC<CreatePostProps> = ({
           />
           <div
             role="listbox"
-            className="absolute left-0 top-full z-50 mt-1 min-w-[9rem] overflow-hidden rounded-xl border border-border bg-surface shadow-lg"
+            className="absolute right-0 top-full z-50 mt-1 min-w-[8rem] overflow-hidden rounded-xl border border-border bg-surface shadow-lg"
           >
             {POST_VISIBILITY_OPTIONS.map((option) => {
               const Icon = VISIBILITY_ICONS[option.value]
@@ -390,14 +391,6 @@ const CreatePost: React.FC<CreatePostProps> = ({
     return () => window.removeEventListener('keydown', onKey)
   }, [useModalShell, onCancel, showLocationModal, showBackgroundModal, isSubmitting, uploading])
 
-  const autoResize = useCallback(() => {
-    const el = contentRef.current
-    if (!el) return
-    el.style.height = 'auto'
-    el.style.height = `${Math.max(hasMedia ? 36 : 80, el.scrollHeight)}px`
-  }, [hasMedia])
-
-  useEffect(() => { autoResize() }, [content, autoResize, hasMedia])
   useEffect(() => { contentRef.current?.focus() }, [])
 
   // Load Google Maps Places script when location modal opens
@@ -752,6 +745,7 @@ const CreatePost: React.FC<CreatePostProps> = ({
                   <span className="text-sm font-semibold text-white">{profile?.full_name?.charAt(0).toUpperCase() || 'U'}</span>
                 </div>
               )}
+              <div className="flex flex-1 items-center justify-between gap-3">
               <div className="min-w-0 flex-1">
                 <p className="flex min-w-0 items-baseline text-[15px] font-semibold leading-tight text-content">
                   <span className="shrink-0">{profile?.full_name || 'User'}</span>
@@ -768,7 +762,9 @@ const CreatePost: React.FC<CreatePostProps> = ({
                   )}
                 </p>
                 <p className="shrink-0 text-xs text-secondary">{profile?.username}</p>
+              </div>
                 {visibilityPicker}
+
               </div>
             </div>
           </>
@@ -856,19 +852,22 @@ const CreatePost: React.FC<CreatePostProps> = ({
             className={`rounded-xl transition-all ${selectedBgPreset ? 'px-3 py-3 sm:px-4 sm:py-4 ring-1 ring-black/10' : ''}`}
             style={selectedBgPreset ? { background: selectedBgPreset.css } : undefined}
           >
-            <textarea
+            <ChatRichTextEditor
               ref={contentRef}
-              placeholder={`What's on your mind, ${firstName}?`}
               value={content}
-              onChange={(e) => { handleContentChange(e.target.value); autoResize() }}
-              className={`w-full text-sm sm:text-base border-0 focus:outline-none focus:ring-0 resize-none bg-transparent p-0 leading-relaxed ${
+              onChange={handleContentChange}
+              placeholder={`What's on your mind, ${firstName}?`}
+              className="w-full"
+              containerClassName="relative min-w-0 flex-1"
+              editorClassName={`!max-h-none w-full text-sm sm:text-base leading-relaxed ${
                 selectedBgPreset
-                  ? `${selectedBgPreset.textClass} ${selectedBgPreset.placeholderClass}`
-                  : 'text-content placeholder-gray-400'
+                  ? selectedBgPreset.textClass
+                  : 'text-content'
               }`}
+              placeholderClassName={selectedBgPreset?.placeholderClass ?? ''}
               maxLength={2000}
-              style={{ minHeight: hasMedia ? '36px' : '80px' }}
-              rows={1}
+              minRows={hasMedia ? 1 : 3}
+              showToolbar
             />
           </div>
 

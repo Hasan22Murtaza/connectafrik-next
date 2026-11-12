@@ -17,6 +17,7 @@ import {
   LogOut,
   MessageSquare,
   Palette,
+  Megaphone,
   Search,
   UsersRound,
   UserRound,
@@ -112,7 +113,7 @@ const MobileSideDrawer: React.FC<MobileSideDrawerProps> = ({
         title: 'PREFERENCES',
         items: [
           { label: 'Settings', path: '/settings', icon: Settings },
-          { label: 'Feedback', path: '/feedback', icon: MessageSquare },
+          { label: 'Feedback', path: '/feedback', icon: Megaphone },
           { label: 'Search users', icon: Search, action: 'search' },
         ],
       },

@@ -12,7 +12,7 @@ const MESSAGE_SELECT = `
 
 type RouteContext = { params: Promise<{ threadId: string; messageId: string }> }
 
-type ReadRow = { user_id: string; created_at?: string | null }
+type ReadRow = { user_id: string; read_at?: string | null }
 type ProfileRow = { id: string; username: string | null; full_name: string | null; avatar_url: string | null }
 type ParticipantRow = { user_id: string; user?: ProfileRow | ProfileRow[] | null }
 
@@ -84,8 +84,11 @@ export async function GET(_request: NextRequest, context: RouteContext) {
     })()
 
     const [readsRes, attachmentsRes, reactionsRes, participantsRes, replyRes] = await Promise.all([
-      serviceClient.from('message_reads').select('*').eq('message_id', messageId),
-      serviceClient.from('message_attachments').select('*').eq('message_id', messageId),
+      serviceClient.from('message_reads').select('message_id, user_id, read_at').eq('message_id', messageId),
+      serviceClient
+        .from('message_attachments')
+        .select('id, message_id, file_name, file_size, file_type, file_url')
+        .eq('message_id', messageId),
       serviceClient.from('message_reactions').select('message_id, emoji, user_id').eq('message_id', messageId),
       serviceClient
         .from('chat_participants')
@@ -132,7 +135,7 @@ export async function GET(_request: NextRequest, context: RouteContext) {
       }
     }
 
-    const readAt = (r: ReadRow) => (r.created_at as string | undefined) ?? null
+    const readAt = (r: ReadRow) => r.read_at ?? null
     const toReceiptUser = (profile: ProfileRow | undefined | null) =>
       profile
         ? {

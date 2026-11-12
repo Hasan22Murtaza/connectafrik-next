@@ -36,7 +36,7 @@ interface ChatRichTextEditorProps {
   value: string;
   onChange: (markdown: string) => void;
   onTyping?: () => void;
-  /** Enter (or Ctrl/Cmd+Enter) to send; Shift+Enter inserts a newline */
+  /** Submit on Enter; when omitted, Enter inserts a newline */
   onSubmit?: () => void;
   /** Called when files (e.g. pasted images) are dropped into the editor */
   onPasteFiles?: (files: File[]) => void;
@@ -44,7 +44,11 @@ interface ChatRichTextEditorProps {
   disabled?: boolean;
   mentionCandidates?: MentionCandidate[];
   className?: string;
+  containerClassName?: string;
+  editorClassName?: string;
+  placeholderClassName?: string;
   minRows?: number;
+  maxLength?: number;
   showToolbar?: boolean;
   toolbarAlwaysVisible?: boolean;
   leadingSlot?: React.ReactNode;
@@ -127,7 +131,11 @@ const ChatRichTextEditor = forwardRef<ChatRichTextEditorHandle, ChatRichTextEdit
       disabled = false,
       mentionCandidates = [],
       className = "",
+      containerClassName = "relative flex min-w-0 items-end gap-0.5 rounded-[24px] border border-[#e9edef] bg-white py-0.5 pl-1 pr-1.5 transition focus-within:border-[#d1d7db] dark:border-border dark:bg-surface",
+      editorClassName = "",
+      placeholderClassName = "",
       minRows = 1,
+      maxLength,
       showToolbar = true,
       toolbarAlwaysVisible = false,
       leadingSlot,
@@ -241,14 +249,13 @@ const ChatRichTextEditor = forwardRef<ChatRichTextEditorHandle, ChatRichTextEdit
 
     // Sync external value (e.g. edit message / cancel edit)
     useEffect(() => {
-      if (value === lastExternalValue.current) return;
-      lastExternalValue.current = value;
       const el = editorRef.current;
       if (!el) return;
       const current = htmlToMarkdown(el);
       if (current !== value) {
         setEditorMarkdown(value);
       }
+      lastExternalValue.current = value;
     }, [value, setEditorMarkdown]);
 
     useEffect(() => {
@@ -392,9 +399,11 @@ const ChatRichTextEditor = forwardRef<ChatRichTextEditorHandle, ChatRichTextEdit
           insertMention(filteredMentions[0]);
           return;
         }
-        e.preventDefault();
-        onSubmit?.();
-        return;
+        if (onSubmit) {
+          e.preventDefault();
+          onSubmit();
+          return;
+        }
       }
 
       // Detect @ mention trigger
@@ -438,8 +447,23 @@ const ChatRichTextEditor = forwardRef<ChatRichTextEditorHandle, ChatRichTextEdit
         }
       }
 
+      const md = htmlToMarkdown(el);
+      if (maxLength !== undefined && md.length > maxLength) {
+        const truncated = md.slice(0, maxLength);
+        setEditorMarkdown(truncated);
+        lastExternalValue.current = truncated;
+        onChange(truncated);
+        const range = document.createRange();
+        range.selectNodeContents(el);
+        range.collapse(false);
+        const selection = window.getSelection();
+        selection?.removeAllRanges();
+        selection?.addRange(range);
+        return;
+      }
+
       syncFromEditor();
-      lastExternalValue.current = htmlToMarkdown(el);
+      lastExternalValue.current = md;
     };
 
     const onPaste = (e: React.ClipboardEvent<HTMLDivElement>) => {
@@ -514,13 +538,13 @@ const ChatRichTextEditor = forwardRef<ChatRichTextEditorHandle, ChatRichTextEdit
           </div>
         ) : null}
 
-        <div className="relative flex min-w-0 items-end gap-0.5 rounded-[24px] border border-[#e9edef] bg-white py-0.5 pl-1 pr-1.5 transition focus-within:border-[#d1d7db] dark:border-border dark:bg-surface">
+        <div className={containerClassName}>
           {leadingSlot ? (
             <div className="mb-0.5 flex shrink-0 items-center self-end">{leadingSlot}</div>
           ) : null}
           <div className="relative min-w-0 flex-1">
             {empty && !focused ? (
-              <div className="pointer-events-none absolute left-1.5 top-2 text-[15px] text-[#667781] dark:text-content-tertiary">
+              <div className={`pointer-events-none absolute left-1.5 top-2 text-[15px] text-[#667781] dark:text-content-tertiary ${placeholderClassName}`}>
                 {placeholder}
               </div>
             ) : null}
@@ -533,7 +557,7 @@ const ChatRichTextEditor = forwardRef<ChatRichTextEditorHandle, ChatRichTextEdit
               contentEditable={!disabled}
               suppressContentEditableWarning
               spellCheck
-              className="chat-rt-editor max-h-32 min-h-[40px] w-full overflow-y-auto overflow-x-hidden bg-transparent px-1 py-2 text-[15px] leading-snug text-content outline-none focus:outline-none empty:before:content-[''] sm:max-h-40"
+              className={`chat-rt-editor max-h-32 min-h-[40px] w-full overflow-y-auto overflow-x-hidden bg-transparent px-1 py-2 text-[15px] leading-snug text-content outline-none focus:outline-none empty:before:content-[''] sm:max-h-40 ${editorClassName}`}
               style={{ minHeight: `${Math.max(1, minRows) * 24 + 16}px` }}
               onFocus={() => {
                 if (blurHideTimer.current) {

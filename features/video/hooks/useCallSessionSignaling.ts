@@ -469,8 +469,9 @@ export function useCallSessionSignaling({
         /* ignore */
       }
     };
-    const interval = setInterval(poll, 8000);
-    const initial = setTimeout(poll, 4000);
+    // Pre-answer only (effect returns early when connected). Realtime is primary.
+    const interval = setInterval(poll, 12_000);
+    const initial = setTimeout(poll, 5_000);
     return () => {
       cancelled = true;
       clearInterval(interval);

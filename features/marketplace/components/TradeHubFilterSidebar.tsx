@@ -50,6 +50,9 @@ interface TradeHubFilterSidebarProps {
 const menuRowClass =
   "w-full flex items-center justify-between gap-3 px-4 py-2 text-left text-[15px]  hover:bg-primary-50 transition-colors";
 
+const categoryRowClass =
+  "w-full flex items-center justify-between gap-3 px-4 py-2 text-left text-[15px] hover:bg-surface-hover transition-colors";
+
 const menuRowActiveClass = "bg-primary-50 text-orange-500 ";
 
 const sectionTitleClass = "px-4 pt-4 pb-2 text-[17px] font-bold ";
@@ -136,7 +139,7 @@ const TradeHubFilterSidebar: React.FC<TradeHubFilterSidebarProps> = ({
           <button
             type="button"
             onClick={selectAllCategories}
-            className={`${menuRowClass} ${
+            className={`${categoryRowClass} ${
               !filters.category ? menuRowActiveClass : ""
             }`}
           >
@@ -153,7 +156,7 @@ const TradeHubFilterSidebar: React.FC<TradeHubFilterSidebarProps> = ({
                   <button
                     type="button"
                     onClick={() => openCategoryPanel(category)}
-                    className={`${menuRowClass} ${isActive ? menuRowActiveClass : ""}`}
+                    className={`${categoryRowClass} ${isActive ? menuRowActiveClass : ""}`}
                   >
                     <span className={isActive ? "font-semibold text-orange-500" : ""}>
                       {category.label}
@@ -176,7 +179,7 @@ const TradeHubFilterSidebar: React.FC<TradeHubFilterSidebarProps> = ({
             <button
               type="button"
               onClick={() => setShowAllCategories((v) => !v)}
-              className={`${menuRowClass} font-medium text-primary-600`}
+              className={`${categoryRowClass} font-medium text-primary-600`}
             >
               <span>{showAllCategories ? "See less" : "See all"}</span>
               <ChevronDown
@@ -387,7 +390,7 @@ const TradeHubFilterSidebar: React.FC<TradeHubFilterSidebarProps> = ({
             onClick={() =>
               drillCategory && selectAllInCategory(drillCategory.value)
             }
-            className={`${menuRowClass} ${
+            className={`${categoryRowClass} ${
               drillCategory &&
               filters.category === drillCategory.value &&
               !filters.subcategory
@@ -421,7 +424,7 @@ const TradeHubFilterSidebar: React.FC<TradeHubFilterSidebarProps> = ({
                       drillCategory &&
                       selectSubcategory(drillCategory.value, sub.value)
                     }
-                    className={`${menuRowClass} ${isActive ? menuRowActiveClass : ""}`}
+                    className={`${categoryRowClass} ${isActive ? menuRowActiveClass : ""}`}
                   >
                     <span className={isActive ? "font-semibold text-orange-500" : ""}>
                       {sub.label}

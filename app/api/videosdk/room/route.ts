@@ -60,7 +60,17 @@ export async function POST(request: NextRequest) {
     }
     try {
       const serviceClient = createServiceClient()
-      const busy = await getBusyMapForUserIds(serviceClient, user_ids, exclude_call_id)
+      // Only disclose busy status for users the caller is allowed to call.
+      const allowedIds: string[] = []
+      for (const targetId of user_ids) {
+        if (targetId === authedUserId) {
+          allowedIds.push(targetId)
+          continue
+        }
+        const decision = await canCall(authedUserId, targetId, { client: serviceClient })
+        if (decision.allowed) allowedIds.push(targetId)
+      }
+      const busy = await getBusyMapForUserIds(serviceClient, allowedIds, exclude_call_id)
       const res = jsonResponse({ busy })
       Object.entries(corsHeaders).forEach(([k, v]) => res.headers.set(k, v))
       return res

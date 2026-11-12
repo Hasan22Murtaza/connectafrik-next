@@ -54,12 +54,14 @@ import {
   Play,
   Phone,
   Ban,
+  Flag,
   Pin,
   PinOff,
   Search,
   Send,
   Smile,
   Square,
+  Timer,
   Trash2,
   UserMinus,
   UserPlus,
@@ -99,7 +101,14 @@ import ChatWebcamCapture from "./ChatWebcamCapture";
 import ChatMediaComposer from "./ChatMediaComposer";
 import MessageAttachments from "./MessageAttachments";
 import { ChatDateDivider, ChatUnreadDivider, MessageBubble } from "./MessageBubble";
+import { ReportChatUserModal } from "./ReportChatUserModal";
+import { DisappearingMessagesModal } from "./DisappearingMessagesModal";
 import TypingIndicator from "./TypingIndicator";
+import {
+  disappearingDurationLabel,
+  type DisappearingDurationSec,
+} from "@/lib/chat/chatDisappearingMessages";
+import type { ChatReportedMessageSnapshot } from "@/lib/reports/types";
 import {
   fileExtensionLabel,
   formatMediaDuration,
@@ -337,6 +346,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     setMessagesForThread,
     setThreadPinned,
     setThreadBlocked,
+    setThreadDisappearingDuration,
     threads,
     startChatWithMembers,
     closeThread,
@@ -378,17 +388,34 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const thread = getThreadById(threadId);
   const messages = getMessagesForThread(threadId);
   const isMessagesLoading = isMessagesLoadingForThread(threadId);
+  const [nowMs, setNowMs] = useState(() => Date.now());
+  useEffect(() => {
+    const hasExpiring = messages.some(
+      (m) => typeof m.expires_at === "string" && m.expires_at && !m.is_deleted
+    );
+    if (!hasExpiring) return;
+    const id = window.setInterval(() => setNowMs(Date.now()), 30_000);
+    return () => window.clearInterval(id);
+  }, [messages]);
+
   const visibleMessages = useMemo(() => {
     if (!currentUser) return messages;
     return messages.filter((message: ChatMessage) => {
       if (message.deleted_for?.includes(currentUser.id)) return false;
+      if (
+        typeof message.expires_at === "string" &&
+        message.expires_at &&
+        new Date(message.expires_at).getTime() <= nowMs
+      ) {
+        return false;
+      }
       return shouldShowAcceptedOnAnotherDeviceMessage(
         message,
         currentUser.id,
         localAuthSessionId,
       );
     });
-  }, [messages, currentUser, localAuthSessionId]);
+  }, [messages, currentUser, localAuthSessionId, nowMs]);
 
   const [showMessageSearch, setShowMessageSearch] = useState(false);
   const [messageSearchDraft, setMessageSearchDraft] = useState("");
@@ -402,13 +429,20 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     if (!currentUser) return searchMessages;
     return searchMessages.filter((message: ChatMessage) => {
       if (message.deleted_for?.includes(currentUser.id)) return false;
+      if (
+        typeof message.expires_at === "string" &&
+        message.expires_at &&
+        new Date(message.expires_at).getTime() <= nowMs
+      ) {
+        return false;
+      }
       return shouldShowAcceptedOnAnotherDeviceMessage(
         message,
         currentUser.id,
         localAuthSessionId,
       );
     });
-  }, [searchMessages, currentUser, localAuthSessionId]);
+  }, [searchMessages, currentUser, localAuthSessionId, nowMs]);
 
   const displayMessages = messageSearchKeyword.trim()
     ? searchVisibleMessages
@@ -692,6 +726,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const draftBeforeComposerEditRef = useRef("");
   const composerEditorRef = useRef<ChatRichTextEditorHandle>(null);
   const [showOptionsMenu, setShowOptionsMenu] = useState(false);
+  const [showReportUserModal, setShowReportUserModal] = useState(false);
+  const [showDisappearingModal, setShowDisappearingModal] = useState(false);
+  const [savingDisappearing, setSavingDisappearing] = useState(false);
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedMessageIds, setSelectedMessageIds] = useState<string[]>([]);
   const [showMediaGallery, setShowMediaGallery] = useState(false);
@@ -2107,13 +2144,19 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     }
   };
 
-  const canStartAudioCall = isGroupThread
-    ? parental.canGroupAudioCall
-    : parental.canAudioCall;
-  const canStartVideoCall = isGroupThread
-    ? parental.canGroupVideoCall
-    : parental.canVideoCall;
+  const chatWithParent = Boolean(thread?.is_parent);
+  const canStartAudioCall = chatWithParent
+    ? true
+    : isGroupThread
+      ? parental.canGroupAudioCall
+      : parental.canAudioCall;
+  const canStartVideoCall = chatWithParent
+    ? true
+    : isGroupThread
+      ? parental.canGroupVideoCall
+      : parental.canVideoCall;
   const parentalMessagingBlocked =
+    !chatWithParent &&
     parental.controlsActive &&
     !parental.canSendText &&
     !parental.canSendImage &&
@@ -2121,6 +2164,24 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     !parental.canSendAudio &&
     !parental.canSendEmergency;
   const canBlockContact = isDirectBlockableThread(thread, currentUser?.id);
+  const reportableUserId =
+    canBlockContact && primaryParticipant?.id ? String(primaryParticipant.id) : null;
+  const reportMessageSnapshot = useMemo((): ChatReportedMessageSnapshot[] => {
+    return [...visibleMessages]
+      .slice(-5)
+      .reverse()
+      .map((message) => ({
+        id: message.id,
+        sender_id: getChatMessageAuthorId(message),
+        content:
+          typeof message.content === "string"
+            ? message.content.slice(0, 2000)
+            : null,
+        created_at: message.created_at,
+        message_type: message.message_type || null,
+        has_attachments: Boolean(message.attachments?.length),
+      }));
+  }, [visibleMessages]);
   const messagingBlocked = isThreadMessagingBlocked(thread) || parentalMessagingBlocked;
   const blockedByMe = Boolean(thread?.is_block);
   const blockedByOther = Boolean(thread?.blocked_by_other);
@@ -2275,7 +2336,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       toast.error("Voice recording is not supported here");
       return;
     }
-    if (!parental.canSendAudio) {
+    if (!chatWithParent && !parental.canSendAudio) {
       toast.error("Audio messages are restricted by your parent.");
       return;
     }
@@ -2819,6 +2880,10 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
   const chatHeaderOptionsMenuSections = useMemo((): ChatHeaderOptionsMenuSection[] => {
 
+    const disappearingLabel = disappearingDurationLabel(
+      thread?.disappearing_duration_sec ?? null
+    );
+
     const primary: ChatHeaderOptionsMenuItem[] = [
 
       {
@@ -2842,8 +2907,19 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           } satisfies ChatHeaderOptionsMenuItem,
         ]
         : []),
-
-
+      {
+        id: "disappearing",
+        label: "Disappearing messages",
+        Icon: Timer,
+        trailing:
+          disappearingLabel !== "Off" ? (
+            <span className="text-[11px] text-orange-500">{disappearingLabel}</span>
+          ) : undefined,
+        onClick: () => {
+          setShowOptionsMenu(false);
+          setShowDisappearingModal(true);
+        },
+      },
       {
         id: "close",
         label: "Close chat",
@@ -2863,6 +2939,15 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       },
       ...(canBlockContact
         ? [
+          {
+            id: "report",
+            label: "Report",
+            Icon: Flag,
+            onClick: () => {
+              setShowOptionsMenu(false);
+              setShowReportUserModal(true);
+            },
+          } satisfies ChatHeaderOptionsMenuItem,
           {
             id: "block",
             label: thread?.is_block ? "Unblock contact" : "Block contact",
@@ -2890,6 +2975,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     thread?.pinned,
     thread?.is_block,
     thread?.is_locked,
+    thread?.disappearing_duration_sec,
     canBlockContact,
     isGroupThread,
     visibleMessages.length,
@@ -3556,11 +3642,11 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
             onClose={() => setAttachmentMenuOpen(false)}
             onOpenCamera={() => setWebcamOpen(true)}
             onOpenLocation={() => setLocationPickerOpen(true)}
-            allowCamera={parental.canSendImage}
-            allowImages={parental.canSendImage}
-            allowVideos={parental.canSendVideo}
-            allowDocuments={parental.canSendText}
-            allowLocation={parental.canSendText}
+            allowCamera={chatWithParent || parental.canSendImage}
+            allowImages={chatWithParent || parental.canSendImage}
+            allowVideos={chatWithParent || parental.canSendVideo}
+            allowDocuments={chatWithParent || parental.canSendText}
+            allowLocation={chatWithParent || parental.canSendText}
           />
 
           {emojiPickerOpen ? (
@@ -3754,7 +3840,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                     : parentalMessagingBlocked
                       ? "Messaging restricted"
                       : "Messaging unavailable"
-                  : parental.onlyEmergencyMessaging
+                  : !chatWithParent && parental.onlyEmergencyMessaging
                     ? "Emergency message only"
                     : editingMessage
                       ? "Edit message"
@@ -3767,7 +3853,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                     type="button"
                     onClick={() => {
                       if (editingMessage) return;
-                      if (parental.onlyEmergencyMessaging) {
+                      if (!chatWithParent && parental.onlyEmergencyMessaging) {
                         toast.error("Only emergency text messages are allowed.");
                         return;
                       }
@@ -3776,10 +3862,11 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                     }}
                     disabled={
                       !!editingMessage ||
-                      parental.onlyEmergencyMessaging ||
-                      (!parental.canSendImage &&
-                        !parental.canSendVideo &&
-                        !parental.canSendText)
+                      (!chatWithParent &&
+                        (parental.onlyEmergencyMessaging ||
+                          (!parental.canSendImage &&
+                            !parental.canSendVideo &&
+                            !parental.canSendText)))
                     }
                     className={`flex h-9 w-9 items-center justify-center rounded-full text-[#54656f] transition hover:bg-[#f0f2f5] disabled:pointer-events-none disabled:opacity-40 dark:text-content-secondary dark:hover:bg-surface-hover ${attachmentMenuOpen ? "text-[#F97316]" : ""
                       }`}
@@ -3788,7 +3875,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                     title={
                       editingMessage
                         ? "Finish editing before attaching files"
-                        : parental.onlyEmergencyMessaging
+                        : !chatWithParent && parental.onlyEmergencyMessaging
                           ? "Attachments unavailable in emergency mode"
                           : undefined
                     }
@@ -3835,7 +3922,11 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                 <button
                   type="button"
                   onClick={toggleVoiceRecording}
-                  disabled={isSending || !!editingMessage || !parental.canSendAudio}
+                  disabled={
+                    isSending ||
+                    !!editingMessage ||
+                    (!chatWithParent && !parental.canSendAudio)
+                  }
                   className={`absolute inset-0 flex items-center justify-center rounded-full transition active:scale-95 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-40 animate-[chatFadeIn_140ms_ease-out] ${voiceRecording
                     ? "bg-red-500 text-white hover:bg-red-600"
                     : "bg-transparent text-[#111b21] hover:bg-[#f0f2f5] dark:text-content dark:hover:bg-surface-hover"
@@ -3844,7 +3935,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                   title={
                     editingMessage
                       ? "Finish editing before sending a voice message"
-                      : !parental.canSendAudio
+                      : !chatWithParent && !parental.canSendAudio
                         ? "Audio messages restricted by parent"
                       : voiceRecording
                         ? "Stop and send"
@@ -3883,7 +3974,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
         {infoMessage ? (
           <div
-            className="absolute inset-0 z-[95] flex flex-col overflow-hidden rounded-2xl bg-surface"
+            className="absolute inset-0 z-[95] flex flex-col "
             role="dialog"
             aria-modal="true"
             aria-label="Message info"
@@ -3942,7 +4033,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                         </div>
                         <div className="mb-2 flex justify-end">
                           <div
-                            className={`max-w-[min(100%,320px)] overflow-hidden rounded-xl rounded-br-sm bg-emerald-500 text-sm text-white ${hasMedia ? "p-1.5" : "px-3 py-2"
+                            className={`max-w-[min(100%,320px)] overflow-hidden rounded-xl rounded-br-sm bg-orange-500 text-sm text-white ${hasMedia ? "p-1.5" : "px-3 py-2"
                               }`}
                           >
                             {hasMedia ? (
@@ -4264,6 +4355,42 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           }}
         />
       ) : null}
+
+      {reportableUserId ? (
+        <ReportChatUserModal
+          threadId={threadId}
+          reportedUserId={reportableUserId}
+          userName={displayThreadName}
+          messageSnapshot={reportMessageSnapshot}
+          isOpen={showReportUserModal}
+          onClose={() => setShowReportUserModal(false)}
+        />
+      ) : null}
+
+      <DisappearingMessagesModal
+        isOpen={showDisappearingModal}
+        currentDurationSec={thread?.disappearing_duration_sec ?? null}
+        saving={savingDisappearing}
+        onClose={() => {
+          if (!savingDisappearing) setShowDisappearingModal(false);
+        }}
+        onSelect={async (durationSec: DisappearingDurationSec) => {
+          setSavingDisappearing(true);
+          try {
+            await setThreadDisappearingDuration(threadId, durationSec);
+            toast.success(
+              durationSec
+                ? `Disappearing messages: ${disappearingDurationLabel(durationSec)}`
+                : "Disappearing messages turned off"
+            );
+            setShowDisappearingModal(false);
+          } catch {
+            toast.error("Could not update disappearing messages");
+          } finally {
+            setSavingDisappearing(false);
+          }
+        }}
+      />
 
       {dialog}
     </div>

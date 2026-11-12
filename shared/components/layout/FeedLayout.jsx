@@ -13,7 +13,6 @@ const placeholderAds = [
 const FeedLayout = ({ children }) => {
   const { user } = useAuth()
   const [friends, setFriends] = useState([])
-  const [suggestedUsers, setSuggestedUsers] = useState([])
   const [birthdays, setBirthdays] = useState([])
   const [ads] = useState(placeholderAds)
 
@@ -22,16 +21,12 @@ const FeedLayout = ({ children }) => {
 
     const loadSidebarData = async () => {
       try {
-        // Load friends (accepted friend requests)
+        // Friends only — suggestions are fetched by PeopleYouMayKnow on the feed.
         const friendsList = await friendRequestService.getFriends()
-
-        // Load suggested users (people you may know)
-        const suggested = await friendRequestService.getSuggestedUsers(20)
 
         if (!isMounted) return
 
         setFriends(friendsList)
-        setSuggestedUsers(suggested)
 
         // Get birthdays from friends only (no extra profile query)
         const today = new Date()
@@ -56,7 +51,6 @@ const FeedLayout = ({ children }) => {
         console.error('Failed to load sidebar data:', error)
         if (isMounted) {
           setFriends([])
-          setSuggestedUsers([])
           setBirthdays([])
         }
       }
@@ -79,15 +73,14 @@ const FeedLayout = ({ children }) => {
       // Guard against React strict-mode double-mount
       if (didRun) return
       didRun = true
-
       try {
         await checkUpcomingBirthdays(user.id)
       } catch (error) {
-        console.error('Error checking birthdays:', error)
+        console.error('Birthday notification check failed:', error)
       }
     }
 
-    checkBirthdays()
+    void checkBirthdays()
   }, [user?.id])
 
   // Format friends (status from friends API: status + last_seen)
@@ -118,19 +111,6 @@ const FeedLayout = ({ children }) => {
     [friendsWithPresence]
   )
 
-  // Suggested users formatted for display (People You May Know)
-  const suggestedContactsFormatted = useMemo(() => {
-    return suggestedUsers.map((user) => ({
-      id: user.id,
-      name: user.full_name,
-      full_name: user.full_name,
-      avatarUrl: user.avatar_url,
-      avatar_url: user.avatar_url,
-      status: user.status || 'offline',
-      lastSeen: user.last_seen,
-    }))
-  }, [suggestedUsers])
-
   return (
     <div className="flex min-h-screen px-1 sm:px-2 2xl:px-6 ">
       {/* Main Content — global LeftSidebar is provided by ConditionalAppSidebar */}
@@ -144,7 +124,6 @@ const FeedLayout = ({ children }) => {
           birthdays={birthdays}
           contacts={friendsList}
           ads={ads}
-          onlineContacts={suggestedContactsFormatted}
         />
       </div>
 

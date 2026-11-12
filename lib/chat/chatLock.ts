@@ -2,6 +2,7 @@ import crypto from 'crypto'
 import jwt from 'jsonwebtoken'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { errorResponse, forbiddenResponse } from '@/lib/api-utils'
+import { requireSigningSecret } from '@/lib/security/secrets'
 
 export class ChatLockAuthError extends Error {
   status = 403
@@ -24,12 +25,10 @@ type ChatLockTokenPayload = {
 }
 
 function getChatLockSecret(): string {
-  return (
-    process.env.CHAT_LOCK_SECRET ||
-    process.env.AUTH_OTP_SECRET ||
-    process.env.SUPABASE_SERVICE_ROLE_KEY ||
-    'cribstalk-chat-lock-dev'
-  )
+  return requireSigningSecret(['CHAT_LOCK_SECRET', 'AUTH_OTP_SECRET'], {
+    label: 'CHAT_LOCK_SECRET',
+    allowDevFallback: 'cribstalk-chat-lock-dev',
+  })
 }
 
 export function chatLockedResponse(message = 'Authentication required to access this locked chat') {

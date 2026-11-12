@@ -5,6 +5,8 @@ import { formatDistanceToNow } from 'date-fns'
 import { Send, Trash2, Smile, Loader2, Flag } from '@/shared/icons'
 import { useGroupPostComments, GroupPostComment } from '@/shared/hooks/useGroupPostComments'
 import { useAuth } from '@/contexts/AuthContext'
+import TextFieldSelectionToolbar from '@/features/chat/richtext/TextFieldSelectionToolbar'
+import ChatRichTextRenderer from '@/features/chat/richtext/ChatRichTextRenderer'
 import toast from 'react-hot-toast'
 
 interface GroupPostCommentsSectionProps {
@@ -16,6 +18,11 @@ interface GroupPostCommentsSectionProps {
 
 const flattenReplies = (replies: GroupPostComment[]): GroupPostComment[] =>
   replies.flatMap(reply => [reply, ...flattenReplies(reply.replies || [])])
+
+const resizeCommentField = (field: HTMLTextAreaElement) => {
+  field.style.height = 'auto'
+  field.style.height = `${field.scrollHeight}px`
+}
 
 const GroupPostCommentsSection: React.FC<GroupPostCommentsSectionProps> = ({
   groupId,
@@ -30,7 +37,7 @@ const GroupPostCommentsSection: React.FC<GroupPostCommentsSectionProps> = ({
   const [replyContent, setReplyContent] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isReplySubmitting, setIsReplySubmitting] = useState(false)
-  const commentInputRef = useRef<HTMLInputElement | null>(null)
+  const commentInputRef = useRef<HTMLTextAreaElement | null>(null)
 
   const userInitial = (user?.user_metadata?.full_name || user?.email || 'U').charAt(0).toUpperCase()
 
@@ -42,11 +49,12 @@ const GroupPostCommentsSection: React.FC<GroupPostCommentsSectionProps> = ({
     const { error } = await addComment(newComment)
     if (!error) {
       setNewComment('')
+      commentInputRef.current?.style.removeProperty('height')
     }
     setIsSubmitting(false)
   }
 
-  const handleCommentKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+  const handleCommentKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey && newComment.trim()) {
       e.preventDefault()
       handleSubmitComment(e as unknown as React.FormEvent)
@@ -65,7 +73,7 @@ const GroupPostCommentsSection: React.FC<GroupPostCommentsSectionProps> = ({
     setIsReplySubmitting(false)
   }
 
-  const handleReplyKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, parentId: string) => {
+  const handleReplyKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>, parentId: string) => {
     if (e.key === 'Enter' && !e.shiftKey && replyContent.trim()) {
       e.preventDefault()
       handleSubmitReply(parentId)
@@ -144,15 +152,23 @@ const GroupPostCommentsSection: React.FC<GroupPostCommentsSectionProps> = ({
             )}
           </div>
           <form onSubmit={handleSubmitComment} className="relative flex flex-1 items-center">
-            <input
+            <textarea
               ref={commentInputRef}
-              type="text"
+              rows={1}
               value={newComment}
-              onChange={(e) => setNewComment(e.target.value)}
+              onChange={(e) => {
+                setNewComment(e.target.value)
+                resizeCommentField(e.currentTarget)
+              }}
               onKeyDown={handleCommentKeyDown}
               placeholder="Write a comment..."
-              className="w-full rounded-full bg-gray-100 py-2 pl-4 pr-12 text-sm text-gray-700 outline-none placeholder:text-gray-400 focus:bg-gray-50 focus:ring-1 focus:ring-gray-200"
+              className="w-full min-h-9 max-h-28 resize-none rounded-2xl bg-gray-100 py-2 pl-4 pr-12 text-sm text-gray-700 outline-none placeholder:text-gray-400 focus:bg-gray-50 focus:ring-1 focus:ring-gray-200"
               maxLength={1000}
+              disabled={isSubmitting}
+            />
+            <TextFieldSelectionToolbar
+              editorRef={commentInputRef}
+              onChange={setNewComment}
               disabled={isSubmitting}
             />
             <div className="absolute right-2 flex items-center gap-1">
@@ -187,7 +203,7 @@ interface FBGroupCommentItemProps {
   replyContent: string
   setReplyContent: React.Dispatch<React.SetStateAction<string>>
   onSubmitReply: (parentId: string) => void
-  onReplyKeyDown: (e: React.KeyboardEvent<HTMLInputElement>, parentId: string) => void
+  onReplyKeyDown: (e: React.KeyboardEvent<HTMLTextAreaElement>, parentId: string) => void
   isReplySubmitting: boolean
   currentUserId?: string
   depth?: number
@@ -208,6 +224,7 @@ const FBGroupCommentItem: React.FC<FBGroupCommentItemProps> = ({
   depth = 0
 }) => {
   const [showMenu, setShowMenu] = useState(false)
+  const replyInputRef = useRef<HTMLTextAreaElement | null>(null)
   const isAuthor = currentUserId === comment.author_id
 
   const timeAgo = formatDistanceToNow(new Date(comment.created_at), { addSuffix: false })
@@ -245,7 +262,11 @@ const FBGroupCommentItem: React.FC<FBGroupCommentItemProps> = ({
               <span className="text-[13px] font-semibold text-gray-900 leading-tight">
                 {comment.author?.full_name || comment.author?.username || 'Unknown'}
               </span>
-              <p className="text-[13px] text-gray-700 leading-snug whitespace-pre-wrap break-words">{comment.content}</p>
+              <ChatRichTextRenderer
+                content={comment.content}
+                inheritColor
+                contentClassName="text-[13px] text-gray-700 leading-snug whitespace-pre-wrap break-words"
+              />
             </div>
 
             {/* Three-dot menu on hover */}
@@ -298,15 +319,24 @@ const FBGroupCommentItem: React.FC<FBGroupCommentItemProps> = ({
                 {(currentUserId || 'U').charAt(0).toUpperCase()}
               </div>
               <div className="relative flex flex-1 items-center">
-                <input
-                  type="text"
+                <textarea
+                  ref={replyInputRef}
+                  rows={1}
                   value={replyContent}
-                  onChange={(e) => setReplyContent(e.target.value)}
+                  onChange={(e) => {
+                    setReplyContent(e.target.value)
+                    resizeCommentField(e.currentTarget)
+                  }}
                   onKeyDown={(e) => onReplyKeyDown(e, comment.id)}
                   placeholder={`Reply to ${comment.author?.full_name || 'user'}...`}
-                  className="w-full rounded-full bg-gray-100 py-1.5 pl-3 pr-10 text-xs text-gray-700 outline-none placeholder:text-gray-400 focus:ring-1 focus:ring-gray-200"
+                  className="w-full min-h-8 max-h-28 resize-none rounded-2xl bg-gray-100 py-1.5 pl-3 pr-10 text-xs text-gray-700 outline-none placeholder:text-gray-400 focus:ring-1 focus:ring-gray-200"
                   maxLength={500}
                   autoFocus
+                />
+                <TextFieldSelectionToolbar
+                  editorRef={replyInputRef}
+                  onChange={setReplyContent}
+                  disabled={isReplySubmitting}
                 />
                 <div className="absolute right-1.5 flex items-center">
                   {replyContent.trim() && (

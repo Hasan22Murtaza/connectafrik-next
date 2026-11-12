@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { getAuthenticatedUser, createServiceClient } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
 import { deleteUserAccount } from '@/lib/account/deleteAccount'
+import { pickAllowedProfileUpdates } from '@/lib/security/profileUpdates'
 /** Client only uses `online` + `null` (left); keep legacy values for old rows / clients. */
 const VALID_STATUSES = ['online', 'away', 'busy', 'offline'] as const
 
@@ -176,15 +177,18 @@ export async function PATCH(request: NextRequest) {
     }
 
     if (hasProfile) {
+      const allowed = pickAllowedProfileUpdates(profilePart)
+      if (!allowed) {
+        if (hasPresence && presenceJson) {
+          return jsonResponse({ data: null, presence: presenceJson })
+        }
+        return errorResponse('No updatable fields', 400)
+      }
+
       const updates: Record<string, unknown> = {
-        ...profilePart,
+        ...allowed,
         updated_at: new Date().toISOString(),
       }
-      delete updates.id
-      delete updates.created_at
-      // Optional columns many DBs omit; UI uses structured fields + formattedAddress in client state.
-      delete updates.location
-      delete updates.region
 
       const { data: profile, error } = await supabase
         .from('profiles')

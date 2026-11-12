@@ -16,6 +16,11 @@ import {
   sanitizeViewOnceMessage,
   viewOnceThreadPreview,
 } from '@/lib/chat/chatViewOnce'
+import {
+  computeMessageExpiresAt,
+  normalizeDisappearingDurationSec,
+  purgeExpiredMessagesForThread,
+} from '@/lib/chat/chatDisappearingMessages'
 import { isEncodedMessage } from '@/lib/chat/messageCodec'
 import { isMessageE2eeEnabledForUser } from '@/lib/message-e2ee/flag'
 
@@ -95,7 +100,10 @@ const loadSignalEnvelopes = async (serviceClient: any, message: any, readerId: s
 const enrichMessageResponse = async (serviceClient: any, message: any, fallbackReaderId: string) => {
   const [readsRes, attachmentsRes, withEnvelopes] = await Promise.all([
     serviceClient.from('message_reads').select('user_id').eq('message_id', message.id),
-    serviceClient.from('message_attachments').select('*').eq('message_id', message.id),
+    serviceClient
+      .from('message_attachments')
+      .select('id, message_id, file_name, file_size, file_type, file_url')
+      .eq('message_id', message.id),
     loadSignalEnvelopes(serviceClient, message, fallbackReaderId),
   ])
   const rawReadBy = (readsRes.data || []).map((r: any) => r.user_id)
@@ -130,6 +138,8 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
     const lockedDenial = await requireUnlockedLockedThread(request, serviceClient, user.id, threadId)
     if (lockedDenial) return lockedDenial
+
+    await purgeExpiredMessagesForThread(serviceClient, threadId)
 
     const { searchParams } = new URL(request.url)
     const parsedLimit = parseInt(searchParams.get('limit') || '20', 10)
@@ -186,7 +196,10 @@ export async function GET(request: NextRequest, context: RouteContext) {
     const messageIds = list.map((m: any) => m.id)
     const [readsRes, attachmentsRes, reactionsRes] = await Promise.all([
       serviceClient.from('message_reads').select('message_id, user_id').in('message_id', messageIds),
-      serviceClient.from('message_attachments').select('*').in('message_id', messageIds),
+      serviceClient
+        .from('message_attachments')
+        .select('id, message_id, file_name, file_size, file_type, file_url')
+        .in('message_id', messageIds),
       serviceClient.from('message_reactions').select('message_id, emoji, user_id').in('message_id', messageIds),
     ])
 
@@ -287,25 +300,30 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
     const {
       checkParentalRestriction,
+      isThreadWithFamilyParent,
       parentalDecisionResponse,
       recordActivityEvent,
       resolveParentalMessageKind,
     } = await import('@/lib/family')
-    const parentalMessageKind = resolveParentalMessageKind({
-      message_type,
-      content,
-      attachments,
-      metadata: metadata && typeof metadata === 'object' ? metadata : null,
-    })
-    const parental = await checkParentalRestriction(serviceClient, user.id, 'messaging', {
-      messageKind: parentalMessageKind,
-    })
-    const parentalDenied = parentalDecisionResponse(parental)
-    if (parentalDenied) return parentalDenied
-    // Screen-time gate (only when enabled for managed child/teen)
-    const screenGate = await checkParentalRestriction(serviceClient, user.id, 'screen_time')
-    const screenDenied = parentalDecisionResponse(screenGate)
-    if (screenDenied) return screenDenied
+    // Child/teen may always message a family parent even when messaging is locked.
+    const messagingParent = await isThreadWithFamilyParent(serviceClient, user.id, threadId)
+    if (!messagingParent) {
+      const parentalMessageKind = resolveParentalMessageKind({
+        message_type,
+        content,
+        attachments,
+        metadata: metadata && typeof metadata === 'object' ? metadata : null,
+      })
+      const parental = await checkParentalRestriction(serviceClient, user.id, 'messaging', {
+        messageKind: parentalMessageKind,
+      })
+      const parentalDenied = parentalDecisionResponse(parental)
+      if (parentalDenied) return parentalDenied
+      // Screen-time gate (only when enabled for managed child/teen)
+      const screenGate = await checkParentalRestriction(serviceClient, user.id, 'screen_time')
+      const screenDenied = parentalDecisionResponse(screenGate)
+      if (screenDenied) return screenDenied
+    }
 
     let safeContent = typeof content === 'string' ? content : ''
     const e2eeVersionRaw = body.e2ee_version === 2 || body.e2ee_version === '2'
@@ -402,6 +420,29 @@ export async function POST(request: NextRequest, context: RouteContext) {
     const now = new Date().toISOString()
     const normalizedMessageType = message_type || 'text'
     const incomingIdentity = extractCallIdentity(metadata)
+
+    const { data: threadTimer } = await serviceClient
+      .from('chat_threads')
+      .select('disappearing_duration_sec')
+      .eq('id', threadId)
+      .maybeSingle()
+    const disappearingDurationSec = normalizeDisappearingDurationSec(
+      threadTimer?.disappearing_duration_sec
+    )
+    const skipDisappearingExpiry =
+      DEDUPED_CALL_SIGNAL_TYPES.has(normalizedMessageType) ||
+      normalizedMessageType === 'initiated' ||
+      normalizedMessageType === 'ringing' ||
+      normalizedMessageType === 'failed' ||
+      normalizedMessageType === 'call_notification' ||
+      normalizedMessageType === 'accepted_on_another_device' ||
+      normalizedMessageType === 'group_member_joined' ||
+      normalizedMessageType === 'group_member_left' ||
+      normalizedMessageType === 'disappearing_messages' ||
+      normalizedMessageType === 'marketplace_system'
+    const messageExpiresAt = skipDisappearingExpiry
+      ? null
+      : computeMessageExpiresAt(disappearingDurationSec, new Date(now))
 
     if (DEDUPED_CALL_SIGNAL_TYPES.has(normalizedMessageType)) {
       const { data: sameTypeMessages, error: sameTypeError } = await serviceClient
@@ -509,6 +550,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
         reply_to_id: reply_to_id || null,
         ...(typeof is_forward === 'boolean' ? { is_forward } : {}),
         ...(wantsViewOnce ? { view_once: true } : {}),
+        ...(messageExpiresAt ? { expires_at: messageExpiresAt } : {}),
         ...(wantsE2ee
           ? {
               ciphertext: sealedCiphertext,
@@ -584,7 +626,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
     const { data: attData } = await serviceClient
       .from('message_attachments')
-      .select('*')
+      .select('id, message_id, file_name, file_size, file_type, file_url')
       .eq('message_id', message.id)
 
     const result = sanitizeViewOnceMessage({

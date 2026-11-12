@@ -47,7 +47,6 @@ import ShareModal from '@/features/social/components/ShareModal'
 import { useMembers } from '@/shared/hooks/useMembers'
 import { sendNotification } from '@/shared/services/notificationService'
 import { useGroupEvents } from '@/shared/hooks/useGroupEvents'
-import { getCategoryInfoLarge } from '@/shared/utils/groupUtils'
 import {
   canApproveGroupJoinRequests,
   canEditGroupSettings,
@@ -96,6 +95,8 @@ type GroupMediaItem = {
 
 type GroupTab = 'posts' | 'events' | 'media' | 'files' | 'about' | 'members' | 'requests' | 'complaints'
 
+const DEFAULT_GROUP_IMAGE = '/assets/images/group-dp.svg'
+
 const GroupDetailPage: React.FC = () => {
   const params = useParams()
   const router = useRouter()
@@ -130,6 +131,7 @@ const GroupDetailPage: React.FC = () => {
     () => getCachedManagedGroups(user?.id) ?? [],
   )
   const [loading, setLoading] = useState(true)
+  const [failedBannerUrl, setFailedBannerUrl] = useState<string | null>(null)
   const [isJoining, setIsJoining] = useState(false)
   const [activeTab, setActiveTab] = useState<GroupTab>(() => {
     if (tabQueryParam === 'requests' || tabQueryParam === 'members' || tabQueryParam === 'complaints') return tabQueryParam
@@ -522,9 +524,9 @@ const GroupDetailPage: React.FC = () => {
   // Show loading state first
   if (authLoading || loading) {
     return (
-      <div className="mx-auto flex min-h-screen gap-4 px-2 py-5 sm:gap-6 sm:px-6">
+      <div className="min-h-screen w-full min-w-0">
         {/* Keep Groups Sidebar visible while group page loads */}
-        <aside className="sticky top-[73px] hidden h-[calc(100dvh-73px)] w-64 shrink-0 self-start overflow-y-auto border-r border-border-subtle bg-background px-3 py-1 scrollbar-hover lg:block xl:w-72">
+        <aside className="fixed top-[73px] px-4 hidden h-[calc(100dvh-73px)] shrink-0 self-start overflow-y-auto bg-background py-4 md:block">
           <GroupsSidebar
             view="group-detail"
             onViewChange={(nextView) =>
@@ -538,7 +540,7 @@ const GroupDetailPage: React.FC = () => {
         </aside>
 
         {/* Group page shimmer */}
-        <main className="min-w-0 flex-1">
+        <main className="flex-1 max-w-full px-4 py-4 md:ml-74">
           <GroupDetailPageShimmer />
         </main>
       </div>
@@ -592,10 +594,8 @@ const GroupDetailPage: React.FC = () => {
   const feedPosts = canModerateContent
     ? groupPosts.filter((post) => post.moderation_status !== 'pending' && post.moderation_status !== 'rejected')
     : groupPosts.filter((post) => post.moderation_status !== 'rejected')
-  const categoryInfo = getCategoryInfoLarge(group.category)
-
   return (
-    <div className="mx-auto flex min-h-screen  gap-4 px-2 py-5 sm:gap-6 sm:px-6">
+    <div className="min-h-screen  w-full min-w-0">
 
       <aside className="fixed top-[73px] px-4  hidden h-[calc(100dvh-73px)]  shrink-0 self-start overflow-y-auto  bg-background  py-4 md:block">
         <GroupsSidebar
@@ -614,19 +614,18 @@ const GroupDetailPage: React.FC = () => {
         <div className="bg-surface pt-2 pb-0 px-2 rounded-2xl shadow-sm overflow-hidden">
         {/* Banner */}
         <div className="relative">
-          {group.banner_url ? (
-            <div className="w-full sm:h-80 h-50">
-              <img
-                src={group.banner_url}
-                alt={group.name}
-                className="w-full h-full object-cover rounded-tl-2xl rounded-tr-2xl"
-              />
-            </div>
-          ) : (
-            <div className={`w-full sm:h-80 h-50 flex items-center justify-center ${categoryInfo.color}`}>
-              <span className="text-6xl">{categoryInfo.icon}</span>
-            </div>
-          )}
+          <div className="w-full sm:h-80 h-50">
+            <img
+              src={group.banner_url && failedBannerUrl !== group.banner_url ? group.banner_url : DEFAULT_GROUP_IMAGE}
+              alt={group.name}
+              onError={(event) => {
+                if (event.currentTarget.getAttribute('src') !== DEFAULT_GROUP_IMAGE && group.banner_url) {
+                  setFailedBannerUrl(group.banner_url)
+                }
+              }}
+              className="w-full h-full object-cover rounded-tl-2xl rounded-tr-2xl"
+            />
+          </div>
         </div>
 
         {/* Sticky Header */}
