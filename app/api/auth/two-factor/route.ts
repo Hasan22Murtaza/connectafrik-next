@@ -18,27 +18,22 @@ export async function POST(request: NextRequest) {
     const serviceClient = createServiceClient()
     const now = new Date().toISOString()
 
-    if (!enabled) {
-      const { error } = await serviceClient
-        .from('profiles')
-        .update({ two_factor_enabled: false, updated_at: now })
-        .eq('id', user.id)
-
-      if (error) return errorResponse(error.message, 400)
-      return jsonResponse({ two_factor_enabled: false })
-    }
-
     const email = user.email?.trim().toLowerCase()
     if (!email) {
-      return errorResponse('Add an email address to enable two-factor authentication.', 400)
+      return errorResponse('Add an email address to manage two-factor authentication.', 400)
     }
 
+    // Enabling and disabling both require a fresh OTP (step-up).
     if (!code) {
       const otp = await sendTwoFactorOtp(serviceClient, email)
       if (otp.error) {
         return errorResponse(otp.error, otp.cooldown ? 429 : 500)
       }
-      return jsonResponse({ otp_sent: true, two_factor_enabled: false })
+      return jsonResponse({
+        otp_sent: true,
+        two_factor_enabled: enabled ? false : true,
+        pending_action: enabled ? 'enable' : 'disable',
+      })
     }
 
     const verifyResult = await verifyStoredEmailOtp({
@@ -55,11 +50,11 @@ export async function POST(request: NextRequest) {
 
     const { error } = await serviceClient
       .from('profiles')
-      .update({ two_factor_enabled: true, updated_at: now })
+      .update({ two_factor_enabled: enabled, updated_at: now })
       .eq('id', user.id)
 
     if (error) return errorResponse(error.message, 400)
-    return jsonResponse({ two_factor_enabled: true })
+    return jsonResponse({ two_factor_enabled: enabled })
   } catch (error: unknown) {
     if (
       error instanceof Error &&

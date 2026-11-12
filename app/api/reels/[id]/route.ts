@@ -30,6 +30,14 @@ export async function GET(
 
     try {
       const { user } = await getAuthenticatedUser(request)
+
+      const { checkParentalRestriction, parentalDecisionResponse } = await import('@/lib/family')
+      const parental = await checkParentalRestriction(supabase, user.id, 'reels', {
+        reelCategory: typeof reel.category === 'string' ? reel.category : undefined,
+      })
+      const parentalDenied = parentalDecisionResponse(parental)
+      if (parentalDenied) return parentalDenied
+
       const [likeRes, saveRes, repostRes, followRes, viewRes] = await Promise.all([
         supabase.from('reel_likes').select('id').eq('reel_id', id).eq('user_id', user.id).maybeSingle(),
         supabase.from('reel_saves').select('id').eq('reel_id', id).eq('user_id', user.id).maybeSingle(),

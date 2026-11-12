@@ -259,20 +259,28 @@ async function resolveTargetUserIds(
   actorId: string,
   targetUserId?: string | null
 ): Promise<string[]> {
-  if (targetUserId && targetUserId.trim()) {
-    const normalizedTarget = targetUserId.trim()
-    
-    if (normalizedTarget !== actorId) {
-      return [normalizedTarget]
-    }
-  }
   const { data: rows } = await serviceClient
     .from('chat_participants')
     .select('user_id')
     .eq('thread_id', threadId)
     .neq('user_id', actorId)
-  const ids = (rows || []).map((r: { user_id: string }) => r.user_id).filter(Boolean)
-  return Array.from(new Set(ids))
+  const participantIds = Array.from(
+    new Set((rows || []).map((r: { user_id: string }) => r.user_id).filter(Boolean))
+  )
+
+  if (targetUserId && targetUserId.trim()) {
+    const normalizedTarget = targetUserId.trim()
+    if (normalizedTarget === actorId) {
+      return participantIds
+    }
+    // Only ring users who are members of this thread (prevents push spam/IDOR).
+    if (!participantIds.includes(normalizedTarget)) {
+      return []
+    }
+    return [normalizedTarget]
+  }
+
+  return participantIds
 }
 
 async function assertThreadMember(serviceClient: ServiceClient, threadId: string, userId: string) {
@@ -740,6 +748,14 @@ export async function POST(request: NextRequest, context: RouteContext) {
     )
 
     const recipients = await resolveTargetUserIds(serviceClient, threadId, user.id, target_user_id || undefined)
+    if (
+      typeof target_user_id === 'string' &&
+      target_user_id.trim() &&
+      target_user_id.trim() !== user.id &&
+      recipients.length === 0
+    ) {
+      return errorResponse('target_user_id must be a participant of this thread', 403)
+    }
     if (recipients.length > 0) {
       const sentAt = new Date().toISOString()
       const pushData = toPushDataRecord({

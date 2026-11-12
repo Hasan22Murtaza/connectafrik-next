@@ -8,25 +8,26 @@ const corsHeaders = {
 }
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
 if (!supabaseUrl || !supabaseServiceKey) {
-  console.error('Missing Supabase environment variables')
+  console.error('Missing Supabase environment variables (SUPABASE_SERVICE_ROLE_KEY required for FCM)')
 }
 
-const supabase = createClient(supabaseUrl, supabaseServiceKey)
+const supabase = supabaseServiceKey
+  ? createClient(supabaseUrl, supabaseServiceKey)
+  : null
 
-// Helper to get authenticated user from request
 async function getAuthenticatedUser(request: NextRequest) {
   const authHeader = request.headers.get('authorization')
-  
+
   if (!authHeader) {
     return null
   }
 
   try {
-    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+    const authClient = createClient(supabaseUrl, supabaseAnonKey, {
       global: {
         headers: {
           Authorization: authHeader,
@@ -34,8 +35,11 @@ async function getAuthenticatedUser(request: NextRequest) {
       },
     })
 
-    const { data: { user }, error } = await supabase.auth.getUser()
-    
+    const {
+      data: { user },
+      error,
+    } = await authClient.auth.getUser()
+
     if (error || !user) {
       return null
     }
@@ -51,31 +55,50 @@ export async function OPTIONS() {
   return new NextResponse('ok', { headers: corsHeaders })
 }
 
-// GET /api/fcm/token - Get FCM token status
+// GET /api/fcm/token - Get FCM token status for the authenticated user only
 export async function GET(request: NextRequest) {
   try {
+    if (!supabase) {
+      return NextResponse.json(
+        { success: false, error: 'Server misconfigured', tokens: [] },
+        { status: 500, headers: corsHeaders }
+      )
+    }
+
+    const user = await getAuthenticatedUser(request)
+    if (!user) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Unauthorized. Valid authorization token is required',
+          tokens: [],
+        },
+        {
+          status: 401,
+          headers: corsHeaders,
+        }
+      )
+    }
+
     const { searchParams } = new URL(request.url)
     const providedUserId = searchParams.get('user_id')
     const device_id = searchParams.get('device_id')
 
-    // Get user_id from authenticated user or from query params
-    let user_id = providedUserId || null
-    if (!user_id) {
-      const user = await getAuthenticatedUser(request)
-      if (!user) {
-        return NextResponse.json(
-          { 
-            success: false,
-            error: 'Unauthorized. Please provide user_id query parameter or valid authorization token' 
-          },
-          { 
-            status: 401,
-            headers: corsHeaders
-          }
-        )
-      }
-      user_id = user.id
+    if (providedUserId && providedUserId !== user.id) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'user_id does not match authenticated user',
+          tokens: [],
+        },
+        {
+          status: 403,
+          headers: corsHeaders,
+        }
+      )
     }
+
+    const user_id = user.id
 
     let tokenQuery = supabase
       .from('fcm_tokens')
@@ -90,14 +113,14 @@ export async function GET(request: NextRequest) {
     if (error) {
       console.error('❌ Error fetching FCM tokens:', error)
       return NextResponse.json(
-        { 
+        {
           success: false,
           error: 'Error fetching FCM tokens',
-          tokens: []
+          tokens: [],
         },
-        { 
+        {
           status: 400,
-          headers: corsHeaders
+          headers: corsHeaders,
         }
       )
     }
@@ -107,7 +130,7 @@ export async function GET(request: NextRequest) {
         success: true,
         tokens: tokens || [],
         count: tokens?.length || 0,
-        active_count: tokens?.filter(t => t.is_active).length || 0
+        active_count: tokens?.filter((t) => t.is_active).length || 0,
       },
       {
         headers: corsHeaders,
@@ -115,12 +138,11 @@ export async function GET(request: NextRequest) {
     )
   } catch (error) {
     console.error('❌ Error in FCM token status API:', error)
-    const errorMessage = error instanceof Error ? error.message : String(error)
     return NextResponse.json(
-      { 
+      {
         success: false,
-        error: errorMessage,
-        tokens: []
+        error: 'Internal server error',
+        tokens: [],
       },
       {
         status: 500,
@@ -130,27 +152,49 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// DELETE /api/fcm/token - Remove/deactivate FCM token
+// DELETE /api/fcm/token - Deactivate FCM token for the authenticated user only
 export async function DELETE(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url)
-    const user_id = searchParams.get('user_id')
-    const device_id = searchParams.get('device_id')
-    const fcm_token = searchParams.get('fcm_token')
-
-    // This endpoint is intentionally unauthenticated; user_id must be provided.
-    if (!user_id) {
+    if (!supabase) {
       return NextResponse.json(
-        { 
+        { success: false, error: 'Server misconfigured' },
+        { status: 500, headers: corsHeaders }
+      )
+    }
+
+    const user = await getAuthenticatedUser(request)
+    if (!user) {
+      return NextResponse.json(
+        {
           success: false,
-          error: 'user_id is required' 
+          error: 'Unauthorized. Valid authorization token is required',
         },
-        { 
-          status: 400,
-          headers: corsHeaders
+        {
+          status: 401,
+          headers: corsHeaders,
         }
       )
     }
+
+    const { searchParams } = new URL(request.url)
+    const providedUserId = searchParams.get('user_id')
+    const device_id = searchParams.get('device_id')
+    const fcm_token = searchParams.get('fcm_token')
+
+    if (providedUserId && providedUserId !== user.id) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'user_id does not match authenticated user',
+        },
+        {
+          status: 403,
+          headers: corsHeaders,
+        }
+      )
+    }
+
+    const user_id = user.id
 
     if (!device_id && !fcm_token) {
       return NextResponse.json(
@@ -172,8 +216,6 @@ export async function DELETE(request: NextRequest) {
       updated_at: deactivatedAt,
     }
 
-    // Match by device_id and/or fcm_token so logout still works when localStorage
-    // device_id drifted from the row stored at registration time.
     const errors: string[] = []
 
     if (device_id) {
@@ -202,13 +244,13 @@ export async function DELETE(request: NextRequest) {
 
     if (errors.length > 0) {
       return NextResponse.json(
-        { 
+        {
           success: false,
-          error: 'Error deactivating FCM token'
+          error: 'Error deactivating FCM token',
         },
-        { 
+        {
           status: 400,
-          headers: corsHeaders
+          headers: corsHeaders,
         }
       )
     }
@@ -216,7 +258,7 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json(
       {
         success: true,
-        message: 'FCM token deactivated successfully'
+        message: 'FCM token deactivated successfully',
       },
       {
         headers: corsHeaders,
@@ -224,11 +266,10 @@ export async function DELETE(request: NextRequest) {
     )
   } catch (error) {
     console.error('❌ Error in FCM token removal API:', error)
-    const errorMessage = error instanceof Error ? error.message : String(error)
     return NextResponse.json(
-      { 
+      {
         success: false,
-        error: errorMessage 
+        error: 'Internal server error',
       },
       {
         status: 500,

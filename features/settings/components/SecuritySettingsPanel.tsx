@@ -48,6 +48,7 @@ export function SecuritySettingsPanel() {
   const [isSaving, setIsSaving] = useState(false)
   const [showChangePasswordModal, setShowChangePasswordModal] = useState(false)
   const [showTwoFactorModal, setShowTwoFactorModal] = useState(false)
+  const [twoFactorMode, setTwoFactorMode] = useState<'enable' | 'disable'>('enable')
   const [twoFactorBusy, setTwoFactorBusy] = useState(false)
   const [twoFactorResending, setTwoFactorResending] = useState(false)
   const [twoFactorError, setTwoFactorError] = useState('')
@@ -112,24 +113,26 @@ export function SecuritySettingsPanel() {
         }
       }
 
-      if (enablingTwoFactor) {
+      if (enablingTwoFactor || disablingTwoFactor) {
         if (!user?.email?.trim()) {
-          toast.error('Add an email address to enable two-factor authentication.')
-          setSecurity((prev) => ({ ...prev, two_factor_enabled: false }))
+          toast.error('Add an email address to manage two-factor authentication.')
+          setSecurity((prev) => ({ ...prev, two_factor_enabled: saved.two_factor_enabled }))
           return
         }
-        await apiClient.post<{ otp_sent: boolean }>('/api/auth/two-factor', { enabled: true })
+        const mode = enablingTwoFactor ? 'enable' : 'disable'
+        await apiClient.post<{ otp_sent: boolean }>('/api/auth/two-factor', {
+          enabled: enablingTwoFactor,
+        })
+        setTwoFactorMode(mode)
         setTwoFactorError('')
         setShowTwoFactorModal(true)
-        toast.success('Enter the code we sent to your email to turn on two-factor authentication.')
+        toast.success(
+          enablingTwoFactor
+            ? 'Enter the code we sent to your email to turn on two-factor authentication.'
+            : 'Enter the code we sent to your email to turn off two-factor authentication.'
+        )
         setSaved((prev) => ({ ...prev, login_alerts: security.login_alerts }))
         return
-      }
-
-      if (disablingTwoFactor) {
-        await apiClient.post<{ two_factor_enabled: boolean }>('/api/auth/two-factor', {
-          enabled: false,
-        })
       }
 
       toast.success('Security settings updated successfully!')
@@ -153,7 +156,9 @@ export function SecuritySettingsPanel() {
     setTwoFactorResending(true)
     setTwoFactorError('')
     try {
-      await apiClient.post<{ otp_sent: boolean }>('/api/auth/two-factor', { enabled: true })
+      await apiClient.post<{ otp_sent: boolean }>('/api/auth/two-factor', {
+        enabled: twoFactorMode === 'enable',
+      })
       toast.success('Verification code sent.')
     } catch (err) {
       const message = err instanceof ApiError ? err.message : 'Could not resend the code.'
@@ -168,18 +173,21 @@ export function SecuritySettingsPanel() {
     setTwoFactorBusy(true)
     setTwoFactorError('')
     try {
+      const enabled = twoFactorMode === 'enable'
       await apiClient.post<{ two_factor_enabled: boolean }>('/api/auth/two-factor', {
-        enabled: true,
+        enabled,
         code,
       })
       await refetch()
       setSaved({
-        two_factor_enabled: true,
+        two_factor_enabled: enabled,
         login_alerts: security.login_alerts,
       })
-      setSecurity((prev) => ({ ...prev, two_factor_enabled: true }))
+      setSecurity((prev) => ({ ...prev, two_factor_enabled: enabled }))
       setShowTwoFactorModal(false)
-      toast.success('Two-factor authentication is on.')
+      toast.success(
+        enabled ? 'Two-factor authentication is on.' : 'Two-factor authentication is off.'
+      )
     } catch (err) {
       const message = err instanceof ApiError ? err.message : 'Could not verify that code.'
       setTwoFactorError(message)
@@ -365,6 +373,7 @@ export function SecuritySettingsPanel() {
       <TwoFactorSetupModal
         open={showTwoFactorModal}
         email={user?.email || ''}
+        mode={twoFactorMode}
         busy={twoFactorBusy}
         resending={twoFactorResending}
         error={twoFactorError}

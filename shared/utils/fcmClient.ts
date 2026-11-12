@@ -301,10 +301,18 @@ export const removeToken = async (): Promise<boolean> => {
 
     const { device_id } = getDeviceInfo()
 
+    const authToken = await getAccessToken()
+    if (!authToken) {
+      return false
+    }
+
     const url = `/api/fcm/token?user_id=${encodeURIComponent(userId)}${device_id ? `&device_id=${encodeURIComponent(device_id)}` : ''}`
     
     const response = await fetch(url, {
       method: 'DELETE',
+      headers: {
+        Authorization: `Bearer ${authToken}`,
+      },
     })
 
     if (!response.ok) {
@@ -358,12 +366,21 @@ export const deactivateTokenOnLogout = async (): Promise<void> => {
       fcmToken = null
     }
 
+    const authToken = await getAccessToken()
+    if (!authToken) {
+      console.warn('⚠️ Skipping FCM deactivate on logout: no access token')
+      return
+    }
+
     const params = new URLSearchParams({ user_id: user.id })
     if (device_id) params.set('device_id', device_id)
     if (fcmToken) params.set('fcm_token', fcmToken)
 
     const response = await fetch(`/api/fcm/token?${params.toString()}`, {
       method: 'DELETE',
+      headers: {
+        Authorization: `Bearer ${authToken}`,
+      },
     })
 
     if (response.ok) {

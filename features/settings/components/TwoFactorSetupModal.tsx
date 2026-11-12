@@ -8,6 +8,7 @@ import { maskEmail } from '@/lib/auth/format'
 type TwoFactorSetupModalProps = {
   open: boolean
   email: string
+  mode?: 'enable' | 'disable'
   busy: boolean
   resending: boolean
   error: string
@@ -19,6 +20,7 @@ type TwoFactorSetupModalProps = {
 export function TwoFactorSetupModal({
   open,
   email,
+  mode = 'enable',
   busy,
   resending,
   error,
@@ -60,7 +62,7 @@ export function TwoFactorSetupModal({
       >
         <div className="flex items-center justify-between border-b border-border-subtle px-5 py-4">
           <h2 id="two-factor-setup-title" className="text-lg font-semibold text-content">
-            Confirm two-factor authentication
+            {mode === 'disable' ? 'Turn off two-factor authentication' : 'Confirm two-factor authentication'}
           </h2>
           <button
             type="button"
@@ -81,7 +83,8 @@ export function TwoFactorSetupModal({
           className="space-y-5 p-5"
         >
           <p className="text-sm text-content-secondary">
-            Enter the 6-digit code sent to {maskEmail(email)} to turn on two-factor authentication.
+            Enter the 6-digit code sent to {maskEmail(email)} to{' '}
+            {mode === 'disable' ? 'turn off' : 'turn on'} two-factor authentication.
           </p>
           <OtpInput value={otp} onChange={setOtp} disabled={busy} idPrefix="two-factor-otp" />
           {error ? (
@@ -103,7 +106,7 @@ export function TwoFactorSetupModal({
             disabled={busy || code.length !== 6}
             className="btn-primary w-full disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {busy ? 'Verifying…' : 'Enable two-factor'}
+            {busy ? 'Verifying…' : mode === 'disable' ? 'Disable two-factor' : 'Enable two-factor'}
           </button>
         </form>
       </div>

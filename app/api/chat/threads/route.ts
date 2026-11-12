@@ -88,6 +88,23 @@ export async function POST(request: NextRequest) {
       if (memErr) return errorResponse(memErr.message, 400)
       if (!mem) return errorResponse('Not a member of this group', 403)
 
+      // Only active group members may be added as chat participants.
+      if (others.length > 0) {
+        const { data: memberRows, error: membersErr } = await serviceClient
+          .from('group_memberships')
+          .select('user_id')
+          .eq('group_id', effectiveGroupId)
+          .eq('status', 'active')
+          .in('user_id', others)
+
+        if (membersErr) return errorResponse(membersErr.message, 400)
+        const allowed = new Set((memberRows || []).map((r: { user_id: string }) => r.user_id))
+        const unauthorized = others.filter((id) => !allowed.has(id))
+        if (unauthorized.length > 0) {
+          return errorResponse('All participants must be active members of this group', 403)
+        }
+      }
+
       const { data: existingGroupThread } = await serviceClient
         .from('chat_threads')
         .select('id')

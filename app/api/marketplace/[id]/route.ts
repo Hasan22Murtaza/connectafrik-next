@@ -38,6 +38,13 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       supabase = createClient(supabaseUrl, supabaseAnonKey)
     }
 
+    if (userId && supabase) {
+      const { checkParentalRestriction, parentalDecisionResponse } = await import('@/lib/family')
+      const parental = await checkParentalRestriction(supabase, userId, 'marketplace')
+      const parentalDenied = parentalDecisionResponse(parental)
+      if (parentalDenied) return parentalDenied
+    }
+
     const { data: product, error } = await supabase
       .from('products')
       .select('*')

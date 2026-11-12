@@ -2,18 +2,23 @@ import { NextRequest } from 'next/server'
 import { getAuthenticatedUser } from '@/lib/supabase-server'
 import { errorResponse, jsonResponse, unauthorizedResponse } from '@/lib/api-utils'
 import { deleteFromBunny } from '@/lib/bunny'
+import { isOwnedBunnyPath } from '@/lib/security/bunnyOwnership'
 
 export const runtime = 'nodejs'
 
 export async function POST(request: NextRequest) {
   try {
-    await getAuthenticatedUser(request)
+    const { user } = await getAuthenticatedUser(request)
 
     const body = await request.json().catch(() => ({}))
     const target: string | undefined = body.url || body.path || body.key
 
-    if (!target) {
+    if (!target || typeof target !== 'string') {
       return errorResponse('Missing file url/path to delete', 400)
+    }
+
+    if (!isOwnedBunnyPath(target, user.id)) {
+      return errorResponse('Forbidden: you can only delete your own files', 403)
     }
 
     await deleteFromBunny(target)
