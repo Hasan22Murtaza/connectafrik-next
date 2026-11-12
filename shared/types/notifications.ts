@@ -7,7 +7,8 @@ export interface Notification {
   data?: Record<string, any>
   is_read: boolean
   created_at: string
-  updated_at: string
+  /** Not persisted on `notifications`; clients may fall back to `created_at`. */
+  updated_at?: string
 }
 
 export type NotificationType =
