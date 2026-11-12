@@ -13,7 +13,7 @@ export async function GET(
 ) {
   try {
     const { id } = await params
-    const { supabase } = await getAuthenticatedUser(request)
+    const { user, supabase } = await getAuthenticatedUser(request)
 
     const { data: row, error } = await supabase
       .from('friend_requests')
@@ -22,6 +22,10 @@ export async function GET(
       .single()
 
     if (error || !row) {
+      return errorResponse('Friend request not found', 404)
+    }
+
+    if (row.sender_id !== user.id && row.receiver_id !== user.id) {
       return errorResponse('Friend request not found', 404)
     }
 

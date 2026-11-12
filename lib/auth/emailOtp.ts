@@ -1,6 +1,7 @@
 import crypto from 'crypto'
 import jwt from 'jsonwebtoken'
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { requireSigningSecret } from '@/lib/security/secrets'
 import type { OtpPurpose, SignupProfileMetadata, VerificationTokenPayload } from './otpTypes'
 
 const OTP_LENGTH = 6
@@ -12,11 +13,10 @@ const MAX_VERIFY_ATTEMPTS = 5
 const VERIFICATION_TOKEN_TTL = '15m'
 
 function getOtpSecret(): string {
-  return (
-    process.env.AUTH_OTP_SECRET ||
-    process.env.SUPABASE_SERVICE_ROLE_KEY ||
-    'cribstalk-otp-dev-secret'
-  )
+  return requireSigningSecret(['AUTH_OTP_SECRET'], {
+    label: 'AUTH_OTP_SECRET',
+    allowDevFallback: 'cribstalk-otp-dev-secret',
+  })
 }
 
 export function generateOtpCode(): string {

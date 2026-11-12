@@ -5,6 +5,7 @@ import { lookupDirectThreadIdBetweenUsers } from '@/lib/chat/chatThreadLookup'
 import { isUserFamilyParentOf } from '@/lib/family'
 import { getRelationship } from '@/lib/privacy/access'
 import { sanitizeProfileForViewer } from '@/lib/privacy/sanitize'
+import { pickAllowedProfileUpdates } from '@/lib/security/profileUpdates'
 import { getSupabaseAndViewer, UUID_RE } from './_shared/resolve-user-request'
 
 export async function GET(
@@ -80,11 +81,16 @@ export async function PATCH(
     }
 
     const body = await request.json()
-    const updates = { ...body, updated_at: new Date().toISOString() } as Record<string, unknown>
-    delete updates.id
-    delete updates.created_at
-    delete updates.location
-    delete updates.region
+    if (!body || typeof body !== 'object' || Array.isArray(body)) {
+      return errorResponse('Invalid JSON body', 400)
+    }
+
+    const allowed = pickAllowedProfileUpdates(body as Record<string, unknown>)
+    if (!allowed) {
+      return errorResponse('No updatable fields', 400)
+    }
+
+    const updates = { ...allowed, updated_at: new Date().toISOString() }
 
     const { data: profile, error } = await supabase
       .from('profiles')
