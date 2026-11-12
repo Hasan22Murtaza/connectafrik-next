@@ -128,7 +128,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
         message: `Your achievement "${existing.title}" was verified.`,
         data: {
           achievement_id: id,
-          href: '/youth-leadership/achievements',
+          href: '/youth-leadership/progress?tab=achievements',
         },
       })
     }
@@ -147,7 +147,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
         data: {
           achievement_id: id,
           certificate_url: updates.certificate_url,
-          href: '/youth-leadership/achievements',
+          href: '/youth-leadership/progress?tab=achievements',
         },
       })
     }

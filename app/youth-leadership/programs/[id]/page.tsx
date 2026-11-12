@@ -11,11 +11,13 @@ import YouthShell from '@/features/youth-leadership/components/YouthShell'
 import StatusBadge from '@/features/youth-leadership/components/StatusBadge'
 import EmptyState from '@/features/youth-leadership/components/EmptyState'
 import SafetyReportButton from '@/features/youth-leadership/components/SafetyReportButton'
+import VerifiedBadge from '@/features/youth-leadership/components/VerifiedBadge'
+import YouthAvatar from '@/features/youth-leadership/components/YouthAvatar'
 import YouthFormModal, {
   YOUTH_FIELD,
   YouthFieldLabel,
 } from '@/features/youth-leadership/components/YouthFormModal'
-import { YOUTH_CARD } from '@/features/youth-leadership/constants/nav'
+import { YOUTH_CARD, YOUTH_CHIP } from '@/features/youth-leadership/constants/nav'
 import type {
   YouthApplicationQuestion,
   YouthProgram,
@@ -124,7 +126,7 @@ export default function YouthProgramDetailPage() {
   if (authLoading || loading) {
     return (
       <YouthShell title="Program">
-        <div className={`${YOUTH_CARD} h-64 animate-pulse bg-surface-secondary`} />
+        <div className={`${YOUTH_CARD} h-64 animate-pulse bg-surface-secondary/70`} />
         {dialog}
       </YouthShell>
     )
@@ -161,13 +163,27 @@ export default function YouthProgramDetailPage() {
   const canApply =
     program.status === 'published' &&
     (!application || ['draft', 'withdrawn'].includes(application.status))
-  const canWithdraw =
-    application && WITHDRAWABLE.has(application.status)
+  const canWithdraw = application && WITHDRAWABLE.has(application.status)
+  const verified = program.organization?.verification_status === 'verified'
+  const fillPct =
+    program.capacity != null && program.capacity > 0
+      ? Math.min(100, Math.round((program.seats_taken / program.capacity) * 100))
+      : null
 
   return (
     <YouthShell
       title={program.title}
-      subtitle={program.organization?.name || 'Youth Leadership program'}
+      subtitle={
+        <span className="inline-flex flex-wrap items-center gap-2">
+          <YouthAvatar
+            src={program.organization?.logo_url}
+            name={program.organization?.name || 'Organization'}
+            size="sm"
+          />
+          <span>{program.organization?.name || 'Youth Leadership program'}</span>
+          {verified ? <VerifiedBadge label="Verified organization" /> : null}
+        </span>
+      }
       actions={
         <div className="flex flex-wrap gap-2">
           {canApply ? (
@@ -193,7 +209,6 @@ export default function YouthProgramDetailPage() {
       <YouthFormModal
         open={showApplyModal}
         title="Apply to program"
-        description="Answer the questions below. You can save a draft and submit when ready."
         onClose={() => {
           if (!submitting) setShowApplyModal(false)
         }}
@@ -227,6 +242,11 @@ export default function YouthProgramDetailPage() {
         }
       >
         <div className="space-y-4">
+          {program.requires_guardian_approval ? (
+            <div className="rounded-xl border border-amber-500/25 bg-amber-500/10 px-3 py-3 text-sm text-amber-900 dark:text-amber-100">
+              This program requires guardian approval after you submit.
+            </div>
+          ) : null}
           {questions.map((q) => (
             <div key={q.id}>
               <YouthFieldLabel hint={q.required ? 'Required' : 'Optional'}>
@@ -250,92 +270,101 @@ export default function YouthProgramDetailPage() {
         </div>
       </YouthFormModal>
 
-      <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
+      <div className="grid gap-6 lg:grid-cols-[1.45fr_1fr]">
         <section className={YOUTH_CARD}>
           <div className="flex flex-wrap items-center gap-2">
             <StatusBadge status={program.status} />
             {enrollment ? <StatusBadge status={enrollment.status} /> : null}
+            {program.requires_guardian_approval ? (
+              <span className={YOUTH_CHIP}>Guardian approval required</span>
+            ) : null}
           </div>
 
           {program.description ? (
-            <p className="mt-4 whitespace-pre-wrap text-sm text-content-secondary">
+            <p className="mt-4 whitespace-pre-wrap text-sm leading-relaxed text-content-secondary">
               {program.description}
             </p>
           ) : null}
 
           {program.objectives ? (
-            <div className="mt-4">
-              <h3 className="text-sm font-semibold text-content-primary">Objectives</h3>
-              <p className="mt-1 whitespace-pre-wrap text-sm text-content-secondary">
+            <div className="mt-5">
+              <h3 className="text-sm font-semibold text-content">Objectives</h3>
+              <p className="mt-1.5 whitespace-pre-wrap text-sm leading-relaxed text-content-secondary">
                 {program.objectives}
               </p>
             </div>
           ) : null}
 
           {program.eligibility ? (
-            <div className="mt-4">
-              <h3 className="text-sm font-semibold text-content-primary">Eligibility</h3>
-              <p className="mt-1 whitespace-pre-wrap text-sm text-content-secondary">
+            <div className="mt-5">
+              <h3 className="text-sm font-semibold text-content">Eligibility</h3>
+              <p className="mt-1.5 whitespace-pre-wrap text-sm leading-relaxed text-content-secondary">
                 {program.eligibility}
               </p>
             </div>
           ) : null}
 
           {program.requirements ? (
-            <div className="mt-4">
-              <h3 className="text-sm font-semibold text-content-primary">Requirements</h3>
-              <p className="mt-1 whitespace-pre-wrap text-sm text-content-secondary">
+            <div className="mt-5">
+              <h3 className="text-sm font-semibold text-content">Requirements</h3>
+              <p className="mt-1.5 whitespace-pre-wrap text-sm leading-relaxed text-content-secondary">
                 {program.requirements}
               </p>
             </div>
           ) : null}
 
           {program.safety_information ? (
-            <div className="mt-4">
-              <h3 className="text-sm font-semibold text-content-primary">
-                Safety information
-              </h3>
-              <p className="mt-1 whitespace-pre-wrap text-sm text-content-secondary">
+            <div className="mt-5 rounded-xl border border-primary/20 bg-primary/5 px-4 py-3">
+              <h3 className="text-sm font-semibold text-content">Safety information</h3>
+              <p className="mt-1.5 whitespace-pre-wrap text-sm leading-relaxed text-content-secondary">
                 {program.safety_information}
               </p>
             </div>
-          ) : null}
+          ) : (
+            <div className="mt-5 rounded-xl border border-border bg-surface-secondary/50 px-4 py-3">
+              <h3 className="text-sm font-semibold text-content">Safety</h3>
+              <p className="mt-1.5 text-sm text-content-secondary">
+                Use Report if anything feels unsafe. Mentors and organizations are subject to
+                CribsSafe verification and community standards.
+              </p>
+            </div>
+          )}
 
           <dl className="mt-6 grid gap-3 text-sm sm:grid-cols-2">
-            <div>
-              <dt className="text-content-tertiary">Format</dt>
-              <dd className="capitalize text-content-primary">
+            <div className="rounded-xl bg-surface-secondary/50 px-3 py-3">
+              <dt className="text-xs text-content-tertiary">Format</dt>
+              <dd className="mt-1 capitalize text-content">
                 {program.format.replace(/_/g, ' ')}
               </dd>
             </div>
-            <div>
-              <dt className="text-content-tertiary">Location</dt>
-              <dd className="text-content-primary">
+            <div className="rounded-xl bg-surface-secondary/50 px-3 py-3">
+              <dt className="text-xs text-content-tertiary">Location</dt>
+              <dd className="mt-1 text-content">
                 {[program.location_region, program.country].filter(Boolean).join(', ') ||
                   '—'}
               </dd>
             </div>
-            <div>
-              <dt className="text-content-tertiary">Age range</dt>
-              <dd className="text-content-primary">
+            <div className="rounded-xl bg-surface-secondary/50 px-3 py-3">
+              <dt className="text-xs text-content-tertiary">Age range</dt>
+              <dd className="mt-1 text-content">
                 {program.minimum_age ?? '—'}–{program.maximum_age ?? '—'}
               </dd>
             </div>
-            <div>
-              <dt className="text-content-tertiary">Deadline</dt>
-              <dd className="text-content-primary">
+            <div className="rounded-xl bg-surface-secondary/50 px-3 py-3">
+              <dt className="text-xs text-content-tertiary">Deadline</dt>
+              <dd className="mt-1 text-content">
                 {program.application_deadline
                   ? new Date(program.application_deadline).toLocaleDateString()
                   : '—'}
               </dd>
             </div>
-            <div>
-              <dt className="text-content-tertiary">Schedule</dt>
-              <dd className="text-content-primary">{program.schedule || '—'}</dd>
+            <div className="rounded-xl bg-surface-secondary/50 px-3 py-3">
+              <dt className="text-xs text-content-tertiary">Schedule</dt>
+              <dd className="mt-1 text-content">{program.schedule || '—'}</dd>
             </div>
-            <div>
-              <dt className="text-content-tertiary">Seats</dt>
-              <dd className="text-content-primary">
+            <div className="rounded-xl bg-surface-secondary/50 px-3 py-3">
+              <dt className="text-xs text-content-tertiary">Seats</dt>
+              <dd className="mt-1 text-content">
                 {program.capacity == null
                   ? `${program.seats_taken} enrolled`
                   : `${program.seats_taken} / ${program.capacity}`}
@@ -343,13 +372,25 @@ export default function YouthProgramDetailPage() {
             </div>
           </dl>
 
+          {fillPct != null ? (
+            <div className="mt-5">
+              <div className="mb-1.5 flex justify-between text-xs text-content-secondary">
+                <span>Cohort seat allocation</span>
+                <span className="tabular-nums">{fillPct}%</span>
+              </div>
+              <div className="h-1.5 overflow-hidden rounded-full bg-surface-secondary">
+                <div
+                  className="h-full rounded-full bg-primary"
+                  style={{ width: `${fillPct}%` }}
+                />
+              </div>
+            </div>
+          ) : null}
+
           {program.required_skills?.length ? (
-            <div className="mt-4 flex flex-wrap gap-2">
+            <div className="mt-5 flex flex-wrap gap-2">
               {program.required_skills.map((skill) => (
-                <span
-                  key={skill}
-                  className="rounded-md bg-surface-secondary px-2 py-1 text-xs text-content-secondary"
-                >
+                <span key={skill} className={YOUTH_CHIP}>
                   {skill}
                 </span>
               ))}
@@ -360,17 +401,15 @@ export default function YouthProgramDetailPage() {
         <aside className="space-y-4">
           {application ? (
             <div className={YOUTH_CARD}>
-              <h3 className="text-sm font-semibold text-content-primary">
-                Your application
-              </h3>
+              <h3 className="text-sm font-semibold text-content">Your application</h3>
               <div className="mt-2">
                 <StatusBadge status={application.status} />
               </div>
               {application.guardian_approval_status &&
               application.guardian_approval_status !== 'not_required' ? (
-                <p className="mt-2 text-xs text-content-secondary">
+                <p className="mt-3 text-xs leading-relaxed text-content-secondary">
                   Guardian approval:{' '}
-                  <span className="capitalize">
+                  <span className="capitalize font-medium text-content">
                     {application.guardian_approval_status.replace(/_/g, ' ')}
                   </span>
                 </p>
@@ -391,7 +430,7 @@ export default function YouthProgramDetailPage() {
                 </button>
               ) : null}
               <Link
-                href="/youth-leadership/applications"
+                href="/youth-leadership?tab=applications"
                 className="mt-3 block text-center text-sm font-medium text-primary"
               >
                 View all applications
@@ -401,12 +440,12 @@ export default function YouthProgramDetailPage() {
 
           {enrollment ? (
             <div className={YOUTH_CARD}>
-              <h3 className="text-sm font-semibold text-content-primary">Enrollment</h3>
+              <h3 className="text-sm font-semibold text-content">Enrollment</h3>
               <div className="mt-2">
                 <StatusBadge status={enrollment.status} />
               </div>
               <Link
-                href="/youth-leadership/programs"
+                href="/youth-leadership?tab=enrolled"
                 className="mt-3 block text-sm font-medium text-primary"
               >
                 Go to My Programs
@@ -416,8 +455,8 @@ export default function YouthProgramDetailPage() {
 
           {canApply ? (
             <div className={YOUTH_CARD}>
-              <h3 className="text-sm font-semibold text-content-primary">Ready to apply?</h3>
-              <p className="mt-1 text-sm text-content-secondary">
+              <h3 className="text-sm font-semibold text-content">Ready to apply?</h3>
+              <p className="mt-1 text-sm leading-relaxed text-content-secondary">
                 Open the application form to answer a few questions and submit.
               </p>
               <button
@@ -429,6 +468,22 @@ export default function YouthProgramDetailPage() {
               </button>
             </div>
           ) : null}
+
+          <div className={YOUTH_CARD}>
+            <h3 className="text-sm font-semibold text-content">Need help?</h3>
+            <p className="mt-1 text-sm text-content-secondary">
+              Report unsafe behavior or suspicious contact at any time.
+            </p>
+            <div className="mt-3">
+              <SafetyReportButton
+                className="btn-secondary w-full text-sm"
+                context={{
+                  program_id: program.id,
+                  organization_id: program.organization_id,
+                }}
+              />
+            </div>
+          </div>
         </aside>
       </div>
     </YouthShell>

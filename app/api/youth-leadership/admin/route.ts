@@ -92,6 +92,7 @@ export async function GET(request: NextRequest) {
     const [
       { count: pendingOrgs },
       { count: publishedPrograms },
+      { count: pendingPrograms },
       { count: pendingMentors },
       { count: openSafety },
     ] = await Promise.all([
@@ -103,6 +104,10 @@ export async function GET(request: NextRequest) {
         .from('youth_programs')
         .select('*', { count: 'exact', head: true })
         .eq('status', 'published'),
+      supabase
+        .from('youth_programs')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'pending_review'),
       supabase
         .from('youth_mentors')
         .select('*', { count: 'exact', head: true })
@@ -117,6 +122,7 @@ export async function GET(request: NextRequest) {
       summary: {
         pending_organizations: pendingOrgs ?? 0,
         published_programs: publishedPrograms ?? 0,
+        pending_programs: pendingPrograms ?? 0,
         pending_mentors: pendingMentors ?? 0,
         open_safety_reports: openSafety ?? 0,
         total_applications: appsRes.count ?? 0,

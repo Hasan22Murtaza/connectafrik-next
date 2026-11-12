@@ -52,7 +52,11 @@ export async function GET(request: NextRequest) {
         if (status) query = query.eq('status', status)
       }
     } else if (!status) {
-      query = query.in('status', ['scheduled', 'ongoing'])
+      // Full list: include completed; upcoming-only stays active statuses
+      query = query.in(
+        'status',
+        upcoming ? ['scheduled', 'ongoing'] : ['scheduled', 'ongoing', 'completed']
+      )
     } else {
       query = query.eq('status', status)
     }

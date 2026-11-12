@@ -438,6 +438,7 @@
 
   --color-surface-canvas: var(--surface-canvas);
   --color-surface: var(--surface-primary);
+  --color-surface-primary: var(--surface-primary);
   --color-surface-secondary: var(--surface-secondary);
   --color-surface-tertiary: var(--surface-tertiary);
   --color-surface-elevated: var(--surface-elevated);
@@ -445,6 +446,7 @@
   --color-surface-input: var(--surface-input);
 
   --color-content: var(--content-primary);
+  --color-content-primary: var(--content-primary);
   --color-content-secondary: var(--content-secondary);
   --color-content-tertiary: var(--content-tertiary);
   --color-content-inverse: var(--content-inverse);

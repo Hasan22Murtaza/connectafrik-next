@@ -27,7 +27,7 @@ export default function StatusBadge({ status }: { status: string }) {
   const label = status.replace(/_/g, ' ')
   return (
     <span
-      className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium capitalize ${tone}`}
+      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium capitalize ${tone}`}
     >
       {label}
     </span>

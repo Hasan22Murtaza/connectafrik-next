@@ -221,7 +221,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
           program_id: program.id,
           application_id: id,
           status: nextStatus,
-          href: '/youth-leadership/applications',
+          href: '/youth-leadership?tab=applications',
         },
       })
     }

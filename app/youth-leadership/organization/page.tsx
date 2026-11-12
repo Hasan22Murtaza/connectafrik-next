@@ -14,7 +14,16 @@ import YouthFormModal, {
   YouthFieldLabel,
 } from '@/features/youth-leadership/components/YouthFormModal'
 import YouthAvatar from '@/features/youth-leadership/components/YouthAvatar'
-import { YOUTH_CARD, YOUTH_SECTION_TITLE } from '@/features/youth-leadership/constants/nav'
+import VerifiedBadge from '@/features/youth-leadership/components/VerifiedBadge'
+import YouthSkeleton from '@/features/youth-leadership/components/YouthSkeleton'
+import YouthSectionHeader from '@/features/youth-leadership/components/YouthSectionHeader'
+import { useYouthTab } from '@/features/youth-leadership/hooks/useYouthTab'
+import {
+  YOUTH_CARD,
+  YOUTH_ORGANIZATION_TABS,
+  YOUTH_SECTION_TITLE,
+  YOUTH_SELECT,
+} from '@/features/youth-leadership/constants/nav'
 import type {
   YouthOrganization,
   YouthProgram,
@@ -69,10 +78,14 @@ const EMPTY_PROGRAM_FORM = {
   maximum_age: '',
 }
 
+const ORG_TAB_IDS = YOUTH_ORGANIZATION_TABS.map((t) => t.id)
+type OrganizationTab = (typeof ORG_TAB_IDS)[number]
+
 function YouthOrganizationPageInner() {
   const { user, loading: authLoading } = useAuth()
   const searchParams = useSearchParams()
   const programQuery = searchParams.get('program') || ''
+  const [tab, setTab] = useYouthTab(ORG_TAB_IDS, 'overview')
 
   const [orgs, setOrgs] = useState<OrgRow[]>([])
   const [selectedOrgId, setSelectedOrgId] = useState('')
@@ -180,6 +193,10 @@ function YouthOrganizationPageInner() {
     })()
   }, [selectedProgramId, canCoordinate, loadApplications])
 
+  useEffect(() => {
+    if (programQuery) setTab('applications')
+  }, [programQuery, setTab])
+
   async function createOrg() {
     if (!orgForm.name.trim()) {
       toast.error('Organization name is required')
@@ -276,17 +293,36 @@ function YouthOrganizationPageInner() {
     setShowProgramModal(false)
   }
 
+  const orgSubtitle =
+    tab === 'programs'
+      ? 'Draft, publish, and manage programs for your organization.'
+      : tab === 'applications'
+        ? 'Review applications for the programs you coordinate.'
+        : 'Create an organization, publish programs, and review applications.'
+
   if (authLoading || loading) {
     return (
-      <YouthShell title="Organization">
-        <div className={`${YOUTH_CARD} h-48 animate-pulse bg-surface-secondary`} />
+      <YouthShell
+        title="Organization"
+        subtitle={orgSubtitle}
+        tabs={[...YOUTH_ORGANIZATION_TABS]}
+        activeTab={tab}
+        onTabChange={(id) => setTab(id as OrganizationTab)}
+      >
+        <YouthSkeleton count={3} variant="stat" />
       </YouthShell>
     )
   }
 
   if (!user) {
     return (
-      <YouthShell title="Organization">
+      <YouthShell
+        title="Organization"
+        subtitle={orgSubtitle}
+        tabs={[...YOUTH_ORGANIZATION_TABS]}
+        activeTab={tab}
+        onTabChange={(id) => setTab(id as OrganizationTab)}
+      >
         <EmptyState title="Sign in required" />
       </YouthShell>
     )
@@ -365,7 +401,6 @@ function YouthOrganizationPageInner() {
     <YouthFormModal
       open={showProgramModal}
       title="Create program"
-      description="Save a draft or publish immediately for applications."
       onClose={closeProgramModal}
       footer={
         <>
@@ -517,14 +552,18 @@ function YouthOrganizationPageInner() {
   return (
     <YouthShell
       title="Organization"
-      subtitle="Create an organization, publish programs, and review applications."
+      subtitle={orgSubtitle}
+      tabs={[...YOUTH_ORGANIZATION_TABS]}
+      activeTab={tab}
+      onTabChange={(id) => setTab(id as OrganizationTab)}
       actions={
         orgs.length > 0 ? (
           <div className="flex flex-wrap items-center gap-2">
             <select
-              className="rounded-lg border border-border bg-surface-primary px-3 py-2 text-sm"
+              className={YOUTH_SELECT}
               value={selectedOrgId}
               onChange={(e) => setSelectedOrgId(e.target.value)}
+              aria-label="Select organization"
             >
               {orgs.map((o) => (
                 <option key={o.id} value={o.id}>
@@ -563,195 +602,250 @@ function YouthOrganizationPageInner() {
           }
         />
       ) : (
-        <div className="space-y-6">
-          <section className={YOUTH_CARD}>
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <h2 className={YOUTH_SECTION_TITLE}>{selectedOrg?.name}</h2>
-                <p className="mt-1 text-sm text-content-secondary">
-                  {selectedOrg?.description || 'No description yet.'}
-                </p>
-              </div>
-              {selectedOrg ? <StatusBadge status={selectedOrg.verification_status} /> : null}
-            </div>
-            {analytics ? (
-              <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                {[
-                  { label: 'Programs', value: analytics.total_programs },
-                  { label: 'Active programs', value: analytics.active_programs },
-                  { label: 'Applications', value: analytics.total_applications },
-                  { label: 'Pending reviews', value: analytics.pending_applications },
-                  { label: 'Accepted', value: analytics.accepted_applications },
-                  { label: 'Completion rate', value: `${analytics.completion_rate}%` },
-                  { label: 'Upcoming events', value: analytics.upcoming_events },
-                ].map((stat) => (
-                  <div
-                    key={stat.label}
-                    className="rounded-xl bg-surface-secondary/60 px-3 py-3"
-                  >
-                    <p className="text-xs text-content-secondary">{stat.label}</p>
-                    <p className="mt-1 text-xl font-semibold tabular-nums text-content-primary">
-                      {stat.value}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            ) : null}
-          </section>
-
-          <section className={YOUTH_CARD}>
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <h2 className={YOUTH_SECTION_TITLE}>Programs</h2>
-              {canCoordinate ? (
-                <button
-                  type="button"
-                  className="btn-primary text-sm"
-                  onClick={() => setShowProgramModal(true)}
-                >
-                  Create program
-                </button>
-              ) : null}
-            </div>
-            {programs.length === 0 ? (
-              <p className="mt-3 text-sm text-content-secondary">No programs yet.</p>
-            ) : (
-              <ul className="mt-4 space-y-3">
-                {programs.map((p) => (
-                  <li
-                    key={p.id}
-                    className="flex flex-col gap-2 rounded-xl border border-border p-3 sm:flex-row sm:items-center sm:justify-between"
-                  >
-                    <div>
-                      <Link
-                        href={`/youth-leadership/programs/${p.id}`}
-                        className="font-medium text-content-primary hover:text-primary"
-                      >
-                        {p.title}
-                      </Link>
-                      <div className="mt-1">
-                        <StatusBadge status={p.status} />
-                      </div>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      <button
-                        type="button"
-                        className="btn-secondary text-sm"
-                        onClick={() => setSelectedProgramId(p.id)}
-                      >
-                        Review apps
-                      </button>
-                      {canCoordinate && p.status === 'draft' ? (
-                        <button
-                          type="button"
-                          className="btn-primary text-sm"
-                          disabled={busy}
-                          onClick={() => publishProgram(p.id)}
-                        >
-                          Publish
-                        </button>
+        <>
+          {tab === 'overview' ? (
+            <section>
+              <YouthSectionHeader title="Organization overview" />
+              <div className={YOUTH_CARD}>
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className={YOUTH_SECTION_TITLE}>{selectedOrg?.name}</h3>
+                      {selectedOrg?.verification_status === 'verified' ? (
+                        <VerifiedBadge label="Verified organization" />
+                      ) : selectedOrg ? (
+                        <StatusBadge status={selectedOrg.verification_status} />
                       ) : null}
                     </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
-
-          {canCoordinate ? (
-            <section className={YOUTH_CARD}>
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <h2 className={YOUTH_SECTION_TITLE}>Applications</h2>
-                <select
-                  className="rounded-lg border border-border bg-surface-primary px-3 py-2 text-sm"
-                  value={selectedProgramId}
-                  onChange={(e) => setSelectedProgramId(e.target.value)}
-                >
-                  <option value="">Select program</option>
-                  {programs.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.title}
-                    </option>
-                  ))}
-                </select>
+                    <p className="mt-1 text-sm text-content-secondary">
+                      {selectedOrg?.description || 'No description yet.'}
+                    </p>
+                    {selectedOrg?.my_role ? (
+                      <p className="mt-2 text-xs capitalize text-content-tertiary">
+                        Your role: {selectedOrg.my_role.replace(/_/g, ' ')}
+                      </p>
+                    ) : null}
+                  </div>
+                </div>
+                {analytics ? (
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                    {[
+                      { label: 'Programs', value: analytics.total_programs },
+                      { label: 'Active programs', value: analytics.active_programs },
+                      { label: 'Applications', value: analytics.total_applications },
+                      { label: 'Pending reviews', value: analytics.pending_applications },
+                      { label: 'Accepted', value: analytics.accepted_applications },
+                      { label: 'Completion rate', value: `${analytics.completion_rate}%` },
+                      { label: 'Upcoming events', value: analytics.upcoming_events },
+                    ].map((stat) => (
+                      <div
+                        key={stat.label}
+                        className="rounded-xl bg-surface-secondary/60 px-3 py-3"
+                      >
+                        <p className="text-xs text-content-secondary">{stat.label}</p>
+                        <p className="mt-1 text-xl font-semibold tabular-nums text-content-primary">
+                          {stat.value}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
               </div>
-              {!selectedProgramId ? (
-                <p className="mt-3 text-sm text-content-secondary">
-                  Select a program to review applications.
-                </p>
-              ) : applications.length === 0 ? (
-                <p className="mt-3 text-sm text-content-secondary">No applications yet.</p>
+            </section>
+          ) : null}
+
+          {tab === 'programs' ? (
+            <section>
+              <YouthSectionHeader
+                title="Programs"
+                badge={
+                  <span className="rounded-full bg-surface-secondary px-2.5 py-0.5 text-xs font-medium text-content-secondary">
+                    {programs.length} total
+                  </span>
+                }
+              >
+                {canCoordinate ? (
+                  <button
+                    type="button"
+                    className="btn-primary text-sm"
+                    onClick={() => setShowProgramModal(true)}
+                  >
+                    Create program
+                  </button>
+                ) : null}
+              </YouthSectionHeader>
+              {programs.length === 0 ? (
+                <EmptyState
+                  title="No programs yet"
+                  description="Create a draft or publish a program for your organization."
+                />
               ) : (
-                <ul className="mt-4 space-y-3">
-                  {applications.map((app) => {
-                    const applicantName =
-                      app.applicant?.full_name ||
-                      app.applicant?.username ||
-                      'Applicant'
-                    return (
-                    <li key={app.id} className="rounded-xl border border-border p-3">
-                      <div className="flex flex-wrap items-start justify-between gap-2">
-                        <div className="flex min-w-0 items-center gap-3">
-                          <YouthAvatar
-                            src={app.applicant?.avatar_url}
-                            name={applicantName}
-                          />
-                          <div className="min-w-0">
-                            <p className="font-medium text-content-primary">
-                              {applicantName}
-                            </p>
-                            <p className="text-xs text-content-tertiary">
-                              {app.submitted_at
-                                ? new Date(app.submitted_at).toLocaleString()
-                                : new Date(app.created_at).toLocaleString()}
-                            </p>
+                <ul className="space-y-3">
+                  {programs.map((p) => (
+                    <li key={p.id} className={YOUTH_CARD}>
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                          <Link
+                            href={`/youth-leadership/programs/${p.id}`}
+                            className="font-medium text-content hover:text-primary"
+                          >
+                            {p.title}
+                          </Link>
+                          <div className="mt-1">
+                            <StatusBadge status={p.status} />
                           </div>
                         </div>
-                        <StatusBadge status={app.status} />
-                      </div>
-                      {['submitted', 'under_review', 'waitlisted'].includes(app.status) ? (
-                        <div className="mt-3 flex flex-wrap gap-2">
-                          <button
-                            type="button"
-                            className="btn-secondary text-sm"
-                            disabled={busy}
-                            onClick={() => reviewApplication(app.id, 'under_review')}
-                          >
-                            Under review
-                          </button>
-                          <button
-                            type="button"
-                            className="btn-primary text-sm"
-                            disabled={busy}
-                            onClick={() => reviewApplication(app.id, 'accepted')}
-                          >
-                            Accept
-                          </button>
-                          <button
-                            type="button"
-                            className="btn-secondary text-sm"
-                            disabled={busy}
-                            onClick={() => reviewApplication(app.id, 'waitlisted')}
-                          >
-                            Waitlist
-                          </button>
-                          <button
-                            type="button"
-                            className="btn-secondary text-sm text-red-700"
-                            disabled={busy}
-                            onClick={() => reviewApplication(app.id, 'rejected')}
-                          >
-                            Reject
-                          </button>
+                        <div className="flex flex-wrap gap-2">
+                          {canCoordinate ? (
+                            <button
+                              type="button"
+                              className="btn-secondary text-sm"
+                              onClick={() => {
+                                setSelectedProgramId(p.id)
+                                setTab('applications')
+                              }}
+                            >
+                              Review apps
+                            </button>
+                          ) : null}
+                          {canCoordinate && p.status === 'draft' ? (
+                            <button
+                              type="button"
+                              className="btn-primary text-sm"
+                              disabled={busy}
+                              onClick={() => publishProgram(p.id)}
+                            >
+                              Publish
+                            </button>
+                          ) : null}
                         </div>
-                      ) : null}
+                      </div>
                     </li>
-                    )
-                  })}
+                  ))}
                 </ul>
               )}
             </section>
           ) : null}
-        </div>
+
+          {tab === 'applications' ? (
+            <section>
+              {!canCoordinate ? (
+                <EmptyState
+                  title="Coordinator access required"
+                  description="Only organization admins and coordinators can review applications."
+                />
+              ) : (
+                <>
+                  <YouthSectionHeader
+                    title="Applications"
+                    badge={
+                      selectedProgramId ? (
+                        <span className="rounded-full bg-surface-secondary px-2.5 py-0.5 text-xs font-medium text-content-secondary">
+                          {applications.length} shown
+                        </span>
+                      ) : null
+                    }
+                  >
+                    <select
+                      className={`${YOUTH_SELECT} h-10`}
+                      value={selectedProgramId}
+                      onChange={(e) => setSelectedProgramId(e.target.value)}
+                      aria-label="Select program for application review"
+                    >
+                      <option value="">Select program</option>
+                      {programs.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.title}
+                        </option>
+                      ))}
+                    </select>
+                  </YouthSectionHeader>
+                  {!selectedProgramId ? (
+                    <EmptyState
+                      title="Select a program"
+                      description="Choose a program above to review its applications."
+                    />
+                  ) : applications.length === 0 ? (
+                    <EmptyState
+                      title="No applications yet"
+                      description="Applications will appear here once participants apply."
+                    />
+                  ) : (
+                    <ul className="space-y-3">
+                      {applications.map((app) => {
+                        const applicantName =
+                          app.applicant?.full_name ||
+                          app.applicant?.username ||
+                          'Applicant'
+                        return (
+                          <li key={app.id} className={YOUTH_CARD}>
+                            <div className="flex flex-wrap items-start justify-between gap-2">
+                              <div className="flex min-w-0 items-center gap-3">
+                                <YouthAvatar
+                                  src={app.applicant?.avatar_url}
+                                  name={applicantName}
+                                />
+                                <div className="min-w-0">
+                                  <p className="font-medium text-content">{applicantName}</p>
+                                  <p className="text-xs text-content-tertiary">
+                                    {app.submitted_at
+                                      ? new Date(app.submitted_at).toLocaleString()
+                                      : new Date(app.created_at).toLocaleString()}
+                                  </p>
+                                </div>
+                              </div>
+                              <StatusBadge status={app.status} />
+                            </div>
+                            {['submitted', 'under_review', 'waitlisted'].includes(
+                              app.status
+                            ) ? (
+                              <div className="mt-3 flex flex-wrap gap-2">
+                                <button
+                                  type="button"
+                                  className="btn-secondary text-sm"
+                                  disabled={busy}
+                                  onClick={() =>
+                                    reviewApplication(app.id, 'under_review')
+                                  }
+                                >
+                                  Under review
+                                </button>
+                                <button
+                                  type="button"
+                                  className="btn-primary text-sm"
+                                  disabled={busy}
+                                  onClick={() => reviewApplication(app.id, 'accepted')}
+                                >
+                                  Accept
+                                </button>
+                                <button
+                                  type="button"
+                                  className="btn-secondary text-sm"
+                                  disabled={busy}
+                                  onClick={() => reviewApplication(app.id, 'waitlisted')}
+                                >
+                                  Waitlist
+                                </button>
+                                <button
+                                  type="button"
+                                  className="btn-secondary text-sm text-red-700"
+                                  disabled={busy}
+                                  onClick={() => reviewApplication(app.id, 'rejected')}
+                                >
+                                  Reject
+                                </button>
+                              </div>
+                            ) : null}
+                          </li>
+                        )
+                      })}
+                    </ul>
+                  )}
+                </>
+              )}
+            </section>
+          ) : null}
+        </>
       )}
 
       {orgModal}
@@ -765,7 +859,7 @@ export default function YouthOrganizationPage() {
     <Suspense
       fallback={
         <YouthShell title="Organization">
-          <div className={`${YOUTH_CARD} h-48 animate-pulse bg-surface-secondary`} />
+          <YouthSkeleton count={3} variant="stat" />
         </YouthShell>
       }
     >

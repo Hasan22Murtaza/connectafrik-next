@@ -31,6 +31,36 @@ const nextConfig: NextConfig = {
       { source: '/settings/privacy', destination: '/profile?tab=privacy', permanent: false },
       { source: '/settings/content', destination: '/profile?tab=privacy', permanent: false },
       { source: '/settings/blocking', destination: '/profile?tab=privacy', permanent: false },
+      {
+        source: '/youth-leadership/applications',
+        destination: '/youth-leadership?tab=applications',
+        permanent: false,
+      },
+      {
+        source: '/youth-leadership/programs',
+        destination: '/youth-leadership?tab=enrolled',
+        permanent: false,
+      },
+      {
+        source: '/youth-leadership/projects',
+        destination: '/youth-leadership/community?tab=projects',
+        permanent: false,
+      },
+      {
+        source: '/youth-leadership/events',
+        destination: '/youth-leadership/community?tab=events',
+        permanent: false,
+      },
+      {
+        source: '/youth-leadership/dashboard',
+        destination: '/youth-leadership/progress',
+        permanent: false,
+      },
+      {
+        source: '/youth-leadership/achievements',
+        destination: '/youth-leadership/progress?tab=achievements',
+        permanent: false,
+      },
     ]
   },
 

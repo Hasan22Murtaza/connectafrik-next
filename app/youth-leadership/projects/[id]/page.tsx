@@ -15,7 +15,8 @@ import YouthFormModal, {
   YOUTH_FIELD,
   YouthFieldLabel,
 } from '@/features/youth-leadership/components/YouthFormModal'
-import { YOUTH_CARD, YOUTH_SECTION_TITLE } from '@/features/youth-leadership/constants/nav'
+import YouthSkeleton from '@/features/youth-leadership/components/YouthSkeleton'
+import { YOUTH_CARD, YOUTH_CHIP, YOUTH_SECTION_TITLE } from '@/features/youth-leadership/constants/nav'
 import type {
   YouthProject,
   YouthProjectMember,
@@ -161,7 +162,7 @@ export default function YouthProjectDetailPage() {
   if (authLoading || loading) {
     return (
       <YouthShell title="Project">
-        <div className={`${YOUTH_CARD} h-56 animate-pulse bg-surface-secondary`} />
+        <YouthSkeleton count={2} />
       </YouthShell>
     )
   }
@@ -180,7 +181,7 @@ export default function YouthProjectDetailPage() {
         <EmptyState
           title="Project not found"
           action={
-            <Link href="/youth-leadership/projects" className="btn-primary">
+            <Link href="/youth-leadership/community?tab=projects" className="btn-primary">
               Back to projects
             </Link>
           }
@@ -209,16 +210,20 @@ export default function YouthProjectDetailPage() {
     >
       <div className="grid gap-6 lg:grid-cols-[1.3fr_1fr]">
         <section className={YOUTH_CARD}>
-          <StatusBadge status={project.status} />
+          <div className="flex flex-wrap items-center gap-2">
+            <StatusBadge status={project.status} />
+            {isCoordinator ? <span className={YOUTH_CHIP}>Coordinator</span> : null}
+            {isMember ? <span className={YOUTH_CHIP}>Member</span> : null}
+          </div>
           {project.description ? (
-            <p className="mt-4 whitespace-pre-wrap text-sm text-content-secondary">
+            <p className="mt-4 whitespace-pre-wrap text-sm leading-relaxed text-content-secondary">
               {project.description}
             </p>
           ) : null}
           {project.objective ? (
             <div className="mt-4">
-              <h3 className="text-sm font-semibold text-content-primary">Objective</h3>
-              <p className="mt-1 whitespace-pre-wrap text-sm text-content-secondary">
+              <h3 className="text-sm font-semibold text-content">Objective</h3>
+              <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-content-secondary">
                 {project.objective}
               </p>
             </div>
@@ -260,7 +265,7 @@ export default function YouthProjectDetailPage() {
                   m.profile?.full_name || m.profile?.username || 'Member'
                 return (
                 <li key={m.id} className="flex items-center justify-between gap-2 text-sm">
-                  <span className="flex min-w-0 items-center gap-2 text-content-primary">
+                  <span className="flex min-w-0 items-center gap-2 text-content">
                     <YouthAvatar
                       src={m.profile?.avatar_url}
                       name={memberName}
@@ -314,7 +319,7 @@ export default function YouthProjectDetailPage() {
                         size="sm"
                       />
                       <div>
-                        <p className="font-medium text-content-primary">{task.title}</p>
+                        <p className="font-medium text-content">{task.title}</p>
                         {task.description ? (
                           <p className="mt-1 text-sm text-content-secondary">
                             {task.description}
