@@ -68,6 +68,19 @@ export type NotificationType =
   | 'family_screen_time_limit'
   | 'family_safety_alert'
   | 'family_friend_request_approved'
+  // Youth Leadership
+  | 'youth_program_application'
+  | 'youth_application_status'
+  | 'youth_program_accepted'
+  | 'youth_program_completed'
+  | 'youth_mentorship_request'
+  | 'youth_mentorship_accepted'
+  | 'youth_project_invitation'
+  | 'youth_project_task'
+  | 'youth_event_reminder'
+  | 'youth_achievement_verified'
+  | 'youth_certificate_issued'
+  | 'youth_guardian_approval'
 
 /**
  * Canonical types you requested for persisted notifications.
@@ -106,6 +119,18 @@ export const CANONICAL_NOTIFICATION_TYPES = [
   'family_screen_time_limit',
   'family_safety_alert',
   'family_friend_request_approved',
+  'youth_program_application',
+  'youth_application_status',
+  'youth_program_accepted',
+  'youth_program_completed',
+  'youth_mentorship_request',
+  'youth_mentorship_accepted',
+  'youth_project_invitation',
+  'youth_project_task',
+  'youth_event_reminder',
+  'youth_achievement_verified',
+  'youth_certificate_issued',
+  'youth_guardian_approval',
 ] as const satisfies readonly NotificationType[]
 
 export type CanonicalNotificationType = (typeof CANONICAL_NOTIFICATION_TYPES)[number]

@@ -85,6 +85,7 @@ export async function PATCH(
       'marketplace_enabled',
       'screen_time_enabled',
       'reels_restriction_enabled',
+      'youth_leadership_enabled',
     ] as const
 
     for (const key of boolKeys) {

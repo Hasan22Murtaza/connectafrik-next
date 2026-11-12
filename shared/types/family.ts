@@ -95,6 +95,11 @@ export interface ParentalControls {
   /** When true, child reels are limited to reels_allowed_categories. */
   reels_restriction_enabled: boolean
   reels_allowed_categories: string[] | null
+  /**
+   * When false, managed child/teen cannot use Youth Leadership.
+   * null/undefined = allowed (existing rows unaffected).
+   */
+  youth_leadership_enabled: boolean | null
   created_at: string
   updated_at: string
 }
@@ -168,6 +173,7 @@ export type ParentalRestrictionFeature =
   | 'friend_request_accept'
   | 'screen_time'
   | 'reels'
+  | 'youth_leadership'
 
 export type ParentalCallKind = 'audio' | 'video' | 'group_audio' | 'group_video'
 
@@ -196,6 +202,7 @@ export const DEFAULT_PARENTAL_CONTROLS: Omit<
   location_sharing: null,
   reels_restriction_enabled: false,
   reels_allowed_categories: null,
+  youth_leadership_enabled: null,
 }
 
 /** True when every regular message channel is locked (emergency may still apply). */

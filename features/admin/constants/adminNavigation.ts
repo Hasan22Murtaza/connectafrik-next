@@ -1,4 +1,5 @@
 import {
+  Award,
   Film,
   Flag,
   LayoutDashboard,
@@ -27,6 +28,7 @@ export const ADMIN_NAV_LINKS: AdminNavLink[] = [
   { href: "/admin/marketplace", label: "TradeHub", icon: Store },
   { href: "/admin/reels", label: "Reels", icon: Film },
   { href: "/admin/feedback", label: "Feedback", icon: MessageSquare },
+  { href: "/admin/youth-leadership", label: "Youth Leadership", icon: Award },
   { href: "/admin/settings", label: "Settings", icon: Settings },
 ];
 
