@@ -728,7 +728,7 @@ export default function CallsPageView() {
                 onClick={() => setTypeFilter(chip.key)}
                 className={`inline-flex shrink-0 items-center rounded-full px-3.5 py-1.5 text-sm font-medium transition ${
                   active
-                    ? 'bg-primary-100 text-primary-800 dark:bg-primary-900/40 dark:text-primary-200'
+                    ? 'bg-primary-100 text-orange-500 border border-orange-500 dark:bg-primary-900/40 dark:text-primary-200'
                     : 'border border-border text-content-secondary hover:bg-surface-hover'
                 }`}
               >

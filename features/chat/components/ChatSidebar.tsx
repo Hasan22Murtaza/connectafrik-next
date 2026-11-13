@@ -936,7 +936,7 @@ export default function ChatSidebar({
                 </p>
               </div>
               {lockedUnread > 0 ? (
-                <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-[#25D366] px-1 text-[11px] font-semibold text-white">
+                <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-primary-500 px-1 text-[11px] font-semibold text-white">
                   {lockedUnread > 99 ? "99+" : lockedUnread}
                 </span>
               ) : (
@@ -1052,65 +1052,68 @@ export default function ChatSidebar({
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between gap-2">
                       <span className={`min-w-0 truncate text-base ${selected ? "text-orange-500" : "text-content"}`}>{displayName}</span>
-                      <span className="shrink-0 text-xs tabular-nums text-content-tertiary">
-                        {formatThreadListTime(thread.last_message_at)}
-                      </span>
-                    </div>
-                    <div className=" flex items-center justify-between gap-2">
-                      <p className="truncate text-sm text-content-secondary">
-                        {sessionUnlocked && thread.last_message_preview ? (
-                          <ChatRichTextPreview content={thread.last_message_preview} />
-                        ) : (
-                          "Locked chat"
-                        )}
-                      </p>
-                      <span className="flex shrink-0 items-center gap-1.5">
+                        <span className="flex shrink-0 items-center gap-1.5">
                         <Lock className="h-3.5 w-3.5 text-content-tertiary" aria-hidden />
                         {thread.unread_count > 0 ? (
                           <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-primary-500 px-1 text-[11px] font-semibold text-white">
                             {thread.unread_count > 99 ? "99+" : thread.unread_count}
                           </span>
                         ) : null}
+                        <div className="relative">
+                          <button
+                            type="button"
+                            data-chat-menu-trigger
+                            aria-label="Chat actions"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setMenuThreadId((prev) => (prev === thread.id ? null : thread.id));
+                            }}
+                            className="rounded-full p-1.5 text-content-tertiary opacity-60 transition hover:bg-surface-hover hover:text-content dark:hover:bg-surface-hover sm:opacity-0 sm:group-hover:opacity-100"
+                          >
+                            <MoreVertical className="h-4 w-4" />
+                          </button>
+                          {menuThreadId === thread.id ? (
+                            <div
+                              data-chat-menu
+                              onClick={(e) => e.stopPropagation()}
+                              className="absolute right-0 top-8 z-20 w-40 rounded-xl border border-border bg-surface p-1 shadow-xl"
+                            >
+                              <button
+                                type="button"
+                                onClick={(e) => onMenuAction(e, thread, "change-pin")}
+                                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-content hover:bg-surface-hover"
+                              >
+                                <Lock className="h-4 w-4" />
+                                <span>Change PIN</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={(e) => onMenuAction(e, thread, "unlock")}
+                                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-content hover:bg-surface-hover"
+                              >
+                                <Unlock className="h-4 w-4" />
+                                <span>Unlock chat</span>
+                              </button>
+                            </div>
+                          ) : null}
+                        </div>
                       </span>
                     </div>
-                  </div>
-                  <div className="relative self-center">
-                    <button
-                      type="button"
-                      data-chat-menu-trigger
-                      aria-label="Chat actions"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setMenuThreadId((prev) => (prev === thread.id ? null : thread.id));
-                      }}
-                      className="rounded-full p-1.5 text-content-tertiary opacity-60 transition hover:bg-surface-hover hover:text-content dark:hover:bg-surface-hover sm:opacity-0 sm:group-hover:opacity-100"
-                    >
-                      <MoreVertical className="h-4 w-4" />
-                    </button>
-                    {menuThreadId === thread.id ? (
-                      <div
-                        data-chat-menu
-                        onClick={(e) => e.stopPropagation()}
-                        className="absolute right-0 top-8 z-20 w-52 rounded-xl border border-border bg-surface p-1 shadow-xl"
-                      >
-                        <button
-                          type="button"
-                          onClick={(e) => onMenuAction(e, thread, "change-pin")}
-                          className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-content hover:bg-surface-hover"
-                        >
-                          <Lock className="h-4 w-4" />
-                          <span>Change PIN</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={(e) => onMenuAction(e, thread, "unlock")}
-                          className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-content hover:bg-surface-hover"
-                        >
-                          <Unlock className="h-4 w-4" />
-                          <span>Unlock chat</span>
-                        </button>
+                      <div className="flex min-w-0 flex-1 items-center justify-between gap-2">
+                      
+                        <p className="truncate text-sm text-content-secondary">
+                          {sessionUnlocked && thread.last_message_preview ? (
+                            <ChatRichTextPreview content={thread.last_message_preview} />
+                          ) : (
+                            "Locked chat"
+                          )}
+                        </p>
+
+                          <span className="shrink-0 text-xs tabular-nums text-content-tertiary">
+                          {formatThreadListTime(thread.last_message_at)}
+                        </span>
                       </div>
-                    ) : null}
+                    
                   </div>
                 </div>
               );
@@ -1200,7 +1203,7 @@ export default function ChatSidebar({
                             <div
                               data-chat-menu
                               onClick={(e) => e.stopPropagation()}
-                              className="absolute right-0 top-8 z-20 w-52 rounded-xl border border-border bg-surface p-1 shadow-xl"
+                              className="absolute right-0 top-8 z-20 w-44 rounded-xl border border-border bg-surface p-1 shadow-xl"
                             >
                               <button
                                 type="button"
@@ -1364,7 +1367,7 @@ export default function ChatSidebar({
                         )}
                       </p>
                       {thread.unread_count > 0 ? (
-                        <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-[#25D366] px-1 text-[11px] font-semibold text-white">
+                        <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-primary-500 px-1 text-[11px] font-semibold text-white">
                           {thread.unread_count > 99 ? "99+" : thread.unread_count}
                         </span>
                       ) : null}
@@ -1462,7 +1465,7 @@ export default function ChatSidebar({
                               <div
                                 data-chat-menu
                                 onClick={(e) => e.stopPropagation()}
-                                className="absolute right-0 top-8 z-20 w-52 rounded-xl border border-border bg-surface p-1 shadow-xl"
+                                className="absolute right-0 top-8 z-20 w-40 rounded-xl border border-border bg-surface p-1 shadow-xl"
                               >
                                 <button
                                   type="button"
@@ -1603,7 +1606,7 @@ export default function ChatSidebar({
                             <div
                               data-chat-menu
                               onClick={(e) => e.stopPropagation()}
-                              className="absolute right-4 top-10 z-20 w-52 rounded-xl border border-border bg-surface p-1 shadow-xl"
+                              className="absolute right-4 top-10 z-20 w-44 rounded-xl border border-border bg-surface p-1 shadow-xl"
                             >
                               <button
                                 type="button"

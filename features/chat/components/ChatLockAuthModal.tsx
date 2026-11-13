@@ -89,7 +89,7 @@ export function ChatLockAuthModal({
   }
 
   const pinInputClass =
-    'mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 tracking-[0.4em] text-content outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-100'
+    'input-field'
 
   return (
     <Portal>
@@ -123,7 +123,7 @@ export function ChatLockAuthModal({
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') submit()
                 }}
-                className="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-content outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-100"
+                className="input-field"
               />
             </label>
           ) : (

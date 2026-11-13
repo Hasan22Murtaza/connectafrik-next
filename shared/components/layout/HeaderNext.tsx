@@ -271,7 +271,7 @@ const Header: React.FC<HeaderProps> = ({
                         />
                       ) : (
                         <div className="w-8 h-8 sm:w-10 sm:h-10 bg-surface-tertiary text-content-secondary rounded-full flex items-center justify-center uppercase">
-                          {profile?.username.slice(0, 1) || "User"}
+                          {profile?.username.slice(0, 1) || <img src="/assets/images/profile-dp.svg" alt="Default Avatar" className="w-8 h-8 sm:w-10 sm:h-10 rounded-full object-cover" />}
                         </div>
                       )}
                     </button>
