@@ -1,9 +1,8 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import RightSidebar from '@/shared/components/ui/RightSidebar'
 import { useAuth } from '@/contexts/AuthContext'
 import { checkUpcomingBirthdays } from '@/shared/services/birthdayNotificationService'
 import { friendRequestService } from '@/features/social/services/friendRequestService'
-import { deriveUserPresence } from '@/shared/hooks/usePresence'
 
 const placeholderAds = [
   { id: 'ad1', title: 'Build your own AI Agent!', url: 'https://getodin.ai', image: '/assets/images/odin.png' },
@@ -12,7 +11,6 @@ const placeholderAds = [
 
 const FeedLayout = ({ children }) => {
   const { user } = useAuth()
-  const [friends, setFriends] = useState([])
   const [birthdays, setBirthdays] = useState([])
   const [ads] = useState(placeholderAds)
 
@@ -25,8 +23,6 @@ const FeedLayout = ({ children }) => {
         const friendsList = await friendRequestService.getFriends()
 
         if (!isMounted) return
-
-        setFriends(friendsList)
 
         // Get birthdays from friends only (no extra profile query)
         const today = new Date()
@@ -50,7 +46,6 @@ const FeedLayout = ({ children }) => {
       } catch (error) {
         console.error('Failed to load sidebar data:', error)
         if (isMounted) {
-          setFriends([])
           setBirthdays([])
         }
       }
@@ -83,34 +78,6 @@ const FeedLayout = ({ children }) => {
     void checkBirthdays()
   }, [user?.id])
 
-  // Format friends (status from friends API: status + last_seen)
-  const friendsWithPresence = useMemo(() => {
-    return friends.map((friend) => {
-      const status = deriveUserPresence({ status: friend.status, last_seen: friend.last_seen })
-      return {
-        id: friend.id,
-        name: friend.full_name,
-        full_name: friend.full_name,
-        avatarUrl: friend.avatar_url,
-        avatar_url: friend.avatar_url,
-        status,
-        lastSeen: friend.last_seen,
-      }
-    })
-  }, [friends])
-
-  // All friends list (for right sidebar contacts section)
-  const friendsList = useMemo(
-    () =>
-      friendsWithPresence.map((contact) => ({
-        id: contact.id,
-        full_name: contact.full_name,
-        avatar_url: contact.avatar_url,
-        status: contact.status, // Include status for online indicator
-      })),
-    [friendsWithPresence]
-  )
-
   return (
     <div className="flex min-h-screen px-1 sm:px-2 2xl:px-6 ">
       {/* Main Content — global LeftSidebar is provided by ConditionalAppSidebar */}
@@ -122,13 +89,11 @@ const FeedLayout = ({ children }) => {
       <div className="hidden lg:block overflow-y-auto sticky top-[73px] h-[calc(100vh-73px)] ">
         <RightSidebar
           birthdays={birthdays}
-          contacts={friendsList}
           ads={ads}
         />
       </div>
 
     </div>
-  )
-}
+  )}
 
 export default FeedLayout

@@ -49,7 +49,7 @@ export const SETTINGS_NAV: SettingsNavItem[] = [
   {
     id: 'family',
     href: '/settings?tab=family',
-    label: 'Family',
+    label: 'Family Circle',
     description: 'Parental controls and family accounts',
     icon: Users,
   },

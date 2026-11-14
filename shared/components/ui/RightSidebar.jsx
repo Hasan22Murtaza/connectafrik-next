@@ -1,7 +1,6 @@
 import ArtOfInksAd from '@/shared/components/ui/ArtOfInksAd';
-import OnlineContactsSection from '@/shared/components/ui/OnlineContactsSection';
 
-const RightSidebar = ({ birthdays = [], contacts = [], ads = [] }) => {
+const RightSidebar = ({ birthdays = [], ads = [] }) => {
 
   return (
     <aside className="w-65 xl:w-80 2xl:w-[24rem] shrink-0 h-full overflow-y-auto py-6 scrollbar-hover">
@@ -50,21 +49,6 @@ const RightSidebar = ({ birthdays = [], contacts = [], ads = [] }) => {
           )}
         </ul>
       </div>
-      <div className="h-px bg-border-subtle w-full my-4"></div>
-      {/* Friends/Contacts Section */}
-      {contacts && contacts.length > 0 && (
-        <OnlineContactsSection
-          contacts={contacts.map(c => ({
-            id: c.id,
-            name: c.full_name || c.name || 'Friend',
-            avatarUrl: c.avatar_url || c.avatarUrl,
-            status: c.status || 'online'
-          }))}
-          showAddFriendButton={false}
-          title="Contacts"
-        />
-      )}
-
       <div className="h-px bg-border-subtle w-full my-4"></div>
 
       <div className="mb-8">
