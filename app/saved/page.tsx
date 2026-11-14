@@ -5,6 +5,7 @@ import { PostCard } from '@/features/social/components/PostCard'
 import { SavedReelsGrid } from '@/features/social/components/SavedReelsGrid'
 import { trackEvent } from '@/features/social/services/engagementTracking'
 import { apiClient } from '@/lib/api-client'
+import { PostCardShimmer } from '@/shared/components/ui/ShimmerLoaders'
 import { useEmojiReaction } from '@/shared/hooks/useEmojiReaction'
 import { Reel } from '@/shared/types/reels'
 import { Bookmark, Film, LayoutGrid } from '@/shared/icons'
@@ -57,50 +58,39 @@ const SavedPage: React.FC = () => {
     try {
       setLoading(true)
 
-      if (activeTab === 'posts') {
-        const allPosts: SavedPostRow[] = []
+      const fetchAllPages = async <T,>(endpoint: string): Promise<T[]> => {
+        const allItems: T[] = []
         let page = 0
         let hasMore = true
 
         while (hasMore) {
-          const res = await apiClient.get<SavedListPayload<SavedPostRow>>('/api/posts/saved', {
+          const res = await apiClient.get<SavedListPayload<T>>(endpoint, {
             page,
             limit: 20,
           })
           const chunk = res.data || []
-          allPosts.push(...chunk)
+          allItems.push(...chunk)
           hasMore = Boolean(res.hasMore)
           page += 1
           if (chunk.length === 0) break
         }
 
-        setSavedPosts(allPosts)
-      } else {
-        const allReels: Reel[] = []
-        let page = 0
-        let hasMore = true
-
-        while (hasMore) {
-          const res = await apiClient.get<SavedListPayload<Reel>>('/api/reels/saved', {
-            page,
-            limit: 20,
-          })
-          const chunk = res.data || []
-          allReels.push(...chunk)
-          hasMore = Boolean(res.hasMore)
-          page += 1
-          if (chunk.length === 0) break
-        }
-
-        setSavedReels(allReels)
+        return allItems
       }
+
+      const [allPosts, allReels] = await Promise.all([
+        fetchAllPages<SavedPostRow>('/api/posts/saved'),
+        fetchAllPages<Reel>('/api/reels/saved'),
+      ])
+      setSavedPosts(allPosts)
+      setSavedReels(allReels)
     } catch (error: unknown) {
       console.error('Error fetching saved items:', error)
       toast.error('Failed to load saved items')
     } finally {
       setLoading(false)
     }
-  }, [activeTab])
+  }, [])
 
   useEffect(() => {
     if (user) {
@@ -238,9 +228,7 @@ const SavedPage: React.FC = () => {
 
       <div className="">
         {loading ? (
-          <div className="flex justify-center py-16">
-            <div className="h-9 w-9 animate-spin rounded-full border-2 border-gray-200 border-t-primary-600" />
-          </div>
+          <SavedItemsShimmer tab={activeTab} />
         ) : activeTab === 'posts' ? (
           savedPosts.length > 0 ? (
             <div className="space-y-4">
@@ -286,6 +274,35 @@ const SavedPage: React.FC = () => {
           />
         )}
       </div>
+    </div>
+  )
+}
+
+const SavedItemsShimmer: React.FC<{ tab: SavedTab }> = ({ tab }) => {
+  if (tab === 'posts') {
+    return (
+      <div role="status" aria-label="Loading saved posts" aria-busy="true" className="space-y-4">
+        {Array.from({ length: 3 }).map((_, index) => (
+          <PostCardShimmer key={index} />
+        ))}
+      </div>
+    )
+  }
+
+  return (
+    <div
+      role="status"
+      aria-label="Loading saved reels"
+      aria-busy="true"
+      className="grid grid-cols-3 gap-1.5 sm:grid-cols-4 sm:gap-2 lg:grid-cols-5 xl:grid-cols-6"
+    >
+      {Array.from({ length: 12 }).map((_, index) => (
+        <div key={index} className="relative aspect-[9/16] overflow-hidden rounded-xl bg-surface-tertiary">
+          <div className="absolute inset-0 animate-shimmer" />
+          <div className="absolute bottom-3 left-2 h-3 w-1/3 rounded bg-white/40" />
+          <div className="absolute bottom-3 right-2 h-3 w-1/4 rounded bg-white/40" />
+        </div>
+      ))}
     </div>
   )
 }

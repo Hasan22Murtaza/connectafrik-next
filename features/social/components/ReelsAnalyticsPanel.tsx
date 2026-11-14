@@ -378,14 +378,6 @@ export function ReelsAnalyticsPanel() {
         )}
       </div>
 
-      <Link
-        href="/reels/create"
-        aria-label="Create reel"
-        className="fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom))] left-1/2 z-[47] flex h-14 w-14 -translate-x-1/2 items-center justify-center rounded-full bg-[var(--african-orange)] text-white shadow-lg ring-2 ring-black/5 lg:bottom-8"
-      >
-        <Plus className="h-7 w-7" strokeWidth={2.5} />
-      </Link>
-
       <div className="fixed bottom-0 left-0 right-0 z-[46] border-t border-border bg-white/90 px-2 pb-[calc(0.4rem+env(safe-area-inset-bottom))] pt-1 lg:hidden">
         <div className="mx-auto max-w-lg">
           <ReelsNav variant="video-bottom" />

@@ -227,7 +227,6 @@ const UserProfilePage: React.FC = () => {
   const [isFollowing, setIsFollowing] = useState(false)
   const [isMutual, setIsMutual] = useState(false)
   const [followLoading, setFollowLoading] = useState(false)
-  const [showMenu, setShowMenu] = useState(false)
   const [showCommentsFor, setShowCommentsFor] = useState<string | null>(null)
   const [shareModalState, setShareModalState] = useState<{ open: boolean; postId: string | null }>({ open: false, postId: null })
   const [activeTab, setActiveTab] = useState<TabId>('posts')
@@ -242,6 +241,19 @@ const UserProfilePage: React.FC = () => {
     if (!profile) return ''
     return getProfileLocationDisplayLine(profile)
   }, [profile])
+
+  useEffect(() => {
+    const handleOutsidePointerDown = (event: PointerEvent) => {
+      document
+        .querySelectorAll<HTMLDetailsElement>('details[data-contact-dropdown][open]')
+        .forEach((dropdown) => {
+          if (!dropdown.contains(event.target as Node)) dropdown.removeAttribute('open')
+        })
+    }
+
+    document.addEventListener('pointerdown', handleOutsidePointerDown)
+    return () => document.removeEventListener('pointerdown', handleOutsidePointerDown)
+  }, [])
 
   useEffect(() => { if (profileIdentifier) fetchUserProfile() }, [profileIdentifier])
   useEffect(() => { if (profile && user && user.id !== profile.id) checkFollowStatus() }, [profile?.id, user?.id])
@@ -799,10 +811,15 @@ const UserProfilePage: React.FC = () => {
               </button>
               <div className="absolute -bottom-8 left-4 z-10 h-[76px] w-[76px] overflow-hidden rounded-2xl border-2 border-white bg-surface shadow-card sm:left-5 sm:h-[88px] sm:w-[88px]">
                 {profile.avatar_url ? (
-                  <img src={profile.avatar_url} alt={profile.full_name} className="h-full w-full object-cover" />
+                  <img src={profile.avatar_url} alt={profile.full_name}
+                   className="h-full w-full object-cover" 
+                   onError={(event) => {
+                    event.currentTarget.src = "/assets/images/profile-dp.svg";
+                  }}
+                   />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center bg-primary-100 text-xl font-semibold text-primary-600">
-                    {profile.full_name?.charAt(0).toUpperCase()}
+                    {profile.full_name?.charAt(0).toUpperCase() }
                   </div>
                 )}
               </div>
@@ -821,40 +838,7 @@ const UserProfilePage: React.FC = () => {
                 </button>
               ) : (
                 <>
-                  {showMessageBtn && (
-                    <button
-                      onClick={handleStartChat}
-                      aria-label="Message"
-                      title="Message"
-                      className={`${btnGray} w-9 px-0 sm:w-auto sm:px-4`}
-                    >
-                      <MessageCircle className="h-4 w-4 shrink-0" />
-                      <span className="hidden sm:inline">Message</span>
-                    </button>
-                  )}
-                  {showCallBtn && parental.canAudioCall && (
-                    <button
-                      onClick={() => void handleCall(false)}
-                      aria-label="Audio call"
-                      title="Audio call"
-                      className={`${btnGray} w-9 px-0 sm:w-auto sm:px-4`}
-                    >
-                      <Phone className="h-4 w-4 shrink-0" />
-                      <span className="hidden sm:inline">Call</span>
-                    </button>
-                  )}
-                  {showCallBtn && parental.canVideoCall && (
-                    <button
-                      onClick={() => void handleCall(true)}
-                      aria-label="Video call"
-                      title="Video call"
-                      className={`${btnGray} w-9 px-0 sm:w-auto sm:px-4`}
-                    >
-                      <Video className="h-4 w-4 shrink-0" />
-                      <span className="hidden sm:inline">Video</span>
-                    </button>
-                  )}
-                  {showFollowBtn && (
+                {showFollowBtn && (
                     <button
                       onClick={handleFollow}
                       disabled={followLoading}
@@ -878,6 +862,61 @@ const UserProfilePage: React.FC = () => {
                       <span className="hidden sm:inline">{fb.label}</span>
                     </button>
                   )}
+                  {(showMessageBtn || showCallBtn) && (
+                    <details data-contact-dropdown className="group relative">
+                      <summary
+                        aria-label="Contact options"
+                        className={`${btnGray} w-9 cursor-pointer list-none px-0 sm:w-auto sm:px-4 [&::-webkit-details-marker]:hidden`}
+                      >
+                        <MoreHorizontal className="h-4 w-4 shrink-0" />
+                      </summary>
+                      <div
+                        aria-label="Contact options"
+                        className="absolute right-0 z-30 mt-2 w-40 rounded-lg border border-border bg-surface-elevated p-1.5 shadow-dropdown"
+                      >
+                        {showMessageBtn && (
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.currentTarget.closest('details')?.removeAttribute('open')
+                              void handleStartChat()
+                            }}
+                            className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-content transition-colors hover:bg-surface-hover"
+                          >
+                            <MessageCircle className="h-4 w-4 shrink-0" />
+                            Message
+                          </button>
+                        )}
+                        {showCallBtn && parental.canAudioCall && (
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.currentTarget.closest('details')?.removeAttribute('open')
+                              void handleCall(false)
+                            }}
+                            className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-content transition-colors hover:bg-surface-hover"
+                          >
+                            <Phone className="h-4 w-4 shrink-0" />
+                            Audio call
+                          </button>
+                        )}
+                        {showCallBtn && parental.canVideoCall && (
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.currentTarget.closest('details')?.removeAttribute('open')
+                              void handleCall(true)
+                            }}
+                            className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-content transition-colors hover:bg-surface-hover"
+                          >
+                            <Video className="h-4 w-4 shrink-0" />
+                            Video call
+                          </button>
+                        )}
+                      </div>
+                    </details>
+                  )}
+                  
                 </>
               )}
             </div>
