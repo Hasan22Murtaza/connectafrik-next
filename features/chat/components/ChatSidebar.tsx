@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { format, isThisYear, isToday, isYesterday } from "date-fns";
-import { Archive, ArrowLeft, Ban, ChevronDown, ChevronRight, Loader2, Lock, MoreVertical, Pin, PinOff, Search, SquarePen, Store, Trash2, Unlock, UserPlus, Users, X } from '@/shared/icons';
+import { Archive, ArrowLeft, Ban, ChevronRight, Loader2, Lock, MoreVertical, Pin, PinOff, Search, SquarePen, Store, Trash2, Unlock, UserPlus, Users, X } from '@/shared/icons';
 import { isDirectBlockableThread } from "@/features/chat/utils/threadHelpers";
 import { useProductionChat } from "@/contexts/ProductionChatContext";
 import { useChatLock } from "@/contexts/ChatLockContext";
@@ -91,10 +91,8 @@ export default function ChatSidebar({
   const [searchResultQuery, setSearchResultQuery] = useState("");
   const [searchLoading, setSearchLoading] = useState(false);
   const [menuThreadId, setMenuThreadId] = useState<string | null>(null);
-  const [blockedExpanded, setBlockedExpanded] = useState(false);
-  const [view, setView] = useState<"chats" | "marketplace" | "locked" | "archived">("chats");
+  const [view, setView] = useState<"chats" | "marketplace" | "locked" | "archived" | "blocked">("chats");
   const [filter, setFilter] = useState<"all" | "unread" | "groups">("all");
-  const [headerMenuOpen, setHeaderMenuOpen] = useState(false);
   const [createGroupOpen, setCreateGroupOpen] = useState(false);
   const [mpThreads, setMpThreads] = useState<ChatThread[]>([]);
   const [mpLoading, setMpLoading] = useState(false);
@@ -381,19 +379,6 @@ export default function ChatSidebar({
     return () => document.removeEventListener("mousedown", closeMenu);
   }, [menuThreadId]);
 
-  useEffect(() => {
-    if (!headerMenuOpen) return;
-    const close = (event: MouseEvent) => {
-      const target = event.target as HTMLElement | null;
-      if (target?.closest("[data-header-menu]") || target?.closest("[data-header-menu-trigger]")) {
-        return;
-      }
-      setHeaderMenuOpen(false);
-    };
-    document.addEventListener("mousedown", close);
-    return () => document.removeEventListener("mousedown", close);
-  }, [headerMenuOpen]);
-
   const mergedThreads = useMemo(() => {
     // Membership comes from the API (general category). The realtime context
     // pool overlays live fields (unread, last message); keep local prefs.
@@ -494,7 +479,7 @@ export default function ChatSidebar({
   const archivedUnread = useMemo(
     () =>
       archivedThreads.reduce(
-        (sum, t) => sum + (typeof t.unread_count === "number" ? t.unread_count : 0),
+        (sum, thread) => sum + (typeof thread.unread_count === "number" ? thread.unread_count : 0),
         0
       ),
     [archivedThreads]
@@ -535,8 +520,6 @@ export default function ChatSidebar({
     : filter === "all"
       ? filteredActive
       : filteredFilterThreads;
-
-  const showBlockedSection = filter === "all" && blockedThreads.length > 0;
 
   const filteredMarketplace = useMemo(
     () => marketplaceThreads.filter(matchesSearch),
@@ -787,6 +770,19 @@ export default function ChatSidebar({
               <ArrowLeft className="h-5 w-5 shrink-0" aria-hidden />
               Archived
             </button>
+          ) : view === "blocked" ? (
+            <button
+              type="button"
+              onClick={() => {
+                setView("chats");
+                setSearch("");
+                setMenuThreadId(null);
+              }}
+              className="-ml-1 flex items-center gap-2 text-xl font-semibold text-content"
+            >
+              <ArrowLeft className="h-5 w-5 shrink-0" aria-hidden />
+              Blocked chats
+            </button>
           ) : view === "locked" ? (
             <button
               type="button"
@@ -805,58 +801,108 @@ export default function ChatSidebar({
           )}
           {view === "chats" ? (
             <div className="flex items-center gap-0.5">
-              <div className="relative">
+              <button
+                type="button"
+                popoverTarget="chat-sidebar-header-menu"
+                aria-controls="chat-sidebar-header-menu"
+                aria-label="Menu"
+                className="flex h-9 w-9 items-center justify-center rounded-full text-content-secondary transition hover:bg-surface-hover hover:text-content [anchor-name:--chat-sidebar-header-menu]"
+              >
+                <MoreVertical className="h-5 w-5" aria-hidden />
+              </button>
+              <div
+                id="chat-sidebar-header-menu"
+                popover="auto"
+                className="fixed inset-auto m-0 mt-2 w-56 rounded-xl border border-border bg-surface p-1 text-content shadow-xl [position-anchor:--chat-sidebar-header-menu] [top:anchor(bottom)] [right:anchor(right)]"
+              >
                 <button
                   type="button"
-                  data-header-menu-trigger
-                  onClick={() => setHeaderMenuOpen((o) => !o)}
-                  aria-label="Menu"
-                  aria-expanded={headerMenuOpen}
-                  className="flex h-9 w-9 items-center justify-center rounded-full text-content-secondary transition hover:bg-surface-hover hover:text-content"
+                  popoverTarget="chat-sidebar-header-menu"
+                  popoverTargetAction="hide"
+                  onClick={() => setCreateGroupOpen(true)}
+                  className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm text-content hover:bg-surface-hover"
                 >
-                  <MoreVertical className="h-5 w-5" aria-hidden />
+                  <Users className="h-4 w-4 text-content-secondary" aria-hidden />
+                  <span>New group</span>
                 </button>
-                {headerMenuOpen ? (
-                  <div
-                    data-header-menu
-                    className="absolute right-0 top-11 z-30 w-56 rounded-xl border border-border bg-surface p-1 shadow-xl"
-                  >
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setHeaderMenuOpen(false);
-                        setCreateGroupOpen(true);
-                      }}
-                      className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm text-content hover:bg-surface-hover"
-                    >
-                      <Users className="h-4 w-4 text-content-secondary" aria-hidden />
-                      <span>New group</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setHeaderMenuOpen(false);
-                        router.push("/friends");
-                      }}
-                      className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm text-content hover:bg-surface-hover"
-                    >
-                      <UserPlus className="h-4 w-4 text-content-secondary" aria-hidden />
-                      <span>New contact</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setHeaderMenuOpen(false);
-                        setView("marketplace");
-                        setSearch("");
-                      }}
-                      className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm text-content hover:bg-surface-hover"
-                    >
-                      <Store className="h-4 w-4 text-content-secondary" aria-hidden />
-                      <span>TradeHub messages</span>
-                    </button>
-                  </div>
-                ) : null}
+                <button
+                  type="button"
+                  popoverTarget="chat-sidebar-header-menu"
+                  popoverTargetAction="hide"
+                  onClick={() => router.push("/friends")}
+                  className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm text-content hover:bg-surface-hover"
+                >
+                  <UserPlus className="h-4 w-4 text-content-secondary" aria-hidden />
+                  <span>New contact</span>
+                </button>
+                <button
+                  type="button"
+                  popoverTarget="chat-sidebar-header-menu"
+                  popoverTargetAction="hide"
+                  onClick={() => {
+                    setView("marketplace");
+                    setSearch("");
+                  }}
+                  className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm text-content hover:bg-surface-hover"
+                >
+                  <Store className="h-4 w-4 text-content-secondary" aria-hidden />
+                  <span>TradeHub messages</span>
+                </button>
+                <div className="my-1 border-t border-border" />
+                <button
+                  type="button"
+                  popoverTarget="chat-sidebar-header-menu"
+                  popoverTargetAction="hide"
+                  onClick={() => {
+                    setView("blocked");
+                    setSearch("");
+                    setMenuThreadId(null);
+                  }}
+                  className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm text-content hover:bg-surface-hover"
+                >
+                  <Ban className="h-4 w-4 text-content-secondary" aria-hidden />
+                  <span>Blocked chats</span>
+                  <span className="ml-auto text-xs text-content-tertiary">{blockedThreads.length}</span>
+                </button>
+                <button
+                  type="button"
+                  popoverTarget="chat-sidebar-header-menu"
+                  popoverTargetAction="hide"
+                  onClick={() => {
+                    setView("archived");
+                    setSearch("");
+                    setMenuThreadId(null);
+                  }}
+                  className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm text-content hover:bg-surface-hover"
+                >
+                  <Archive className="h-4 w-4 text-content-secondary" aria-hidden />
+                  <span>Archived chats</span>
+                  <span className="ml-auto text-xs text-content-tertiary">{archivedThreads.length}</span>
+                  {archivedUnread > 0 ? (
+                    <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-primary-500 px-1 text-[11px] font-semibold text-white">
+                      {archivedUnread > 99 ? "99+" : archivedUnread}
+                    </span>
+                  ) : null}
+                </button>
+                <button
+                  type="button"
+                  popoverTarget="chat-sidebar-header-menu"
+                  popoverTargetAction="hide"
+                  onClick={() => {
+                    setSearch("");
+                    openLockedFolder();
+                  }}
+                  className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm text-content hover:bg-surface-hover"
+                >
+                  <Lock className="h-4 w-4 text-content-secondary" aria-hidden />
+                  <span>Locked chats</span>
+                  <span className="ml-auto text-xs text-content-tertiary">{lockedCount}</span>
+                  {lockedUnread > 0 ? (
+                    <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-primary-500 px-1 text-[11px] font-semibold text-white">
+                      {lockedUnread > 99 ? "99+" : lockedUnread}
+                    </span>
+                  ) : null}
+                </button>
               </div>
             </div>
           ) : null}
@@ -874,6 +920,8 @@ export default function ChatSidebar({
                   ? "Search marketplace"
                   : view === "archived"
                     ? "Search archived"
+                    : view === "blocked"
+                      ? "Search blocked chats"
                     : view === "locked"
                       ? "Search locked chats"
                       : "Search or start a conversation..."
@@ -917,64 +965,6 @@ export default function ChatSidebar({
 
       {view === "chats" ? (
         <>
-          {lockedCount > 0 ? (
-            <button
-              type="button"
-              onClick={() => {
-                setSearch("");
-                void openLockedFolder();
-              }}
-              className="relative flex w-full shrink-0 items-center gap-3 px-3 py-2 text-left transition hover:bg-surface-hover dark:hover:bg-surface-hover"
-            >
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#111b21] text-white dark:bg-surface-secondary">
-                <Lock className="h-5 w-5" aria-hidden />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-[14px]  text-content">Locked Chats</p>
-                <p className="truncate text-sm text-content-secondary">
-                  {lockedCount} locked conversation{lockedCount === 1 ? "" : "s"}
-                </p>
-              </div>
-              {lockedUnread > 0 ? (
-                <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-primary-500 px-1 text-[11px] font-semibold text-white">
-                  {lockedUnread > 99 ? "99+" : lockedUnread}
-                </span>
-              ) : (
-                <ChevronRight className="h-4 w-4 shrink-0 text-content-tertiary" aria-hidden />
-              )}
-              <span className="pointer-events-none absolute bottom-0 left-[4.5rem] right-0 h-px bg-border-subtle" />
-            </button>
-          ) : null}
-          {archivedThreads.length > 0 ? (
-            <button
-              type="button"
-              onClick={() => {
-                setView("archived");
-                setSearch("");
-                setMenuThreadId(null);
-              }}
-              className="relative flex w-full shrink-0 items-center gap-3 px-3 py-2 text-left transition hover:bg-surface-hover dark:hover:bg-surface-hover"
-            >
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-surface-secondary text-content-secondary">
-                <Archive className="h-5 w-5" aria-hidden />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-[14px] text-content">Archived</p>
-                <p className="truncate text-sm text-content-secondary">
-                  {archivedThreads.length} archived chat
-                  {archivedThreads.length === 1 ? "" : "s"}
-                </p>
-              </div>
-              {archivedUnread > 0 ? (
-                <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-primary-500 px-1 text-[11px] font-semibold text-white">
-                  {archivedUnread > 99 ? "99+" : archivedUnread}
-                </span>
-              ) : (
-                <ChevronRight className="h-4 w-4 shrink-0 text-content-tertiary" aria-hidden />
-              )}
-              <span className="pointer-events-none absolute bottom-0 left-[4.5rem] right-0 h-px bg-border-subtle" />
-            </button>
-          ) : null}
           <button
             type="button"
             onClick={() => {
@@ -1002,7 +992,87 @@ export default function ChatSidebar({
         </>
       ) : null}
 
-      {view === "locked" ? (
+      {view === "blocked" ? (
+        <div className="flex-1 overflow-y-auto">
+          {filteredBlocked.length === 0 ? (
+            <div className="px-4 py-10 text-center">
+              <Ban className="mx-auto mb-3 h-10 w-10 text-content-tertiary" aria-hidden />
+              <p className="text-sm font-semibold text-content">
+                {query ? "No blocked chats match your search" : "No blocked chats"}
+              </p>
+            </div>
+          ) : (
+            filteredBlocked.map((thread) => {
+              const others = thread.participants.filter(
+                (participant: ChatParticipant) => participant.id !== currentUser?.id
+              );
+              const primary = others[0] ?? thread.participants[0];
+              const displayName = primary?.name || thread.name || "Chat";
+              const avatarUrl = primary?.avatarUrl;
+              const selected = selectedThreadId === thread.id;
+
+              return (
+                <div
+                  key={`blocked-${thread.id}`}
+                  onClick={() => onOpenThread(thread.id, thread)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      onOpenThread(thread.id, thread);
+                    }
+                  }}
+                  role="button"
+                  tabIndex={0}
+                  className={`group relative flex w-full cursor-pointer items-start gap-3 border-b border-border-subtle px-3 py-3 text-left opacity-80 transition ${selected ? "bg-primary-50 text-orange-500 hover:bg-primary-100" : "hover:bg-surface-hover"
+                    }`}
+                >
+                  <div className="h-12 w-12 shrink-0">
+                    {avatarUrl ? (
+                      <img src={avatarUrl} alt="" className="h-12 w-12 rounded-full object-cover" />
+                    ) : (
+                      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-surface-tertiary font-semibold text-content-secondary">
+                        {displayName.charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className={`truncate text-[14px] ${selected ? "text-orange-500" : "text-content"}`}>{displayName}</p>
+                    <p className="truncate text-xs text-content-secondary">Blocked · tap to manage</p>
+                  </div>
+                  <button
+                    type="button"
+                    data-chat-menu-trigger
+                    aria-label="Chat actions"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      setMenuThreadId((previous) => (previous === thread.id ? null : thread.id));
+                    }}
+                    className="rounded-full p-1.5 text-content-tertiary hover:bg-surface-hover dark:hover:bg-surface-hover"
+                  >
+                    <MoreVertical className="h-4 w-4" />
+                  </button>
+                  {menuThreadId === thread.id ? (
+                    <div
+                      data-chat-menu
+                      onClick={(event) => event.stopPropagation()}
+                      className="absolute right-4 top-10 z-20 w-44 rounded-xl border border-border bg-surface p-1 shadow-xl"
+                    >
+                      <button
+                        type="button"
+                        onClick={(event) => onMenuAction(event, thread, "toggle-block")}
+                        className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-content hover:bg-surface-hover"
+                      >
+                        <Ban className="h-4 w-4" />
+                        <span>Unblock contact</span>
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
+              );
+            })
+          )}
+        </div>
+      ) : view === "locked" ? (
         <div className="flex-1 overflow-y-auto">
           {lockedLoading && visibleLockedThreads.length === 0 ? (
             <div className="p-4 text-sm text-content-secondary">Loading locked chats…</div>
@@ -1388,7 +1458,7 @@ export default function ChatSidebar({
             <div className="p-4 text-sm text-content-secondary">Searching chats...</div>
           ) : (filter === "all" ? isLoading : filterLoading && visibleActive.length === 0) ? (
             <div className="p-4 text-sm text-content-secondary">Loading chats...</div>
-          ) : visibleActive.length === 0 && !showBlockedSection ? (
+          ) : visibleActive.length === 0 ? (
             <div className="px-4 py-10 text-center text-sm text-content-secondary">
               {filter === "unread"
                 ? "No unread chats."
@@ -1398,11 +1468,6 @@ export default function ChatSidebar({
             </div>
           ) : (
             <>
-              {visibleActive.length === 0 && showBlockedSection && !query ? (
-                <p className="px-4 pb-2 pt-3 text-xs text-content-secondary">
-                  No active chats — open <span className="font-medium text-content">Blocked</span> below.
-                </p>
-              ) : null}
               {visibleActive.map((thread) => {
                 const others = thread.participants.filter(
                   (participant: ChatParticipant) => participant.id !== currentUser?.id
@@ -1547,83 +1612,6 @@ export default function ChatSidebar({
                   </div>
                 );
               })}
-              {showBlockedSection ? (
-                <div className="border-t border-border px-4 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setBlockedExpanded((e) => !e)}
-                    className="mb-1 flex w-full items-center gap-1 text-left text-xs font-medium uppercase tracking-wide text-content-secondary hover:text-content"
-                  >
-                    <ChevronDown
-                      className={`h-4 w-4 shrink-0 transition-transform ${blockedExpanded ? "" : "-rotate-90"}`}
-                    />
-                    Blocked ({blockedThreads.length})
-                  </button>
-                  {blockedExpanded
-                    ? filteredBlocked.map((thread) => {
-                      const others = thread.participants.filter(
-                        (participant: ChatParticipant) => participant.id !== currentUser?.id
-                      );
-                      const primary = others[0] ?? thread.participants[0];
-                      const displayName = primary?.name || thread.name || "Chat";
-                      const avatarUrl = primary?.avatarUrl;
-                      const selected = selectedThreadId === thread.id;
-
-                      return (
-                        <div
-                          key={`blocked-${thread.id}`}
-                          onClick={() => onOpenThread(thread.id, thread)}
-                          role="button"
-                          tabIndex={0}
-                          className={`group relative flex w-full cursor-pointer items-start gap-3 border-b border-border-subtle py-3 text-left opacity-80 transition ${selected ? "bg-primary-50 text-orange-500 hover:bg-primary-100" : "hover:bg-surface-hover"
-                            }`}
-                        >
-                          <div className="h-12 w-12 shrink-0">
-                            {avatarUrl ? (
-                              <img src={avatarUrl} alt="" className="h-12 w-12 rounded-full object-cover" />
-                            ) : (
-                              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-surface-tertiary font-semibold text-content-secondary">
-                                {displayName.charAt(0).toUpperCase()}
-                              </div>
-                            )}
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <p className={`truncate text-[14px] ${selected ? "text-orange-500" : "text-content"}`}>{displayName}</p>
-                            <p className="truncate text-xs text-content-secondary">Blocked · tap to manage</p>
-                          </div>
-                          <button
-                            type="button"
-                            data-chat-menu-trigger
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setMenuThreadId((prev) => (prev === thread.id ? null : thread.id));
-                            }}
-                            className="rounded-full p-1.5 text-content-tertiary hover:bg-surface-hover dark:hover:bg-surface-hover"
-                          >
-                            <MoreVertical className="h-4 w-4" />
-                          </button>
-                          {menuThreadId === thread.id ? (
-                            <div
-                              data-chat-menu
-                              onClick={(e) => e.stopPropagation()}
-                              className="absolute right-4 top-10 z-20 w-44 rounded-xl border border-border bg-surface p-1 shadow-xl"
-                            >
-                              <button
-                                type="button"
-                                onClick={(e) => onMenuAction(e, thread, "toggle-block")}
-                                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-content hover:bg-surface-hover"
-                              >
-                                <Ban className="h-4 w-4" />
-                                <span>Unblock contact</span>
-                              </button>
-                            </div>
-                          ) : null}
-                        </div>
-                      );
-                    })
-                    : null}
-                </div>
-              ) : null}
             </>
           )}
           {filter === "all" && !isLoading && hasMore ? (
