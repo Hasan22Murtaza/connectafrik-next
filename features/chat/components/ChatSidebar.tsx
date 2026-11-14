@@ -39,6 +39,14 @@ function isGroupThread(thread: ChatThread, currentUserId?: string): boolean {
   );
 }
 
+function getAvatarInitials(name: string): string {
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  if (words.length > 1) {
+    return words.slice(0, 2).map((word) => word[0]).join("").toUpperCase();
+  }
+  return (words[0] || "U").slice(0, 2).toUpperCase();
+}
+
 /** Pinned-first, then most-recent activity. Mirrors the main thread list ordering. */
 function sortThreadsByPinnedRecency(a: ChatThread, b: ChatThread): number {
   const pinA = a.pinned ? 1 : 0;
@@ -1031,7 +1039,7 @@ export default function ChatSidebar({
                       <img src={avatarUrl} alt="" className="h-12 w-12 rounded-full object-cover" />
                     ) : (
                       <div className="flex h-12 w-12 items-center justify-center rounded-full bg-surface-tertiary font-semibold text-content-secondary">
-                        {displayName.charAt(0).toUpperCase()}
+                        {getAvatarInitials(displayName)}
                       </div>
                     )}
                   </div>
@@ -1115,7 +1123,7 @@ export default function ChatSidebar({
                       <img src={avatarUrl} alt="" className="h-12 w-12 rounded-full object-cover" />
                     ) : (
                       <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-100 font-semibold text-orange-500">
-                        {displayName.charAt(0).toUpperCase()}
+                        {getAvatarInitials(displayName)}
                       </div>
                     )}
                   </div>
@@ -1233,7 +1241,7 @@ export default function ChatSidebar({
                 >
                   <div className="h-12 w-12 shrink-0">
                     <div className="relative flex h-12 w-12 items-center justify-center rounded-full bg-primary-100 font-semibold text-orange-500">
-                      {displayName?.charAt(0)?.toUpperCase() || "U"}
+                      {getAvatarInitials(displayName || "User")}
 
                       {avatarUrl && (
                         <img
@@ -1409,7 +1417,7 @@ export default function ChatSidebar({
                       <img src={avatarUrl} alt="" className="h-12 w-12 rounded-lg object-cover" />
                     ) : (
                       <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary-100 font-semibold text-orange-500">
-                        {displayName.charAt(0).toUpperCase()}
+                        {getAvatarInitials(displayName)}
                       </div>
                     )}
                   </div>
@@ -1497,7 +1505,7 @@ export default function ChatSidebar({
                   >
                     <div className="h-12 w-12 shrink-0">
                       <div className="relative flex h-12 w-12 items-center justify-center rounded-full bg-primary-100 font-semibold text-orange-500">
-                        {displayName.charAt(0).toUpperCase()}
+                        {getAvatarInitials(displayName)}
 
                         {avatarUrl && (
                           <img
