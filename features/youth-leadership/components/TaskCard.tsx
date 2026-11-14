@@ -70,7 +70,7 @@ export default function TaskCard({
 }) {
   const menuId = useId()
   const [menuOpen, setMenuOpen] = useState(false)
-  const rootRef = useRef<HTMLDivElement>(null)
+  const rootRef = useRef<HTMLElement>(null)
 
   const canDrag = draggable && !overlay && canProgress && !busy
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({

@@ -128,14 +128,16 @@ export default function YouthProjectDetailPage() {
       toast.success('Joined project')
       setProject((prev) => {
         if (!prev || !user) return prev
-        const membership = {
+        const now = new Date().toISOString()
+        const membership: MemberRow = {
           id: `local-${user.id}`,
           project_id: prev.id,
           user_id: user.id,
-          role: 'participant' as const,
-          status: 'active' as const,
-          joined_at: new Date().toISOString(),
-          created_at: new Date().toISOString(),
+          role: 'participant',
+          status: 'active',
+          joined_at: now,
+          created_at: now,
+          updated_at: now,
           profile: {
             id: user.id,
             username: null,
@@ -197,10 +199,11 @@ export default function YouthProjectDetailPage() {
         : null
       setTasks((list) => {
         if (list.some((t) => t.id === created.id)) return list
-        return [
-          {
-            ...created,
-            assignee: created.assignee || (assignee
+        const next: TaskRow = {
+          ...created,
+          assignee:
+            created.assignee ||
+            (assignedTo && assignee
               ? {
                   id: assignedTo,
                   username: assignee.username,
@@ -208,9 +211,8 @@ export default function YouthProjectDetailPage() {
                   avatar_url: assignee.avatar_url,
                 }
               : null),
-          },
-          ...list,
-        ]
+        }
+        return [next, ...list]
       })
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : 'Failed to create task')

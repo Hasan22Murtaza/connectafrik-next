@@ -3,18 +3,12 @@ import { getAuthenticatedUser } from '@/lib/supabase-server'
 import { errorResponse, jsonResponse, unauthorizedResponse } from '@/lib/api-utils'
 import { checkYouthLeadershipAccess } from '@/lib/youth-leadership/auth'
 
-const MENTOR_LIST_SELECT = `
-  id, user_id, bio, expertise, skills, languages, experience_summary,
-  mentorship_interests, accepts_minors, verification_status, created_at, updated_at,
-  profile:profiles!user_id(id, username, full_name, avatar_url)
-`
+// Single-line selects avoid PostgREST ParserError on multiline template literals.
+const MENTOR_LIST_SELECT =
+  'id, user_id, bio, expertise, skills, languages, experience_summary, mentorship_interests, accepts_minors, verification_status, created_at, updated_at, profile:profiles!user_id(id, username, full_name, avatar_url)'
 
-const MENTOR_MINE_SELECT = `
-  id, user_id, bio, expertise, skills, languages, experience_summary,
-  mentorship_interests, accepts_minors, verification_status, availability,
-  created_at, updated_at,
-  profile:profiles!user_id(id, username, full_name, avatar_url)
-`
+const MENTOR_MINE_SELECT =
+  'id, user_id, bio, expertise, skills, languages, experience_summary, mentorship_interests, accepts_minors, verification_status, availability, created_at, updated_at, profile:profiles!user_id(id, username, full_name, avatar_url)'
 
 export async function GET(request: NextRequest) {
   try {
@@ -42,9 +36,10 @@ export async function GET(request: NextRequest) {
     const from = page * limit
     const to = from + limit - 1
 
-    let query = supabase
-      .from('youth_mentors')
-      .select(mine ? MENTOR_MINE_SELECT : MENTOR_LIST_SELECT)
+    // Avoid ternary in .select() — a union of select strings yields ParserError.
+    let query = mine
+      ? supabase.from('youth_mentors').select(MENTOR_MINE_SELECT)
+      : supabase.from('youth_mentors').select(MENTOR_LIST_SELECT)
 
     if (mine) {
       query = query.eq('user_id', user.id)
@@ -82,7 +77,7 @@ export async function GET(request: NextRequest) {
     if (error) return errorResponse(error.message, 400)
     if (mineRes.error) return errorResponse(mineRes.error.message, 400)
 
-    let mentors = data || []
+    let mentors: any[] = data || []
     if (search && !mine) {
       const q = search.toLowerCase()
       // Narrow further by profile name for matches that passed bio/experience OR filter

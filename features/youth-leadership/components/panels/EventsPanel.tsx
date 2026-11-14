@@ -111,19 +111,25 @@ export default function EventsPanel() {
             0,
             (event.attendance_count ?? 0) + (action === 'register' ? 1 : -1)
           )
-          return {
+          const now = new Date().toISOString()
+          const next: YouthEvent = {
             ...event,
             attendance_count: nextCount,
             my_attendance:
               action === 'register'
                 ? {
-                    ...(event.my_attendance || {}),
+                    id: event.my_attendance?.id || `local-${eventId}`,
                     event_id: eventId,
                     user_id: user?.id || '',
                     attendance_status: 'registered',
+                    verified_by: event.my_attendance?.verified_by ?? null,
+                    verified_at: event.my_attendance?.verified_at ?? null,
+                    created_at: event.my_attendance?.created_at || now,
+                    updated_at: now,
                   }
                 : null,
           }
+          return next
         })
       )
     } catch (err) {

@@ -85,22 +85,26 @@ export default function ProjectsPanel() {
         action: 'join',
       })
       toast.success('Joined project')
+      const now = new Date().toISOString()
       setProjects((list) =>
-        list.map((p) =>
-          p.id === projectId
-            ? {
-                ...p,
-                member_count: (p.member_count ?? 0) + 1,
-                my_membership: {
-                  ...(p.my_membership || {}),
-                  project_id: projectId,
-                  user_id: user?.id || '',
-                  role: 'participant',
-                  status: 'active',
-                } as YouthProject['my_membership'],
-              }
-            : p
-        )
+        list.map((p) => {
+          if (p.id !== projectId) return p
+          const next: YouthProject = {
+            ...p,
+            member_count: (p.member_count ?? 0) + 1,
+            my_membership: {
+              id: p.my_membership?.id || `local-${projectId}`,
+              project_id: projectId,
+              user_id: user?.id || '',
+              role: 'participant',
+              status: 'active',
+              joined_at: p.my_membership?.joined_at || now,
+              created_at: p.my_membership?.created_at || now,
+              updated_at: now,
+            },
+          }
+          return next
+        })
       )
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : 'Failed to join')
@@ -132,19 +136,22 @@ export default function ProjectsPanel() {
       setForm(EMPTY_FORM)
       setProjects((list) => {
         if (list.some((p) => p.id === created.id)) return list
-        return [
-          {
-            ...created,
-            member_count: created.member_count ?? 1,
-            my_membership: created.my_membership || {
-              project_id: created.id,
-              user_id: user?.id || '',
-              role: 'coordinator',
-              status: 'active',
-            },
+        const now = new Date().toISOString()
+        const next: YouthProject = {
+          ...created,
+          member_count: created.member_count ?? 1,
+          my_membership: created.my_membership || {
+            id: `local-${created.id}`,
+            project_id: created.id,
+            user_id: user?.id || '',
+            role: 'coordinator',
+            status: 'active',
+            joined_at: now,
+            created_at: now,
+            updated_at: now,
           },
-          ...list,
-        ]
+        }
+        return [next, ...list]
       })
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : 'Failed to create project')

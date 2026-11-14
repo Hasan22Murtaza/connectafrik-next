@@ -381,7 +381,7 @@ export interface YouthDashboardSummary {
   upcoming: {
     application_deadlines: YouthProgram[]
     events: YouthEvent[]
-    tasks: YouthProjectTask[]
+    tasks: Pick<YouthProjectTask, 'id' | 'title' | 'status' | 'due_date'>[]
     mentorship_sessions: YouthMentorshipMatch[]
   }
 }
