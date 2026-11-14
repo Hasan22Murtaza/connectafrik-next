@@ -50,6 +50,7 @@ export const YOUTH_MENTORSHIP_TABS = [
 export const YOUTH_ORGANIZATION_TABS = [
   { id: 'overview', label: 'Overview' },
   { id: 'programs', label: 'Programs' },
+  { id: 'projects', label: 'Projects' },
   { id: 'applications', label: 'Applications' },
 ] as const
 

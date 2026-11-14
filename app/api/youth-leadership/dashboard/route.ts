@@ -41,7 +41,9 @@ export async function GET(request: NextRequest) {
         .select(
           `
           id,
-          event:youth_events!event_id(*)
+          event:youth_events!event_id(
+            id, title, event_type, start_at, status
+          )
         `
         )
         .eq('user_id', user.id)
@@ -58,17 +60,12 @@ export async function GET(request: NextRequest) {
         .in('status', ['active', 'invited', 'completed']),
       supabase
         .from('youth_mentorship_matches')
-        .select(
-          `
-          *,
-          mentor:youth_mentors!mentor_id(*)
-        `
-        )
+        .select('id, status')
         .eq('participant_id', user.id)
         .in('status', ['requested', 'pending_guardian', 'active']),
       supabase
         .from('youth_achievements')
-        .select('*')
+        .select('id, skills, certificate_url, achievement_type')
         .eq('user_id', user.id),
       supabase
         .from('youth_mentors')
@@ -77,7 +74,7 @@ export async function GET(request: NextRequest) {
         .maybeSingle(),
       supabase
         .from('youth_project_tasks')
-        .select('*')
+        .select('id, title, status, due_date')
         .eq('assigned_to', user.id)
         .in('status', ['todo', 'in_progress'])
         .order('due_date', { ascending: true, nullsFirst: false })
@@ -89,11 +86,11 @@ export async function GET(request: NextRequest) {
         .in('status', ['draft', 'submitted', 'under_review', 'waitlisted']),
     ])
 
-    let mentorMatches: any[] = []
+    let mentorMatches: { id: string; status: string }[] = []
     if (myMentorRes.data?.id) {
       const { data } = await supabase
         .from('youth_mentorship_matches')
-        .select('*')
+        .select('id, status')
         .eq('mentor_id', myMentorRes.data.id)
         .in('status', ['requested', 'pending_guardian', 'active'])
       mentorMatches = data || []
@@ -138,29 +135,21 @@ export async function GET(request: NextRequest) {
       for (const s of (m as any).project?.skills_required || []) skills.add(s)
     }
 
-    const myAppProgramIds = new Set(
-      (openAppsRes.data || []).map((a) => a.program_id)
-    )
-
-    const { data: deadlinePrograms } = await supabase
-      .from('youth_programs')
-      .select(
-        `
-        *,
-        organization:youth_organizations!organization_id(id, name, logo_url, verification_status, country, region),
-        category:youth_program_categories!category_id(id, slug, name)
-      `
-      )
-      .eq('status', 'published')
-      .not('application_deadline', 'is', null)
-      .gte('application_deadline', now)
-      .lte('application_deadline', in30Days)
-      .order('application_deadline', { ascending: true })
-      .limit(20)
-
-    const applicationDeadlines = (deadlinePrograms || []).filter((p) =>
-      myAppProgramIds.has(p.id)
-    )
+    const myAppProgramIds = (openAppsRes.data || []).map((a) => a.program_id)
+    let applicationDeadlines: any[] = []
+    if (myAppProgramIds.length > 0) {
+      const { data: deadlinePrograms } = await supabase
+        .from('youth_programs')
+        .select('id, title, application_deadline')
+        .in('id', myAppProgramIds)
+        .eq('status', 'published')
+        .not('application_deadline', 'is', null)
+        .gte('application_deadline', now)
+        .lte('application_deadline', in30Days)
+        .order('application_deadline', { ascending: true })
+        .limit(20)
+      applicationDeadlines = deadlinePrograms || []
+    }
 
     const summary: YouthDashboardSummary = {
       active_programs: activePrograms,

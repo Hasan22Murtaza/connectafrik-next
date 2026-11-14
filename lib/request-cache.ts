@@ -24,6 +24,17 @@ const TTL_RULES: Array<{ test: (path: string) => boolean; ttlMs: number }> = [
   { test: (p) => p === '/api/family/me', ttlMs: 20_000 },
   // Collapse bursty call-session GETs from ChatWindow + MeetingContainer + context.
   { test: (p) => p.includes('/call-sessions'), ttlMs: 2_500 },
+  // Youth Leadership: dedupe remounts / parallel panels hitting the same lists
+  { test: (p) => p === '/api/youth-leadership/organizations', ttlMs: 30_000 },
+  { test: (p) => p === '/api/youth-leadership/categories', ttlMs: 60_000 },
+  { test: (p) => p === '/api/youth-leadership/guardian', ttlMs: 15_000 },
+  { test: (p) => p === '/api/youth-leadership/dashboard', ttlMs: 15_000 },
+  {
+    test: (p) =>
+      p === '/api/youth-leadership/mentors' ||
+      p.startsWith('/api/youth-leadership/mentors?'),
+    ttlMs: 10_000,
+  },
 ]
 
 function resolveTtl(url: string): number {

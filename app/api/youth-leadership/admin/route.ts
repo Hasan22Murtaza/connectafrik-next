@@ -32,7 +32,9 @@ export async function GET(request: NextRequest) {
       (() => {
         let q = supabase
           .from('youth_organizations')
-          .select('*')
+          .select(
+            'id, name, country, region, verification_status, created_at, verified_at'
+          )
           .order('created_at', { ascending: false })
           .limit(100)
         if (orgStatus) q = q.eq('verification_status', orgStatus)
@@ -57,7 +59,7 @@ export async function GET(request: NextRequest) {
           .from('youth_mentors')
           .select(
             `
-            *,
+            id, user_id, bio, verification_status, created_at,
             profile:profiles!user_id(id, username, full_name, avatar_url)
           `
           )
@@ -69,7 +71,9 @@ export async function GET(request: NextRequest) {
       (() => {
         let q = supabase
           .from('youth_safety_reports')
-          .select('*')
+          .select(
+            'id, report_type, description, status, created_at, organization_id, program_id, reporter_id'
+          )
           .order('created_at', { ascending: false })
           .limit(100)
         if (safetyStatus) q = q.eq('status', safetyStatus)
@@ -98,23 +102,23 @@ export async function GET(request: NextRequest) {
     ] = await Promise.all([
       supabase
         .from('youth_organizations')
-        .select('*', { count: 'exact', head: true })
+        .select('id', { count: 'exact', head: true })
         .eq('verification_status', 'pending'),
       supabase
         .from('youth_programs')
-        .select('*', { count: 'exact', head: true })
+        .select('id', { count: 'exact', head: true })
         .eq('status', 'published'),
       supabase
         .from('youth_programs')
-        .select('*', { count: 'exact', head: true })
+        .select('id', { count: 'exact', head: true })
         .eq('status', 'pending_review'),
       supabase
         .from('youth_mentors')
-        .select('*', { count: 'exact', head: true })
+        .select('id', { count: 'exact', head: true })
         .eq('verification_status', 'pending'),
       supabase
         .from('youth_safety_reports')
-        .select('*', { count: 'exact', head: true })
+        .select('id', { count: 'exact', head: true })
         .eq('status', 'open'),
     ])
 

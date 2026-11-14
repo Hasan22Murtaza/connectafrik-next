@@ -55,17 +55,9 @@ export default function EventsPanel() {
     (o) => o.my_role === 'admin' || o.my_role === 'coordinator'
   )
 
-  const load = useCallback(async () => {
-    setLoading(true)
+  const loadOrgs = useCallback(async () => {
     try {
-      const [eventList, orgList] = await Promise.all([
-        apiClient.get<YouthEvent[]>('/api/youth-leadership/events', {
-          upcoming: 0,
-          event_type: eventType || undefined,
-        }),
-        apiClient.get<OrgRow[]>('/api/youth-leadership/organizations'),
-      ])
-      setEvents(Array.isArray(eventList) ? eventList : [])
+      const orgList = await apiClient.get<OrgRow[]>('/api/youth-leadership/organizations')
       const nextOrgs = Array.isArray(orgList) ? orgList : []
       setOrgs(nextOrgs)
       setForm((f) => {
@@ -75,25 +67,65 @@ export default function EventsPanel() {
         )
         return firstCoord ? { ...f, organization_id: firstCoord.id } : f
       })
+    } catch {
+      /* create modal can still open without org options */
+    }
+  }, [])
+
+  const load = useCallback(async (opts?: { silent?: boolean }) => {
+    if (!opts?.silent) setLoading(true)
+    try {
+      const eventList = await apiClient.get<YouthEvent[]>('/api/youth-leadership/events', {
+        upcoming: 0,
+        event_type: eventType || undefined,
+        limit: 40,
+      })
+      setEvents(Array.isArray(eventList) ? eventList : [])
     } catch (err) {
-      setEvents([])
+      if (!opts?.silent) setEvents([])
       toast.error(err instanceof ApiError ? err.message : 'Failed to load events')
     } finally {
-      setLoading(false)
+      if (!opts?.silent) setLoading(false)
     }
   }, [eventType])
 
   useEffect(() => {
     if (authLoading || !user) return
+    loadOrgs()
+  }, [authLoading, user?.id, loadOrgs])
+
+  useEffect(() => {
+    if (authLoading || !user) return
     load()
-  }, [authLoading, user, load])
+  }, [authLoading, user?.id, load])
 
   async function register(eventId: string, action: 'register' | 'cancel') {
     setBusy(true)
     try {
       await apiClient.post(`/api/youth-leadership/events/${eventId}/attend`, { action })
       toast.success(action === 'register' ? 'Registered' : 'Registration cancelled')
-      await load()
+      setEvents((list) =>
+        list.map((event) => {
+          if (event.id !== eventId) return event
+          const nextCount = Math.max(
+            0,
+            (event.attendance_count ?? 0) + (action === 'register' ? 1 : -1)
+          )
+          return {
+            ...event,
+            attendance_count: nextCount,
+            my_attendance:
+              action === 'register'
+                ? {
+                    ...(event.my_attendance || {}),
+                    event_id: eventId,
+                    user_id: user?.id || '',
+                    attendance_status: 'registered',
+                  }
+                : null,
+          }
+        })
+      )
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : 'Failed to update registration')
     } finally {
@@ -108,7 +140,7 @@ export default function EventsPanel() {
     }
     setBusy(true)
     try {
-      await apiClient.post('/api/youth-leadership/events', {
+      const created = await apiClient.post<YouthEvent>('/api/youth-leadership/events', {
         organization_id: form.organization_id,
         title: form.title.trim(),
         description: form.description || null,
@@ -133,7 +165,10 @@ export default function EventsPanel() {
         access_info: '',
         capacity: '',
       }))
-      await load()
+      setEvents((list) => {
+        if (list.some((e) => e.id === created.id)) return list
+        return [{ ...created, attendance_count: 0, my_attendance: null }, ...list]
+      })
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : 'Failed to create event')
     } finally {

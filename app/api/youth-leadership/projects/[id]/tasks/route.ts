@@ -55,12 +55,14 @@ export async function GET(request: NextRequest, { params }: Params) {
       .from('youth_project_tasks')
       .select(
         `
-        *,
+        id, title, description, priority, due_date, status, assigned_to,
+        completed_at, verified_at, created_at,
         assignee:profiles!assigned_to(id, username, full_name, avatar_url)
       `
       )
       .eq('project_id', id)
       .order('created_at', { ascending: false })
+      .limit(200)
 
     if (error) return errorResponse(error.message, 400)
     return jsonResponse(data || [])

@@ -42,12 +42,13 @@ export async function GET(request: NextRequest, { params }: Params) {
       .from('youth_program_applications')
       .select(
         `
-        *,
+        id, program_id, user_id, status, guardian_approval_status, submitted_at, created_at,
         applicant:profiles!user_id(id, username, full_name, avatar_url)
       `
       )
       .eq('program_id', id)
       .order('created_at', { ascending: false })
+      .limit(100)
 
     if (status) query = query.eq('status', status)
 
@@ -76,7 +77,10 @@ export async function POST(request: NextRequest, { params }: Params) {
 
     const { data: program } = await supabase
       .from('youth_programs')
-      .select('*')
+      .select(
+        `id, organization_id, title, status, application_deadline, minimum_age, maximum_age,
+         capacity, seats_taken, requires_guardian_approval, application_questions`
+      )
       .eq('id', programId)
       .maybeSingle()
 
@@ -176,20 +180,21 @@ export async function POST(request: NextRequest, { params }: Params) {
         .eq('status', 'active')
         .in('role', ['admin', 'coordinator'])
 
-      for (const c of coordinators || []) {
-        if (c.user_id === user.id) continue
-        await notifyYouthUser({
-          user_id: c.user_id,
-          type: 'youth_program_application',
-          title: 'New program application',
-          message: `A participant applied to ${program.title}.`,
-          data: {
-            program_id: programId,
-            application_id: result.id,
-            href: `/youth-leadership/organization?program=${programId}`,
-          },
-        })
-      }
+      const notifyJobs: Promise<unknown>[] = (coordinators || [])
+        .filter((c) => c.user_id !== user.id)
+        .map((c) =>
+          notifyYouthUser({
+            user_id: c.user_id,
+            type: 'youth_program_application',
+            title: 'New program application',
+            message: `A participant applied to ${program.title}.`,
+            data: {
+              program_id: programId,
+              application_id: result.id,
+              href: `/youth-leadership/organization?program=${programId}`,
+            },
+          })
+        )
 
       if (needsGuardian && membership) {
         const { data: parents } = await supabase
@@ -199,20 +204,24 @@ export async function POST(request: NextRequest, { params }: Params) {
           .eq('role', 'parent')
           .eq('status', 'active')
         for (const p of parents || []) {
-          await notifyYouthUser({
-            user_id: p.user_id,
-            type: 'youth_guardian_approval',
-            title: 'Youth program approval needed',
-            message: `Please review a Youth Leadership program application.`,
-            data: {
-              program_id: programId,
-              application_id: result.id,
-              child_user_id: user.id,
-              href: '/youth-leadership/guardian',
-            },
-          })
+          notifyJobs.push(
+            notifyYouthUser({
+              user_id: p.user_id,
+              type: 'youth_guardian_approval',
+              title: 'Youth program approval needed',
+              message: `Please review a Youth Leadership program application.`,
+              data: {
+                program_id: programId,
+                application_id: result.id,
+                child_user_id: user.id,
+                href: '/youth-leadership/guardian',
+              },
+            })
+          )
         }
       }
+
+      await Promise.all(notifyJobs)
     }
 
     return jsonResponse(result, existing ? 200 : 201)

@@ -30,7 +30,7 @@ export async function POST(request: NextRequest, { params }: Params) {
 
     const { data: event } = await supabase
       .from('youth_events')
-      .select('*')
+      .select('id, status, capacity, created_by, organization_id, title')
       .eq('id', eventId)
       .maybeSingle()
 
@@ -41,7 +41,7 @@ export async function POST(request: NextRequest, { params }: Params) {
 
     const { data: existing } = await supabase
       .from('youth_event_attendance')
-      .select('*')
+      .select('id, event_id, user_id, attendance_status')
       .eq('event_id', eventId)
       .eq('user_id', user.id)
       .maybeSingle()

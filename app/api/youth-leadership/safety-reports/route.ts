@@ -25,8 +25,11 @@ export async function GET(request: NextRequest) {
       }
       let query = supabase
         .from('youth_safety_reports')
-        .select('*')
+        .select(
+          'id, report_type, description, status, created_at, organization_id, program_id, project_id, event_id, reporter_id'
+        )
         .order('created_at', { ascending: false })
+        .limit(100)
       if (status) query = query.eq('status', status)
       const { data, error } = await query
       if (error) return errorResponse(error.message, 400)
@@ -42,9 +45,12 @@ export async function GET(request: NextRequest) {
 
     let query = supabase
       .from('youth_safety_reports')
-      .select('*')
+      .select(
+        'id, report_type, description, status, created_at, organization_id, program_id, project_id, event_id'
+      )
       .eq('reporter_id', user.id)
       .order('created_at', { ascending: false })
+      .limit(50)
     if (status) query = query.eq('status', status)
 
     const { data, error } = await query

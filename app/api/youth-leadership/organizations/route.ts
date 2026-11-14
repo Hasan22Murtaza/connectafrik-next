@@ -29,7 +29,9 @@ export async function GET(request: NextRequest) {
 
     const { data, error } = await supabase
       .from('youth_organizations')
-      .select('*')
+      .select(
+        'id, name, description, logo_url, website, country, region, verification_status, created_at'
+      )
       .in('id', orgIds)
       .order('created_at', { ascending: false })
 

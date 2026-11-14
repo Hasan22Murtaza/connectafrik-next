@@ -95,12 +95,12 @@ export default function DiscoverProgramsPanel() {
   useEffect(() => {
     if (authLoading || !user) return
     loadCategories()
-  }, [authLoading, user, loadCategories])
+  }, [authLoading, user?.id, loadCategories])
 
   useEffect(() => {
     if (authLoading || !user) return
     loadPrograms()
-  }, [authLoading, user, loadPrograms])
+  }, [authLoading, user?.id, loadPrograms])
 
   function resetFilters() {
     setSearch('')

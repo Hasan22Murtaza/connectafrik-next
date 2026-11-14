@@ -45,13 +45,15 @@ export async function GET(request: NextRequest, { params }: Params) {
     const [{ data: application }, { data: enrollment }] = await Promise.all([
       supabase
         .from('youth_program_applications')
-        .select('*')
+        .select(
+          'id, program_id, status, guardian_approval_status, submitted_at, application_data, created_at, updated_at'
+        )
         .eq('program_id', id)
         .eq('user_id', user.id)
         .maybeSingle(),
       supabase
         .from('youth_program_enrollments')
-        .select('*')
+        .select('id, program_id, status, started_at, completed_at')
         .eq('program_id', id)
         .eq('user_id', user.id)
         .maybeSingle(),

@@ -46,48 +46,54 @@ export default function MentorsPanel() {
   const [showMentorForm, setShowMentorForm] = useState(false)
   const [mentorForm, setMentorForm] = useState(EMPTY_MENTOR_FORM)
 
-  const load = useCallback(async () => {
-    setLoading(true)
+  const applyMineForm = useCallback((mineFirst: YouthMentor | null) => {
+    setMyMentor(mineFirst)
+    if (!mineFirst) return
+    setMentorForm({
+      bio: mineFirst.bio || '',
+      experience_summary: mineFirst.experience_summary || '',
+      expertise: (mineFirst.expertise || []).join(', '),
+      skills: (mineFirst.skills || []).join(', '),
+      languages: (mineFirst.languages || []).join(', '),
+      mentorship_interests: (mineFirst.mentorship_interests || []).join(', '),
+      accepts_minors: Boolean(mineFirst.accepts_minors),
+    })
+  }, [])
+
+  const load = useCallback(async (opts?: { silent?: boolean }) => {
+    if (!opts?.silent) setLoading(true)
     try {
-      const [mentorList, mine] = await Promise.all([
-        apiClient.get<YouthMentor[]>('/api/youth-leadership/mentors', {
-          search: search || undefined,
-        }),
-        apiClient.get<YouthMentor[]>('/api/youth-leadership/mentors', { mine: 1 }),
-      ])
-      setMentors(Array.isArray(mentorList) ? mentorList : [])
-      const mineFirst = Array.isArray(mine) && mine[0] ? mine[0] : null
-      setMyMentor(mineFirst)
-      if (mineFirst) {
-        setMentorForm({
-          bio: mineFirst.bio || '',
-          experience_summary: mineFirst.experience_summary || '',
-          expertise: (mineFirst.expertise || []).join(', '),
-          skills: (mineFirst.skills || []).join(', '),
-          languages: (mineFirst.languages || []).join(', '),
-          mentorship_interests: (mineFirst.mentorship_interests || []).join(', '),
-          accepts_minors: Boolean(mineFirst.accepts_minors),
-        })
+      const payload = await apiClient.get<
+        YouthMentor[] | { mentors: YouthMentor[]; my_profile: YouthMentor | null }
+      >('/api/youth-leadership/mentors', {
+        search: search || undefined,
+        include_mine: 1,
+        limit: 40,
+      })
+      if (Array.isArray(payload)) {
+        setMentors(payload)
+      } else {
+        setMentors(Array.isArray(payload?.mentors) ? payload.mentors : [])
+        applyMineForm(payload?.my_profile || null)
       }
     } catch (err) {
-      setMentors([])
+      if (!opts?.silent) setMentors([])
       toast.error(err instanceof ApiError ? err.message : 'Failed to load mentors')
     } finally {
-      setLoading(false)
+      if (!opts?.silent) setLoading(false)
     }
-  }, [search])
+  }, [search, applyMineForm])
 
   useEffect(() => {
     if (authLoading || !user) return
     load()
-  }, [authLoading, user, load])
+  }, [authLoading, user?.id, load])
 
   async function requestMentorship(mentorId: string) {
     setBusy(true)
     try {
       await apiClient.post('/api/youth-leadership/mentorship', { mentor_id: mentorId })
       toast.success('Mentorship requested')
-      await load()
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : 'Request failed')
     } finally {
@@ -98,7 +104,7 @@ export default function MentorsPanel() {
   async function saveMentorProfile() {
     setBusy(true)
     try {
-      await apiClient.post('/api/youth-leadership/mentors', {
+      const saved = await apiClient.post<YouthMentor>('/api/youth-leadership/mentors', {
         bio: mentorForm.bio || null,
         experience_summary: mentorForm.experience_summary || null,
         expertise: splitCsv(mentorForm.expertise),
@@ -111,7 +117,18 @@ export default function MentorsPanel() {
         myMentor ? 'Mentor profile updated' : 'Mentor profile submitted for verification'
       )
       setShowMentorForm(false)
-      await load()
+      if (saved) {
+        setMyMentor(saved)
+        setMentors((list) => {
+          const idx = list.findIndex((m) => m.id === saved.id)
+          if (idx === -1) return list
+          const next = [...list]
+          next[idx] = { ...list[idx], ...saved }
+          return next
+        })
+      } else {
+        await load({ silent: true })
+      }
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : 'Failed to save mentor profile')
     } finally {

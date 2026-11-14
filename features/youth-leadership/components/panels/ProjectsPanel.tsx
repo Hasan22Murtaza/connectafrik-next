@@ -1,21 +1,18 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
-import { Search } from '@/shared/icons'
+import { Plus, Search } from '@/shared/icons'
 import { apiClient, ApiError } from '@/lib/api-client'
 import { useAuth } from '@/contexts/AuthContext'
-import StatusBadge from '@/features/youth-leadership/components/StatusBadge'
 import EmptyState from '@/features/youth-leadership/components/EmptyState'
+import ProjectCard from '@/features/youth-leadership/components/ProjectCard'
 import YouthSkeleton from '@/features/youth-leadership/components/YouthSkeleton'
 import YouthSectionHeader from '@/features/youth-leadership/components/YouthSectionHeader'
 import YouthFormModal, {
   YOUTH_FIELD,
   YouthFieldLabel,
 } from '@/features/youth-leadership/components/YouthFormModal'
-import { YOUTH_CARD_INTERACTIVE } from '@/features/youth-leadership/constants/nav'
 import type { YouthOrganization, YouthProject } from '@/shared/types/youthLeadership'
 
 type OrgRow = YouthOrganization & { my_role?: string | null }
@@ -30,7 +27,6 @@ const EMPTY_FORM = {
 }
 
 export default function ProjectsPanel() {
-  const router = useRouter()
   const { user, loading: authLoading } = useAuth()
   const [projects, setProjects] = useState<YouthProject[]>([])
   const [orgs, setOrgs] = useState<OrgRow[]>([])
@@ -46,30 +42,41 @@ export default function ProjectsPanel() {
     (o) => o.my_role === 'admin' || o.my_role === 'coordinator'
   )
 
-  const load = useCallback(async () => {
-    setLoading(true)
+  const loadOrgs = useCallback(async () => {
     try {
-      const [projectList, orgList] = await Promise.all([
-        apiClient.get<YouthProject[]>('/api/youth-leadership/projects', {
-          search: search || undefined,
-          mine: mineOnly ? 1 : undefined,
-        }),
-        apiClient.get<OrgRow[]>('/api/youth-leadership/organizations'),
-      ])
-      setProjects(Array.isArray(projectList) ? projectList : [])
+      const orgList = await apiClient.get<OrgRow[]>('/api/youth-leadership/organizations')
       setOrgs(Array.isArray(orgList) ? orgList : [])
+    } catch {
+      /* create modal can still open without org options */
+    }
+  }, [])
+
+  const load = useCallback(async (opts?: { silent?: boolean }) => {
+    if (!opts?.silent) setLoading(true)
+    try {
+      const projectList = await apiClient.get<YouthProject[]>('/api/youth-leadership/projects', {
+        search: search || undefined,
+        mine: mineOnly ? 1 : undefined,
+        limit: 40,
+      })
+      setProjects(Array.isArray(projectList) ? projectList : [])
     } catch (err) {
-      setProjects([])
+      if (!opts?.silent) setProjects([])
       toast.error(err instanceof ApiError ? err.message : 'Failed to load projects')
     } finally {
-      setLoading(false)
+      if (!opts?.silent) setLoading(false)
     }
   }, [search, mineOnly])
 
   useEffect(() => {
     if (authLoading || !user) return
+    loadOrgs()
+  }, [authLoading, user?.id, loadOrgs])
+
+  useEffect(() => {
+    if (authLoading || !user) return
     load()
-  }, [authLoading, user, load])
+  }, [authLoading, user?.id, load])
 
   async function joinProject(projectId: string) {
     setBusy(true)
@@ -78,7 +85,23 @@ export default function ProjectsPanel() {
         action: 'join',
       })
       toast.success('Joined project')
-      await load()
+      setProjects((list) =>
+        list.map((p) =>
+          p.id === projectId
+            ? {
+                ...p,
+                member_count: (p.member_count ?? 0) + 1,
+                my_membership: {
+                  ...(p.my_membership || {}),
+                  project_id: projectId,
+                  user_id: user?.id || '',
+                  role: 'participant',
+                  status: 'active',
+                } as YouthProject['my_membership'],
+              }
+            : p
+        )
+      )
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : 'Failed to join')
     } finally {
@@ -107,7 +130,22 @@ export default function ProjectsPanel() {
       toast.success('Project created')
       setShowCreate(false)
       setForm(EMPTY_FORM)
-      router.push(`/youth-leadership/projects/${created.id}`)
+      setProjects((list) => {
+        if (list.some((p) => p.id === created.id)) return list
+        return [
+          {
+            ...created,
+            member_count: created.member_count ?? 1,
+            my_membership: created.my_membership || {
+              project_id: created.id,
+              user_id: user?.id || '',
+              role: 'coordinator',
+              status: 'active',
+            },
+          },
+          ...list,
+        ]
+      })
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : 'Failed to create project')
     } finally {
@@ -137,12 +175,22 @@ export default function ProjectsPanel() {
       >
         <button
           type="button"
-          className={`btn-secondary ${mineOnly ? 'ring-1 ring-primary' : ''}`}
+          aria-pressed={mineOnly}
+          className={
+            mineOnly
+              ? 'btn-secondary ring-1 ring-primary/40 bg-primary/10 text-primary'
+              : 'btn-secondary'
+          }
           onClick={() => setMineOnly((v) => !v)}
         >
           {mineOnly ? 'Showing mine' : 'My projects'}
         </button>
-        <button type="button" className="btn-primary" onClick={() => setShowCreate(true)}>
+        <button
+          type="button"
+          className="btn-primary inline-flex items-center gap-1.5"
+          onClick={() => setShowCreate(true)}
+        >
+          <Plus className="h-4 w-4" aria-hidden />
           Create project
         </button>
       </YouthSectionHeader>
@@ -150,9 +198,9 @@ export default function ProjectsPanel() {
       {loading ? (
         <YouthSkeleton count={4} />
       ) : (
-        <div className="space-y-6">
+        <div className="space-y-5">
           <form
-            className="flex flex-col gap-3 sm:flex-row sm:items-center"
+            className="flex overflow-hidden rounded-xl border border-border/80 bg-surface shadow-[0_1px_2px_rgba(15,23,42,0.04)] focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/15"
             onSubmit={(e) => {
               e.preventDefault()
               setSearch(searchInput.trim())
@@ -165,77 +213,51 @@ export default function ProjectsPanel() {
                 aria-hidden
               />
               <input
-                className={`${YOUTH_FIELD} h-11 rounded-xl border-border/80 bg-surface pl-10 shadow-[0_1px_2px_rgba(15,23,42,0.04)]`}
+                className="h-11 w-full border-0 bg-transparent pl-10 pr-3 text-sm text-content outline-none placeholder:text-content-tertiary"
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
-                placeholder="Search projects"
+                placeholder="Search by title, skill, or organization"
               />
             </label>
-            <button type="submit" className="btn-secondary h-11 shrink-0 px-5">
+            <button
+              type="submit"
+              className="shrink-0 border-l border-border/80 px-5 text-sm font-semibold text-content-secondary transition hover:bg-surface-secondary hover:text-content"
+            >
               Search
             </button>
           </form>
 
           {projects.length === 0 ? (
             <EmptyState
-              title="No projects found"
-              description="Open community projects will appear here once approved and active."
+              title={mineOnly || search ? 'No matching projects' : 'No projects yet'}
+              description={
+                mineOnly || search
+                  ? 'Try clearing filters or search for a different keyword.'
+                  : 'Create a community project or wait for organizations to publish open ones.'
+              }
+              action={
+                !mineOnly && !search ? (
+                  <button
+                    type="button"
+                    className="btn-primary inline-flex items-center gap-1.5"
+                    onClick={() => setShowCreate(true)}
+                  >
+                    <Plus className="h-4 w-4" aria-hidden />
+                    Create project
+                  </button>
+                ) : null
+              }
             />
           ) : (
-            <div className="grid gap-4 sm:grid-cols-2">
-              {projects.map((project) => {
-                const isMember = Boolean(
-                  project.my_membership &&
-                    ['active', 'invited'].includes(project.my_membership.status)
-                )
-                return (
-                  <article key={project.id} className={YOUTH_CARD_INTERACTIVE}>
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <p className="text-xs text-content-tertiary">
-                          {project.organization?.name || 'Community project'}
-                        </p>
-                        <Link
-                          href={`/youth-leadership/projects/${project.id}`}
-                          className="mt-0.5 block truncate text-base font-semibold text-content hover:text-primary"
-                        >
-                          {project.title}
-                        </Link>
-                      </div>
-                      <StatusBadge status={project.status} />
-                    </div>
-                    {project.description ? (
-                      <p className="mt-2 line-clamp-2 text-sm text-content-secondary">
-                        {project.description}
-                      </p>
-                    ) : null}
-                    <p className="mt-3 text-xs text-content-tertiary">
-                      {project.member_count ?? 0} members
-                      {project.max_participants != null
-                        ? ` · max ${project.max_participants}`
-                        : ''}
-                    </p>
-                    <div className="mt-4 flex gap-2">
-                      <Link
-                        href={`/youth-leadership/projects/${project.id}`}
-                        className="btn-secondary flex-1 text-sm"
-                      >
-                        View
-                      </Link>
-                      {!isMember && ['approved', 'active'].includes(project.status) ? (
-                        <button
-                          type="button"
-                          className="btn-primary flex-1 text-sm"
-                          disabled={busy}
-                          onClick={() => joinProject(project.id)}
-                        >
-                          Join
-                        </button>
-                      ) : null}
-                    </div>
-                  </article>
-                )
-              })}
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              {projects.map((project) => (
+                <ProjectCard
+                  key={project.id}
+                  project={project}
+                  busy={busy}
+                  onJoin={joinProject}
+                />
+              ))}
             </div>
           )}
         </div>

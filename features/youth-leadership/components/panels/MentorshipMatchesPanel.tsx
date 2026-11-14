@@ -31,32 +31,49 @@ export default function MentorshipMatchesPanel() {
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
 
-  const load = useCallback(async () => {
-    setLoading(true)
+  const load = useCallback(async (opts?: { silent?: boolean }) => {
+    if (!opts?.silent) setLoading(true)
     try {
       const matchPayload = await apiClient.get<MentorshipPayload>(
         '/api/youth-leadership/mentorship'
       )
       setMatches(matchPayload)
     } catch (err) {
-      setMatches(null)
+      if (!opts?.silent) setMatches(null)
       toast.error(err instanceof ApiError ? err.message : 'Failed to load matches')
     } finally {
-      setLoading(false)
+      if (!opts?.silent) setLoading(false)
     }
   }, [])
 
   useEffect(() => {
     if (authLoading || !user) return
     load()
-  }, [authLoading, user, load])
+  }, [authLoading, user?.id, load])
+
+  function statusForAction(action: string): string {
+    if (action === 'accept') return 'active'
+    if (action === 'decline') return 'declined'
+    if (action === 'cancel') return 'cancelled'
+    if (action === 'complete') return 'completed'
+    return action
+  }
 
   async function updateMatch(id: string, action: string) {
     setBusy(true)
     try {
       await apiClient.patch(`/api/youth-leadership/mentorship/${id}`, { action })
       toast.success('Mentorship updated')
-      await load()
+      const nextStatus = statusForAction(action)
+      setMatches((prev) => {
+        if (!prev) return prev
+        const patch = <T extends YouthMentorshipMatch>(row: T): T =>
+          row.id === id ? { ...row, status: nextStatus as T['status'] } : row
+        return {
+          as_participant: prev.as_participant.map(patch),
+          as_mentor: prev.as_mentor.map(patch),
+        }
+      })
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : 'Update failed')
     } finally {

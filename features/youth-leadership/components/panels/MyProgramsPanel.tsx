@@ -42,7 +42,7 @@ export default function MyProgramsPanel() {
   useEffect(() => {
     if (authLoading || !user) return
     load()
-  }, [authLoading, user, load])
+  }, [authLoading, user?.id, load])
 
   if (authLoading || loading) return <YouthSkeleton count={3} />
   if (!user) return <EmptyState title="Sign in required" />

@@ -51,7 +51,7 @@ export default function ApplicationsPanel() {
   useEffect(() => {
     if (authLoading || !user) return
     load()
-  }, [authLoading, user, load])
+  }, [authLoading, user?.id, load])
 
   if (authLoading) return <YouthSkeleton count={4} variant="row" />
   if (!user) return <EmptyState title="Sign in required" />

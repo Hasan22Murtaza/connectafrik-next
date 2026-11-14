@@ -29,6 +29,7 @@ import type {
   YouthProgram,
   YouthProgramApplication,
   YouthProgramCategory,
+  YouthProject,
 } from '@/shared/types/youthLeadership'
 
 type OrgRow = YouthOrganization & { my_role?: string | null }
@@ -93,6 +94,7 @@ function YouthOrganizationPageInner() {
   const [categories, setCategories] = useState<YouthProgramCategory[]>([])
   const [analytics, setAnalytics] = useState<Analytics | null>(null)
   const [applications, setApplications] = useState<ApplicationWithApplicant[]>([])
+  const [projects, setProjects] = useState<YouthProject[]>([])
   const [selectedProgramId, setSelectedProgramId] = useState(programQuery)
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
@@ -118,29 +120,42 @@ function YouthOrganizationPageInner() {
     return list
   }, [])
 
-  const loadOrgData = useCallback(async (orgId: string) => {
-    if (!orgId) {
-      setPrograms([])
-      setAnalytics(null)
-      return
-    }
-    const [progPayload, analyticsData, cats] = await Promise.all([
-      apiClient.get<ProgramsPayload>('/api/youth-leadership/programs', {
-        organization_id: orgId,
-        limit: 50,
-      }),
-      apiClient.get<Analytics>(`/api/youth-leadership/organizations/${orgId}/analytics`),
-      apiClient.get<YouthProgramCategory[]>('/api/youth-leadership/categories'),
-    ])
-    const list = progPayload?.data || (Array.isArray(progPayload) ? (progPayload as unknown as YouthProgram[]) : [])
+  const loadPrograms = useCallback(async (orgId: string) => {
+    const progPayload = await apiClient.get<ProgramsPayload>('/api/youth-leadership/programs', {
+      organization_id: orgId,
+      limit: 50,
+    })
+    const list =
+      progPayload?.data ||
+      (Array.isArray(progPayload) ? (progPayload as unknown as YouthProgram[]) : [])
     setPrograms(list)
-    setAnalytics(analyticsData)
-    setCategories(Array.isArray(cats) ? cats : [])
     setSelectedProgramId((prev) => {
       if (prev && list.some((p) => p.id === prev)) return prev
       return list[0]?.id || ''
     })
+    return list
   }, [])
+
+  const loadAnalytics = useCallback(async (orgId: string) => {
+    const analyticsData = await apiClient.get<Analytics>(
+      `/api/youth-leadership/organizations/${orgId}/analytics`
+    )
+    setAnalytics(analyticsData)
+  }, [])
+
+  const loadProjects = useCallback(async (orgId: string) => {
+    const projectList = await apiClient.get<YouthProject[]>('/api/youth-leadership/projects', {
+      organization_id: orgId,
+      limit: 50,
+    })
+    setProjects(Array.isArray(projectList) ? projectList : [])
+  }, [])
+
+  const loadCategories = useCallback(async () => {
+    if (categories.length > 0) return
+    const cats = await apiClient.get<YouthProgramCategory[]>('/api/youth-leadership/categories')
+    setCategories(Array.isArray(cats) ? cats : [])
+  }, [categories.length])
 
   const loadApplications = useCallback(async (programId: string) => {
     if (!programId) {
@@ -158,30 +173,50 @@ function YouthOrganizationPageInner() {
     ;(async () => {
       setLoading(true)
       try {
-        const list = await loadOrgs()
-        if (list[0]?.id) await loadOrgData(list[0].id)
+        await loadOrgs()
       } catch (err) {
         toast.error(err instanceof ApiError ? err.message : 'Failed to load organization')
       } finally {
         setLoading(false)
       }
     })()
-  }, [authLoading, user, loadOrgs, loadOrgData])
+  }, [authLoading, user?.id, loadOrgs])
 
+  // Overview + programs list (needed for program picker across tabs)
   useEffect(() => {
     if (!selectedOrgId || authLoading || !user) return
+    let cancelled = false
     ;(async () => {
       try {
-        await loadOrgData(selectedOrgId)
+        await Promise.all([loadPrograms(selectedOrgId), loadAnalytics(selectedOrgId)])
       } catch (err) {
-        toast.error(err instanceof ApiError ? err.message : 'Failed to load org data')
+        if (!cancelled) {
+          toast.error(err instanceof ApiError ? err.message : 'Failed to load org data')
+        }
       }
     })()
-  }, [selectedOrgId]) // eslint-disable-line react-hooks/exhaustive-deps
+    return () => {
+      cancelled = true
+    }
+  }, [selectedOrgId, authLoading, user?.id, loadPrograms, loadAnalytics])
+
+  // Projects tab on demand
+  useEffect(() => {
+    if (!selectedOrgId || tab !== 'projects') return
+    loadProjects(selectedOrgId).catch((err) => {
+      toast.error(err instanceof ApiError ? err.message : 'Failed to load projects')
+    })
+  }, [selectedOrgId, tab, loadProjects])
+
+  // Categories only when creating a program
+  useEffect(() => {
+    if (!showProgramModal) return
+    loadCategories().catch(() => {})
+  }, [showProgramModal, loadCategories])
 
   useEffect(() => {
-    if (!selectedProgramId || !canCoordinate) {
-      setApplications([])
+    if (tab !== 'applications' || !selectedProgramId || !canCoordinate) {
+      if (tab !== 'applications') setApplications([])
       return
     }
     ;(async () => {
@@ -191,7 +226,7 @@ function YouthOrganizationPageInner() {
         toast.error(err instanceof ApiError ? err.message : 'Failed to load applications')
       }
     })()
-  }, [selectedProgramId, canCoordinate, loadApplications])
+  }, [tab, selectedProgramId, canCoordinate, loadApplications])
 
   useEffect(() => {
     if (programQuery) setTab('applications')
@@ -208,7 +243,10 @@ function YouthOrganizationPageInner() {
       toast.success('Organization created (pending verification)')
       setOrgForm(EMPTY_ORG_FORM)
       setShowOrgModal(false)
-      await loadOrgs()
+      setOrgs((list) => {
+        if (list.some((o) => o.id === org.id)) return list
+        return [...list, org]
+      })
       setSelectedOrgId(org.id)
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : 'Failed to create organization')
@@ -224,7 +262,7 @@ function YouthOrganizationPageInner() {
     }
     setBusy(true)
     try {
-      await apiClient.post('/api/youth-leadership/programs', {
+      const created = await apiClient.post<YouthProgram>('/api/youth-leadership/programs', {
         organization_id: selectedOrgId,
         title: programForm.title.trim(),
         description: programForm.description || null,
@@ -241,7 +279,23 @@ function YouthOrganizationPageInner() {
       toast.success(publish ? 'Program published' : 'Program draft created')
       setProgramForm(EMPTY_PROGRAM_FORM)
       setShowProgramModal(false)
-      await loadOrgData(selectedOrgId)
+      setPrograms((list) => {
+        if (list.some((p) => p.id === created.id)) return list
+        return [created, ...list]
+      })
+      setSelectedProgramId(created.id)
+      setAnalytics((prev) =>
+        prev
+          ? {
+              ...prev,
+              total_programs: prev.total_programs + 1,
+              active_programs:
+                publish || created.status === 'published'
+                  ? prev.active_programs + 1
+                  : prev.active_programs,
+            }
+          : prev
+      )
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : 'Failed to create program')
     } finally {
@@ -256,7 +310,12 @@ function YouthOrganizationPageInner() {
         status: 'published',
       })
       toast.success('Program published')
-      await loadOrgData(selectedOrgId)
+      setPrograms((list) =>
+        list.map((p) => (p.id === programId ? { ...p, status: 'published' } : p))
+      )
+      setAnalytics((prev) =>
+        prev ? { ...prev, active_programs: prev.active_programs + 1 } : prev
+      )
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : 'Failed to publish')
     } finally {
@@ -274,14 +333,48 @@ function YouthOrganizationPageInner() {
         status,
       })
       toast.success(`Application marked ${status.replace(/_/g, ' ')}`)
-      await loadApplications(selectedProgramId)
-      if (selectedOrgId) await loadOrgData(selectedOrgId)
+      setApplications((list) =>
+        list.map((app) => (app.id === applicationId ? { ...app, status } : app))
+      )
+      setAnalytics((prev) => {
+        if (!prev) return prev
+        const next = { ...prev }
+        if (status === 'accepted') {
+          next.accepted_applications = prev.accepted_applications + 1
+          next.pending_applications = Math.max(0, prev.pending_applications - 1)
+        } else if (status === 'rejected' || status === 'waitlisted') {
+          next.pending_applications = Math.max(0, prev.pending_applications - 1)
+        }
+        return next
+      })
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : 'Failed to update application')
     } finally {
       setBusy(false)
     }
   }
+
+  async function approveProject(projectId: string) {
+    setBusy(true)
+    try {
+      await apiClient.patch(`/api/youth-leadership/projects/${projectId}`, {
+        status: 'approved',
+      })
+      toast.success('Project approved')
+      setProjects((list) =>
+        list.map((p) => (p.id === projectId ? { ...p, status: 'approved' } : p))
+      )
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : 'Failed to update project')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const pendingProjects = useMemo(
+    () => projects.filter((p) => p.status === 'pending_approval'),
+    [projects]
+  )
 
   function closeOrgModal() {
     if (busy) return
@@ -296,9 +389,11 @@ function YouthOrganizationPageInner() {
   const orgSubtitle =
     tab === 'programs'
       ? 'Draft, publish, and manage programs for your organization.'
-      : tab === 'applications'
-        ? 'Review applications for the programs you coordinate.'
-        : 'Create an organization, publish programs, and review applications.'
+      : tab === 'projects'
+        ? 'Review community project requests linked to your organization.'
+        : tab === 'applications'
+          ? 'Review applications for the programs you coordinate.'
+          : 'Create an organization, publish programs, and review applications.'
 
   if (authLoading || loading) {
     return (
@@ -578,15 +673,6 @@ function YouthOrganizationPageInner() {
             >
               New organization
             </button>
-            {canCoordinate ? (
-              <button
-                type="button"
-                className="btn-primary text-sm"
-                onClick={() => setShowProgramModal(true)}
-              >
-                Create program
-              </button>
-            ) : null}
           </div>
         ) : null
       }
@@ -633,7 +719,11 @@ function YouthOrganizationPageInner() {
                       { label: 'Programs', value: analytics.total_programs },
                       { label: 'Active programs', value: analytics.active_programs },
                       { label: 'Applications', value: analytics.total_applications },
-                      { label: 'Pending reviews', value: analytics.pending_applications },
+                      { label: 'Pending program reviews', value: analytics.pending_applications },
+                      {
+                        label: 'Pending project requests',
+                        value: pendingProjects.length,
+                      },
                       { label: 'Accepted', value: analytics.accepted_applications },
                       { label: 'Completion rate', value: `${analytics.completion_rate}%` },
                       { label: 'Upcoming events', value: analytics.upcoming_events },
@@ -723,6 +813,84 @@ function YouthOrganizationPageInner() {
                     </li>
                   ))}
                 </ul>
+              )}
+            </section>
+          ) : null}
+
+          {tab === 'projects' ? (
+            <section>
+              {!canCoordinate ? (
+                <EmptyState
+                  title="Coordinator access required"
+                  description="Only organization admins and coordinators can review project requests."
+                />
+              ) : (
+                <>
+                  <YouthSectionHeader
+                    title="Project requests"
+                    badge={
+                      <span className="rounded-full bg-surface-secondary px-2.5 py-0.5 text-xs font-medium text-content-secondary">
+                        {pendingProjects.length} pending · {projects.length} total
+                      </span>
+                    }
+                  />
+                  {projects.length === 0 ? (
+                    <EmptyState
+                      title="No projects yet"
+                      description="Community projects linked to this organization will appear here for approval."
+                    />
+                  ) : (
+                    <ul className="space-y-3">
+                      {projects.map((project) => (
+                        <li key={project.id} className={YOUTH_CARD}>
+                          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                            <div className="min-w-0">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <Link
+                                  href={`/youth-leadership/projects/${project.id}`}
+                                  className="font-medium text-content hover:text-primary"
+                                >
+                                  {project.title}
+                                </Link>
+                                <StatusBadge status={project.status} />
+                              </div>
+                              {project.description ? (
+                                <p className="mt-1 line-clamp-2 text-sm text-content-secondary">
+                                  {project.description}
+                                </p>
+                              ) : null}
+                              <p className="mt-2 text-xs text-content-tertiary">
+                                {project.member_count ?? 0} member
+                                {(project.member_count ?? 0) === 1 ? '' : 's'}
+                                {project.created_at
+                                  ? ` · ${new Date(project.created_at).toLocaleDateString()}`
+                                  : ''}
+                              </p>
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                              <Link
+                                href={`/youth-leadership/projects/${project.id}`}
+                                className="btn-secondary text-sm"
+                              >
+                                View
+                              </Link>
+                              {project.status === 'pending_approval' ? (
+                                <button
+                                  type="button"
+                                  className="btn-primary text-sm"
+                                  disabled={busy}
+                                  onClick={() => approveProject(project.id)}
+                                >
+                                  Approve
+                                </button>
+                              ) : null}
+                            </div>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </>
               )}
             </section>
           ) : null}

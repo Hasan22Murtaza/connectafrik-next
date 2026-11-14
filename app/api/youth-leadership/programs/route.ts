@@ -12,13 +12,21 @@ import {
 } from '@/lib/youth-leadership/auth'
 import { DEFAULT_APPLICATION_QUESTIONS } from '@/shared/types/youthLeadership'
 
-const PROGRAM_SELECT = `
-  *,
+/** List/card fields only — detail route keeps full program rows. */
+const PROGRAM_LIST_SELECT = `
+  id, title, description, status, format, country, location_region,
+  application_deadline, minimum_age, maximum_age, required_skills,
+  capacity, seats_taken, requires_guardian_approval, category_slug,
+  organization_id, category_id, created_at, popularity_score,
   organization:youth_organizations!organization_id(
     id, name, logo_url, verification_status, country, region
   ),
   category:youth_program_categories!category_id(id, slug, name)
 `
+
+const APP_ENRICH_SELECT =
+  'id, program_id, status, guardian_approval_status, submitted_at, created_at'
+const ENROLL_ENRICH_SELECT = 'id, program_id, status, started_at, completed_at'
 
 export async function GET(request: NextRequest) {
   try {
@@ -53,7 +61,7 @@ export async function GET(request: NextRequest) {
 
     let query = supabase
       .from('youth_programs')
-      .select(PROGRAM_SELECT)
+      .select(PROGRAM_LIST_SELECT)
       .range(from, to)
 
     if (mine) {
@@ -122,12 +130,12 @@ export async function GET(request: NextRequest) {
       const [{ data: apps }, { data: enrollments }] = await Promise.all([
         supabase
           .from('youth_program_applications')
-          .select('*')
+          .select(APP_ENRICH_SELECT)
           .eq('user_id', user.id)
           .in('program_id', programIds),
         supabase
           .from('youth_program_enrollments')
-          .select('*')
+          .select(ENROLL_ENRICH_SELECT)
           .eq('user_id', user.id)
           .in('program_id', programIds),
       ])
@@ -216,7 +224,7 @@ export async function POST(request: NextRequest) {
     const { data, error } = await supabase
       .from('youth_programs')
       .insert(payload)
-      .select(PROGRAM_SELECT)
+      .select(PROGRAM_LIST_SELECT)
       .single()
 
     if (error) return errorResponse(error.message, 400)

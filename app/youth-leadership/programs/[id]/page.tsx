@@ -76,7 +76,7 @@ export default function YouthProgramDetailPage() {
   useEffect(() => {
     if (authLoading || !user || !id) return
     load()
-  }, [authLoading, user, id, load])
+  }, [authLoading, user?.id, id, load])
 
   async function apply(submit: boolean) {
     if (!program) return

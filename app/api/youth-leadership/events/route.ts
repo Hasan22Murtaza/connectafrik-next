@@ -11,8 +11,9 @@ import {
   requireOrgRole,
 } from '@/lib/youth-leadership/auth'
 
-const EVENT_SELECT = `
-  *,
+const EVENT_LIST_SELECT = `
+  id, title, description, event_type, format, start_at, end_at, status,
+  capacity, organization_id, location_region, access_info, created_by, created_at,
   organization:youth_organizations!organization_id(id, name, logo_url)
 `
 
@@ -33,11 +34,19 @@ export async function GET(request: NextRequest) {
     const projectId = searchParams.get('project_id')
     const status = searchParams.get('status')
     const eventType = searchParams.get('event_type')
+    const page = Math.max(parseInt(searchParams.get('page') || '0', 10) || 0, 0)
+    const limit = Math.min(
+      Math.max(parseInt(searchParams.get('limit') || '40', 10) || 40, 1),
+      50
+    )
+    const from = page * limit
+    const to = from + limit - 1
 
     let query = supabase
       .from('youth_events')
-      .select(EVENT_SELECT)
+      .select(EVENT_LIST_SELECT)
       .order('start_at', { ascending: true })
+      .range(from, to)
 
     if (orgId) {
       const authz = await requireOrgRole(supabase, orgId, user.id, 'viewer')
@@ -86,7 +95,7 @@ export async function GET(request: NextRequest) {
           .in('attendance_status', ['registered', 'attended']),
         supabase
           .from('youth_event_attendance')
-          .select('*')
+          .select('id, event_id, user_id, attendance_status')
           .eq('user_id', user.id)
           .in('event_id', ids),
       ])
@@ -152,7 +161,7 @@ export async function POST(request: NextRequest) {
     const { data, error } = await supabase
       .from('youth_events')
       .insert(payload)
-      .select(EVENT_SELECT)
+      .select(EVENT_LIST_SELECT)
       .single()
 
     if (error) return errorResponse(error.message, 400)

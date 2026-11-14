@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
 
     const { data, error } = await supabase
       .from('youth_program_categories')
-      .select('id, slug, name, description, sort_order, is_active')
+      .select('id, slug, name')
       .eq('is_active', true)
       .order('sort_order', { ascending: true })
 

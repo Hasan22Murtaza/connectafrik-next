@@ -24,9 +24,12 @@ export async function GET(request: NextRequest) {
     const status = new URL(request.url).searchParams.get('status')
     let query = supabase
       .from('youth_achievements')
-      .select('*')
+      .select(
+        'id, title, description, achievement_type, skills, verification_status, certificate_url, verified_at, badge_slug, created_at'
+      )
       .eq('user_id', user.id)
       .order('created_at', { ascending: false })
+      .limit(100)
 
     if (status) query = query.eq('verification_status', status)
 

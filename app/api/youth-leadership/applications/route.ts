@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
       .from('youth_program_applications')
       .select(
         `
-        *,
+        id, program_id, status, guardian_approval_status, submitted_at, created_at, updated_at,
         program:youth_programs!program_id(
           id, title, status, organization_id,
           organization:youth_organizations!organization_id(id, name, logo_url)
@@ -28,6 +28,7 @@ export async function GET(request: NextRequest) {
       )
       .eq('user_id', user.id)
       .order('created_at', { ascending: false })
+      .limit(100)
 
     if (status) query = query.eq('status', status)
 

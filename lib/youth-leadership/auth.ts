@@ -30,7 +30,7 @@ export async function getOrgMembership(
 ) {
   const { data } = await supabase
     .from('youth_organization_members')
-    .select('*')
+    .select('id, organization_id, user_id, role, status')
     .eq('organization_id', organizationId)
     .eq('user_id', userId)
     .eq('status', 'active')
@@ -87,15 +87,18 @@ export async function checkYouthLeadershipAccess(
   supabase: SupabaseClient,
   userId: string
 ): Promise<YouthAccessDecision> {
-  const parental = await checkParentalRestriction(supabase, userId, 'youth_leadership')
+  const [parental, age] = await Promise.all([
+    checkParentalRestriction(supabase, userId, 'youth_leadership'),
+    getUserAge(supabase, userId),
+  ])
   if (!parental.allowed) {
     return {
       allowed: false,
       code: 'PARENTAL_RESTRICTED',
       message: parental.message || 'Youth Leadership is restricted by your parent.',
+      age,
     }
   }
-  const age = await getUserAge(supabase, userId)
   return { allowed: true, age }
 }
 

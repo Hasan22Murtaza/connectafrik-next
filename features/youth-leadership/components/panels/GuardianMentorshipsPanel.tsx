@@ -23,23 +23,23 @@ export default function GuardianMentorshipsPanel() {
   const [loading, setLoading] = useState(true)
   const [busyId, setBusyId] = useState<string | null>(null)
 
-  const load = useCallback(async () => {
-    setLoading(true)
+  const load = useCallback(async (opts?: { silent?: boolean }) => {
+    if (!opts?.silent) setLoading(true)
     try {
       const payload = await apiClient.get<GuardianPayload>('/api/youth-leadership/guardian')
       setMentorships(payload?.mentorships || [])
     } catch (err) {
-      setMentorships([])
+      if (!opts?.silent) setMentorships([])
       toast.error(err instanceof ApiError ? err.message : 'Failed to load approvals')
     } finally {
-      setLoading(false)
+      if (!opts?.silent) setLoading(false)
     }
   }, [])
 
   useEffect(() => {
     if (authLoading || !user) return
     load()
-  }, [authLoading, user, load])
+  }, [authLoading, user?.id, load])
 
   async function reviewMentorship(id: string, status: 'approved' | 'rejected') {
     setBusyId(id)
@@ -48,7 +48,7 @@ export default function GuardianMentorshipsPanel() {
         guardian_approval_status: status,
       })
       toast.success(status === 'approved' ? 'Mentorship approved' : 'Mentorship rejected')
-      await load()
+      setMentorships((list) => list.filter((m) => m.id !== id))
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : 'Update failed')
     } finally {

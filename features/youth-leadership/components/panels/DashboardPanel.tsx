@@ -40,7 +40,7 @@ export default function DashboardPanel() {
   useEffect(() => {
     if (authLoading || !user) return
     load()
-  }, [authLoading, user, load])
+  }, [authLoading, user?.id, load])
 
   const cards = summary
     ? [

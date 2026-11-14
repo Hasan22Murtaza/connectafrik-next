@@ -48,8 +48,8 @@ export default function AchievementsPanel() {
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState(EMPTY_FORM)
 
-  const load = useCallback(async () => {
-    setLoading(true)
+  const load = useCallback(async (opts?: { silent?: boolean }) => {
+    if (!opts?.silent) setLoading(true)
     try {
       const data = await apiClient.get<YouthAchievement[]>(
         '/api/youth-leadership/achievements',
@@ -57,17 +57,17 @@ export default function AchievementsPanel() {
       )
       setItems(Array.isArray(data) ? data : [])
     } catch (err) {
-      setItems([])
+      if (!opts?.silent) setItems([])
       toast.error(err instanceof ApiError ? err.message : 'Failed to load achievements')
     } finally {
-      setLoading(false)
+      if (!opts?.silent) setLoading(false)
     }
   }, [status])
 
   useEffect(() => {
     if (authLoading || !user) return
     load()
-  }, [authLoading, user, load])
+  }, [authLoading, user?.id, load])
 
   async function createAchievement() {
     if (!form.title.trim()) {
@@ -76,7 +76,7 @@ export default function AchievementsPanel() {
     }
     setBusy(true)
     try {
-      await apiClient.post('/api/youth-leadership/achievements', {
+      const created = await apiClient.post<YouthAchievement>('/api/youth-leadership/achievements', {
         title: form.title.trim(),
         description: form.description || null,
         achievement_type: form.achievement_type,
@@ -88,7 +88,12 @@ export default function AchievementsPanel() {
       toast.success('Achievement submitted (pending verification)')
       setShowForm(false)
       setForm(EMPTY_FORM)
-      await load()
+      if (!status || status === created.verification_status) {
+        setItems((list) => {
+          if (list.some((item) => item.id === created.id)) return list
+          return [created, ...list]
+        })
+      }
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : 'Failed to create achievement')
     } finally {

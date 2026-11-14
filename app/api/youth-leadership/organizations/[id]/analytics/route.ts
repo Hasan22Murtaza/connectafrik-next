@@ -39,26 +39,44 @@ export async function GET(request: NextRequest, { params }: Params) {
     let activeEnrollments = 0
 
     if (programIds.length > 0) {
-      const [{ data: apps }, { data: enrollments }] = await Promise.all([
+      const [
+        totalAppsRes,
+        acceptedAppsRes,
+        pendingAppsRes,
+        activeEnrollRes,
+        completedEnrollRes,
+      ] = await Promise.all([
         supabase
           .from('youth_program_applications')
-          .select('id, status')
+          .select('id', { count: 'exact', head: true })
           .in('program_id', programIds),
         supabase
+          .from('youth_program_applications')
+          .select('id', { count: 'exact', head: true })
+          .in('program_id', programIds)
+          .eq('status', 'accepted'),
+        supabase
+          .from('youth_program_applications')
+          .select('id', { count: 'exact', head: true })
+          .in('program_id', programIds)
+          .in('status', ['submitted', 'under_review']),
+        supabase
           .from('youth_program_enrollments')
-          .select('id, status')
-          .in('program_id', programIds),
+          .select('id', { count: 'exact', head: true })
+          .in('program_id', programIds)
+          .eq('status', 'active'),
+        supabase
+          .from('youth_program_enrollments')
+          .select('id', { count: 'exact', head: true })
+          .in('program_id', programIds)
+          .eq('status', 'completed'),
       ])
 
-      totalApplications = (apps || []).length
-      acceptedApplications = (apps || []).filter((a) => a.status === 'accepted').length
-      pendingApplications = (apps || []).filter((a) =>
-        ['submitted', 'under_review'].includes(a.status)
-      ).length
-      activeEnrollments = (enrollments || []).filter((e) => e.status === 'active').length
-      completedEnrollments = (enrollments || []).filter(
-        (e) => e.status === 'completed'
-      ).length
+      totalApplications = totalAppsRes.count ?? 0
+      acceptedApplications = acceptedAppsRes.count ?? 0
+      pendingApplications = pendingAppsRes.count ?? 0
+      activeEnrollments = activeEnrollRes.count ?? 0
+      completedEnrollments = completedEnrollRes.count ?? 0
     }
 
     const enrollmentTotal = activeEnrollments + completedEnrollments
@@ -70,7 +88,7 @@ export async function GET(request: NextRequest, { params }: Params) {
     const now = new Date().toISOString()
     const { count: upcomingEvents, error: eventError } = await supabase
       .from('youth_events')
-      .select('*', { count: 'exact', head: true })
+      .select('id', { count: 'exact', head: true })
       .eq('organization_id', id)
       .in('status', ['scheduled', 'ongoing'])
       .gte('start_at', now)

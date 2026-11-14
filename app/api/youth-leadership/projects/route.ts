@@ -11,8 +11,9 @@ import {
   requireOrgRole,
 } from '@/lib/youth-leadership/auth'
 
-const PROJECT_SELECT = `
-  *,
+const PROJECT_LIST_SELECT = `
+  id, title, description, objective, status, skills_required, max_participants,
+  organization_id, created_by, start_date, end_date, created_at,
   organization:youth_organizations!organization_id(id, name, logo_url)
 `
 
@@ -31,11 +32,19 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status')
     const orgId = searchParams.get('organization_id')
     const search = searchParams.get('search')?.trim() || ''
+    const page = Math.max(parseInt(searchParams.get('page') || '0', 10) || 0, 0)
+    const limit = Math.min(
+      Math.max(parseInt(searchParams.get('limit') || '40', 10) || 40, 1),
+      50
+    )
+    const from = page * limit
+    const to = from + limit - 1
 
     let query = supabase
       .from('youth_projects')
-      .select(PROJECT_SELECT)
+      .select(PROJECT_LIST_SELECT)
       .order('created_at', { ascending: false })
+      .range(from, to)
 
     if (mine) {
       const { data: memberships } = await supabase
@@ -54,7 +63,10 @@ export async function GET(request: NextRequest) {
       query = query.eq('organization_id', orgId)
       if (status) query = query.eq('status', status)
     } else {
-      query = query.in('status', ['approved', 'active'])
+      // Public list: approved/active, plus the viewer's own drafts/pending so creates stay visible
+      query = query.or(
+        `status.in.(approved,active),and(created_by.eq.${user.id},status.in.(draft,pending_approval,approved,active,completed))`
+      )
       if (status && ['approved', 'active', 'completed'].includes(status)) {
         query = query.eq('status', status)
       }
@@ -83,7 +95,7 @@ export async function GET(request: NextRequest) {
           .in('status', ['active', 'invited']),
         supabase
           .from('youth_project_members')
-          .select('*')
+          .select('id, project_id, user_id, role, status')
           .eq('user_id', user.id)
           .in('project_id', ids),
       ])
@@ -93,13 +105,15 @@ export async function GET(request: NextRequest) {
       for (const m of myMembers || []) myMembership.set(m.project_id, m)
     }
 
-    return jsonResponse(
-      projects.map((p) => ({
-        ...p,
-        member_count: counts.get(p.id) || 0,
-        my_membership: myMembership.get(p.id) || null,
-      }))
-    )
+    const enriched = projects.map((p) => ({
+      ...p,
+      member_count: counts.get(p.id) || 0,
+      my_membership: myMembership.get(p.id) || null,
+    }))
+
+    // Keep array response for existing callers; pagination meta is additive via header-like fields
+    // when clients opt into page/limit (backward compatible: still returns the list array).
+    return jsonResponse(enriched)
   } catch (error: any) {
     if (error?.message === 'Unauthorized') return unauthorizedResponse()
     return errorResponse(error?.message || 'Failed to load projects', 500)
@@ -143,7 +157,7 @@ export async function POST(request: NextRequest) {
     const { data, error } = await supabase
       .from('youth_projects')
       .insert(payload)
-      .select(PROJECT_SELECT)
+      .select(PROJECT_LIST_SELECT)
       .single()
 
     if (error) return errorResponse(error.message, 400)

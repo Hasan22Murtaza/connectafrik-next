@@ -52,15 +52,7 @@ export default function YouthShell({
                   {title}
                 </h1>
               ) : null}
-              {showSafetyBadge ? (
-                <span
-                  className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-[11px] font-medium text-primary"
-                  title="Verified organizations, guardian controls, and report tools stay visible."
-                >
-                  <ShieldCheck className="h-3.5 w-3.5" aria-hidden />
-                  CribsSafe
-                </span>
-              ) : null}
+             
             </div>
             {subtitle ? (
               <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-content-secondary">

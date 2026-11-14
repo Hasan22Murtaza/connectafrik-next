@@ -6,11 +6,19 @@ import { notifyYouthUser } from '@/lib/youth-leadership/notify'
 import { getActiveMembership, isManagedRole } from '@/lib/family/auth'
 
 const MATCH_SELECT = `
-  *,
+  id, mentor_id, participant_id, program_id, status, guardian_approval_status,
+  goals, started_at, ended_at, created_at,
   mentor:youth_mentors!mentor_id(
-    *,
+    id, user_id, expertise, verification_status, accepts_minors,
     profile:profiles!user_id(id, username, full_name, avatar_url)
   )
+`
+
+const MENTOR_SIDE_SELECT = `
+  id, mentor_id, participant_id, program_id, status, guardian_approval_status,
+  goals, started_at, ended_at, created_at,
+  participant:profiles!participant_id(id, username, full_name, avatar_url),
+  mentor:youth_mentors!mentor_id(id, user_id, verification_status)
 `
 
 export async function GET(request: NextRequest) {
@@ -48,13 +56,7 @@ export async function GET(request: NextRequest) {
     if (myMentor?.id) {
       let asMentor = supabase
         .from('youth_mentorship_matches')
-        .select(
-          `
-          *,
-          participant:profiles!participant_id(id, username, full_name, avatar_url),
-          mentor:youth_mentors!mentor_id(*)
-        `
-        )
+        .select(MENTOR_SIDE_SELECT)
         .eq('mentor_id', myMentor.id)
       if (status) asMentor = asMentor.eq('status', status)
       const { data, error } = await asMentor.order('created_at', { ascending: false })
@@ -88,7 +90,7 @@ export async function POST(request: NextRequest) {
 
     const { data: mentor } = await supabase
       .from('youth_mentors')
-      .select('*')
+      .select('id, user_id, verification_status, accepts_minors')
       .eq('id', mentorId)
       .maybeSingle()
 
@@ -173,19 +175,21 @@ export async function POST(request: NextRequest) {
         .eq('family_id', membership.family_id)
         .eq('role', 'parent')
         .eq('status', 'active')
-      for (const p of parents || []) {
-        await notifyYouthUser({
-          user_id: p.user_id,
-          type: 'youth_guardian_approval',
-          title: 'Mentorship approval needed',
-          message: 'Please review a Youth Leadership mentorship request.',
-          data: {
-            mentorship_id: result.id,
-            child_user_id: user.id,
-            href: '/youth-leadership/guardian',
-          },
-        })
-      }
+      await Promise.all(
+        (parents || []).map((p) =>
+          notifyYouthUser({
+            user_id: p.user_id,
+            type: 'youth_guardian_approval',
+            title: 'Mentorship approval needed',
+            message: 'Please review a Youth Leadership mentorship request.',
+            data: {
+              mentorship_id: result.id,
+              child_user_id: user.id,
+              href: '/youth-leadership/guardian',
+            },
+          })
+        )
+      )
     }
 
     return jsonResponse(result, existing ? 200 : 201)

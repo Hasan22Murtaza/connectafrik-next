@@ -3,8 +3,16 @@ import { getAuthenticatedUser } from '@/lib/supabase-server'
 import { errorResponse, jsonResponse, unauthorizedResponse } from '@/lib/api-utils'
 import { checkYouthLeadershipAccess } from '@/lib/youth-leadership/auth'
 
-const MENTOR_SELECT = `
-  *,
+const MENTOR_LIST_SELECT = `
+  id, user_id, bio, expertise, skills, languages, experience_summary,
+  mentorship_interests, accepts_minors, verification_status, created_at, updated_at,
+  profile:profiles!user_id(id, username, full_name, avatar_url)
+`
+
+const MENTOR_MINE_SELECT = `
+  id, user_id, bio, expertise, skills, languages, experience_summary,
+  mentorship_interests, accepts_minors, verification_status, availability,
+  created_at, updated_at,
   profile:profiles!user_id(id, username, full_name, avatar_url)
 `
 
@@ -24,14 +32,24 @@ export async function GET(request: NextRequest) {
     const language = searchParams.get('language')
     const acceptsMinors = searchParams.get('accepts_minors')
     const mine = searchParams.get('mine') === '1'
+    const includeMine = searchParams.get('include_mine') === '1'
     const search = searchParams.get('search')?.trim() || ''
+    const page = Math.max(parseInt(searchParams.get('page') || '0', 10) || 0, 0)
+    const limit = Math.min(
+      Math.max(parseInt(searchParams.get('limit') || '40', 10) || 40, 1),
+      50
+    )
+    const from = page * limit
+    const to = from + limit - 1
 
-    let query = supabase.from('youth_mentors').select(MENTOR_SELECT)
+    let query = supabase
+      .from('youth_mentors')
+      .select(mine ? MENTOR_MINE_SELECT : MENTOR_LIST_SELECT)
 
     if (mine) {
       query = query.eq('user_id', user.id)
     } else {
-      query = query.eq('verification_status', 'verified')
+      query = query.eq('verification_status', 'verified').range(from, to)
     }
 
     if (skill) query = query.contains('skills', [skill])
@@ -41,27 +59,70 @@ export async function GET(request: NextRequest) {
       query = query.eq('accepts_minors', true)
     }
 
+    if (search && !mine) {
+      // DB-side filter on mentor text fields (profile name search still needs client fallback below)
+      query = query.or(
+        `bio.ilike.%${search}%,experience_summary.ilike.%${search}%`
+      )
+    }
+
     query = query.order('updated_at', { ascending: false })
 
-    const { data, error } = await query
+    const listPromise = query
+    const minePromise =
+      includeMine && !mine
+        ? supabase
+            .from('youth_mentors')
+            .select(MENTOR_MINE_SELECT)
+            .eq('user_id', user.id)
+            .maybeSingle()
+        : Promise.resolve({ data: null, error: null })
+
+    const [{ data, error }, mineRes] = await Promise.all([listPromise, minePromise])
     if (error) return errorResponse(error.message, 400)
+    if (mineRes.error) return errorResponse(mineRes.error.message, 400)
 
     let mentors = data || []
-    if (search) {
+    if (search && !mine) {
       const q = search.toLowerCase()
-      mentors = mentors.filter((m: any) => {
-        const hay = [
-          m.bio,
-          m.experience_summary,
-          ...(m.skills || []),
-          ...(m.expertise || []),
-          m.profile?.full_name,
-          m.profile?.username,
-        ]
-          .filter(Boolean)
-          .join(' ')
-          .toLowerCase()
+      // Narrow further by profile name for matches that passed bio/experience OR filter
+      const byProfile = mentors.filter((m: any) => {
+        const name = `${m.profile?.full_name || ''} ${m.profile?.username || ''}`.toLowerCase()
+        const tags = [...(m.skills || []), ...(m.expertise || [])].join(' ').toLowerCase()
+        const hay = `${m.bio || ''} ${m.experience_summary || ''} ${name} ${tags}`.toLowerCase()
         return hay.includes(q)
+      })
+      // If bio OR didn't match but name/tags do, also fetch a capped verified set filtered in memory
+      if (byProfile.length === 0) {
+        const { data: fallback } = await supabase
+          .from('youth_mentors')
+          .select(MENTOR_LIST_SELECT)
+          .eq('verification_status', 'verified')
+          .order('updated_at', { ascending: false })
+          .limit(100)
+        mentors = (fallback || []).filter((m: any) => {
+          const hay = [
+            m.bio,
+            m.experience_summary,
+            ...(m.skills || []),
+            ...(m.expertise || []),
+            m.profile?.full_name,
+            m.profile?.username,
+          ]
+            .filter(Boolean)
+            .join(' ')
+            .toLowerCase()
+          return hay.includes(q)
+        })
+      } else {
+        mentors = byProfile
+      }
+    }
+
+    if (includeMine && !mine) {
+      return jsonResponse({
+        mentors,
+        my_profile: mineRes.data || null,
       })
     }
 
@@ -113,7 +174,7 @@ export async function POST(request: NextRequest) {
         .from('youth_mentors')
         .update(payload)
         .eq('id', existing.id)
-        .select(MENTOR_SELECT)
+        .select(MENTOR_MINE_SELECT)
         .single()
       if (error) return errorResponse(error.message, 400)
       return jsonResponse(data)
@@ -122,7 +183,7 @@ export async function POST(request: NextRequest) {
     const { data, error } = await supabase
       .from('youth_mentors')
       .insert({ ...payload, verification_status: 'pending' })
-      .select(MENTOR_SELECT)
+      .select(MENTOR_MINE_SELECT)
       .single()
 
     if (error) return errorResponse(error.message, 400)

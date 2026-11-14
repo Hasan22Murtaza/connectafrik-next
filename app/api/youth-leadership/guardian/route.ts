@@ -36,9 +36,9 @@ export async function GET(request: NextRequest) {
           .from('youth_program_applications')
           .select(
             `
-            id, program_id, user_id, status, guardian_approval_status, submitted_at, created_at,
-            program:youth_programs!program_id(id, title, organization_id),
-            applicant:profiles!user_id(id, username, full_name, avatar_url)
+            id, status,
+            program:youth_programs!program_id(id, title),
+            applicant:profiles!user_id(username, full_name, avatar_url)
           `
           )
           .in('user_id', childIds)
@@ -48,12 +48,12 @@ export async function GET(request: NextRequest) {
           .from('youth_mentorship_matches')
           .select(
             `
-            id, mentor_id, participant_id, status, guardian_approval_status, created_at,
+            id, status,
             mentor:youth_mentors!mentor_id(
-              id, user_id, expertise, verification_status,
-              profile:profiles!user_id(id, username, full_name, avatar_url)
+              id,
+              profile:profiles!user_id(username, full_name, avatar_url)
             ),
-            participant:profiles!participant_id(id, username, full_name, avatar_url)
+            participant:profiles!participant_id(username, full_name, avatar_url)
           `
           )
           .in('participant_id', childIds)

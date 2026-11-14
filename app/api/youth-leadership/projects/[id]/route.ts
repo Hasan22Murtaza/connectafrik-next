@@ -71,7 +71,7 @@ export async function GET(request: NextRequest, { params }: Params) {
         .from('youth_project_members')
         .select(
           `
-          *,
+          id, project_id, user_id, role, status, joined_at, created_at,
           profile:profiles!user_id(id, username, full_name, avatar_url)
         `
         )
@@ -79,13 +79,13 @@ export async function GET(request: NextRequest, { params }: Params) {
         .in('status', ['invited', 'active', 'completed']),
       supabase
         .from('youth_project_members')
-        .select('*')
+        .select('id, project_id, user_id, role, status, joined_at')
         .eq('project_id', id)
         .eq('user_id', user.id)
         .maybeSingle(),
       supabase
         .from('youth_project_members')
-        .select('*', { count: 'exact', head: true })
+        .select('id', { count: 'exact', head: true })
         .eq('project_id', id)
         .in('status', ['active', 'invited']),
     ])
