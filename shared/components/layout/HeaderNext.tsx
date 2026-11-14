@@ -3,6 +3,7 @@
 import { useAuth } from "@/contexts/AuthContext";
 import MobileSearchModal from "@/shared/components/search/MobileSearchModal";
 import SearchResultsDropdown from "@/shared/components/search/SearchResultsDropdown";
+import ThemeToggle from "@/shared/components/theme/ThemeToggle";
 import UserMenu from "@/shared/components/theme/UserMenu";
 import NotificationDropdown from "@/shared/components/ui/NotificationDropdown";
 import { useHeaderInboxCounts } from "@/shared/hooks/useHeaderInboxCounts";
@@ -225,6 +226,8 @@ const Header: React.FC<HeaderProps> = ({
                   </div>
 
 
+
+                  <ThemeToggle />
 
                   <div className="relative">
                     <button

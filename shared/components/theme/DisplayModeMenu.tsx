@@ -1,14 +1,13 @@
 'use client'
 
 import React, { useState } from 'react'
-import { Check, ChevronRight, Monitor, Moon, Sun } from '@/shared/icons'
+import { Check, ChevronRight, Moon, Sun } from '@/shared/icons'
 import { useTheme } from '@/shared/theme/useTheme'
 import { THEME_MODES, type ThemeMode } from '@/shared/theme/types'
 
 const MODE_ICONS: Record<ThemeMode, React.ReactNode> = {
   light: <Sun className="w-4 h-4" />,
   dark: <Moon className="w-4 h-4" />,
-  system: <Monitor className="w-4 h-4" />,
 }
 
 type DisplayModeMenuProps = {
@@ -22,7 +21,7 @@ const DisplayModeMenu: React.FC<DisplayModeMenuProps> = ({
 }) => {
   const { theme, setTheme, resolvedTheme } = useTheme()
   const [isExpanded, setIsExpanded] = useState(false)
-  const activeTheme = (theme ?? 'system') as ThemeMode
+  const activeTheme = (theme === 'dark' ? 'dark' : 'light') as ThemeMode
 
   const handleSelect = (mode: ThemeMode) => {
     setTheme(mode)
@@ -30,7 +29,7 @@ const DisplayModeMenu: React.FC<DisplayModeMenuProps> = ({
   }
 
   const activeLabel =
-    THEME_MODES.find((item) => item.value === activeTheme)?.label ?? 'Automatic'
+    THEME_MODES.find((item) => item.value === activeTheme)?.label ?? 'Light mode'
 
   const optionsList = (
     <div

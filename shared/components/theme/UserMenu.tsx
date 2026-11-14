@@ -4,7 +4,6 @@ import React from 'react'
 import Link from 'next/link'
 import { useAuth } from '@/contexts/AuthContext'
 import { LogOut } from '@/shared/icons'
-import DisplayModeMenu from './DisplayModeMenu'
 
 type UserMenuProps = {
   isOpen: boolean
@@ -30,10 +29,6 @@ const UserMenu: React.FC<UserMenuProps> = ({ isOpen, onSignOut, onClose }) => {
           >
             My Profile
           </Link>
-
-          <hr className="my-1 border-border" />
-
-          <DisplayModeMenu onClose={onClose} />
 
           <hr className="my-1 border-border" />
 
