@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createCallRoom } from '@/lib/call-media/provider'
 import { getAuthenticatedUser, createServiceClient } from '@/lib/supabase-server'
-import { getBusyMapForUserIds } from '@/lib/call-media/session-busy'
+import {
+  getBusyMapForUserIds,
+  reapStaleSessionsBlockingUsers,
+} from '@/lib/call-media/session-busy'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
 import { canCall } from '@/lib/privacy/access'
 import { privacyDecisionResponse } from '@/lib/privacy/http'
@@ -70,6 +73,7 @@ export async function POST(request: NextRequest) {
         const decision = await canCall(authedUserId, targetId, { client: serviceClient })
         if (decision.allowed) allowedIds.push(targetId)
       }
+      await reapStaleSessionsBlockingUsers(serviceClient, allowedIds, exclude_call_id)
       const busy = await getBusyMapForUserIds(serviceClient, allowedIds, exclude_call_id)
       const res = jsonResponse({ busy })
       Object.entries(corsHeaders).forEach(([k, v]) => res.headers.set(k, v))
@@ -112,6 +116,9 @@ export async function POST(request: NextRequest) {
         }
       }
 
+      // Reclaim ghost ringing/active rows before the busy gate so an unanswered
+      // call cannot block an immediate retry for ~1 minute until the cron reaper.
+      await reapStaleSessionsBlockingUsers(serviceClient, check_user_ids, '')
       const busy = await getBusyMapForUserIds(serviceClient, check_user_ids, '')
       const blocked = check_user_ids.some((id) => busy[id])
       if (blocked) {

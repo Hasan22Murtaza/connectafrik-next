@@ -1240,8 +1240,10 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
         if (sessionRow?.e2ee === true || returnedMeta.e2ee === true) {
           draftedE2eeKey = await openOwnSealedCallKey(canonicalCallId)
         } else {
-          draftedE2eeKey = readCallE2eeKey(returnedMeta)
-          e2eeSealed = false
+          // Never silently downgrade a sealed call to a server-visible shared key.
+          throw new Error(
+            'Unable to establish encrypted call.\nPlease leave and rejoin the call.',
+          )
         }
       }
 

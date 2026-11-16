@@ -482,10 +482,15 @@ export function useCallSessionSignaling({
   const signalOutgoingCancel = useCallback(async () => {
     const activeCallId = (callIdHint || '').trim();
     if (threadId && currentUserId && activeCallId) {
-      await patchCallSessionWithRetry(threadId, {
-        call_id: activeCallId,
-        event: 'missed',
-      });
+      // keepalive so tab/popup teardown still lands the missed transition.
+      await patchCallSessionWithRetry(
+        threadId,
+        {
+          call_id: activeCallId,
+          event: 'missed',
+        },
+        { maxAttempts: 5 },
+      );
     }
     closeCall(800);
   }, [threadId, currentUserId, callIdHint, closeCall]);

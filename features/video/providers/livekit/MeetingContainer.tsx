@@ -293,10 +293,16 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
       }
       try {
         const { token: freshToken } = await refreshToken();
-        await room.setE2EEEnabled(true).catch((err: unknown) => {
-          const message = err instanceof Error ? err.message : '';
-          if (!/e2ee not configured/i.test(message)) throw err;
-        });
+        if (endToEndEncrypted || sealedCall) {
+          try {
+            await room.setE2EEEnabled(true);
+          } catch (err: unknown) {
+            const message = err instanceof Error ? err.message : '';
+            // Fail closed: never reconnect in the clear on a sealed call.
+            if (/e2ee not configured/i.test(message)) throw err;
+            throw err;
+          }
+        }
         await room.connect(livekitServerUrl, freshToken);
         await room.localParticipant
           .setMicrophoneEnabled(true, CALL_AUDIO_CAPTURE)
@@ -331,6 +337,8 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
     suppressSignalRef,
     threadId,
     callIdHint,
+    endToEndEncrypted,
+    sealedCall,
   ]);
 
   const countRemoteParticipants = useCallback(() => {

@@ -101,7 +101,52 @@ export async function listThreadParticipantIds(
     .select('user_id')
     .eq('thread_id', threadId)
   if (error) throw new Error(error.message)
-  return [...new Set((data || []).map((row) => normalizeId(row.user_id)).filter(Boolean))]
+  const participantIds = [
+    ...new Set((data || []).map((row) => normalizeId(row.user_id)).filter(Boolean)),
+  ]
+  if (participantIds.length === 0) return []
+
+  // Social-group threads can keep stale chat_participants after leave/remove.
+  // Only active group members should receive sealed call keys.
+  const { data: thread, error: threadError } = await service
+    .from('chat_threads')
+    .select('group_id')
+    .eq('id', threadId)
+    .maybeSingle()
+  if (threadError) throw new Error(threadError.message)
+  const groupId = typeof thread?.group_id === 'string' ? thread.group_id.trim() : ''
+  if (!groupId) return participantIds
+
+  const { data: memberships, error: membershipError } = await service
+    .from('group_memberships')
+    .select('user_id')
+    .eq('group_id', groupId)
+    .eq('status', 'active')
+    .in('user_id', participantIds)
+  if (membershipError) throw new Error(membershipError.message)
+  const active = new Set(
+    (memberships || []).map((row) => normalizeId(row.user_id)).filter(Boolean),
+  )
+  return participantIds.filter((id) => active.has(id))
+}
+
+/**
+ * 1:1 calls require every participant to have a registered call device.
+ * Group calls may start with partial coverage; members without devices cannot join
+ * until they set up encrypted calling (and receive a mid-call seal if needed).
+ */
+export function assertParticipantsReadyForSealedCall(
+  participantIds: string[],
+  devices: CallDeviceRecord[],
+): void {
+  if (devices.length === 0) {
+    throw new Error('Encrypted calling is not set up for every person in this chat yet.')
+  }
+  const missing = usersMissingDevices(participantIds, devices)
+  if (missing.length === 0) return
+  if (participantIds.length <= 2) {
+    throw new Error('Encrypted calling is not set up for every person in this chat yet.')
+  }
 }
 
 export async function listActiveCallDevices(
@@ -245,10 +290,7 @@ export async function storeInitialCallKeys(
   }
 
   const devices = await listActiveCallDevices(service, participants)
-  const missing = usersMissingDevices(participants, devices)
-  if (missing.length > 0) {
-    throw new Error('Encrypted calling is not set up for every person in this chat yet.')
-  }
+  assertParticipantsReadyForSealedCall(participants, devices)
   assertSealsCoverDevices(input.seals, devices)
 
   const { error } = await service.from('call_keys').insert(
@@ -338,6 +380,7 @@ export async function readOwnSealedCallKey(
     .select('device_id')
     .eq('user_id', userId)
     .eq('device_id', deviceId)
+    .is('revoked_at', null)
     .maybeSingle()
   if (ownedError) throw new Error(ownedError.message)
   if (!owned) return null
@@ -357,6 +400,7 @@ export async function readOwnSealedCallKey(
     .select('public_key')
     .eq('user_id', key.sender_user_id)
     .eq('device_id', key.sender_device_id)
+    .is('revoked_at', null)
     .maybeSingle()
   if (senderError) throw new Error(senderError.message)
   if (!sender?.public_key) return null
@@ -382,4 +426,20 @@ export async function recipientHasSealedKey(
     .limit(1)
   if (error) throw new Error(error.message)
   return Array.isArray(data) && data.length > 0
+}
+
+/** Remove seals for a departed participant so they cannot rejoin with a stale key. */
+export async function revokeCallKeysForUser(
+  service: SupabaseClient,
+  input: { callId: string; userId: string },
+): Promise<void> {
+  const callId = String(input.callId || '').trim()
+  const userId = normalizeId(input.userId)
+  if (!callId || !userId) return
+  const { error } = await service
+    .from('call_keys')
+    .delete()
+    .eq('call_id', callId)
+    .eq('recipient_user_id', userId)
+  if (error) throw new Error(error.message)
 }

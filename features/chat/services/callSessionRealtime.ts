@@ -352,7 +352,10 @@ export async function patchCallSessionWithRetry(
       return true
     } catch (e) {
       const st = e instanceof ApiError ? e.status : 0
-      const canRetry = st === 404 && attempt < maxAttempts - 1
+      // Retry: row not visible yet (POST in flight), transient network, or brief 5xx.
+      const canRetry =
+        attempt < maxAttempts - 1 &&
+        (st === 404 || st === 0 || st === 408 || st === 429 || st >= 500)
       if (!canRetry) {
         console.warn('[call_sessions] PATCH failed', { threadId, payload, status: st, e })
         return false
