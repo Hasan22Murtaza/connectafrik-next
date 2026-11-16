@@ -14,7 +14,6 @@ import {
   MessageCircle,
   PanelLeft,
   Phone,
-  Settings,
   UsersRound
 } from "lucide-react";
 import Link from "next/link";
@@ -42,7 +41,6 @@ const shortcuts = [
   { name: "Youth Leadership", to: "/youth-leadership", icon: Award },
   { name: "Saved", to: "/saved", icon: Bookmark },
   { name: "Feedback", to: "/feedback", icon: Megaphone },
-  { name: "Settings", to: "/settings", icon: Settings },
 ];
 
 function formatBadge(count) {
@@ -54,12 +52,6 @@ function isPathActive(pathname, to) {
   if (!to) return false;
   if (pathname === to) return true;
   if (to !== "/" && pathname.startsWith(`${to}/`)) return true;
-  if (
-    to === "/settings" &&
-    (pathname === "/profile" || pathname.startsWith("/profile/"))
-  ) {
-    return true;
-  }
   return false;
 }
 
