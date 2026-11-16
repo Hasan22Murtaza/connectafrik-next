@@ -84,6 +84,12 @@ export function normalizeControls(
     reels_allowed_categories: Array.isArray(controls.reels_allowed_categories)
       ? controls.reels_allowed_categories
       : null,
+    youth_leadership_enabled:
+      controls.youth_leadership_enabled === false
+        ? false
+        : controls.youth_leadership_enabled === true
+          ? true
+          : null,
   }
 }
 
@@ -172,6 +178,13 @@ export async function checkParentalRestriction(
 
   if (feature === 'marketplace' && controls.marketplace_enabled === false) {
     return deny('marketplace', 'Marketplace is restricted by your parent.')
+  }
+
+  if (feature === 'youth_leadership' && controls.youth_leadership_enabled === false) {
+    return deny(
+      'youth_leadership',
+      'Youth Leadership is restricted by your parent.'
+    )
   }
 
   if (feature === 'friend_request_accept' && controls.friend_request_approval === true) {

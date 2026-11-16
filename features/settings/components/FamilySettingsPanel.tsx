@@ -5,6 +5,7 @@ import toast from 'react-hot-toast'
 import {
   Activity,
   AlertTriangle,
+  Award,
   Clock,
   Eye,
   Film,
@@ -446,6 +447,13 @@ export function FamilySettingsPanel() {
               value={me.controls?.marketplace_enabled === false ? 'Restricted' : 'Allowed'}
             />
             <InfoRow
+              icon={Award}
+              label="Youth Leadership"
+              value={
+                me.controls?.youth_leadership_enabled === false ? 'Restricted' : 'Allowed'
+              }
+            />
+            <InfoRow
               icon={Clock}
               label="Screen time"
               value={
@@ -731,6 +739,15 @@ export function FamilySettingsPanel() {
                 description="Allow or block marketplace browsing and buying"
                 checked={controls.marketplace_enabled}
                 onChange={(v) => setControls({ ...controls, marketplace_enabled: v })}
+              />
+              <SettingsToggleRow
+                icon={Award}
+                title="Youth Leadership"
+                description="Allow or block Youth Leadership programs, projects, and mentorship"
+                checked={controls.youth_leadership_enabled !== false}
+                onChange={(v) =>
+                  setControls({ ...controls, youth_leadership_enabled: v })
+                }
               />
               <SettingsToggleRow
                 icon={Clock}

@@ -9,6 +9,7 @@ import { useSpaceNavCounts } from '@/shared/hooks/useSpaceNavCounts'
 import { UserSearch } from './UserSearch'
 import DisplayModeMenu from '@/shared/components/theme/DisplayModeMenu'
 import {
+  Award,
   Bookmark,
   ChevronRight,
   Clock3,
@@ -100,6 +101,16 @@ const MobileSideDrawer: React.FC<MobileSideDrawerProps> = ({
           { label: 'Groups', path: '/groups', icon: UsersRound },
           // { label: 'Culture', path: '/culture', icon: Palette },
           // { label: 'Politics', path: '/politics', icon: Landmark },
+        ],
+      },
+      {
+        title: 'GROWTH',
+        items: [
+          {
+            label: 'Youth Leadership',
+            path: '/youth-leadership',
+            icon: Award,
+          },
         ],
       },
       {

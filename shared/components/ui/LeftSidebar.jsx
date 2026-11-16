@@ -5,6 +5,7 @@ import { useSpaceNavCounts } from "@/shared/hooks/useSpaceNavCounts";
 import { UserRoundGroup } from "@/shared/icons";
 import PlayMedia from "@/shared/icons/PlayMedia";
 import {
+  Award,
   Bookmark,
   Check,
   Handbag,
@@ -38,6 +39,7 @@ const shortcuts = [
   { name: "Messages", to: "/chat", icon: MessageCircle, badgeKey: "chat" },
   { name: "Calls", to: "/calls", icon: Phone, badgeKey: "calls" },
   { name: "TradeHub", to: "/marketplace", icon: Handbag },
+  { name: "Youth Leadership", to: "/youth-leadership", icon: Award },
   { name: "Saved", to: "/saved", icon: Bookmark },
   { name: "Feedback", to: "/feedback", icon: Megaphone },
   { name: "Settings", to: "/settings", icon: Settings },
