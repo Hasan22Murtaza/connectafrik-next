@@ -38,7 +38,9 @@ export default function ConditionalAppSidebar({
   const pathname = usePathname();
   const { user, loading } = useAuth();
 
-  if ((!loading && !user) || shouldHideSidebar(pathname)) {
+  // Wait for auth to resolve before showing nav — otherwise a refresh flash
+  // shows LeftSidebar to logged-out users while `loading` is still true.
+  if (loading || !user || shouldHideSidebar(pathname)) {
     return <>{children}</>;
   }
 
