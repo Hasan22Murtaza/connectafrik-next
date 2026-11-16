@@ -431,6 +431,23 @@
   animation: call-hand-pulse 1.6s ease-in-out infinite;
 }
 
+@keyframes call-audio-bar {
+  0%, 100% { transform: scaleY(0.35); }
+  50% { transform: scaleY(1); }
+}
+.call-audio-bar {
+  display: inline-block;
+  height: 100%;
+  animation: call-audio-bar 0.9s ease-in-out infinite;
+}
+.call-audio-bar-1 { animation-delay: 0ms; }
+.call-audio-bar-2 { animation-delay: 150ms; }
+.call-audio-bar-3 { animation-delay: 300ms; }
+
+.call-speaking-tile {
+  transition: box-shadow 280ms ease, border-color 280ms ease;
+}
+
 /* ─── Tailwind v4 theme tokens ──────────────────────────────────────────── */
 @theme inline {
   --color-background: var(--background);

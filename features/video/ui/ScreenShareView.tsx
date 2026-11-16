@@ -3,7 +3,6 @@
 import { MonitorUp } from '@/shared/icons';
 import React, { useState } from 'react';
 import type { NormalizedParticipant } from '@/features/video/core/models';
-import ParticipantTile from './ParticipantTile';
 
 export interface ScreenShareViewProps {
   presenter: NormalizedParticipant;
@@ -51,16 +50,16 @@ const ScreenShareView: React.FC<ScreenShareViewProps> = ({
 
   if (isLocalPresenting) {
     return (
-      <div className="absolute top-0 left-0 right-0 z-20 flex items-center gap-2.5 px-4 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white text-sm shadow-lg">
-        <div className="w-2 h-2 bg-red-400 rounded-full animate-pulse" />
-        <MonitorUp className="w-4 h-4" />
+      <div className="absolute top-14 left-0 right-0 z-20 flex items-center gap-2.5 border-b border-white/10 bg-primary-600/95 px-4 py-2.5 text-sm text-white shadow-lg sm:top-16">
+        <div className="h-2 w-2 animate-pulse rounded-full bg-red-400" />
+        <MonitorUp className="h-4 w-4" />
         <span className="font-medium">You are presenting</span>
-        <span className="text-xs opacity-60 font-mono tabular-nums ml-2">
+        <span className="ml-2 font-mono text-xs tabular-nums opacity-70">
           {formatDuration(callDuration)}
         </span>
         <button
           onClick={onStopSharing}
-          className="ml-auto text-xs bg-red-500 hover:bg-red-600 active:bg-red-700 px-4 py-1.5 rounded-full font-medium transition-all duration-200 shadow-md hover:shadow-lg hover:scale-105 active:scale-95"
+          className="ml-auto rounded-full bg-red-500 px-4 py-1.5 text-xs font-medium shadow-md transition hover:bg-red-600 hover:scale-105 active:scale-95"
         >
           Stop presenting
         </button>
@@ -69,37 +68,37 @@ const ScreenShareView: React.FC<ScreenShareViewProps> = ({
   }
 
   return (
-    <div className="absolute inset-0 z-20 bg-gray-950 flex flex-col animate-[fadeIn_300ms_ease-out]">
-      <div className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white text-sm shrink-0 shadow-lg animate-[slideDown_300ms_ease-out]">
-        <div className="w-2 h-2 bg-red-400 rounded-full animate-pulse" />
-        <MonitorUp className="w-4 h-4" />
+    <div className="absolute inset-0 z-20 flex flex-col bg-[#0b0b0b] animate-[fadeIn_300ms_ease-out]">
+      <div className="flex shrink-0 items-center gap-2 border-b border-white/10 bg-primary-600/95 px-4 py-2 text-sm text-white shadow-lg animate-[slideDown_300ms_ease-out]">
+        <div className="h-2 w-2 animate-pulse rounded-full bg-red-400" />
+        <MonitorUp className="h-4 w-4" />
         <span className="font-medium">{presenterName} is presenting</span>
         <div className="ml-auto flex items-center gap-3">
-          <span className="text-xs opacity-80 font-mono tabular-nums">
+          <span className="font-mono text-xs tabular-nums opacity-80">
             {formatDuration(callDuration)}
           </span>
           <span className="text-xs opacity-60">|</span>
           <span className="flex items-center gap-1 text-xs opacity-80">
-            <span className="w-1.5 h-1.5 bg-green-400 rounded-full" />
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
             {participantCount}
           </span>
         </div>
       </div>
 
-      <div className="flex-1 flex min-h-0">
-        <div className="flex-1 min-w-0 bg-black flex items-center justify-center">
+      <div className="flex min-h-0 flex-1">
+        <div className="flex min-w-0 flex-1 items-center justify-center bg-black">
           {screenShareMedia}
         </div>
 
-        <div className="w-36 sm:w-44 md:w-52 bg-gray-900/95 backdrop-blur-sm flex flex-col gap-1.5 p-1.5 overflow-y-auto shrink-0 border-l border-gray-800 animate-[slideLeft_400ms_ease-out]">
-          <div className="text-[10px] text-content-tertiary font-medium uppercase tracking-wider px-1 py-0.5">
+        <div className="flex w-36 shrink-0 flex-col gap-1.5 overflow-y-auto border-l border-white/10 bg-[#121212] p-1.5 backdrop-blur-sm animate-[slideLeft_400ms_ease-out] sm:w-44 md:w-52">
+          <div className="px-1 py-0.5 text-[10px] font-medium uppercase tracking-wider text-white/40">
             Participants
           </div>
 
           {visibleSidebar.map((p) => (
             <div
               key={p.id}
-              className="relative aspect-video bg-gray-800 rounded-lg overflow-hidden border border-gray-700/50 shadow-sm hover:border-blue-500/50 transition-colors duration-300"
+              className="relative aspect-video overflow-hidden rounded-xl border border-white/10 bg-[#1a1a1a] shadow-sm transition-colors duration-300 hover:border-emerald-400/40"
             >
               {renderParticipantTile(p, {
                 tileCount: visibleSidebar.length + 1,
@@ -113,12 +112,12 @@ const ScreenShareView: React.FC<ScreenShareViewProps> = ({
               <button
                 onClick={() => setSidebarPage((pg) => Math.max(0, pg - 1))}
                 disabled={pageIndex === 0}
-                className="text-[10px] px-2 py-0.5 rounded bg-surface/10 text-white hover:bg-surface/20 disabled:opacity-40 disabled:cursor-not-allowed"
+                className="rounded bg-white/10 px-2 py-0.5 text-[10px] text-white hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-40"
                 aria-label="Previous participants"
               >
                 Prev
               </button>
-              <span className="text-[10px] text-content-tertiary tabular-nums">
+              <span className="text-[10px] tabular-nums text-white/40">
                 {pageIndex + 1}/{pageCount}
               </span>
               <button
@@ -126,7 +125,7 @@ const ScreenShareView: React.FC<ScreenShareViewProps> = ({
                   setSidebarPage((pg) => Math.min(pageCount - 1, pg + 1))
                 }
                 disabled={pageIndex >= pageCount - 1}
-                className="text-[10px] px-2 py-0.5 rounded bg-surface/10 text-white hover:bg-surface/20 disabled:opacity-40 disabled:cursor-not-allowed"
+                className="rounded bg-white/10 px-2 py-0.5 text-[10px] text-white hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-40"
                 aria-label="Next participants"
               >
                 Next

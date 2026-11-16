@@ -11,6 +11,14 @@ export { default as CallReactionOverlay } from './CallReactionOverlay';
 export { default as RaisedHandsBanner } from './RaisedHandsBanner';
 export { default as GroupCallParticipantsStrip } from './GroupCallParticipantsStrip';
 export { default as NetworkQualityIndicator } from './NetworkQualityIndicator';
+export { default as CallHeader } from './CallHeader';
+export { default as ParticipantsSidebar } from './ParticipantsSidebar';
+export { default as CallSettingsPanel } from './CallSettingsPanel';
+export { default as AudioActivityBars } from './AudioActivityBars';
+export * from './callTheme';
 
 export type { ParticipantTileProps } from './ParticipantTile';
 export type { ScreenShareViewProps } from './ScreenShareView';
+export type { CallHeaderProps } from './CallHeader';
+export type { ParticipantsSidebarProps, ParticipantsSidebarItem } from './ParticipantsSidebar';
+export type { CallSettingsPanelProps, CallDeviceOption } from './CallSettingsPanel';

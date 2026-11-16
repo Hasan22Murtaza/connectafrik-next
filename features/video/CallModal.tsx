@@ -606,7 +606,7 @@ const CallModal: React.FC<CallModalProps> = (props) => {
 
   // Match MeetingContainer call shell (pre-call must not show page `bg-black`).
   const callShellBackground = {
-    background: 'linear-gradient(135deg, #ddd3c5 0%, #c7d9d1 100%)',
+    background: '#0b0b0b',
   } as const;
 
   // ── Pre-call: incoming — keep this SAME shell through Answer until media

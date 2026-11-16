@@ -6,16 +6,16 @@ import {
   MonitorOff,
   MonitorUp,
   Phone,
+  Settings,
   Smile,
-  UserPlus,
+  Users,
   Video,
   VideoOff,
-  Volume1,
-  Volume2,
 } from '@/shared/icons';
 import React, { useEffect, useRef, useState } from 'react';
 import type { SpeakerLevel } from '@/features/video/core/types';
 import { CALL_LIVE_REACTIONS } from '@/features/video/core/callEngagement';
+import { CALL_CONTROL_BAR_BG } from './callTheme';
 
 interface CallControlsProps {
   isMuted: boolean;
@@ -27,6 +27,9 @@ interface CallControlsProps {
   callType: 'audio' | 'video';
   showMessageInput: boolean;
   showAddPeople: boolean;
+  showParticipants?: boolean;
+  showSettings?: boolean;
+  participantCount?: number;
   isGroupCall?: boolean;
   handRaised?: boolean;
   onToggleMute: () => void;
@@ -35,6 +38,8 @@ interface CallControlsProps {
   onToggleSpeaker: () => void;
   onToggleMessageInput: () => void;
   onToggleAddPeople: () => void;
+  onToggleParticipants?: () => void;
+  onToggleSettings?: () => void;
   onToggleHand?: () => void;
   onSendReaction?: (emoji: string) => void;
   onEndCall: () => void;
@@ -42,13 +47,10 @@ interface CallControlsProps {
   networkIndicator?: React.ReactNode;
 }
 
-const iconBtn =
-  'flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-content-secondary transition hover:bg-surface-hover hover:text-content focus:outline-none touch-manipulation sm:h-10 sm:w-10';
-const iconBtnActive = 'bg-primary/15 text-primary hover:bg-primary/20 hover:text-primary';
-const devicePillOn = 'bg-surface-secondary text-content hover:bg-surface-tertiary';
-const devicePillOff = 'bg-primary text-content-inverse hover:bg-primary-hover';
-const glassCluster =
-  'flex items-center gap-0.5 rounded-full border border-border bg-surface/90 px-1 py-1 shadow-[0_8px_24px_rgba(0,0,0,0.08)] backdrop-blur-xl sm:gap-1.5 sm:px-2 sm:py-2';
+const ctrlBtn =
+  'relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-white/80 transition hover:bg-white/10 hover:text-white focus:outline-none touch-manipulation sm:h-11 sm:w-11';
+const ctrlBtnActive = 'bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/20 hover:text-emerald-300';
+const ctrlBtnOff = 'bg-red-500/15 text-red-400 hover:bg-red-500/25 hover:text-red-300';
 
 const CallControls: React.FC<CallControlsProps> = ({
   isMuted,
@@ -56,21 +58,21 @@ const CallControls: React.FC<CallControlsProps> = ({
   isScreenSharing,
   remoteScreenShareStream,
   screenShareParticipantName,
-  speakerLevel,
   callType,
   showMessageInput,
-  showAddPeople,
+  showParticipants = false,
+  showSettings = false,
+  participantCount = 0,
   onToggleMute,
   onToggleVideo,
   onToggleScreenShare,
-  onToggleSpeaker,
   onToggleMessageInput,
-  onToggleAddPeople,
+  onToggleParticipants,
+  onToggleSettings,
   onToggleHand,
   onSendReaction,
   onEndCall,
   onEndCallForAll,
-  networkIndicator,
   isGroupCall = false,
   handRaised = false,
 }) => {
@@ -82,16 +84,22 @@ const CallControls: React.FC<CallControlsProps> = ({
       : isVideoEnabled
         ? 'Turn off camera'
         : 'Turn on camera';
-  const endCallLabel = isGroupCall ? 'Leave call' : 'End call';
+  const endCallLabel = isGroupCall ? 'Leave' : 'Leave';
   const [reactionOpen, setReactionOpen] = useState(false);
+  const [leaveMenuOpen, setLeaveMenuOpen] = useState(false);
   const reactionWrapRef = useRef<HTMLDivElement>(null);
+  const leaveWrapRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!reactionOpen) return;
+    if (!reactionOpen && !leaveMenuOpen) return;
     const onPointerDown = (event: MouseEvent | TouchEvent) => {
-      const el = reactionWrapRef.current;
-      if (el && event.target instanceof Node && !el.contains(event.target)) {
+      const target = event.target;
+      if (!(target instanceof Node)) return;
+      if (reactionOpen && reactionWrapRef.current && !reactionWrapRef.current.contains(target)) {
         setReactionOpen(false);
+      }
+      if (leaveMenuOpen && leaveWrapRef.current && !leaveWrapRef.current.contains(target)) {
+        setLeaveMenuOpen(false);
       }
     };
     document.addEventListener('mousedown', onPointerDown);
@@ -100,189 +108,219 @@ const CallControls: React.FC<CallControlsProps> = ({
       document.removeEventListener('mousedown', onPointerDown);
       document.removeEventListener('touchstart', onPointerDown);
     };
-  }, [reactionOpen]);
+  }, [reactionOpen, leaveMenuOpen]);
+
+  const handleLeaveClick = () => {
+    if (onEndCallForAll) {
+      setLeaveMenuOpen((open) => !open);
+      return;
+    }
+    onEndCall();
+  };
 
   return (
-    <div className="pointer-events-none absolute inset-x-0 bottom-0 z-40">
-      {onEndCallForAll && (
-        <div className="pointer-events-auto flex justify-center px-3 pb-2 sm:justify-end sm:px-5">
-          <button
-            type="button"
-            onClick={onEndCallForAll}
-            className="rounded-full border border-white/70 bg-surface/60 px-3 py-1 text-xs font-medium text-content-secondary shadow-[0_8px_24px_rgba(0,0,0,0.08)] backdrop-blur-xl transition hover:text-content dark:border-white/10 dark:bg-surface/70"
-          >
-            End call for everyone
-          </button>
-        </div>
-      )}
+    <div className="pointer-events-none absolute inset-x-0 bottom-0 z-40 flex justify-center px-2 pb-[max(0.85rem,env(safe-area-inset-bottom,0px))] sm:px-4">
+      <div
+        className={`pointer-events-auto flex max-w-full items-center gap-0.5 rounded-full border border-white/10 px-1.5 py-1.5 shadow-[0_12px_40px_rgba(0,0,0,0.45)] backdrop-blur-xl [scrollbar-width:none] sm:gap-1 sm:px-2 sm:py-2 [&::-webkit-scrollbar]:hidden ${
+          reactionOpen || leaveMenuOpen
+            ? 'overflow-visible'
+            : 'overflow-x-auto'
+        }`}
+        style={{ background: CALL_CONTROL_BAR_BG }}
+        role="toolbar"
+        aria-label="Call controls"
+      >
+        <button
+          onClick={onToggleMute}
+          className={`${ctrlBtn} ${isMuted ? ctrlBtnOff : ctrlBtnActive}`}
+          title={isMuted ? 'Unmute' : 'Mute'}
+          aria-label={isMuted ? 'Unmute microphone' : 'Mute microphone'}
+        >
+          {isMuted ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
+        </button>
 
-      <div className="pointer-events-auto flex flex-wrap items-center justify-between gap-2 px-2 pb-[max(0.75rem,env(safe-area-inset-bottom,0px))] sm:grid sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:items-end sm:gap-3 sm:px-5">
-        <div className={`${glassCluster} order-1 justify-self-start`}>
-          <button
-            onClick={onToggleVideo}
-            className={`flex h-10 shrink-0 items-center justify-center rounded-full px-2.5 transition focus:outline-none touch-manipulation sm:h-12 sm:px-4 ${
-              cameraOn ? devicePillOn : devicePillOff
-            }`}
-            title={videoButtonTitle}
-            aria-label={videoButtonTitle}
-          >
-            {cameraOn ? (
-              <Video className="h-5 w-5" />
-            ) : (
-              <VideoOff className="h-5 w-5" />
-            )}
-          </button>
+        <button
+          onClick={onToggleVideo}
+          className={`${ctrlBtn} ${cameraOn ? ctrlBtnActive : 'text-white/70'}`}
+          title={videoButtonTitle}
+          aria-label={videoButtonTitle}
+        >
+          {cameraOn ? <Video className="h-5 w-5" /> : <VideoOff className="h-5 w-5" />}
+        </button>
 
-          <button
-            onClick={onToggleMute}
-            className={`flex h-10 shrink-0 items-center justify-center rounded-full px-2.5 transition focus:outline-none touch-manipulation sm:h-12 sm:px-4 ${
-              isMuted ? devicePillOff : devicePillOn
-            }`}
-            title={isMuted ? 'Unmute' : 'Mute'}
-            aria-label={isMuted ? 'Unmute microphone' : 'Mute microphone'}
-          >
-            {isMuted ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
-          </button>
-        </div>
+        <button
+          onClick={onToggleScreenShare}
+          disabled={screenShareDisabled}
+          className={`${ctrlBtn} ${
+            screenShareDisabled
+              ? 'cursor-not-allowed opacity-35 hover:bg-transparent'
+              : isScreenSharing
+                ? ctrlBtnActive
+                : ''
+          }`}
+          title={
+            screenShareDisabled
+              ? `${screenShareParticipantName} is already presenting`
+              : isScreenSharing
+                ? 'Stop sharing'
+                : 'Share screen'
+          }
+          aria-label={
+            screenShareDisabled
+              ? 'Screen share unavailable - someone is presenting'
+              : isScreenSharing
+                ? 'Stop sharing screen'
+                : 'Share screen'
+          }
+        >
+          {isScreenSharing ? (
+            <MonitorOff className="h-5 w-5" />
+          ) : (
+            <MonitorUp className="h-5 w-5" />
+          )}
+        </button>
 
-        <div className={`${glassCluster} order-3 min-w-0 max-w-full basis-full justify-center  [scrollbar-width:none] sm:order-2 sm:basis-auto sm:justify-center [&::-webkit-scrollbar]:hidden`}>
-          {onSendReaction ? (
-            <div className="relative" ref={reactionWrapRef}>
-              <button
-                onClick={() => setReactionOpen((open) => !open)}
-                className={`${iconBtn} ${reactionOpen ? iconBtnActive : ''}`}
-                title="Send a reaction"
-                aria-label="Send a reaction"
-                aria-expanded={reactionOpen}
-                aria-haspopup="true"
-              >
-                <Smile className="h-5 w-5 sm:h-6 sm:w-6" />
-              </button>
-              {reactionOpen ? (
-                <div
-                  className="absolute bottom-full left-1/2 z-50 mb-2 flex max-w-[calc(100vw-1.5rem)] -translate-x-1/2 items-center gap-0.5 overflow-x-auto rounded-full border border-border bg-surface px-1.5 py-1 shadow-dropdown [scrollbar-width:none]"
-                  role="menu"
-                  aria-label="Live reactions"
-                >
-                  {CALL_LIVE_REACTIONS.map((reaction) => (
-                    <button
-                      key={reaction.emoji}
-                      type="button"
-                      role="menuitem"
-                      onClick={() => {
-                        onSendReaction(reaction.emoji);
-                        setReactionOpen(false);
-                      }}
-                      className="flex h-9 w-9 items-center justify-center rounded-full text-xl transition hover:bg-surface-hover hover:scale-110 active:scale-95 noto-color-emoji-regular"
-                      title={reaction.label}
-                      aria-label={reaction.label}
-                    >
-                      {reaction.emoji}
-                    </button>
-                  ))}
-                </div>
-              ) : null}
-            </div>
-          ) : null}
-
-          <button
-            onClick={onToggleScreenShare}
-            disabled={screenShareDisabled}
-            className={`${iconBtn} ${
-              screenShareDisabled
-                ? 'cursor-not-allowed opacity-40 hover:bg-transparent'
-                : isScreenSharing
-                  ? iconBtnActive
-                  : ''
-            }`}
-            title={
-              screenShareDisabled
-                ? `${screenShareParticipantName} is already presenting`
-                : isScreenSharing
-                  ? 'Stop sharing'
-                  : 'Share screen'
-            }
-            aria-label={
-              screenShareDisabled
-                ? 'Screen share unavailable - someone is presenting'
-                : isScreenSharing
-                  ? 'Stop sharing screen'
-                  : 'Share screen'
-            }
-          >
-            {isScreenSharing ? (
-              <MonitorOff className="h-5 w-5 sm:h-6 sm:w-6" />
-            ) : (
-              <MonitorUp className="h-5 w-5 sm:h-6 sm:w-6" />
-            )}
-          </button>
-
-          <button
-            onClick={onToggleAddPeople}
-            className={`${iconBtn} ${showAddPeople ? iconBtnActive : ''}`}
-            title="Add people to call"
-            aria-label="Add people to call"
-          >
-            <UserPlus className="h-5 w-5 sm:h-6 sm:w-6" />
-          </button>
-
-          <button
-            onClick={onToggleMessageInput}
-            className={`${iconBtn} ${showMessageInput ? iconBtnActive : ''}`}
-            title="Meeting chat"
-            aria-label={showMessageInput ? 'Hide meeting chat' : 'Show meeting chat'}
-            aria-pressed={showMessageInput}
-          >
-            <MessageSquare className="h-5 w-5 sm:h-6 sm:w-6" />
-          </button>
-
-          {isGroupCall && onToggleHand ? (
+        {onSendReaction ? (
+          <div className="relative z-50" ref={reactionWrapRef}>
             <button
-              onClick={onToggleHand}
-              className={`${iconBtn} ${handRaised ? 'bg-primary/20 text-primary hover:bg-primary/25 hover:text-primary' : ''}`}
-              title={handRaised ? 'Lower hand' : 'Raise hand'}
-              aria-label={handRaised ? 'Lower hand' : 'Raise hand'}
-              aria-pressed={handRaised}
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                setLeaveMenuOpen(false);
+                setReactionOpen((open) => !open);
+              }}
+              className={`${ctrlBtn} ${reactionOpen ? ctrlBtnActive : ''}`}
+              title="Send a reaction"
+              aria-label="Send a reaction"
+              aria-expanded={reactionOpen}
+              aria-haspopup="true"
             >
-              <Hand className="h-5 w-5 sm:h-6 sm:w-6" />
+              <Smile className="h-5 w-5" />
             </button>
-          ) : null}
+            {reactionOpen ? (
+              <div
+                className="absolute bottom-full left-1/2 z-[60] mb-2.5 flex max-w-[calc(100vw-1.5rem)] -translate-x-1/2 items-center gap-0.5 overflow-x-auto rounded-full border border-white/10 bg-[#1a1a1a] px-1.5 py-1 shadow-2xl [scrollbar-width:none]"
+                role="menu"
+                aria-label="Live reactions"
+              >
+                {CALL_LIVE_REACTIONS.map((reaction) => (
+                  <button
+                    key={reaction.emoji}
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      onSendReaction(reaction.emoji);
+                      setReactionOpen(false);
+                    }}
+                    className="flex h-9 w-9 items-center justify-center rounded-full text-xl transition hover:bg-white/10 hover:scale-110 active:scale-95 noto-color-emoji-regular"
+                    title={reaction.label}
+                    aria-label={reaction.label}
+                  >
+                    {reaction.emoji}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
 
+        {isGroupCall && onToggleHand ? (
           <button
-            onClick={onToggleSpeaker}
-            className={iconBtn}
-            title={
-              speakerLevel === 'normal'
-                ? 'Speaker: normal'
-                : speakerLevel === 'loud'
-                  ? 'Speaker: loud'
-                  : 'Speaker: low'
-            }
-            aria-label={`Speaker ${speakerLevel}`}
+            onClick={onToggleHand}
+            className={`${ctrlBtn} ${handRaised ? 'bg-amber-400/20 text-amber-300 hover:bg-amber-400/25' : ''}`}
+            title={handRaised ? 'Lower hand' : 'Raise hand'}
+            aria-label={handRaised ? 'Lower hand' : 'Raise hand'}
+            aria-pressed={handRaised}
           >
-            {speakerLevel === 'low' ? (
-              <Volume1 className="h-5 w-5 sm:h-6 sm:w-6" />
-            ) : (
-              <Volume2 className="h-5 w-5 sm:h-6 sm:w-6" />
-            )}
+            <Hand className="h-5 w-5" />
           </button>
+        ) : null}
+
+        {onToggleParticipants ? (
           <button
-            onClick={onEndCall}
-            className="flex h-10 w-12 shrink-0 items-center justify-center rounded-full bg-danger text-content-inverse transition hover:opacity-90 focus:outline-none touch-manipulation sm:h-12 sm:w-18"
+            onClick={onToggleParticipants}
+            className={`${ctrlBtn} ${showParticipants ? ctrlBtnActive : ''}`}
+            title="People"
+            aria-label="People in call"
+            aria-pressed={showParticipants}
+          >
+            <Users className="h-5 w-5" />
+            {participantCount > 0 ? (
+              <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-primary-500 ring-2 ring-[#161616]" />
+            ) : null}
+          </button>
+        ) : null}
+
+        <button
+          onClick={onToggleMessageInput}
+          className={`${ctrlBtn} ${showMessageInput ? ctrlBtnActive : ''}`}
+          title="Meeting chat"
+          aria-label={showMessageInput ? 'Hide meeting chat' : 'Show meeting chat'}
+          aria-pressed={showMessageInput}
+        >
+          <MessageSquare className="h-5 w-5" />
+        </button>
+
+        {onToggleSettings ? (
+          <button
+            onClick={onToggleSettings}
+            className={`${ctrlBtn} ${showSettings ? ctrlBtnActive : ''}`}
+            title="Call settings"
+            aria-label="Call settings"
+            aria-pressed={showSettings}
+          >
+            <Settings className="h-5 w-5" />
+          </button>
+        ) : null}
+
+        <div className="relative ml-0.5 sm:ml-1" ref={leaveWrapRef}>
+          <button
+            onClick={handleLeaveClick}
+            className="flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-full bg-danger px-3.5 text-sm font-semibold text-white transition hover:opacity-90 focus:outline-none touch-manipulation sm:h-11 sm:px-4"
             title={endCallLabel}
             aria-label={endCallLabel}
+            aria-haspopup={onEndCallForAll ? 'menu' : undefined}
+            aria-expanded={onEndCallForAll ? leaveMenuOpen : undefined}
           >
-            <Phone className="h-5 w-5 sm:h-6 sm:w-6" />
+            <Phone className="h-4 w-4 rotate-[135deg] sm:h-[18px] sm:w-[18px]" />
+            <span className="hidden xs:inline sm:inline">{endCallLabel}</span>
           </button>
-        </div>
 
-        {networkIndicator ? (
-          <div className={`${glassCluster} order-2 h-10 w-10 justify-center px-0 sm:order-3 sm:h-12 sm:w-12 sm:justify-self-end`}>
-            {networkIndicator}
-          </div>
-        ) : (
-          <div />
-        )}
+          {leaveMenuOpen && onEndCallForAll ? (
+            <div
+              className="absolute bottom-full right-0 z-50 mb-2.5 min-w-[11.5rem] overflow-hidden rounded-xl border border-white/10 bg-[#1a1a1a] py-1 shadow-2xl"
+              role="menu"
+            >
+              <button
+                type="button"
+                role="menuitem"
+                className="flex w-full px-3.5 py-2.5 text-left text-sm text-white/85 transition hover:bg-white/10"
+                onClick={() => {
+                  setLeaveMenuOpen(false);
+                  onEndCall();
+                }}
+              >
+                Leave call
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                className="flex w-full px-3.5 py-2.5 text-left text-sm text-red-400 transition hover:bg-white/10"
+                onClick={() => {
+                  setLeaveMenuOpen(false);
+                  if (
+                    typeof window !== 'undefined' &&
+                    window.confirm('End the call for everyone?')
+                  ) {
+                    onEndCallForAll();
+                  }
+                }}
+              >
+                End for everyone
+              </button>
+            </div>
+          ) : null}
+        </div>
       </div>
     </div>
   );

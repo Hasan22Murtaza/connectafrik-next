@@ -120,37 +120,37 @@ const CallChatPanel: React.FC<CallChatPanelProps> = ({
 
   return (
     <aside
-      className="z-40 flex h-[min(58vh,28rem)] w-full flex-col border-t border-border bg-surface shadow-2xl sm:h-screen sm:w-[360px] sm:border-l sm:border-t-0 max-sm:absolute max-sm:inset-x-0 max-sm:bottom-0 max-sm:rounded-t-2xl"
+      className="z-40 flex h-[min(58vh,28rem)] w-full flex-col border-t border-white/10 bg-[#121212] shadow-2xl sm:h-screen sm:w-[360px] sm:border-l sm:border-t-0 max-sm:absolute max-sm:inset-x-0 max-sm:bottom-0 max-sm:rounded-t-2xl"
       aria-label="Meeting chat"
     >
-      <header className="flex shrink-0 items-center justify-between border-b border-border bg-primary-600 px-3 py-2.5">
+      <header className="flex shrink-0 items-center justify-between border-b border-white/10 bg-[#161616] px-3 py-2.5">
         <div>
           <h2 className="text-sm font-semibold text-white">Chat</h2>
-          <p className="text-[11px] text-white">Visible to everyone in this thread</p>
+          <p className="text-[11px] text-white/55">Visible to everyone in this thread</p>
         </div>
         <button
           type="button"
           onClick={onClose}
-          className="rounded-full p-1.5 text-content-secondary transition  hover:text-content"
+          className="rounded-full p-1.5 text-white/60 transition hover:bg-white/10 hover:text-white"
           aria-label="Close chat"
         >
-          <X className="h-4 w-4 text-white hover:text-gray-200" />
+          <X className="h-4 w-4" />
         </button>
       </header>
 
       <div ref={scrollerRef} className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
         {!threadId ? (
-          <p className="px-2 py-8 text-center text-xs text-content-secondary">
+          <p className="px-2 py-8 text-center text-xs text-white/45">
             Chat is unavailable for this call.
           </p>
         ) : loading && visible.length === 0 ? (
-          <p className="px-2 py-8 text-center text-xs text-content-secondary">Loading messages…</p>
+          <p className="px-2 py-8 text-center text-xs text-white/45">Loading messages…</p>
         ) : visible.length === 0 ? (
-          <p className="px-2 py-8 text-center text-xs text-content-secondary">
+          <p className="px-2 py-8 text-center text-xs text-white/45">
             No messages yet. Say hello to everyone on the call.
           </p>
         ) : (
-          <ul className="space-y-3">
+          <ul className="space-y-2.5">
             {visible.map((message) => {
               const own = chatUserIdsEqual(getChatMessageAuthorId(message), currentUserId);
               const name = own ? 'You' : message.sender?.name || 'Participant';
@@ -158,23 +158,26 @@ const CallChatPanel: React.FC<CallChatPanelProps> = ({
                 ? 'This message was deleted'
                 : stripMarkdown(message.content || '').trim() ||
                   (message.attachments?.length ? 'Attachment' : '');
+              const time = format(new Date(message.created_at), 'HH:mm');
               return (
                 <li
                   key={message.id}
                   className={`flex flex-col ${own ? 'items-end' : 'items-start'}`}
                 >
-                  <div className="mb-0.5 flex max-w-[92%] items-baseline gap-1.5 px-0.5">
-                    <span className="truncate text-[11px] font-semibold text-content">{name}</span>
-                    <span className="shrink-0 text-[10px] tabular-nums text-content-tertiary">
-                      {format(new Date(message.created_at), 'HH:mm')}
-                    </span>
+                  <div
+                    className={`mb-1 flex max-w-[85%] items-baseline gap-1.5 px-1 ${
+                      own ? 'flex-row-reverse' : ''
+                    }`}
+                  >
+                    <span className="truncate text-[12px] font-medium text-white/55">{name}</span>
+                    <span className="shrink-0 text-[11px] tabular-nums text-white/40">{time}</span>
                   </div>
                   <div
-                    className={`max-w-[92%] rounded-2xl px-3 py-2 text-[13px] leading-snug shadow-sm ${
+                    className={`inline-block max-w-[85%] px-3.5 py-2 text-[13.5px] leading-snug text-[#111827] shadow-[0_1px_0.5px_rgba(11,20,26,0.13)] ${
                       own
-                        ? 'chat-bubble-own text-content'
-                        : 'chat-bubble-in text-content ring-1 ring-black/[0.04]'
-                    } ${message.is_deleted ? 'italic text-content-tertiary' : ''}`}
+                        ? 'chat-bubble-own rounded-[18px] rounded-tr-none'
+                        : 'rounded-[18px] rounded-tl-none border border-black/5 bg-white'
+                    } ${message.is_deleted ? 'italic text-[#6b7280]' : ''}`}
                   >
                     {body || 'Message'}
                   </div>
@@ -185,7 +188,7 @@ const CallChatPanel: React.FC<CallChatPanelProps> = ({
         )}
       </div>
 
-      <div className="shrink-0 border-t border-border p-2.5">
+      <div className="shrink-0 border-t border-white/10 p-2.5">
         <CallChatInput
           messageText={messageText}
           onMessageChange={onMessageChange}
