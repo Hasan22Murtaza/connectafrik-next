@@ -10,6 +10,7 @@ import LiveKitParticipantMedia, {
   useLiveKitParticipantState,
 } from '../components/ParticipantMedia';
 import ParticipantTile from '@/features/video/ui/ParticipantTile';
+import CallHeader, { type CallHeaderProps } from '@/features/video/ui/CallHeader';
 import NetworkQualityIndicator from '@/features/video/ui/NetworkQualityIndicator';
 
 export function normalizeLiveKitParticipant(
@@ -53,6 +54,7 @@ export interface LiveKitParticipantTileBridgeProps {
   tileCount?: number;
   showNameLabel?: boolean;
   handRaised?: boolean;
+  isHost?: boolean;
   onMute?: () => void;
 }
 
@@ -64,6 +66,7 @@ export function LiveKitParticipantTileBridge({
   tileCount = 1,
   showNameLabel = true,
   handRaised = false,
+  isHost = false,
   onMute,
 }: LiveKitParticipantTileBridgeProps) {
   const liveState = useLiveKitParticipantState(participant);
@@ -73,7 +76,7 @@ export function LiveKitParticipantTileBridge({
       normalizeLiveKitParticipant(participant, isLocal, {
         isMicOn: liveState.micOn,
         isCameraOn: liveState.webcamOn,
-        isActiveSpeaker: liveState.isActiveSpeaker,
+        isActiveSpeaker: liveState.isActiveSpeaker && liveState.micOn,
         handRaised,
         connectionQuality: liveState.connectionQuality,
       }),
@@ -96,9 +99,21 @@ export function LiveKitParticipantTileBridge({
       audioOnly={audioOnly}
       tileCount={tileCount}
       showNameLabel={showNameLabel}
+      isHost={isHost}
       onMute={onMute}
     />
   );
+}
+
+/** Header that reads live local connection quality from LiveKit. */
+export function LiveKitConnectedCallHeader({
+  participant,
+  ...headerProps
+}: {
+  participant: Participant;
+} & Omit<CallHeaderProps, 'connectionQuality'>) {
+  const { connectionQuality } = useLiveKitParticipantState(participant);
+  return <CallHeader {...headerProps} connectionQuality={connectionQuality} />;
 }
 
 /** Mute + network chrome for audio-only 1:1 (no video tile). */

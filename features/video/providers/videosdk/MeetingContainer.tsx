@@ -42,7 +42,7 @@ import { friendRequestService } from '@/features/social/services/friendRequestSe
 import type { CallStatus, SpeakerLevel } from '@/features/video/core/types';
 import { SPEAKER_VOLUMES, isInCallUiStatus } from '@/features/video/core/types';
 import ScreenShareView from '@/features/video/ui/ScreenShareView';
-import { VideoSDKParticipantTileBridge, VideoSDKParticipantStatusChrome, VideoSDKLocalNetworkChip } from '@/features/video/providers/videosdk/components/ParticipantTileBridge';
+import { VideoSDKParticipantTileBridge } from '@/features/video/providers/videosdk/components/ParticipantTileBridge';
 import { RemoteAudioSink } from '@/features/video/providers/videosdk/components/RemoteAudioSink';
 import { VideoSDKScreenShareMedia } from '@/features/video/providers/videosdk/components/ScreenShareMedia';
 import type { NormalizedParticipant } from '@/features/video/core/models';
@@ -52,11 +52,16 @@ import AddPeoplePanel from '@/features/video/ui/AddPeoplePanel';
 import CallChatPanel from '@/features/video/ui/CallChatPanel';
 import CallReactionOverlay from '@/features/video/ui/CallReactionOverlay';
 import RaisedHandsBanner from '@/features/video/ui/RaisedHandsBanner';
-import GroupCallParticipantsStrip from '@/features/video/ui/GroupCallParticipantsStrip';
+import CallHeader from '@/features/video/ui/CallHeader';
+import ParticipantsSidebar from '@/features/video/ui/ParticipantsSidebar';
+import CallSettingsPanel from '@/features/video/ui/CallSettingsPanel';
+import { CALL_SHELL_BG, callTitleFromNames } from '@/features/video/ui/callTheme';
 import type { CallParticipantProfile } from '@/features/video/ui/GroupCallParticipantsStrip';
 import { LocalAdaptiveSendQuality } from '@/features/video/providers/videosdk/LocalAdaptiveSendQuality';
 import { useCallHeartbeat } from '@/shared/hooks/useCallHeartbeat';
 import { useVideoSDKCallEngagement } from '@/features/video/hooks/useVideoSDKCallEngagement';
+import { useCallMediaDevices } from '@/features/video/hooks/useCallMediaDevices';
+import { profileImageUrlFromMeta } from '@/features/video/core/utils/participantMeta';
 
 // See LiveKit MeetingContainer for the rationale: 5s was well inside normal
 // mobile network blip duration and turned routine drops into ended calls.
@@ -126,6 +131,7 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
   decodedRecipientName,
   decodedCallerAvatarUrl,
   decodedRecipientAvatarUrl,
+  endToEndEncrypted = false,
 }) => {
   const { user, session } = useAuth();
   const callSessionDeviceFields = useMemo(() => {
@@ -148,12 +154,15 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
   const [showMessageInput, setShowMessageInput] = useState(false);
   const [messageText, setMessageText] = useState('');
   const [showAddPeople, setShowAddPeople] = useState(false);
+  const [showParticipants, setShowParticipants] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const [addPeopleSearch, setAddPeopleSearch] = useState('');
   const [addPeopleFriends, setAddPeopleFriends] = useState<any[]>([]);
   const [addPeopleLoading, setAddPeopleLoading] = useState(false);
   const [addPeopleBusyById, setAddPeopleBusyById] = useState<Record<string, boolean>>({});
   const [invitingUserId, setInvitingUserId] = useState<string | null>(null);
   const [groupPage, setGroupPage] = useState(0);
+  const mediaDevices = useCallMediaDevices(isOpen);
   const [presenterName, setPresenterName] = useState('');
   /** Runtime call type — can switch audio ↔ video mid-call. */
   const [effectiveCallType, setEffectiveCallType] = useState<'audio' | 'video'>(callType);
@@ -1266,20 +1275,104 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
 
   const audioVolume = SPEAKER_VOLUMES[speakerLevel];
 
-  // Paginated group grid (2+ remote participants)
+  // Paginated group grid (group sessions or 2+ remotes)
   const gridLayout = useMemo(() => {
-    if (remoteParticipantIds.length <= 1) return null;
+    if (remoteParticipantIds.length <= 1 && !isGroupCallSession) return null;
     const MAX_PER_PAGE = 8;
-    const pageCount = Math.max(1, Math.ceil(remoteParticipantIds.length / MAX_PER_PAGE));
+    const pageCount = Math.max(1, Math.ceil(Math.max(remoteParticipantIds.length, 1) / MAX_PER_PAGE));
     const pageIndex = Math.min(groupPage, pageCount - 1);
     const start = pageIndex * MAX_PER_PAGE;
     const visibleRemote = remoteParticipantIds.slice(start, start + MAX_PER_PAGE);
     const allTiles = localId ? [...visibleRemote, localId] : visibleRemote;
     const total = allTiles.length;
-    const cols = total <= 2 ? 2 : total <= 4 ? 2 : total <= 9 ? 3 : 4;
+    const cols =
+      total <= 1 ? 1 : total === 2 ? 2 : total <= 4 ? 2 : total <= 6 ? 3 : total <= 9 ? 3 : 4;
     const rows = Math.ceil(total / cols);
     return { visibleRemote, allTiles, total, cols, rows, pageIndex, pageCount };
-  }, [remoteParticipantIds, localId, groupPage]);
+  }, [remoteParticipantIds, localId, groupPage, isGroupCallSession]);
+
+  const peopleSidebarItems = useMemo(() => {
+    const profileById = new Map(
+      participantProfiles.map((p) => [String(p.id), p] as const),
+    );
+    const items = remoteParticipantIds.map((id) => {
+      const sdk = participants.get(id) as any;
+      const profile = profileById.get(String(id));
+      const name =
+        profile?.full_name ||
+        profile?.username ||
+        sdk?.displayName ||
+        'Participant';
+      const micOn = sdk?.micOn !== false;
+      return {
+        id,
+        displayName: name,
+        isLocal: false,
+        isMicOn: micOn,
+        isCameraOn: Boolean(sdk?.webcamOn),
+        isScreenSharing: false,
+        isActiveSpeaker: Boolean(sdk?.isActiveSpeaker && micOn),
+        avatarUrl: profile?.avatar_url || profileImageUrlFromMeta(sdk?.metaData) || '',
+        handRaised: engagement.isHandRaised(id),
+        isHost: Boolean(sessionHostId && id === sessionHostId),
+      };
+    });
+    if (localId) {
+      const profile = profileById.get(String(localId));
+      items.push({
+        id: localId,
+        displayName:
+          localParticipant?.displayName ||
+          profile?.full_name ||
+          user?.user_metadata?.full_name ||
+          'You',
+        isLocal: true,
+        isMicOn: Boolean(localMicOn),
+        isCameraOn: Boolean(localWebcamOn),
+        isScreenSharing: Boolean(isLocalPresenting),
+        isActiveSpeaker: false,
+        avatarUrl: profile?.avatar_url || '',
+        handRaised: engagement.isHandRaised(localId),
+        isHost: Boolean(sessionHostId && localId === sessionHostId),
+      });
+    }
+    return items;
+  }, [
+    remoteParticipantIds,
+    participants,
+    participantProfiles,
+    localId,
+    localParticipant,
+    localMicOn,
+    localWebcamOn,
+    isLocalPresenting,
+    engagement,
+    sessionHostId,
+    user,
+  ]);
+
+  const callTitle = callTitleFromNames({
+    isGroupCall: isGroupCall || isGroupCallSession,
+    isIncoming,
+    callerName: decodedCallerName,
+    recipientName: decodedRecipientName,
+    participantCount,
+  });
+
+  const handleCopyInviteLink = useCallback(async () => {
+    try {
+      const room = roomIdHint || meetingId;
+      const url = new URL(window.location.origin);
+      url.pathname = `/call/${encodeURIComponent(room)}`;
+      if (threadId) url.searchParams.set('threadId', threadId);
+      if (callIdHint) url.searchParams.set('callId', callIdHint);
+      url.searchParams.set('callType', effectiveCallType);
+      await navigator.clipboard.writeText(url.toString());
+      toast.success('Invitation link copied');
+    } catch {
+      toast.error('Could not copy link');
+    }
+  }, [roomIdHint, meetingId, threadId, callIdHint, effectiveCallType]);
 
   const inCallUi = isInCallUiStatus(callStatus);
   const remoteMediaVisible =
@@ -1360,7 +1453,7 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
     <div className="flex h-full w-full overflow-hidden">
       <div
         className="flex h-screen min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
-        style={{ background: 'linear-gradient(135deg, #ddd3c5 0%, #c7d9d1 100%)' }}
+        style={{ background: CALL_SHELL_BG }}
       >
       <div
         ref={meetingSurfaceRef}
@@ -1375,6 +1468,14 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
         <CallReactionOverlay reactions={engagement.liveReactions} />
         {(isGroupCall || isGroupCallSession) ? (
           <RaisedHandsBanner hands={engagement.raisedHands} />
+        ) : null}
+        {inCallUi ? (
+          <CallHeader
+            title={callTitle}
+            callDuration={callDuration}
+            formatDuration={formatDuration}
+            endToEndEncrypted={endToEndEncrypted}
+          />
         ) : null}
 
         {/* ── Screen share view (remote full-screen OR local banner) ─────── */}
@@ -1430,6 +1531,7 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
                 showNameLabel
                 audioVolume={opts.audioVolume}
                 handRaised={engagement.isHandRaised(p.id)}
+                isHost={Boolean(sessionHostId && p.id === sessionHostId)}
                 onMute={
                   isCallHost && !p.isLocal
                     ? () => handleMuteParticipant(p.id, p.displayName)
@@ -1450,53 +1552,66 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
           remoteParticipantIds.length === 1 &&
           effectiveCallType === 'video' &&
           inCallUi && (
-            <div className="absolute inset-0">
-              <VideoSDKParticipantTileBridge
-                participantId={remoteParticipantIds[0]}
-                tileCount={1}
-                showNameLabel
-                audioVolume={audioVolume}
-                handRaised={engagement.isHandRaised(remoteParticipantIds[0])}
-                onMute={
-                  isCallHost
-                    ? () =>
-                        handleMuteParticipant(
-                          remoteParticipantIds[0],
-                          'participant',
-                        )
-                    : undefined
-                }
-              />
+            <div className="absolute inset-0 px-2 pb-24 pt-14 sm:px-3 sm:pb-28 sm:pt-16">
+              <div className="relative h-full w-full overflow-hidden">
+                <VideoSDKParticipantTileBridge
+                  participantId={remoteParticipantIds[0]}
+                  tileCount={1}
+                  showNameLabel
+                  audioVolume={audioVolume}
+                  handRaised={engagement.isHandRaised(remoteParticipantIds[0])}
+                  isHost={Boolean(sessionHostId && remoteParticipantIds[0] === sessionHostId)}
+                  onMute={
+                    isCallHost
+                      ? () =>
+                          handleMuteParticipant(
+                            remoteParticipantIds[0],
+                            'participant',
+                          )
+                      : undefined
+                  }
+                />
+              </div>
             </div>
           )}
 
-        {/* ── Group video grid (2+ remote participants) ─────────────────── */}
+        {/* ── Group video grid ──────────────────────────────────────────── */}
         {gridLayout && !remotePresenter && (
           <div
-            className="absolute inset-0 grid p-1.5 sm:p-2"
+            className="absolute inset-0 grid px-2 pb-24 pt-14 sm:px-3 sm:pb-28 sm:pt-16"
             style={{
-              gap: 6,
+              gap: 10,
               gridTemplateColumns: `repeat(${gridLayout.cols}, minmax(0, 1fr))`,
               gridTemplateRows: `repeat(${gridLayout.rows}, minmax(0, 1fr))`,
-              background: 'linear-gradient(135deg, #ddd3c5 0%, #c7d9d1 100%)',
+              background: CALL_SHELL_BG,
             }}
           >
             {gridLayout.allTiles.map((pid, index) => {
               const leftover = gridLayout.total % gridLayout.cols;
               const isLoneLastRowItem =
                 leftover === 1 && index === gridLayout.allTiles.length - 1;
+              const centeredSingle = gridLayout.total === 1;
               return (
               <div
                 key={pid}
-                className="relative min-h-0 min-w-0 overflow-hidden rounded-md sm:rounded-lg"
+                className="relative min-h-0 min-w-0 overflow-hidden"
                 style={
-                  isLoneLastRowItem
+                  centeredSingle
                     ? {
                         gridColumn: '1 / -1',
-                        width: `calc((100% - ${(gridLayout.cols - 1) * 6}px) / ${gridLayout.cols})`,
+                        width: 'min(100%, 42rem)',
+                        maxHeight: '100%',
                         justifySelf: 'center',
+                        alignSelf: 'center',
+                        aspectRatio: '16 / 10',
                       }
-                    : undefined
+                    : isLoneLastRowItem
+                      ? {
+                          gridColumn: '1 / -1',
+                          width: `calc((100% - ${(gridLayout.cols - 1) * 10}px) / ${gridLayout.cols})`,
+                          justifySelf: 'center',
+                        }
+                      : undefined
                 }
               >
                 <VideoSDKParticipantTileBridge
@@ -1506,6 +1621,7 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
                   showNameLabel
                   audioVolume={audioVolume}
                   handRaised={engagement.isHandRaised(pid)}
+                  isHost={Boolean(sessionHostId && pid === sessionHostId)}
                   onMute={
                     isCallHost && pid !== localId
                       ? () => handleMuteParticipant(pid, 'participant')
@@ -1517,11 +1633,11 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
             })}
 
             {gridLayout.pageCount > 1 && (
-              <div className="absolute top-2 right-2 z-10 flex items-center gap-2 bg-black/60 text-white rounded-full px-2.5 py-1.5 backdrop-blur-sm border border-white/20">
+              <div className="absolute right-3 top-16 z-10 flex items-center gap-2 rounded-full border border-white/15 bg-black/65 px-2.5 py-1.5 text-white backdrop-blur-md">
                 <button
                   onClick={() => setGroupPage((p) => Math.max(0, p - 1))}
                   disabled={gridLayout.pageIndex === 0}
-                  className="text-xs px-2 py-0.5 rounded bg-surface/10 hover:bg-surface/20 disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="rounded px-2 py-0.5 text-xs hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
                   aria-label="Previous page"
                 >
                   Prev
@@ -1534,7 +1650,7 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
                     setGroupPage((p) => Math.min(gridLayout.pageCount - 1, p + 1))
                   }
                   disabled={gridLayout.pageIndex >= gridLayout.pageCount - 1}
-                  className="text-xs px-2 py-0.5 rounded bg-surface/10 hover:bg-surface/20 disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="rounded px-2 py-0.5 text-xs hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
                   aria-label="Next page"
                 >
                   Next
@@ -1556,7 +1672,7 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
               role="region"
               aria-label="Your camera preview — drag to move on screen"
               title="Drag to move"
-              className={`absolute top-3 right-3 z-20 w-20 h-28 touch-none select-none rounded-lg border border-white shadow-xl ring-1 ring-white/20 sm:h-32 sm:w-24 md:h-44 md:w-32 sm:border-2 ${
+              className={`absolute top-16 right-3 z-20 h-28 w-20 touch-none select-none rounded-xl border border-white/20 shadow-2xl ring-1 ring-black/40 sm:top-[4.5rem] sm:h-32 sm:w-24 md:h-44 md:w-32 ${
                 pipDragging
                   ? 'cursor-grabbing overflow-hidden'
                   : 'cursor-grab overflow-hidden transition-transform duration-200 hover:scale-105'
@@ -1616,11 +1732,6 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
           remoteScreenShareStream={null}
           showConnectedGroupGallery={!!gridLayout && inCallUi}
           remoteMediaVisible={remoteMediaVisible}
-          extraPersonChrome={
-            effectiveCallType === 'audio' && inCallUi && remoteParticipantIds[0] ? (
-              <VideoSDKParticipantStatusChrome participantId={remoteParticipantIds[0]} />
-            ) : null
-          }
         />
 
         {/* ── Outgoing ringing: drop-call button ───────────────────────── */}
@@ -1678,29 +1789,81 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
             callType={effectiveCallType}
             showMessageInput={showMessageInput}
             showAddPeople={showAddPeople}
+            showParticipants={showParticipants}
+            showSettings={showSettings}
+            participantCount={participantCount}
             onToggleMute={handleToggleMic}
             onToggleVideo={handleToggleVideo}
             onToggleScreenShare={handleToggleScreenShare}
             onToggleSpeaker={handleToggleSpeaker}
             onToggleMessageInput={() => {
               setShowAddPeople(false);
+              setShowParticipants(false);
+              setShowSettings(false);
               setShowMessageInput((p) => !p);
             }}
             onToggleAddPeople={() => {
               setShowMessageInput(false);
+              setShowParticipants(false);
+              setShowSettings(false);
               setShowAddPeople((p) => !p);
+            }}
+            onToggleParticipants={() => {
+              setShowMessageInput(false);
+              setShowAddPeople(false);
+              setShowSettings(false);
+              setShowParticipants((p) => !p);
+            }}
+            onToggleSettings={() => {
+              setShowMessageInput(false);
+              setShowAddPeople(false);
+              setShowParticipants(false);
+              setShowSettings((p) => !p);
             }}
             onToggleHand={engagement.toggleHand}
             onSendReaction={engagement.sendReaction}
             onEndCall={handleEndCall}
-            onEndCallForAll={isCallHost && (isGroupCall || isGroupCallSession) ? handleEndCallForAll : undefined}
+            onEndCallForAll={
+              isCallHost && (isGroupCall || isGroupCallSession) ? handleEndCallForAll : undefined
+            }
             isGroupCall={isGroupCall || isGroupCallSession}
             handRaised={engagement.handRaised}
-            networkIndicator={
-              localId ? <VideoSDKLocalNetworkChip participantId={localId} /> : undefined
-            }
           />
         )}
+
+        <ParticipantsSidebar
+          open={showParticipants && inCallUi}
+          participants={peopleSidebarItems}
+          hostId={sessionHostId}
+          onClose={() => setShowParticipants(false)}
+          onAddPeople={() => {
+            setShowParticipants(false);
+            setShowAddPeople(true);
+          }}
+          onCopyLink={() => void handleCopyInviteLink()}
+          canManageParticipants={isCallHost}
+          onMuteParticipant={
+            isCallHost
+              ? (id, name) => handleMuteParticipant(id, name)
+              : undefined
+          }
+        />
+
+        <CallSettingsPanel
+          open={showSettings && inCallUi}
+          onClose={() => setShowSettings(false)}
+          speakerLevel={speakerLevel}
+          onSpeakerLevelChange={setSpeakerLevel}
+          audioInputs={mediaDevices.audioInputs}
+          audioOutputs={mediaDevices.audioOutputs}
+          videoInputs={mediaDevices.videoInputs}
+          selectedAudioInputId={mediaDevices.selectedAudioInputId}
+          selectedAudioOutputId={mediaDevices.selectedAudioOutputId}
+          selectedVideoInputId={mediaDevices.selectedVideoInputId}
+          onSelectAudioInput={mediaDevices.setSelectedAudioInputId}
+          onSelectAudioOutput={mediaDevices.setSelectedAudioOutputId}
+          onSelectVideoInput={mediaDevices.setSelectedVideoInputId}
+        />
       </div>
       </div>
 

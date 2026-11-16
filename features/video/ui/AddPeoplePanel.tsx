@@ -48,14 +48,14 @@ const AddPeoplePanel: React.FC<AddPeoplePanelProps> = ({
 
   return (
     <aside
-      className="z-50 flex h-full max-h-full min-h-0 w-full shrink-0 flex-col overflow-hidden border-l border-border bg-surface shadow-2xl sm:w-80 max-sm:absolute max-sm:inset-0"
+      className="z-50 flex h-full max-h-full min-h-0 w-full shrink-0 flex-col overflow-hidden border-l border-white/10 bg-[#121212] shadow-2xl sm:w-80 max-sm:absolute max-sm:inset-0"
       aria-label="Add people to call"
     >
-      <header className="flex shrink-0 items-center justify-between border-b border-border px-3 py-2.5">
-        <h3 className="text-sm font-semibold text-content">Add People</h3>
+      <header className="flex shrink-0 items-center justify-between border-b border-white/10 px-3 py-2.5">
+        <h3 className="text-sm font-semibold text-white">Add People</h3>
         <button
           onClick={onClose}
-          className="rounded-full p-1.5 text-content-secondary transition hover:bg-surface-hover hover:text-content"
+          className="rounded-full p-1.5 text-white/60 transition hover:bg-white/10 hover:text-white"
           aria-label="Close add people"
         >
           <X className="w-4 h-4" />
@@ -64,13 +64,13 @@ const AddPeoplePanel: React.FC<AddPeoplePanelProps> = ({
 
       <div className="shrink-0 p-3">
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-content-tertiary" />
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" />
           <input
             type="text"
             placeholder="Search friends..."
             value={addPeopleSearch}
             onChange={(e) => onSearchChange(e.target.value)}
-            className="w-full rounded-lg border border-border bg-surface-secondary py-2 pl-9 pr-3 text-sm text-content outline-none transition placeholder:text-content-tertiary focus:border-primary-400 focus:ring-2 focus:ring-primary-100"
+            className="w-full rounded-lg border border-white/10 bg-white/5 py-2 pl-9 pr-3 text-sm text-white outline-none transition placeholder:text-white/35 focus:border-primary-400/60 focus:ring-1 focus:ring-primary-400/30"
             autoFocus
           />
         </div>
@@ -78,15 +78,15 @@ const AddPeoplePanel: React.FC<AddPeoplePanelProps> = ({
 
       <div className="min-h-0 flex-1 space-y-1 overflow-y-auto overscroll-contain px-3 pb-3">
         {loading ? (
-          <p className="mt-4 text-center text-xs text-content-secondary">Loading friends...</p>
+          <p className="mt-4 text-center text-xs text-white/50">Loading friends...</p>
         ) : addPeopleResults.length === 0 ? (
-          <p className="mt-4 text-center text-xs text-content-secondary">
+          <p className="mt-4 text-center text-xs text-white/50">
             {searchActive ? 'No friends found' : 'No friends to add'}
           </p>
         ) : (
           <>
             {!searchActive && (
-              <p className="px-1 pb-1 text-[11px] font-medium uppercase tracking-wide text-content-tertiary">
+              <p className="px-1 pb-1 text-[11px] font-medium uppercase tracking-wide text-white/40">
                 Friends
               </p>
             )}
@@ -105,7 +105,7 @@ const AddPeoplePanel: React.FC<AddPeoplePanelProps> = ({
                       ? 'cursor-not-allowed opacity-50'
                       : invitingUserId === person.id
                       ? 'bg-primary/15'
-                      : 'hover:bg-surface-hover'
+                      : 'hover:bg-white/[0.06]'
                   }`}
                 >
                   {person.avatar_url ? (
@@ -118,11 +118,11 @@ const AddPeoplePanel: React.FC<AddPeoplePanelProps> = ({
                     </div>
                   )}
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium text-content">
+                    <p className="truncate text-sm font-medium text-white">
                       {person.full_name || person.username}
                     </p>
                     {person.username && (
-                      <p className="truncate text-xs text-content-tertiary">@{person.username}</p>
+                      <p className="truncate text-xs text-white/45">@{person.username}</p>
                     )}
                   </div>
                   {inThisMeeting ? (

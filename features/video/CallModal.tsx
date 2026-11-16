@@ -121,7 +121,9 @@ const CallModal: React.FC<CallModalProps> = (props) => {
   const [resolvedE2ee, setResolvedE2ee] = useState(false);
   const [callMediaKey, setCallMediaKey] = useState<string | undefined>();
   const [sealedCall, setSealedCall] = useState(false);
-  const endToEndEncrypted = Boolean((e2eeKeyHint || '').trim()) || resolvedE2ee;
+  // Only claim E2EE when the sealed (server-blind) path is active — not for
+  // the legacy shared metadata.e2eeKey that the server can also read.
+  const endToEndEncrypted = sealedCall || e2eeSealedHint;
 
   const isMountedRef = useRef(true);
   const hasInitRef = useRef(false);
@@ -604,7 +606,7 @@ const CallModal: React.FC<CallModalProps> = (props) => {
 
   // Match MeetingContainer call shell (pre-call must not show page `bg-black`).
   const callShellBackground = {
-    background: 'linear-gradient(135deg, #ddd3c5 0%, #c7d9d1 100%)',
+    background: '#0b0b0b',
   } as const;
 
   // ── Pre-call: incoming — keep this SAME shell through Answer until media

@@ -4,7 +4,10 @@ import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-uti
 import { listLiveKitParticipantIdentities } from '@/lib/call-media/livekit'
 import { isE2eeSessionRecord } from '@/lib/call-e2ee/protocol'
 import { parseSealedKeyInputsResult, storeInviteeCallKeys } from '@/lib/call-e2ee/persist'
-import { getBusyMapForUserIds } from '@/lib/call-media/session-busy'
+import {
+  getBusyMapForUserIds,
+  reapStaleSessionsBlockingUsers,
+} from '@/lib/call-media/session-busy'
 import { canMessage } from '@/lib/privacy/access'
 import { privacyDecisionResponse } from '@/lib/privacy/http'
 
@@ -318,6 +321,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    await reapStaleSessionsBlockingUsers(serviceClient, [target_user_id], call_id)
     const busy = await getBusyMapForUserIds(serviceClient, [target_user_id], call_id)
     if (busy[target_user_id]) {
       return errorResponse('This person is already in another call', 409)

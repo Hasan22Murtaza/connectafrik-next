@@ -192,6 +192,11 @@ export default function CallWindowPage() {
           const meta = parseSessionMetadata(row?.metadata)
           const sessionKey = readCallE2eeKey(meta)
           if (sessionKey) setE2eeKeyHint(sessionKey)
+          // Sealed E2EE sessions strip plaintext e2eeKey from metadata — pin
+          // sealedHint from the session flag so join cannot silently go clear.
+          if (row?.e2ee === true || meta.e2ee === true) {
+            setE2eeSealedHint(true)
+          }
           // Pin to whichever provider the room was actually created on
           // (persisted server-side) so this callee's token request can't
           // silently resolve to a different provider than the caller's.

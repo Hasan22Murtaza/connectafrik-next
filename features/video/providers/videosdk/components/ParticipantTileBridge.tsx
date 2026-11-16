@@ -91,7 +91,7 @@ export function useVideoSDKNormalizedParticipant(
       isMicOn: micOn,
       isCameraOn: webcamOn,
       isScreenSharing: false,
-      isActiveSpeaker,
+      isActiveSpeaker: Boolean(isActiveSpeaker && micOn),
       avatarUrl: profileImageUrlFromMeta(participant?.metaData),
       handRaised,
       connectionQuality,
@@ -118,6 +118,7 @@ export interface VideoSDKParticipantTileBridgeProps {
   tileCount?: number;
   showNameLabel?: boolean;
   handRaised?: boolean;
+  isHost?: boolean;
   onMute?: () => void;
 }
 
@@ -130,6 +131,7 @@ export function VideoSDKParticipantTileBridge({
   tileCount = 1,
   showNameLabel = true,
   handRaised = false,
+  isHost = false,
   onMute,
 }: VideoSDKParticipantTileBridgeProps) {
   const normalized = useVideoSDKNormalizedParticipant(participantId, isLocal, handRaised);
@@ -166,6 +168,7 @@ export function VideoSDKParticipantTileBridge({
       audioOnly={audioOnly}
       tileCount={tileCount}
       showNameLabel={showNameLabel}
+      isHost={isHost}
       onMute={handleMute}
     />
   );

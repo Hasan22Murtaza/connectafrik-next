@@ -126,7 +126,13 @@ export async function prepareSealedCall(threadId: string, callId: string): Promi
     { thread_id: threadId },
   )
   const devices = normalizeRemoteDevices(listed?.devices)
-  if ((listed?.missingUserIds || []).length > 0 || devices.length === 0) {
+  const missingUserIds = (listed?.missingUserIds || [])
+    .map((id) => (typeof id === 'string' ? id.trim().toLowerCase() : ''))
+    .filter(Boolean)
+  // Infer participant count from covered + missing users (API does not return userIds).
+  const coveredUserIds = new Set(devices.map((device) => device.userId))
+  const participantCount = coveredUserIds.size + missingUserIds.filter((id) => !coveredUserIds.has(id)).length
+  if (devices.length === 0 || (missingUserIds.length > 0 && participantCount <= 2)) {
     throw new Error('Encrypted calling is not set up for every person in this chat yet.')
   }
   if (devices.length > MAX_CALL_SEALS) {
@@ -239,12 +245,14 @@ export async function resolveCallMediaKey(options: {
     return { mediaKey: hintedKey, sealed: Boolean(options.sealedHint && hintedKey) }
   }
 
+  const sealedRequired = Boolean(options.sealedHint)
+
   try {
     const res = await apiClient.get<{ session: { e2ee?: boolean; metadata?: unknown } | null }>(
       `/api/chat/threads/${threadId}/call-sessions`,
       { call_id: callId },
     )
-    const required = isE2eeSessionRecord(res.session)
+    const required = isE2eeSessionRecord(res.session) || sealedRequired
     if (required) {
       if (hintedKey && options.sealedHint) return { mediaKey: hintedKey, sealed: true }
       return { mediaKey: await openOwnSealedCallKey(callId), sealed: true }
@@ -255,7 +263,11 @@ export async function resolveCallMediaKey(options: {
     }
   } catch (error) {
     if (error instanceof Error && error.message === CALL_E2EE_JOIN_ERROR) throw error
-    if (options.sealedHint && hintedKey) return { mediaKey: hintedKey, sealed: true }
+    // Fail closed: never join a sealed call in the clear when session lookup fails.
+    if (sealedRequired) {
+      if (hintedKey) return { mediaKey: hintedKey, sealed: true }
+      throw new Error(CALL_E2EE_JOIN_ERROR)
+    }
     return { mediaKey: hintedKey, sealed: false }
   }
 }

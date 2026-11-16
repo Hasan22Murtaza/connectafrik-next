@@ -5,7 +5,14 @@ import { requireChatThreadAccess } from '@/lib/chat/chatThreadAccess'
 import { persistAcceptedOnAnotherDeviceChatMessage } from '@/lib/chat/persistAcceptedOnAnotherDeviceMessage'
 import { deleteLiveKitRoom, listLiveKitParticipantIdentities } from '@/lib/call-media/livekit'
 import { isCallE2eeEnabledForUser } from '@/lib/call-e2ee/flag'
-import { parseSealedKeyInputsResult, storeInitialCallKeys } from '@/lib/call-e2ee/persist'
+import { isE2eeSessionRecord } from '@/lib/call-e2ee/protocol'
+import {
+  listActiveCallDevices,
+  normalizeId,
+  parseSealedKeyInputsResult,
+  revokeCallKeysForUser,
+  storeInitialCallKeys,
+} from '@/lib/call-e2ee/persist'
 import { loadFriendMaps } from '@/lib/privacy/queries'
 
 /** Forward the caller's session JWT so /api/push-notifications can authz the actor. */
@@ -656,20 +663,52 @@ export async function POST(request: NextRequest, context: RouteContext) {
       return Number.isFinite(created) && nowMs - created < LIVE_DEDUPE_WINDOW_MS
     })
     if (recentLive.length > 0) {
-      return jsonResponse({ session: sanitizeCallSession(recentLive[0]) })
+      const recent = recentLive[0]
+      // Sealed callers must never attach to a non-E2EE live row (silent downgrade).
+      if (e2eeEnabled && !isE2eeSessionRecord(recent as { e2ee?: unknown; metadata?: unknown })) {
+        const identities = await mediaIdentitiesForSession(recent)
+        if (identities && identities.length === 0) {
+          await markSessionEnded(serviceClient, recent, 'replaced_empty')
+        } else {
+          return errorResponse(
+            'An unencrypted call is already in progress on this chat. End it before starting an encrypted call.',
+            409,
+          )
+        }
+      } else {
+        return jsonResponse({ session: sanitizeCallSession(recent) })
+      }
     }
 
     const sameCall = live.find((s) => typeof s.call_id === 'string' && s.call_id === call_id)
     if (sameCall) {
+      if (e2eeEnabled && !isE2eeSessionRecord(sameCall as { e2ee?: unknown; metadata?: unknown })) {
+        return errorResponse(
+          'Unable to establish encrypted call on an existing unencrypted session.',
+          409,
+        )
+      }
       return jsonResponse({ session: sanitizeCallSession(sameCall) })
     }
 
     for (const existingLive of live) {
       const identities = await mediaIdentitiesForSession(existingLive)
       if (identities === null) {
+        if (e2eeEnabled && !isE2eeSessionRecord(existingLive as { e2ee?: unknown; metadata?: unknown })) {
+          return errorResponse(
+            'An unencrypted call is already in progress on this chat. End it before starting an encrypted call.',
+            409,
+          )
+        }
         return jsonResponse({ session: sanitizeCallSession(existingLive) })
       }
       if (identities.length > 0) {
+        if (e2eeEnabled && !isE2eeSessionRecord(existingLive as { e2ee?: unknown; metadata?: unknown })) {
+          return errorResponse(
+            'An unencrypted call is already in progress on this chat. End it before starting an encrypted call.',
+            409,
+          )
+        }
         return jsonResponse({ session: sanitizeCallSession(existingLive) })
       }
       await markSessionEnded(serviceClient, existingLive, 'replaced_empty')
@@ -747,7 +786,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       `Incoming ${call_type === 'video' ? 'video' : 'audio'} call`
     )
 
-    const recipients = await resolveTargetUserIds(serviceClient, threadId, user.id, target_user_id || undefined)
+    let recipients = await resolveTargetUserIds(serviceClient, threadId, user.id, target_user_id || undefined)
     if (
       typeof target_user_id === 'string' &&
       target_user_id.trim() &&
@@ -755,6 +794,13 @@ export async function POST(request: NextRequest, context: RouteContext) {
       recipients.length === 0
     ) {
       return errorResponse('target_user_id must be a participant of this thread', 403)
+    }
+    // Sealed calls can only be answered by people who already have a call device.
+    // Skip ringing members who still need to set up encrypted calling.
+    if (e2eeEnabled && recipients.length > 0) {
+      const recipientDevices = await listActiveCallDevices(serviceClient, recipients)
+      const ready = new Set(recipientDevices.map((device) => device.userId))
+      recipients = recipients.filter((id) => ready.has(normalizeId(id)))
     }
     if (recipients.length > 0) {
       const sentAt = new Date().toISOString()
@@ -1199,6 +1245,22 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 
     if (updateError || !updated) {
       return errorResponse(updateError?.message || 'Failed to update call session', 400)
+    }
+
+    // Sealed E2EE: drop the departed user's seals so they cannot remint a token
+    // and decrypt remaining media with a stale key. Full room key rotation for
+    // remaining participants still requires a future client ratchet pass.
+    if (
+      isE2eeSessionRecord(row as { e2ee?: unknown; metadata?: unknown }) &&
+      (event === 'leave' || event === 'declined') &&
+      typeof row.call_id === 'string' &&
+      row.call_id
+    ) {
+      try {
+        await revokeCallKeysForUser(serviceClient, { callId: row.call_id, userId: user.id })
+      } catch (err) {
+        console.warn('[call_sessions] revokeCallKeysForUser failed', err)
+      }
     }
 
     // Propagate join/accept onto sibling sessions that share this call_id so the

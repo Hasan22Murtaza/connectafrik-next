@@ -3,6 +3,7 @@
 import React from 'react';
 import type { NormalizedParticipant } from '@/features/video/core/models';
 import ParticipantInfo from './ParticipantInfo';
+import { CALL_SPEAKING_RING, CALL_TILE_BG, CALL_TILE_BORDER } from './callTheme';
 
 export interface ParticipantTileProps {
   participant: NormalizedParticipant;
@@ -11,6 +12,7 @@ export interface ParticipantTileProps {
   audioOnly?: boolean;
   tileCount?: number;
   showNameLabel?: boolean;
+  isHost?: boolean;
   onMute?: () => void;
 }
 
@@ -24,9 +26,11 @@ const ParticipantTile = React.memo(function ParticipantTile({
   audioOnly = false,
   tileCount = 1,
   showNameLabel = true,
+  isHost = false,
   onMute,
 }: ParticipantTileProps) {
-  const { isLocal, isActiveSpeaker } = participant;
+  const { isActiveSpeaker, isMicOn, isLocal } = participant;
+  const speaking = isActiveSpeaker && isMicOn;
 
   if (audioOnly) {
     if (isLocal) return null;
@@ -35,16 +39,23 @@ const ParticipantTile = React.memo(function ParticipantTile({
 
   return (
     <div
-      className={`group relative w-full h-full overflow-hidden transition-all duration-200 ${
-        isActiveSpeaker && !isLocal ? 'ring-2 ring-inset ring-green-400' : ''
+      className={`group relative h-full w-full overflow-hidden rounded-xl transition-[box-shadow,border-color] duration-300 sm:rounded-2xl ${
+        speaking ? 'call-speaking-tile' : ''
       }`}
-      style={{ background: 'rgba(15, 23, 42, 0.58)' }}
+      style={{
+        background: CALL_TILE_BG,
+        border: speaking
+          ? `2px solid ${CALL_SPEAKING_RING}`
+          : `1px solid ${CALL_TILE_BORDER}`,
+        boxShadow: speaking ? `0 0 0 1px ${CALL_SPEAKING_RING}, 0 0 24px rgba(74,222,128,0.18)` : undefined,
+      }}
     >
       {media}
       <ParticipantInfo
         participant={participant}
         tileCount={tileCount}
         showNameLabel={showNameLabel}
+        isHost={isHost}
         onMute={onMute}
       />
     </div>
