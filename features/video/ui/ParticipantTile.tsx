@@ -29,7 +29,7 @@ const ParticipantTile = React.memo(function ParticipantTile({
   isHost = false,
   onMute,
 }: ParticipantTileProps) {
-  const { isActiveSpeaker, isMicOn } = participant;
+  const { isActiveSpeaker, isMicOn, isLocal } = participant;
   const speaking = isActiveSpeaker && isMicOn;
 
   if (audioOnly) {
