@@ -162,12 +162,12 @@ const CreateGroupPost: React.FC<CreateGroupPostProps> = ({ onSubmit, onCancel })
                 onClick={() => setPostType(type.value as any)}
                 className={`flex flex-col items-center gap-1 p-2 rounded-lg border-1 transition-all ${
                   postType === type.value
-                    ? 'border-orange-400 bg-primary-50'
+                    ? 'border-border-strong bg-surface-secondary'
                     : 'border-gray-200 hover:border-gray-300'
                 }`}
               >
-                <Icon className={`w-5 h-5 ${postType === type.value ? 'text-primary-600' : 'text-gray-500'}`} />
-                <span className={`text-xs ${postType === type.value ? 'text-primary-600 font-medium' : 'text-gray-600'}`}>
+                <Icon className={`w-5 h-5 ${postType === type.value ? 'text-content' : 'text-gray-500'}`} />
+                <span className={`text-xs ${postType === type.value ? 'text-content font-medium' : 'text-gray-600'}`}>
                   {type.label}
                 </span>
               </button>

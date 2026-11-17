@@ -1,3 +1,5 @@
+'use client'
+
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { searchService, type SearchResults, SEARCH_DEBOUNCE_MS, DEFAULT_MIN_QUERY_LENGTH } from '@/shared/services/searchService'
 

@@ -526,7 +526,7 @@ const GroupDetailPage: React.FC = () => {
     return (
       <div className="min-h-screen w-full min-w-0">
         {/* Keep Groups Sidebar visible while group page loads */}
-        <aside className="fixed top-[73px] px-4 hidden h-[calc(100dvh-73px)] shrink-0 self-start overflow-y-auto bg-background py-4 md:block">
+        <aside className="fixed top-[73px] hidden h-[calc(100dvh-73px)] w-64 shrink-0 self-start overflow-y-auto bg-background px-4 py-4 md:block">
           <GroupsSidebar
             view="group-detail"
             onViewChange={(nextView) =>
@@ -540,7 +540,7 @@ const GroupDetailPage: React.FC = () => {
         </aside>
 
         {/* Group page shimmer */}
-        <main className="flex-1 max-w-full px-4 py-4 md:ml-74">
+        <main className="flex-1 max-w-full px-4 py-4 md:ml-64">
           <GroupDetailPageShimmer />
         </main>
       </div>
@@ -597,7 +597,7 @@ const GroupDetailPage: React.FC = () => {
   return (
     <div className="min-h-screen  w-full min-w-0">
 
-      <aside className="fixed top-[73px] px-4  hidden h-[calc(100dvh-73px)]  shrink-0 self-start overflow-y-auto  bg-background  py-4 md:block">
+      <aside className="fixed top-[73px] hidden h-[calc(100dvh-73px)] w-64 shrink-0 self-start overflow-y-auto bg-background px-4 py-4 md:block">
         <GroupsSidebar
           view="group-detail"
           onViewChange={(nextView) =>
@@ -610,7 +610,7 @@ const GroupDetailPage: React.FC = () => {
         />
       </aside>
 
-      <main className="flex-1 max-w-full px-4 py-4  md:ml-74">
+      <main className="flex-1 max-w-full px-4 py-4 md:ml-64">
         <div className="bg-surface pt-2 pb-0 px-2 rounded-2xl shadow-sm overflow-hidden">
         {/* Banner */}
         <div className="relative">
@@ -743,7 +743,7 @@ const GroupDetailPage: React.FC = () => {
               <button
                 onClick={() => handleTabChange('posts')}
                 className={`px-4 py-3 font-medium transition-colors border-b-2 shrink-0  ${activeTab === 'posts'
-                    ? 'text-primary-600 border-primary-600 dark:text-orange-300 dark:border-orange-400'
+                    ? 'text-content border-content'
                     : 'text-gray-600 border-transparent hover:text-content dark:hover:bg-surface-hover'
                   }`}
               >
@@ -753,7 +753,7 @@ const GroupDetailPage: React.FC = () => {
               <button
                 onClick={() => handleTabChange('about')}
                 className={`px-4 py-3 font-medium transition-colors border-b-2 shrink-0  ${activeTab === 'about'
-                    ? 'text-primary-600 border-primary-600 dark:text-orange-300 dark:border-orange-400'
+                    ? 'text-content border-content'
                     : 'text-gray-600 border-transparent hover:text-content dark:hover:bg-surface-hover'
                   }`}
               >
@@ -763,7 +763,7 @@ const GroupDetailPage: React.FC = () => {
               <button
                 onClick={() => handleTabChange('members')}
                 className={`px-4 py-3 font-medium transition-colors border-b-2 shrink-0  ${activeTab === 'members'
-                    ? 'text-primary-600 border-primary-600 dark:text-orange-300 dark:border-orange-400'
+                    ? 'text-content border-content'
                     : 'text-gray-600 border-transparent hover:text-content dark:hover:bg-surface-hover'
                   }`}
               >
@@ -774,7 +774,7 @@ const GroupDetailPage: React.FC = () => {
                 <button
                   onClick={() => handleTabChange('requests')}
                   className={`px-4 py-3 font-medium transition-colors border-b-2 shrink-0  ${activeTab === 'requests'
-                      ? 'text-primary-600 border-primary-600 dark:text-orange-300 dark:border-orange-400'
+                      ? 'text-content border-content'
                       : 'text-gray-600 border-transparent hover:text-content dark:hover:bg-surface-hover'
                     }`}
                 >
@@ -793,7 +793,7 @@ const GroupDetailPage: React.FC = () => {
                 <button
                   onClick={() => handleTabChange('complaints')}
                   className={`px-4 py-3 font-medium transition-colors border-b-2 shrink-0  ${activeTab === 'complaints'
-                      ? 'text-primary-600 border-primary-600 dark:text-orange-300 dark:border-orange-400'
+                      ? 'text-content border-content'
                       : 'text-gray-600 border-transparent hover:text-content dark:hover:bg-surface-hover'
                     }`}
                 >
@@ -811,7 +811,7 @@ const GroupDetailPage: React.FC = () => {
               <button
                 onClick={() => handleTabChange('events')}
                 className={`px-4 py-3 font-medium transition-colors border-b-2 shrink-0  ${activeTab === 'events'
-                    ? 'text-primary-600 border-primary-600 dark:text-orange-300 dark:border-orange-400'
+                    ? 'text-content border-content'
                     : 'text-gray-600 border-transparent hover:text-content dark:hover:bg-surface-hover'
                   }`}
               >
@@ -824,7 +824,7 @@ const GroupDetailPage: React.FC = () => {
               <button
                 onClick={() => handleTabChange('media')}
                 className={`px-4 py-3 font-medium transition-colors border-b-2 shrink-0  ${activeTab === 'media'
-                    ? 'text-primary-600 border-primary-600 dark:text-orange-300 dark:border-orange-400'
+                    ? 'text-content border-content'
                     : 'text-gray-600 border-transparent hover:text-content dark:hover:bg-surface-hover'
                   }`}
               >
@@ -837,7 +837,7 @@ const GroupDetailPage: React.FC = () => {
               <button
                 onClick={() => handleTabChange('files')}
                 className={`px-4 py-3 font-medium transition-colors border-b-2 shrink-0  ${activeTab === 'files'
-                    ? 'text-primary-600 border-primary-600 dark:text-orange-300 dark:border-orange-400'
+                    ? 'text-content border-content'
                     : 'text-gray-600 border-transparent hover:text-content dark:hover:bg-surface-hover'
                   }`}
               >

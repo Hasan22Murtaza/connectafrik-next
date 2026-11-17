@@ -102,7 +102,7 @@ const MAX_IMAGE_SIZE = 10 * 1024 * 1024
 const MAX_BACKGROUND_CHARACTERS = 250
 
 const CATEGORIES = [
-  { value: 'general' as const, label: 'General', icon: '💬', active: 'bg-orange-50 border-orange-400 text-orange-500' },
+  { value: 'general' as const, label: 'General', icon: '💬', active: 'bg-surface-secondary border-border-strong text-content' },
   { value: 'politics' as const, label: 'Politics', icon: '🏛️', active: 'bg-red-50 border-red-400 text-red-700' },
   { value: 'culture' as const, label: 'Culture', icon: '🎭', active: 'bg-emerald-50 border-emerald-400 text-emerald-700' },
 ]
@@ -301,7 +301,7 @@ const CreatePost: React.FC<CreatePostProps> = ({
                     setShowVisibilityMenu(false)
                   }}
                   className={`flex w-full items-center gap-2.5 px-3 py-2.5 text-left transition-colors hover:bg-surface-hover ${
-                    active ? 'bg-orange-50/80' : ''
+                    active ? 'bg-surface-secondary/80' : ''
                   }`}
                 >
                   <Icon className={`h-4 w-4 shrink-0 ${active ? 'text-orange-600' : 'text-content-tertiary'}`} />

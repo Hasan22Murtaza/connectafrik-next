@@ -23,7 +23,7 @@ const items: { id: ReelsTabId; label: string; icon: ReactNode }[] = [
 
 const itemBase =
   'flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-content transition-colors hover:bg-surface-hover'
-const itemActive = 'bg-primary-50 text-primary-600 dark:bg-primary-50/15 dark:text-primary-400'
+const itemActive = 'bg-surface-secondary text-content'
 
 function isExplorePath(pathname: string) {
   return pathname === '/reels/explore' || pathname.startsWith('/reels/explore/')
@@ -54,7 +54,7 @@ export function ReelsNav({ variant }: Props) {
             href={HREF[id]}
             scroll={false}
             className={`flex min-w-0 flex-1 items-center justify-center rounded-full px-2 py-1.5 text-xs font-semibold transition-colors active:opacity-90 ${
-              active === id ? 'bg-primary-50 text-primary-600 dark:bg-primary-50/15' : 'text-content-secondary'
+              active === id ? 'bg-surface-secondary text-content' : 'text-content-secondary'
             }`}
           >
             <span className="max-w-full truncate">{label}</span>
@@ -70,7 +70,7 @@ export function ReelsNav({ variant }: Props) {
         <Link
           href={HREF.foryou}
           scroll={false}
-          className={`flex flex-col items-center gap-0.5 py-1 ${active === 'foryou' ? 'text-primary-600' : 'text-content-secondary'}`}
+          className={`flex flex-col items-center gap-0.5 py-1 ${active === 'foryou' ? 'text-content' : 'text-content-secondary'}`}
         >
           <Home className="h-4 w-4" strokeWidth={2} />
           <span>For You</span>
@@ -78,7 +78,7 @@ export function ReelsNav({ variant }: Props) {
         <Link
           href={HREF.explore}
           scroll={false}
-          className={`flex flex-col items-center gap-0.5 py-1 ${active === 'explore' ? 'text-primary-600' : 'text-content-secondary'}`}
+          className={`flex flex-col items-center gap-0.5 py-1 ${active === 'explore' ? 'text-content' : 'text-content-secondary'}`}
         >
           <Compass className="h-4 w-4" strokeWidth={2} />
           <span>Explore</span>
@@ -93,7 +93,7 @@ export function ReelsNav({ variant }: Props) {
         <Link
           href={HREF.following}
           scroll={false}
-          className={`flex flex-col items-center gap-0.5 py-1 ${active === 'following' ? 'text-primary-600' : 'text-content-secondary'}`}
+          className={`flex flex-col items-center gap-0.5 py-1 ${active === 'following' ? 'text-content' : 'text-content-secondary'}`}
         >
           <Users className="h-4 w-4" strokeWidth={2} />
           <span>Following</span>
@@ -101,7 +101,7 @@ export function ReelsNav({ variant }: Props) {
         <Link
           href={HREF.mine}
           scroll={false}
-          className={`flex flex-col items-center gap-0.5 py-1 ${active === 'mine' ? 'text-primary-600' : 'text-content-secondary'}`}
+          className={`flex flex-col items-center gap-0.5 py-1 ${active === 'mine' ? 'text-content' : 'text-content-secondary'}`}
         >
           <Video className="h-4 w-4" strokeWidth={2} />
           <span>My videos</span>
@@ -119,10 +119,10 @@ export function ReelsNav({ variant }: Props) {
             href={HREF[id]}
             scroll={false}
             className={`flex min-w-0 flex-1 flex-col items-center gap-0.5 rounded-lg px-0.5 py-1 text-[10px] font-semibold sm:text-xs ${
-              active === id ? 'text-primary-600' : 'text-content-tertiary'
+              active === id ? 'text-content' : 'text-content-tertiary'
             }`}
           >
-            <span className={active === id ? 'text-primary-600' : 'text-content-secondary'}>{icon}</span>
+            <span className={active === id ? 'text-content' : 'text-content-secondary'}>{icon}</span>
             <span className="max-w-full truncate">{label}</span>
           </Link>
         ))}
@@ -139,7 +139,7 @@ export function ReelsNav({ variant }: Props) {
           scroll={false}
           className={`${itemBase} ${active === id ? itemActive : ''}`}
         >
-          <span className={active === id ? 'text-primary-600' : 'text-content-secondary'}>{icon}</span>
+          <span className={active === id ? 'text-content' : 'text-content-secondary'}>{icon}</span>
           {label}
         </Link>
       ))}

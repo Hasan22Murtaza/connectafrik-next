@@ -35,10 +35,10 @@ export const MP = {
   navList: "space-y-2",
   navItem:
     "group w-full flex items-center gap-2.5 px-2 py-2 rounded-lg transition-colors duration-150 text-[15px] font-medium cursor-pointer",
-  navItemActive: "bg-primary-50 text-primary-600 dark:text-primary-400",
+  navItemActive: "bg-surface-secondary text-content",
   navItemInactive: "text-content hover:bg-gray-50",
   navIcon: "w-5 h-5 shrink-0",
-  navIconActive: "text-primary-600 dark:text-primary-400",
+  navIconActive: "text-content",
   navIconInactive: "text-content-secondary",
 
   sidebarTitleBlock: "mb-3 px-1",

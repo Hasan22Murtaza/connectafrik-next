@@ -27,7 +27,7 @@ function Brand({ collapsed }: { collapsed?: boolean }) {
   return (
     <Link
       href="/admin/dashboard"
-      className={`flex items-center gap-2.5 rounded-lg px-2 py-1.5 transition-colors hover:bg-[#f2f2f2] ${
+      className={`flex items-center gap-2.5 rounded-lg px-2 py-1.5 transition-colors hover:bg-[#f2f2f2] dark:hover:bg-white/10 ${
         collapsed ? "justify-center" : ""
       }`}
     >
@@ -41,8 +41,9 @@ function Brand({ collapsed }: { collapsed?: boolean }) {
       />
       {!collapsed && (
         <div className="min-w-0">
-          <span className="block truncate text-sm font-semibold leading-tight text-[#050505]">
-            CribsTalk
+          <span className="block truncate text-sm font-semibold leading-tight">
+            <span className="text-[#050505] dark:text-white">Cribs</span>
+            <span className="text-primary">Talk</span>
           </span>
           <span className="block text-xs leading-tight text-primary-600">Admin</span>
         </div>

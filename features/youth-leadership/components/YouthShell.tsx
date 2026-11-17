@@ -79,7 +79,7 @@ export default function YouthShell({
                 aria-current={active ? 'page' : undefined}
                 className={
                   active
-                    ? '-mb-px whitespace-nowrap border-b-2 border-primary px-3.5 py-2.5 text-sm font-semibold text-primary'
+                    ? '-mb-px whitespace-nowrap border-b-2 border-content px-3.5 py-2.5 text-sm font-semibold text-content'
                     : '-mb-px whitespace-nowrap border-b-2 border-transparent px-3.5 py-2.5 text-sm font-medium text-content-secondary transition hover:border-border hover:text-content'
                 }
               >

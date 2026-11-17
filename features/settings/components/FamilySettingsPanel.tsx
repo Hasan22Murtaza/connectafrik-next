@@ -794,8 +794,8 @@ export function FamilySettingsPanel() {
                           }}
                           className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${
                             selected
-                              ? 'border-primary bg-primary text-white'
-                              : 'border-border-subtle bg-surface text-content-secondary hover:border-primary/40'
+                              ? 'border-border bg-surface-tertiary text-content'
+                              : 'border-border-subtle bg-surface text-content-secondary hover:border-border'
                           }`}
                         >
                           {cat.label}

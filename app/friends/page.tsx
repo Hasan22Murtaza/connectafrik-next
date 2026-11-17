@@ -155,20 +155,20 @@ function RequestsViewTabs({
               key={tab.key}
               type="button"
               onClick={() => onChange(tab.key)}
-              className={`relative shrink-0 px-4 py-2.5 text-sm font-semibold transition-colors ${isActive ? "text-primary-600" : "text-content-secondary hover:text-content"
+              className={`relative shrink-0 px-4 py-2.5 text-sm font-semibold transition-colors ${isActive ? "text-content" : "text-content-secondary hover:text-content"
                 }`}
             >
               {tab.label}
               {tab.count > 0 && (
                 <span
-                  className={`ml-1.5 tabular-nums ${isActive ? "text-primary-600" : "text-content-tertiary"
+                  className={`ml-1.5 tabular-nums ${isActive ? "text-content" : "text-content-tertiary"
                     }`}
                 >
                   ({tab.count})
                 </span>
               )}
               {isActive && (
-                <span className="absolute inset-x-2 bottom-0 h-0.5 rounded-full bg-primary-600 w-full left-0" />
+                <span className="absolute inset-x-2 bottom-0 h-0.5 rounded-full bg-content w-full left-0" />
               )}
             </button>
           );
@@ -780,7 +780,7 @@ const FriendsPageContent: React.FC = () => {
               onClick={() => selectSection("all")}
               className={`min-w-fit   text-center rounded-full px-3 py-1.5 font-medium transition-colors
                  ${activeSection === "home" || activeSection === "all" ?
-                  " border border-orange-500 bg-orange-100 text-orange-500" : "text-content bg-surface-tertiary"
+                  "border border-border bg-white text-content shadow-sm" : "text-content bg-surface-tertiary"
                 }`}
             >
               All friends
@@ -789,7 +789,7 @@ const FriendsPageContent: React.FC = () => {
             <button
               onClick={() => selectSection("suggestions")}
               className={`min-w-fit flex-shrink-0  text-center rounded-full px-4 py-2 font-medium transition-colors 
-                ${activeSection === "suggestions" ? " border border-orange-500 bg-orange-100 text-orange-500" : "text-content bg-surface-tertiary"
+                ${activeSection === "suggestions" ? "border border-border bg-white text-content shadow-sm" : "text-content bg-surface-tertiary"
                 }`}
             >
               Friend suggestions
@@ -798,7 +798,7 @@ const FriendsPageContent: React.FC = () => {
             {(loading || sentLoading || requests.length > 0 || sentRequests.length > 0) && (
               <button
                 onClick={() => selectSection("requests")}
-                className={`min-w-fit flex-shrink-0  text-center rounded-full px-4 py-2 font-medium transition-colors ${activeSection === "requests" ? "border border-orange-500 bg-orange-100 text-orange-500" : "text-content bg-surface-tertiary"
+                className={`min-w-fit flex-shrink-0  text-center rounded-full px-4 py-2 font-medium transition-colors ${activeSection === "requests" ? "border border-border bg-white text-content shadow-sm" : "text-content bg-surface-tertiary"
                   }`}
               >
                 Friend requests
@@ -812,7 +812,7 @@ const FriendsPageContent: React.FC = () => {
 
             <button
               onClick={() => selectSection("birthdays")}
-              className={`min-w-fit flex-shrink-0  text-center rounded-full px-4 py-2 font-medium transition-colors ${activeSection === "birthdays" ? "border border-orange-500 bg-orange-100 text-orange-500" : "text-content bg-surface-tertiary"
+              className={`min-w-fit flex-shrink-0  text-center rounded-full px-4 py-2 font-medium transition-colors ${activeSection === "birthdays" ? "border border-border bg-white text-content shadow-sm" : "text-content bg-surface-tertiary"
                 }`}
             >
               Birthdays

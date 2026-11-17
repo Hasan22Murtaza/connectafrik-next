@@ -135,7 +135,7 @@ export function DisappearingMessagesModal({
                   <span
                     className={`min-w-0 flex-1 text-[15px] ${
                       isSelected
-                        ? 'font-medium text-orange-500'
+                        ? 'font-medium text-content'
                         : 'font-normal text-content'
                     }`}
                   >
@@ -145,7 +145,7 @@ export function DisappearingMessagesModal({
                     ) : null}
                   </span>
                   {isSelected ? (
-                    <Check className="h-5 w-5 shrink-0 text-orange-500" aria-hidden />
+                    <Check className="h-5 w-5 shrink-0 text-content" aria-hidden />
                   ) : (
                     <span className="h-5 w-5 shrink-0" aria-hidden />
                   )}

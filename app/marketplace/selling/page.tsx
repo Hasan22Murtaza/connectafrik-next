@@ -544,14 +544,14 @@ const SellerListingsPageContent: React.FC = () => {
                 <div className="flex border border-border rounded-lg overflow-hidden">
                   <button
                     onClick={() => setViewMode("list")}
-                    className={`p-1.5 ${viewMode === "list" ? "bg-primary-50 text-primary-600" : "text-content-secondary"}`}
+                    className={`p-1.5 ${viewMode === "list" ? "bg-surface-secondary text-content" : "text-content-secondary"}`}
                     aria-label="List view"
                   >
                     <List className="w-4 h-4" />
                   </button>
                   <button
                     onClick={() => setViewMode("grid")}
-                    className={`p-1.5 ${viewMode === "grid" ? "bg-primary-50 text-primary-600" : "text-content-secondary"}`}
+                    className={`p-1.5 ${viewMode === "grid" ? "bg-surface-secondary text-content" : "text-content-secondary"}`}
                     aria-label="Grid view"
                   >
                     <LayoutGrid className="w-4 h-4" />

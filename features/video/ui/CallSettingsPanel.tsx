@@ -130,7 +130,7 @@ const CallSettingsPanel: React.FC<CallSettingsPanelProps> = ({
                   onClick={() => onSpeakerLevelChange(opt.value)}
                   className={`rounded-lg px-2 py-2 text-xs font-medium transition ${
                     speakerLevel === opt.value
-                      ? 'bg-primary-500 text-white'
+                      ? 'bg-white/20 text-white'
                       : 'text-white/65 hover:bg-white/10 hover:text-white'
                   }`}
                 >

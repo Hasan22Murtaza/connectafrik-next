@@ -195,12 +195,12 @@ const SavedPage: React.FC = () => {
   if (!user) {
     return (
       <div className="flex min-h-screen items-center justify-center px-4">
-        <div className="max-w-md rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-sm">
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-primary-50">
+        <div className="max-w-md rounded-2xl border border-border bg-surface p-8 text-center shadow-sm">
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-surface-secondary">
             <Bookmark className="h-7 w-7 text-primary-600" />
           </div>
-          <h1 className="text-lg font-semibold text-gray-900">Sign in to view saved items</h1>
-          <p className="mt-2 text-gray-600">Your saved posts and reels appear here.</p>
+          <h1 className="text-lg font-semibold text-content">Sign in to view saved items</h1>
+          <p className="mt-2 text-content-secondary">Your saved posts and reels appear here.</p>
           <button type="button" className="btn-primary mt-6" onClick={() => router.push('/')}>
             Go home
           </button>
@@ -210,23 +210,17 @@ const SavedPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen max-w-full 4xl:max-w-screen-2xl mx-auto px-1 sm:px-6 mx-auto py-5">
-      <div className="sticky top-0 z-20  bg-white/80 backdrop-blur-md">
-        <div className="mb-10">
-          <div className="flex items-center gap-3 pb-4 ">
-           
-            <div>
-              <h1 className="text-xl sm:text-2xl font-semibold text-content">
-            Saved
-          </h1>
-            </div>
+    <div className="mx-auto min-h-screen max-w-full px-1 py-5 sm:px-6 4xl:max-w-screen-2xl">
+      <div className="sticky top-0 z-20 border-b border-border-subtle bg-background/90 backdrop-blur-md">
+        <div className="pb-1">
+          <div className="flex items-center gap-3 pb-3">
+            <h1 className="text-xl font-semibold text-content sm:text-2xl">Saved</h1>
           </div>
-
           <SavedTabs activeTab={activeTab} counts={counts} onChange={setActiveTab} />
         </div>
       </div>
 
-      <div className="">
+      <div className="pt-4">
         {loading ? (
           <SavedItemsShimmer tab={activeTab} />
         ) : activeTab === 'posts' ? (
@@ -254,7 +248,7 @@ const SavedPage: React.FC = () => {
             <EmptyState
               icon={LayoutGrid}
               title="No saved posts"
-              description="Use the menu on any post (Â·Â·Â·) and choose Save post."
+              description="Use the menu on any post (···) and choose Save post."
               ctaLabel="Go to feed"
               onCta={() => router.push('/feed')}
             />
@@ -329,7 +323,7 @@ const SavedTabs: React.FC<{
   return (
     <div ref={containerRef} className="relative flex gap-1 pb-px">
       <span
-        className="absolute bottom-0 h-0.5 rounded-full bg-primary-600 transition-all duration-300 ease-out"
+        className="absolute bottom-0 h-0.5 rounded-full bg-content transition-all duration-300 ease-out"
         style={{ left: indicator.left, width: indicator.width }}
       />
       {TABS.map((tab) => {
@@ -344,14 +338,16 @@ const SavedTabs: React.FC<{
             type="button"
             onClick={() => onChange(tab.id)}
             className={`flex items-center gap-2 rounded-t-lg px-4 py-3 text-sm font-semibold transition-colors ${
-              isActive ? 'text-primary-600' : 'text-gray-700'
+              isActive ? 'text-content' : 'text-content-secondary hover:text-content'
             }`}
           >
             <Icon className="h-4 w-4" />
             <span>{tab.label}</span>
             <span
               className={`rounded-full px-2 py-0.5 text-xs font-semibold transition-colors ${
-                isActive ? 'bg-primary-100 text-orange-500' : 'bg-gray-100 text-gray-500'
+                isActive
+                  ? 'bg-surface-tertiary text-content'
+                  : 'bg-surface-secondary text-content-tertiary'
               }`}
             >
               {counts[tab.id]}
@@ -370,12 +366,12 @@ const EmptyState: React.FC<{
   ctaLabel: string
   onCta: () => void
 }> = ({ icon: Icon, title, description, ctaLabel, onCta }) => (
-  <div className="flex flex-col items-center rounded-2xl border border-dashed border-gray-200 bg-white py-16 text-center">
-    <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gray-100">
-      <Icon className="h-8 w-8 text-gray-400" />
+  <div className="flex flex-col items-center rounded-2xl border border-dashed border-border bg-surface py-16 text-center">
+    <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-surface-secondary">
+      <Icon className="h-8 w-8 text-content-tertiary" />
     </div>
-    <h3 className="mb-1 text-lg font-semibold text-gray-900">{title}</h3>
-    <p className="mb-5 max-w-xs text-sm text-gray-500">{description}</p>
+    <h3 className="mb-1 text-lg font-semibold text-content">{title}</h3>
+    <p className="mb-5 max-w-xs text-sm text-content-secondary">{description}</p>
     <button type="button" className="btn-primary" onClick={onCta}>
       {ctaLabel}
     </button>

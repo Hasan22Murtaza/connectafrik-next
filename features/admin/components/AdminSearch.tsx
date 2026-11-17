@@ -110,7 +110,7 @@ export function AdminSearch() {
                   onMouseEnter={() => setActiveIndex(i)}
                   className={`flex w-full items-center gap-3 px-3 py-2.5 text-left text-sm transition-colors ${
                     i === activeIndex
-                      ? "bg-primary-50 text-primary-700"
+                      ? "bg-gray-100 text-gray-900"
                       : "text-gray-700 hover:bg-gray-50"
                   }`}
                 >

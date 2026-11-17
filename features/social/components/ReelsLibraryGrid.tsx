@@ -93,8 +93,8 @@ export function ReelsLibraryGrid({ mode }: Props) {
   const feedHref = (id: string) => reelsFeedHref({ start: id, feed: mode })
 
   return (
-    <div className="relative mx-auto w-full max-w-[1600px]  min-h-[calc(100dvh-4.5rem)] bg-white pb-[calc(5.5rem+env(safe-area-inset-bottom))] text-content lg:pb-10">
-      <header className="sticky top-[4.5rem] z-20 w-full bg-white/95 backdrop-blur-md lg:top-0">
+    <div className="relative mx-auto w-full max-w-[1600px]  min-h-[calc(100dvh-4.5rem)] bg-surface pb-[calc(5.5rem+env(safe-area-inset-bottom))] text-content lg:pb-10">
+      <header className="sticky top-[4.5rem] z-20 w-full bg-surface/95 backdrop-blur-md lg:top-0">
           <ReelsMainTabs />
       </header>
 
@@ -152,7 +152,7 @@ export function ReelsLibraryGrid({ mode }: Props) {
         <Plus className="h-7 w-7" strokeWidth={2.5} />
       </Link>
 
-      <div className="fixed bottom-0 left-0 right-0 z-[46] border-t border-border bg-white/90 px-2 pb-[calc(0.4rem+env(safe-area-inset-bottom))] pt-1 lg:hidden">
+      <div className="fixed bottom-0 left-0 right-0 z-[46] border-t border-border bg-surface/90 px-2 pb-[calc(0.4rem+env(safe-area-inset-bottom))] pt-1 lg:hidden">
         <div className="mx-auto max-w-lg">
           <ReelsNav variant="video-bottom" />
         </div>

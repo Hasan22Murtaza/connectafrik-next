@@ -218,7 +218,7 @@ export default function TaskCard({
                 disabled={busy || blocked}
                 className={
                   active
-                    ? 'flex w-full items-center px-3 py-1.5 text-left text-sm font-medium text-primary'
+                    ? 'flex w-full items-center px-3 py-1.5 text-left text-sm font-medium text-content bg-surface-secondary'
                     : 'flex w-full items-center px-3 py-1.5 text-left text-sm text-content transition hover:bg-surface-secondary disabled:opacity-40'
                 }
                 onClick={() => {
@@ -256,7 +256,7 @@ export default function TaskCard({
                   disabled={busy || task.assigned_to === m.user_id}
                   className={
                     task.assigned_to === m.user_id
-                      ? 'flex w-full items-center px-3 py-1.5 text-left text-sm font-medium text-primary'
+                      ? 'flex w-full items-center px-3 py-1.5 text-left text-sm font-medium text-content bg-surface-secondary'
                       : 'flex w-full items-center px-3 py-1.5 text-left text-sm text-content transition hover:bg-surface-secondary disabled:opacity-40'
                   }
                   onClick={() => {

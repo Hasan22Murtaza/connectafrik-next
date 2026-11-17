@@ -550,7 +550,7 @@ const CreateReel: React.FC<CreateReelProps> = ({ onSuccess, onCancel }) => {
                     onClick={() => setRecordingMode('upload')}
                     className={`flex-1 py-3 px-4 rounded-lg border-2 transition-colors ${
                       recordingMode === 'upload'
-                        ? 'border-orange-400 bg-primary-50 text-orange-500'
+                        ? 'border-border-strong bg-surface-secondary text-content'
                         : 'border-gray-300 text-gray-600 hover:border-gray-400'
                     }`}
                   >
@@ -564,7 +564,7 @@ const CreateReel: React.FC<CreateReelProps> = ({ onSuccess, onCancel }) => {
                     }}
                     className={`flex-1 py-3 px-4 rounded-lg border-2 transition-colors ${
                       (recordingMode as string) === 'record'
-                        ? 'border-primary-500 bg-primary-50 text-orange-500'
+                        ? 'border-border-strong bg-surface-secondary text-content'
                         : 'border-gray-300 text-gray-600 hover:border-gray-400'
                     }`}
                   >
@@ -863,7 +863,7 @@ const CreateReel: React.FC<CreateReelProps> = ({ onSuccess, onCancel }) => {
                       onClick={() => setAspectRatio(ratio.value as '9:16' | '16:9' | '1:1' | '4:3')}
                       className={`sm:p-3 p-2 border rounded-lg text-[12px] font-medium transition-all duration-200 ${
                         aspectRatio === ratio.value
-                          ? 'border-orange-500 bg-orange-50 text-orange-700 ring-1 ring-orange-300 shadow-sm'
+                          ? 'border-border-strong bg-surface-secondary text-content ring-1 ring-border shadow-sm'
                           : 'border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'
                       }`}
                     >

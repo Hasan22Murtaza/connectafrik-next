@@ -228,10 +228,10 @@ function ParticipantMenu({
         <MoreVertical className="h-4 w-4" />
       </button>
       {open && (
-        <div className="absolute right-0 top-9 z-20 w-40 overflow-hidden rounded-lg border border-border bg-white py-1 shadow-lg">
+        <div className="absolute right-0 top-9 z-20 w-40 overflow-hidden rounded-lg border border-border bg-surface-elevated py-1 shadow-lg">
           <button
             type="button"
-            className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-content hover:bg-surface"
+            className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-content hover:bg-surface-hover"
             onClick={() => {
               setOpen(false)
               onMessage()
@@ -241,7 +241,7 @@ function ParticipantMenu({
           </button>
           <button
             type="button"
-            className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-content hover:bg-surface"
+            className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-content hover:bg-surface-hover"
             onClick={() => {
               setOpen(false)
               onVideo()
@@ -251,7 +251,7 @@ function ParticipantMenu({
           </button>
           <button
             type="button"
-            className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-content hover:bg-surface"
+            className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-content hover:bg-surface-hover"
             onClick={() => {
               setOpen(false)
               onAudio()
@@ -678,12 +678,12 @@ export default function CallsPageView() {
   const listLoading = recentCallsLoading && recentCallEntries.length === 0
 
   const callList = (
-    <div className="flex h-full w-full max-w-sm flex-col bg-white sm:max-w-none sm:w-[360px] lg:w-[380px]">
+    <div className="flex h-full w-full max-w-sm flex-col border-r border-border bg-surface sm:max-w-none sm:w-[360px] lg:w-[380px]">
       <div className="flex items-center justify-between px-4 pb-2 pt-3">
         <h1 className="text-xl font-semibold text-content">Calls</h1>
         <Link
           href="/friends"
-          className="flex h-9 w-9 items-center justify-center rounded-full text-content-secondary hover:bg-surface"
+          className="flex h-9 w-9 items-center justify-center rounded-full text-content-secondary hover:bg-surface-hover"
           title="New call"
           aria-label="New call"
         >
@@ -728,7 +728,7 @@ export default function CallsPageView() {
                 onClick={() => setTypeFilter(chip.key)}
                 className={`inline-flex shrink-0 items-center rounded-full px-3.5 py-1.5 text-sm font-medium transition ${
                   active
-                    ? 'bg-primary-100 text-orange-500 border border-orange-500 dark:bg-primary-900/40 dark:text-primary-200'
+                    ? 'bg-surface-tertiary text-content border border-border'
                     : 'border border-border text-content-secondary hover:bg-surface-hover'
                 }`}
               >
@@ -780,7 +780,9 @@ export default function CallsPageView() {
                   type="button"
                   onClick={() => setSelectedGroupKey(group.key)}
                   className={`flex w-full items-center gap-3 rounded-xl px-2.5 py-2.5 text-left transition ${
-                    isActive ? 'bg-[#f0f2f5]' : 'hover:bg-surface'
+                    isActive
+                      ? 'bg-surface-secondary text-content hover:bg-surface-hover'
+                      : 'hover:bg-surface-hover'
                   }`}
                 >
                   <SplitCircleAvatar
@@ -836,13 +838,13 @@ export default function CallsPageView() {
   )
 
   const detailPane = selectedGroup ? (
-    <div className="flex h-full w-full flex-col bg-[#f0f2f5]">
-      <div className="flex items-center justify-between bg-white px-3 py-2.5 sm:px-4">
+    <div className="flex h-full w-full flex-col bg-surface-secondary">
+      <div className="flex items-center justify-between border-b border-border bg-surface px-3 py-2.5 sm:px-4">
         <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={() => setSelectedGroupKey(null)}
-            className="flex h-8 w-8 items-center justify-center rounded-full text-content-secondary hover:bg-surface sm:hidden"
+            className="flex h-8 w-8 items-center justify-center rounded-full text-content-secondary hover:bg-surface-hover sm:hidden"
             aria-label="Back to calls"
           >
             <ArrowLeft className="h-4 w-4" />
@@ -852,7 +854,7 @@ export default function CallsPageView() {
         <button
           type="button"
           onClick={() => setSelectedGroupKey(null)}
-          className="hidden h-8 w-8 items-center justify-center rounded-full text-content-secondary hover:bg-surface sm:flex"
+          className="hidden h-8 w-8 items-center justify-center rounded-full text-content-secondary hover:bg-surface-hover sm:flex"
           aria-label="Close call info"
         >
           <X className="h-4 w-4" />
@@ -860,7 +862,7 @@ export default function CallsPageView() {
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto custom-scrollbar p-3 sm:p-4">
-        <div className="mx-auto w-full max-w-xl overflow-hidden rounded-xl border border-border-subtle bg-white shadow-sm">
+        <div className="mx-auto w-full max-w-xl overflow-hidden rounded-xl border border-border bg-surface shadow-sm">
           {/* Contact / group header */}
           <div className="flex items-center gap-3 px-4 py-3">
             <SplitCircleAvatar
@@ -881,7 +883,7 @@ export default function CallsPageView() {
                       router.push(`/chat/${encodeURIComponent(selectedGroup.threadId)}`)
                     }
                   }}
-                  className="flex h-9 w-9 items-center justify-center rounded-full text-content-secondary hover:bg-surface"
+                  className="flex h-9 w-9 items-center justify-center rounded-full text-content-secondary hover:bg-surface-hover"
                   title="Message"
                   aria-label="Message"
                 >
@@ -901,7 +903,7 @@ export default function CallsPageView() {
                     selectedGroup.isGroup ? { forceGroupCall: true } : undefined
                   )
                 }
-                className="flex h-9 w-9 items-center justify-center rounded-full text-content-secondary hover:bg-surface disabled:opacity-50"
+                className="flex h-9 w-9 items-center justify-center rounded-full text-content-secondary hover:bg-surface-hover disabled:opacity-50"
                 title="Video call"
                 aria-label="Video call"
               >
@@ -920,7 +922,7 @@ export default function CallsPageView() {
                     selectedGroup.isGroup ? { forceGroupCall: true } : undefined
                   )
                 }
-                className="flex h-9 w-9 items-center justify-center rounded-full text-content-secondary hover:bg-surface disabled:opacity-50"
+                className="flex h-9 w-9 items-center justify-center rounded-full text-content-secondary hover:bg-surface-hover disabled:opacity-50"
                 title="Voice call"
                 aria-label="Voice call"
               >
@@ -1010,8 +1012,8 @@ export default function CallsPageView() {
       </div>
     </div>
   ) : (
-    <div className="flex h-full w-full flex-col items-center justify-center bg-[#f0f2f5] px-4">
-      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white text-content-secondary shadow-sm">
+    <div className="flex h-full w-full flex-col items-center justify-center bg-surface-secondary px-4">
+      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-surface text-content-secondary shadow-sm ring-1 ring-border">
         <Phone className="h-6 w-6" strokeWidth={1.5} />
       </div>
       <p className="mt-3 text-base font-semibold text-content">Calls</p>

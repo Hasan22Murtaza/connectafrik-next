@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { format } from 'date-fns';
 import { X } from '@/shared/icons';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   chatUserIdsEqual,
   getChatMessageAuthorId,
@@ -11,6 +12,8 @@ import {
   type ChatParticipant,
 } from '@/features/chat/services/supabaseMessagingService';
 import { stripMarkdown } from '@/features/chat/richtext';
+import { shouldShowAcceptedOnAnotherDeviceMessage } from '@/shared/types/callPush';
+import { getSessionIdFromAccessToken } from '@/shared/utils/sessionDeviceLabel';
 import CallChatInput from './CallChatInput';
 
 const HIDDEN_MESSAGE_TYPES = new Set([
@@ -36,9 +39,18 @@ interface CallChatPanelProps {
   onClose: () => void;
 }
 
-function isVisibleChatMessage(message: ChatMessage, currentUserId?: string): boolean {
+function isVisibleChatMessage(
+  message: ChatMessage,
+  currentUserId?: string,
+  localAuthSessionId?: string | null,
+): boolean {
   if (HIDDEN_MESSAGE_TYPES.has((message.message_type || '').toLowerCase())) return false;
   if (message.is_deleted && currentUserId && message.deleted_for?.includes(currentUserId)) {
+    return false;
+  }
+  if (
+    !shouldShowAcceptedOnAnotherDeviceMessage(message, currentUserId, localAuthSessionId)
+  ) {
     return false;
   }
   return true;
@@ -53,6 +65,11 @@ const CallChatPanel: React.FC<CallChatPanelProps> = ({
   onSend,
   onClose,
 }) => {
+  const { session } = useAuth();
+  const localAuthSessionId = useMemo(
+    () => getSessionIdFromAccessToken(session?.access_token ?? null),
+    [session?.access_token],
+  );
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(false);
   const scrollerRef = useRef<HTMLDivElement>(null);
@@ -69,7 +86,7 @@ const CallChatPanel: React.FC<CallChatPanelProps> = ({
     let cancelled = false;
     setLoading(true);
     void supabaseMessagingService
-      .getThreadMessages(threadId, { limit: 40 })
+      .getThreadMessages(threadId, { limit: 20 })
       .then(({ messages: list }) => {
         if (cancelled) return;
         const sorted = [...list].sort(
@@ -108,8 +125,11 @@ const CallChatPanel: React.FC<CallChatPanelProps> = ({
   }, [threadId, currentUserId]);
 
   const visible = useMemo(
-    () => messages.filter((m) => isVisibleChatMessage(m, currentUserId)),
-    [messages, currentUserId],
+    () =>
+      messages.filter((m) =>
+        isVisibleChatMessage(m, currentUserId, localAuthSessionId),
+      ),
+    [messages, currentUserId, localAuthSessionId],
   );
 
   useEffect(() => {

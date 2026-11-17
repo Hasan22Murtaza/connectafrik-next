@@ -291,14 +291,14 @@ const MobileSideDrawer: React.FC<MobileSideDrawerProps> = ({
                           onClick={() => navigate(item)}
                           className={`flex min-h-12 w-full items-center gap-3 rounded-xl px-2.5 py-1 text-left transition-colors ${
                             active
-                              ? 'bg-primary-50 text-primary-600'
+                              ? 'bg-surface-secondary text-content'
                               : 'text-content hover:bg-surface-hover'
                           }`}
                         >
                           <span
                             className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${
                               active
-                                ? 'bg-primary-100 text-primary-600'
+                                ? 'bg-surface-tertiary text-content'
                                 : 'bg-surface-secondary text-content-secondary'
                             }`}
                           >

@@ -143,8 +143,8 @@ export function ReelsAnalyticsPanel() {
   const hasReels = (stats?.total_reels ?? 0) > 0
 
   return (
-    <div className="relative w-full min-h-[calc(100dvh-4.5rem)] bg-white pb-[calc(5.5rem+env(safe-area-inset-bottom))] text-content lg:pb-10">
-      <header className="sticky top-[4.5rem] z-20 w-full bg-white/95 backdrop-blur-md lg:top-0">
+    <div className="relative w-full min-h-[calc(100dvh-4.5rem)] bg-surface pb-[calc(5.5rem+env(safe-area-inset-bottom))] text-content lg:pb-10">
+      <header className="sticky top-[4.5rem] z-20 w-full bg-surface/95 backdrop-blur-md lg:top-0">
         <div className="mx-auto w-full max-w-[1600px]">
           <ReelsMainTabs />
           <div className="flex items-end justify-between gap-3 border-b border-border px-3 py-2.5 sm:px-4 lg:px-5">
@@ -247,7 +247,7 @@ export function ReelsAnalyticsPanel() {
                   </Link>
                   <Link
                     href="/reels/create"
-                    className="inline-flex items-center gap-1.5 rounded-full bg-white px-4 py-2 text-sm font-semibold text-content ring-1 ring-border hover:bg-surface-secondary"
+                    className="inline-flex items-center gap-1.5 rounded-full bg-surface px-4 py-2 text-sm font-semibold text-content ring-1 ring-border hover:bg-surface-secondary"
                   >
                     <Plus className="h-4 w-4" />
                     New reel
@@ -336,7 +336,7 @@ export function ReelsAnalyticsPanel() {
                       {categories.slice(0, 6).map(([name, count]) => (
                         <span
                           key={name}
-                          className="inline-flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1 text-xs font-medium text-content ring-1 ring-border"
+                          className="inline-flex items-center gap-1.5 rounded-full bg-surface px-2.5 py-1 text-xs font-medium text-content ring-1 ring-border"
                         >
                           <span className="capitalize">{name}</span>
                           <span className="tabular-nums text-content-tertiary">{count}</span>
@@ -378,7 +378,7 @@ export function ReelsAnalyticsPanel() {
         )}
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 z-[46] border-t border-border bg-white/90 px-2 pb-[calc(0.4rem+env(safe-area-inset-bottom))] pt-1 lg:hidden">
+      <div className="fixed bottom-0 left-0 right-0 z-[46] border-t border-border bg-surface/90 px-2 pb-[calc(0.4rem+env(safe-area-inset-bottom))] pt-1 lg:hidden">
         <div className="mx-auto max-w-lg">
           <ReelsNav variant="video-bottom" />
         </div>

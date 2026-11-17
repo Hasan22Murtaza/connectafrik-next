@@ -31,7 +31,7 @@ export default function YouthHubTabs({
             onClick={() => onChange(tab.id)}
             className={
               active
-                ? 'rounded-full bg-primary px-3.5 py-1.5 text-sm font-semibold text-white'
+                ? 'rounded-full bg-surface-tertiary px-3.5 py-1.5 text-sm font-semibold text-content'
                 : 'rounded-full px-3.5 py-1.5 text-sm font-medium text-content-secondary transition hover:bg-surface-secondary/80 hover:text-content'
             }
           >

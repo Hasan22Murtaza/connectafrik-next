@@ -24,17 +24,17 @@ function TabLink({ href, label, icon: Icon, active }: TabLinkProps) {
     <Link
       href={href}
       className={`relative flex items-center justify-center gap-1.5 pb-2.5 pt-2 px-3.5 text-[13px] font-medium transition sm:text-sm ${
-        active ? 'text-orange-500' : 'text-content-tertiary hover:text-content'
+        active ? 'text-content' : 'text-content-tertiary hover:text-content'
       }`}
       aria-current={active ? 'page' : undefined}
     >
       <Icon
-        className={`h-4 w-4 ${active ? 'text-orange-500' : 'text-current'}`}
+        className={`h-4 w-4 ${active ? 'text-content' : 'text-current'}`}
         strokeWidth={1.75}
       />
       <span>{label}</span>
       {active && (
-        <span className="absolute inset-x-2 -bottom-px h-[3px] bg-orange-500 sm:inset-x-4" />
+        <span className="absolute inset-x-2 -bottom-px h-[3px] bg-content sm:inset-x-4" />
       )}
     </Link>
   )
@@ -80,7 +80,7 @@ type BrowseHeaderProps = {
 
 export function ReelsBrowseHeader({ feed, exploreCategories }: BrowseHeaderProps) {
   return (
-    <header className="sticky top-16 z-20 w-full bg-white/95 py-2 backdrop-blur-md">
+    <header className="sticky top-16 z-20 w-full bg-surface/95 py-2 backdrop-blur-md">
       <div>
         <ReelsMainTabs feed={feed} />
         {exploreCategories ? (

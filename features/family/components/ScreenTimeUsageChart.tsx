@@ -188,7 +188,7 @@ export function ScreenTimeUsageChart({
                 }}
                 className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-colors disabled:opacity-60 ${
                   active
-                    ? 'bg-primary text-white'
+                    ? 'bg-surface-tertiary text-content'
                     : 'text-content-secondary hover:text-content'
                 }`}
               >

@@ -14,7 +14,13 @@ export const themeTokenClasses = {
   card: 'bg-surface rounded-xl shadow-card',
   elevated: 'bg-surface-elevated rounded-lg shadow-dropdown border border-border',
   input: 'bg-surface-input text-content border border-border placeholder:text-content-tertiary focus:border-primary focus:ring-2 focus:ring-primary/25',
-  navItem: 'text-content-secondary hover:text-primary-600',
-  navItemActive: 'text-primary-600',
+  navItem: 'text-content-secondary hover:text-content',
+  navItemActive: 'bg-surface-secondary text-content',
+  /** Selected / current nav & list rows (gray, not brand orange) */
+  activeItem: 'bg-surface-secondary text-content',
+  activeItemHover: 'bg-surface-secondary text-content hover:bg-surface-hover',
+  activeIcon: 'text-content',
+  activeUnderline: 'bg-content',
+  activeChip: 'bg-surface-tertiary text-content border border-border',
   menuItem: 'text-content hover:bg-surface-hover',
 } as const

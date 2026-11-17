@@ -1,7 +1,6 @@
 "use client";
 
 import { useHeaderInboxCounts } from "@/shared/hooks/useHeaderInboxCounts";
-import { useSpaceNavCounts } from "@/shared/hooks/useSpaceNavCounts";
 import { UserRoundGroup } from "@/shared/icons";
 import PlayMedia from "@/shared/icons/PlayMedia";
 import {
@@ -68,7 +67,6 @@ function readStoredMode() {
 
 const LeftSidebar = () => {
   const pathname = usePathname();
-  const { newOrderCount } = useSpaceNavCounts();
   const { unreadMessages, callBadgeCount } = useHeaderInboxCounts();
   const [mode, setMode] = useState(/** @type {SidebarMode} */ ("collapsed"));
   const [hydrated, setHydrated] = useState(false);
@@ -111,7 +109,6 @@ const LeftSidebar = () => {
   }, []);
 
   const badgeFor = (badgeKey) => {
-    if (badgeKey === "orders") return formatBadge(newOrderCount);
     if (badgeKey === "chat") return formatBadge(unreadMessages);
     if (badgeKey === "calls") return formatBadge(callBadgeCount);
     return null;
@@ -128,7 +125,7 @@ const LeftSidebar = () => {
       "group relative flex w-full items-center rounded-lg text-[15px] font-medium transition-colors duration-150",
       showLabels ? "gap-3 px-3 py-2.5" : "justify-center px-2 py-2.5",
       isActive
-        ? "bg-primary-50 text-orange-500 hover:bg-primary-100"
+        ? "bg-surface-secondary text-content hover:bg-surface-hover"
         : "text-content-secondary hover:bg-surface-hover hover:text-content",
     ].join(" ");
 

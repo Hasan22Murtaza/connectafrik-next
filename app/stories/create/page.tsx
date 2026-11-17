@@ -222,7 +222,7 @@ export default function CreateStoryPage() {
             aria-selected={activeTab === 'media'}
             aria-controls="media-story-panel"
             onClick={() => setActiveTab('media')}
-            className={`flex-1 rounded-md px-3 py-1.5 text-[10px] font-semibold transition-colors ${activeTab === 'media' ? 'bg-white text-primary-600 shadow-sm' : 'text-content-secondary hover:text-content'
+            className={`flex-1 rounded-md px-3 py-1.5 text-[10px] font-semibold transition-colors ${activeTab === 'media' ? 'bg-white text-content shadow-sm' : 'text-content-secondary hover:text-content'
               }`}
           >
             Media story
@@ -234,7 +234,7 @@ export default function CreateStoryPage() {
             aria-selected={activeTab === 'text'}
             aria-controls="text-story-panel"
             onClick={() => setActiveTab('text')}
-            className={`flex-1 rounded-md px-3 py-1.5 text-[10px] font-semibold transition-colors ${activeTab === 'text' ? 'bg-white text-primary-600 shadow-sm' : 'text-content-secondary hover:text-content'
+            className={`flex-1 rounded-md px-3 py-1.5 text-[10px] font-semibold transition-colors ${activeTab === 'text' ? 'bg-white text-content shadow-sm' : 'text-content-secondary hover:text-content'
               }`}
           >
             Text story

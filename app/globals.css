@@ -231,6 +231,64 @@
   background-color: #ffffff;
 }
 
+/* Compact typography for /chat page only (does not affect dock chat or other routes) */
+.chat-page .text-xl {
+  font-size: 1.125rem; /* 18px; was 20px */
+  line-height: 1.4;
+}
+.chat-page .text-lg {
+  font-size: 1rem; /* 16px; was 18px */
+  line-height: 1.4;
+}
+.chat-page .text-base {
+  font-size: 0.8125rem; /* 13px; was 16px */
+  line-height: 1.4;
+}
+.chat-page .text-sm {
+  font-size: 0.75rem; /* 12px; was 14px */
+  line-height: 1.35;
+}
+.chat-page .text-xs {
+  font-size: 0.6875rem; /* 11px; was 12px */
+  line-height: 1.3;
+}
+.chat-page .text-\[16px\] {
+  font-size: 14px;
+}
+.chat-page .text-\[15px\] {
+  font-size: 13px;
+}
+.chat-page .text-\[14\.5px\] {
+  font-size: 12.5px;
+}
+.chat-page .text-\[14px\] {
+  font-size: 12.5px;
+}
+.chat-page .text-\[13px\] {
+  font-size: 12px;
+}
+.chat-page .text-\[12\.5px\] {
+  font-size: 11.5px;
+}
+.chat-page .text-\[12px\] {
+  font-size: 11px;
+}
+.chat-page .text-\[11px\] {
+  font-size: 10px;
+}
+.chat-page .chat-rt-content {
+  font-size: 13px;
+  line-height: 1.4;
+}
+.chat-page .chat-rt-editor {
+  font-size: 13px;
+}
+@media (min-width: 640px) {
+  .chat-page .sm\:text-\[14\.5px\] {
+    font-size: 13px;
+  }
+}
+
 /* ─── Chat rich text ────────────────────────────────────────────────────── */
 .chat-rt-editor {
   word-break: break-word;
@@ -994,16 +1052,16 @@ button {
 }
 
 .marketplace-paginate__item--active .marketplace-paginate__link {
-  background-color: var(--interactive-primary, var(--primary-600, #ea580c));
-  border-color: var(--interactive-primary, var(--primary-600, #ea580c));
-  color: #fff;
-  box-shadow: 0 1px 2px rgba(234, 88, 12, 0.25);
+  background-color: var(--surface-tertiary, #e4e6eb);
+  border-color: var(--border-default, #ced0d4);
+  color: var(--content-primary, #050505);
+  box-shadow: none;
 }
 
 .marketplace-paginate__item--active .marketplace-paginate__link:hover {
-  background-color: var(--interactive-primary-hover, var(--primary-700, #c2410c));
-  border-color: var(--interactive-primary-hover, var(--primary-700, #c2410c));
-  color: #fff;
+  background-color: var(--surface-hover, #f2f2f2);
+  border-color: var(--border-strong, #bcc0c4);
+  color: var(--content-primary, #050505);
 }
 
 .marketplace-paginate__item--disabled .marketplace-paginate__link,

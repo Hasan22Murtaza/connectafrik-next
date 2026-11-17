@@ -56,7 +56,7 @@ const DisplayModeMenu: React.FC<DisplayModeMenuProps> = ({
               <span className="text-content-secondary">{MODE_ICONS[item.value]}</span>
               <span>{item.label}</span>
             </span>
-            {isActive && <Check className="w-4 h-4 text-primary" />}
+            {isActive && <Check className="w-4 h-4 text-content" />}
           </button>
         )
       })}

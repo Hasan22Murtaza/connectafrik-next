@@ -39,7 +39,7 @@ const GroupsSidebar: React.FC<GroupsSidebarProps> = ({
         onClick={() => router.push(`/groups/${group.id}`)}
         aria-current={isActive ? "page" : undefined}
         className={`flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left transition-colors ${isActive
-            ? "bg-orange-50 dark:bg-orange-500/15"
+            ? "bg-surface-secondary"
             : "hover:bg-surface-secondary dark:hover:bg-surface-hover"
           }`}
       >
@@ -108,7 +108,7 @@ const GroupsSidebar: React.FC<GroupsSidebarProps> = ({
               onClick={() => onViewChange(itemView)}
               aria-current={view === itemView ? "page" : undefined}
               className={`flex w-full items-center gap-3 rounded-lg px-3 py-1.5 text-left transition-colors duration-200 ${view === itemView
-                  ? "bg-orange-50 text-primary-600 dark:bg-orange-500/15 dark:text-orange-300"
+                  ? "bg-surface-secondary text-content"
                   : "text-content-secondary hover:bg-gray-50 hover:text-gray-700 dark:hover:bg-surface-hover dark:hover:text-content"
                 }`}
             >

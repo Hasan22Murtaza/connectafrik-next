@@ -264,7 +264,7 @@ const CreateGroupEventModal: React.FC<CreateGroupEventModalProps> = ({
                 onClick={() => handleInputChange('is_virtual', !formData.is_virtual)}
                 className={`p-3 rounded-lg border-2 transition-colors ${
                   formData.is_virtual
-                    ? 'border-orange-500 bg-primary-50 text-primary-600'
+                    ? 'border-border-strong bg-surface-secondary text-content'
                     : 'border-gray-300 text-gray-600'
                 }`}
                 title={formData.is_virtual ? 'Virtual Event' : 'In-Person Event'}

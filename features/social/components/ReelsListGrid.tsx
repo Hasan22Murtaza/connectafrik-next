@@ -113,7 +113,7 @@ function ListBody({ feed }: Props) {
 
   if (!enabled) {
     return (
-      <div className="flex min-h-[calc(100dvh-4.5rem)] flex-col bg-white text-content">
+      <div className="flex min-h-[calc(100dvh-4.5rem)] flex-col bg-surface text-content">
         <ReelsBrowseHeader feed={feed} />
         <div className="flex flex-1 flex-col items-center justify-center px-6 text-center">
           <h2 className="text-lg font-semibold">Following</h2>
@@ -128,7 +128,7 @@ function ListBody({ feed }: Props) {
 
   if (error) {
     return (
-      <div className="flex min-h-[calc(100dvh-4.5rem)] flex-col bg-white text-content">
+      <div className="flex min-h-[calc(100dvh-4.5rem)] flex-col bg-surface text-content">
         <ReelsBrowseHeader feed={feed} exploreCategories={exploreCategories} />
         <div className="flex flex-1 flex-col items-center justify-center px-6 text-center">
           <p className="text-sm text-content-secondary">{error}</p>
@@ -141,7 +141,7 @@ function ListBody({ feed }: Props) {
   }
 
   return (
-    <div className="relative mx-auto w-full max-w-[1600px] min-h-[calc(100dvh-4.5rem)] bg-white pb-[calc(5.5rem+env(safe-area-inset-bottom))] text-content lg:pb-10">
+    <div className="relative mx-auto w-full max-w-[1600px] min-h-[calc(100dvh-4.5rem)] bg-surface pb-[calc(5.5rem+env(safe-area-inset-bottom))] text-content lg:pb-10">
       <ReelsBrowseHeader feed={feed} exploreCategories={exploreCategories} />
 
       <div>
@@ -195,7 +195,7 @@ function ListBody({ feed }: Props) {
 
 
 
-      <div className="fixed bottom-0 left-0 right-0 z-[46] border-t border-border bg-white/90 px-2 pb-[calc(0.4rem+env(safe-area-inset-bottom))] pt-1 lg:hidden">
+      <div className="fixed bottom-0 left-0 right-0 z-[46] border-t border-border bg-surface/90 px-2 pb-[calc(0.4rem+env(safe-area-inset-bottom))] pt-1 lg:hidden">
         <div className="mx-auto max-w-lg">
           <ReelsNav variant="video-bottom" />
         </div>
@@ -206,7 +206,7 @@ function ListBody({ feed }: Props) {
 
 function Fallback() {
   return (
-    <div className="flex min-h-[40vh] items-center justify-center bg-white">
+    <div className="flex min-h-[40vh] items-center justify-center bg-surface">
       <div className="h-10 w-10 animate-spin rounded-full border-2 border-border border-t-[var(--african-orange)]" />
     </div>
   )

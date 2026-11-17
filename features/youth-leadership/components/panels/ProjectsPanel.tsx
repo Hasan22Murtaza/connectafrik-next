@@ -185,7 +185,7 @@ export default function ProjectsPanel() {
           aria-pressed={mineOnly}
           className={
             mineOnly
-              ? 'btn-secondary ring-1 ring-primary/40 bg-primary/10 text-primary'
+              ? 'btn-secondary ring-1 ring-border bg-surface-secondary text-content'
               : 'btn-secondary'
           }
           onClick={() => setMineOnly((v) => !v)}

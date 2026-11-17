@@ -344,7 +344,7 @@ const InviteFriendsModal: React.FC<InviteFriendsModalProps> = ({
                       onClick={() => toggleFriendSelection(friend.id)}
                       className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors ${
                         isSelected
-                          ? 'bg-primary-50 border-2 border-orange-500'
+                          ? 'bg-surface-secondary border-2 border-border-strong'
                           : 'hover:bg-gray-50 border-2 border-transparent'
                       }`}
                     >
@@ -371,7 +371,7 @@ const InviteFriendsModal: React.FC<InviteFriendsModalProps> = ({
                       <div
                         className={`w-6 h-6 rounded border-2 flex items-center justify-center flex-shrink-0 ${
                           isSelected
-                            ? 'bg-primary-500 border-orange-500'
+                            ? 'bg-content border-content'
                             : 'border-gray-300'
                         }`}
                       >

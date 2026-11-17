@@ -46,13 +46,13 @@ export function SettingsShell({
                   aria-current={active ? 'page' : undefined}
                   className={`group flex min-h-9 items-center gap-2.5 rounded-md px-2.5 py-2 text-sm font-medium transition-colors duration-150 ${
                     active
-                      ? 'bg-primary-50 text-orange-500 hover:bg-primary-50 hover:text-orange-500'
+                      ? 'bg-surface-secondary text-content hover:bg-surface-hover hover:text-content'
                       : 'text-content-secondary hover:bg-surface-hover hover:text-content'
                   }`}
                 >
                   <Icon
                     className={`h-4 w-4 shrink-0 ${
-                      active ? 'text-orange-500' : 'text-content-tertiary group-hover:text-content-secondary'
+                      active ? 'text-content' : 'text-content-tertiary group-hover:text-content-secondary'
                     }`}
                     aria-hidden
                   />
@@ -87,7 +87,7 @@ export function SettingsShell({
                     aria-current={active ? 'page' : undefined}
                     className={`inline-flex min-h-11 shrink-0 items-center gap-2 border-b-2 px-3 text-sm font-medium transition-colors duration-200 ${
                       active
-                        ? 'border-primary text-primary'
+                        ? 'border-content text-content'
                         : 'border-transparent text-content-secondary hover:border-border hover:text-content'
                     }`}
                   >

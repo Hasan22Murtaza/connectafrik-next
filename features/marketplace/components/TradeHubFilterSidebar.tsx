@@ -53,7 +53,7 @@ const menuRowClass =
 const categoryRowClass =
   "w-full flex items-center justify-between gap-3 px-4 py-2 text-left text-[15px] hover:bg-surface-hover transition-colors";
 
-const menuRowActiveClass = "bg-primary-50 text-orange-500 ";
+const menuRowActiveClass = "bg-surface-secondary text-content ";
 
 const sectionTitleClass = "px-4 pt-4 pb-2 text-[17px] font-bold ";
 
@@ -158,7 +158,7 @@ const TradeHubFilterSidebar: React.FC<TradeHubFilterSidebarProps> = ({
                     onClick={() => openCategoryPanel(category)}
                     className={`${categoryRowClass} ${isActive ? menuRowActiveClass : ""}`}
                   >
-                    <span className={isActive ? "font-semibold text-orange-500" : ""}>
+                    <span className={isActive ? "font-semibold text-content" : ""}>
                       {category.label}
                       {isActive && filters.subcategory ? (
                         <span className="block text-xs font-normal text-orange-500/80 mt-0.5">
@@ -403,7 +403,7 @@ const TradeHubFilterSidebar: React.FC<TradeHubFilterSidebarProps> = ({
                 drillCategory &&
                 filters.category === drillCategory.value &&
                 !filters.subcategory
-                  ? "font-semibold text-orange-500"
+                  ? "font-semibold text-content"
                   : ""
               }
             >
@@ -426,7 +426,7 @@ const TradeHubFilterSidebar: React.FC<TradeHubFilterSidebarProps> = ({
                     }
                     className={`${categoryRowClass} ${isActive ? menuRowActiveClass : ""}`}
                   >
-                    <span className={isActive ? "font-semibold text-orange-500" : ""}>
+                    <span className={isActive ? "font-semibold text-content" : ""}>
                       {sub.label}
                     </span>
                   </button>

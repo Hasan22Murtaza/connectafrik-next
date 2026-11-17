@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { format, isThisYear, isToday, isYesterday } from "date-fns";
-import { Archive, ArrowLeft, Ban, ChevronRight, Loader2, Lock, MoreVertical, Pin, PinOff, Search, SquarePen, Store, Trash2, Unlock, UserPlus, Users, X } from '@/shared/icons';
+import { Archive, ArrowLeft, Ban, Loader2, Lock, MoreVertical, Pin, PinOff, Search, SquarePen, Store, Trash2, Unlock, UserPlus, Users, X } from '@/shared/icons';
 import { isDirectBlockableThread } from "@/features/chat/utils/threadHelpers";
 import { useProductionChat } from "@/contexts/ProductionChatContext";
 import { useChatLock } from "@/contexts/ChatLockContext";
@@ -16,7 +16,7 @@ import { ChatRichTextPreview } from "@/features/chat/richtext";
 import { useConfirmDialog } from "@/shared/components/ui/ConfirmDialog";
 import CreateChatGroupModal from "@/features/chat/components/CreateChatGroupModal";
 
-const PAGE_SIZE = 10;
+const PAGE_SIZE = 20;
 
 function formatThreadListTime(iso: string | null | undefined): string {
   if (!iso) return "";
@@ -145,7 +145,7 @@ export default function ChatSidebar({
     try {
       const { threads: rows } = await supabaseMessagingService.getUserThreads(
         { id: currentUser.id, name: currentUser.name || "" },
-        { limit: 50, page: 0, category: "marketplace" }
+        { limit: PAGE_SIZE, page: 0, category: "marketplace" }
       );
       setMpThreads(rows);
       setMpLoaded(true);
@@ -178,7 +178,7 @@ export default function ChatSidebar({
         while (hasMorePages && !cancelled) {
           const result = await supabaseMessagingService.getUserThreads(
             { id: currentUser.id, name: currentUser.name || "" },
-            { limit: 50, page, category: "general" }
+            { limit: PAGE_SIZE, page, category: "general" }
           );
           if (cancelled) break;
           for (const thread of result.threads) {
@@ -231,7 +231,7 @@ export default function ChatSidebar({
     try {
       const { threads: rows } = await supabaseMessagingService.getLockedThreads(
         { id: currentUser.id, name: currentUser.name || "" },
-        { limit: 50, page: 0 }
+        { limit: PAGE_SIZE, page: 0 }
       );
       setLockedThreads(rows);
     } catch {
@@ -294,9 +294,9 @@ export default function ChatSidebar({
     const participant = { id: currentUser.id, name: currentUser.name || "" };
     const request =
       filter === "groups"
-        ? supabaseMessagingService.getGroupThreads(participant, { limit: 50, page: 0 })
+        ? supabaseMessagingService.getGroupThreads(participant, { limit: PAGE_SIZE, page: 0 })
         : supabaseMessagingService.getUnreadThreads(participant, {
-          limit: 50,
+          limit: PAGE_SIZE,
           page: 0,
           category: "general",
         });
@@ -437,15 +437,6 @@ export default function ChatSidebar({
         return bTime - aTime;
       });
   }, [mpThreads, contextThreads]);
-
-  const marketplaceUnread = useMemo(
-    () =>
-      marketplaceThreads.reduce(
-        (sum, t) => sum + (typeof t.unread_count === "number" ? t.unread_count : 0),
-        0
-      ),
-    [marketplaceThreads]
-  );
 
   const matchesSearch = useCallback(
     (t: ChatThread) => {
@@ -959,8 +950,8 @@ export default function ChatSidebar({
                   type="button"
                   onClick={() => setFilter(chip.key)}
                   className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-medium transition ${active
-                    ? "bg-orange-50 text-orange-500 border-orange-500 border"
-                    : "border border-border text-content-secondary hover:bg-surface-hover hover:border-orange-100 hover:text-orange-500 dark:hover:bg-surface-hover dark:hover:border-border-strong dark:hover:text-orange-300"
+                    ? "bg-surface-tertiary text-content border border-border"
+                    : "border border-border text-content-secondary hover:bg-surface-hover hover:border-border-strong hover:text-content"
                     }`}
                 >
                   <span>{chip.label}</span>
@@ -970,35 +961,6 @@ export default function ChatSidebar({
           </div>
         ) : null}
       </header>
-
-      {view === "chats" ? (
-        <>
-          <button
-            type="button"
-            onClick={() => {
-              setView("marketplace");
-              setSearch("");
-            }}
-            className="relative flex w-full shrink-0 items-center gap-3 px-3 py-2 text-left transition hover:bg-surface-hover dark:hover:bg-surface-hover"
-          >
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary-100 text-orange-500">
-              <Store className="h-5 w-5" aria-hidden />
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-[14px] text-content">TradeHub messages</p>
-              <p className="truncate text-sm text-content-secondary">Buying &amp; selling conversations</p>
-            </div>
-            {marketplaceUnread > 0 ? (
-              <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-primary-500 px-1 text-[11px] font-semibold text-white">
-                {marketplaceUnread > 99 ? "99+" : marketplaceUnread}
-              </span>
-            ) : (
-              <ChevronRight className="h-4 w-4 shrink-0 text-content-tertiary" aria-hidden />
-            )}
-            <span className="pointer-events-none absolute bottom-0 left-0 right-0 h-px bg-border-subtle" />
-          </button>
-        </>
-      ) : null}
 
       {view === "blocked" ? (
         <div className="flex-1 overflow-y-auto">
@@ -1031,7 +993,7 @@ export default function ChatSidebar({
                   }}
                   role="button"
                   tabIndex={0}
-                  className={`group relative flex w-full cursor-pointer items-start gap-3 border-b border-border-subtle px-3 py-3 text-left opacity-80 transition ${selected ? "bg-primary-50 text-orange-500 hover:bg-primary-100" : "hover:bg-surface-hover"
+                  className={`group relative flex w-full cursor-pointer items-start gap-3 border-b border-border-subtle px-3 py-3 text-left opacity-80 transition ${selected ? "bg-surface-secondary text-content hover:bg-surface-hover" : "hover:bg-surface-hover"
                     }`}
                 >
                   <div className="h-12 w-12 shrink-0">
@@ -1044,7 +1006,7 @@ export default function ChatSidebar({
                     )}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className={`truncate text-[14px] ${selected ? "text-orange-500" : "text-content"}`}>{displayName}</p>
+                    <p className={`truncate text-[14px] ${selected ? "text-content" : "text-content"}`}>{displayName}</p>
                     <p className="truncate text-xs text-content-secondary">Blocked · tap to manage</p>
                   </div>
                   <button
@@ -1115,7 +1077,7 @@ export default function ChatSidebar({
                   }}
                   role="button"
                   tabIndex={0}
-                  className={`group relative flex w-full cursor-pointer items-center gap-3 px-3 py-2 text-left transition ${selected ? "bg-primary-50 text-orange-500 hover:bg-primary-100" : "bg-transparent hover:bg-surface-hover"
+                  className={`group relative flex w-full cursor-pointer items-center gap-3 px-3 py-2 text-left transition ${selected ? "bg-surface-secondary text-content hover:bg-surface-hover" : "bg-transparent hover:bg-surface-hover"
                     }`}
                 >
                   <div className="h-12 w-12 shrink-0">
@@ -1129,7 +1091,7 @@ export default function ChatSidebar({
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between gap-2">
-                      <span className={`min-w-0 truncate text-base ${selected ? "text-orange-500" : "text-content"}`}>{displayName}</span>
+                      <span className={`min-w-0 truncate text-base ${selected ? "text-content" : "text-content"}`}>{displayName}</span>
                         <span className="flex shrink-0 items-center gap-1.5">
                         <Lock className="h-3.5 w-3.5 text-content-tertiary" aria-hidden />
                         {thread.unread_count > 0 ? (
@@ -1236,7 +1198,7 @@ export default function ChatSidebar({
                   }}
                   role="button"
                   tabIndex={0}
-                  className={`group relative flex w-full cursor-pointer items-center gap-3 px-3 py-2 text-left transition ${selected ? "bg-primary-50 text-orange-500 hover:bg-primary-100" : "bg-transparent hover:bg-surface-hover"
+                  className={`group relative flex w-full cursor-pointer items-center gap-3 px-3 py-2 text-left transition ${selected ? "bg-surface-secondary text-content hover:bg-surface-hover" : "bg-transparent hover:bg-surface-hover"
                     }`}
                 >
                   <div className="h-12 w-12 shrink-0">
@@ -1257,7 +1219,7 @@ export default function ChatSidebar({
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between gap-2">
-                      <span className={`text-[15px] font-medium ${selected ? "text-orange-500" : "text-content"}`}>
+                      <span className={`text-[15px] font-medium ${selected ? "text-content" : "text-content"}`}>
                         {thread.pinned ? (
                           <Pin className="h-3.5 w-3.5 shrink-0 text-content-tertiary" aria-hidden />
                         ) : null}
@@ -1409,7 +1371,7 @@ export default function ChatSidebar({
                   }}
                   role="button"
                   tabIndex={0}
-                  className={`group relative flex w-full cursor-pointer items-center gap-3 px-3 py-3 text-left transition ${selected ? "bg-primary-50 text-orange-500 hover:bg-primary-100" : "bg-transparent hover:bg-surface-hover"
+                  className={`group relative flex w-full cursor-pointer items-center gap-3 px-3 py-3 text-left transition ${selected ? "bg-surface-secondary text-content hover:bg-surface-hover" : "bg-transparent hover:bg-surface-hover"
                     }`}
                 >
                   <div className="h-12 w-12 shrink-0">
@@ -1423,7 +1385,7 @@ export default function ChatSidebar({
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between gap-2">
-                      <p className={`min-w-0 truncate text-[15px] ${selected ? "text-orange-500" : "text-content"}`}>{displayName}</p>
+                      <p className={`min-w-0 truncate text-[15px] ${selected ? "text-content" : "text-content"}`}>{displayName}</p>
                       <span
                         className={`shrink-0 text-xs tabular-nums ${thread.unread_count > 0 ? "text-orange-500" : "text-content-tertiary"
                           }`}
@@ -1500,7 +1462,7 @@ export default function ChatSidebar({
                     }}
                     role="button"
                     tabIndex={0}
-                    className={`group cursor-pointer relative flex w-full items-center gap-3 px-3 py-2 text-left transition ${selected ? "bg-primary-50 text-orange-500 hover:bg-primary-100" : "bg-transparent hover:bg-surface-hover"
+                    className={`group cursor-pointer relative flex w-full items-center gap-3 px-3 py-2 text-left transition ${selected ? "bg-surface-secondary text-content hover:bg-surface-hover" : "bg-transparent hover:bg-surface-hover"
                       }`}
                   >
                     <div className="h-12 w-12 shrink-0">
@@ -1519,7 +1481,7 @@ export default function ChatSidebar({
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between gap-2">
-                        <span className={`min-w-0 truncate text-[15px] ${selected ? "text-orange-500" : "text-content"}`}>{displayName}</span>
+                        <span className={`min-w-0 truncate text-[15px] ${selected ? "text-content" : "text-content"}`}>{displayName}</span>
                         <div className="flex gap-1 items-center">
                           <div>
                             <button

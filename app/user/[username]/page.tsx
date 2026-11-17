@@ -1007,7 +1007,7 @@ const UserProfilePage: React.FC = () => {
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
-                    className={`shrink-0 whitespace-nowrap border-b-[3px] px-3 py-3 text-[13px] font-semibold transition-colors sm:px-4 sm:text-[15px] ${activeTab === tab.id ? 'text-[#F97316] border-[#F97316]' : 'text-content-secondary border-transparent hover:text-content rounded-t-md'
+                    className={`shrink-0 whitespace-nowrap border-b-[3px] px-3 py-3 text-[13px] font-semibold transition-colors sm:px-4 sm:text-[15px] ${activeTab === tab.id ? 'text-content border-content' : 'text-content-secondary border-transparent hover:text-content rounded-t-md'
                       }`}
                   >
                     {tab.label}

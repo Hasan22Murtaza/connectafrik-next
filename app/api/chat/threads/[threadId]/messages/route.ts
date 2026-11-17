@@ -24,10 +24,62 @@ import {
 import { isEncodedMessage } from '@/lib/chat/messageCodec'
 import { isMessageE2eeEnabledForUser } from '@/lib/message-e2ee/flag'
 
+/** Explicit columns for list/send responses — avoids select * (ciphertext still included for E2EE). */
 const MESSAGE_SELECT = `
-  *,
+  id,
+  thread_id,
+  sender_id,
+  content,
+  created_at,
+  updated_at,
+  message_type,
+  metadata,
+  is_deleted,
+  is_edited,
+  is_forward,
+  deleted_for,
+  deleted_at,
+  reply_to_id,
+  view_once,
+  view_once_opened,
+  view_once_opened_at,
+  view_once_opened_by,
+  expires_at,
+  ciphertext,
+  sender_device_id,
+  e2ee_version,
   sender:profiles!chat_messages_sender_id_fkey(id, username, full_name, avatar_url)
 `
+
+/** Lightweight select for call-signal dedupe lookups (POST path only). */
+const MESSAGE_DEDUP_SELECT = `
+  id,
+  thread_id,
+  sender_id,
+  content,
+  created_at,
+  updated_at,
+  message_type,
+  metadata,
+  is_deleted,
+  deleted_for,
+  ciphertext,
+  sender_device_id,
+  e2ee_version,
+  sender:profiles!chat_messages_sender_id_fkey(id, username, full_name, avatar_url)
+`
+
+const isValidIsoTimestamp = (value: string): boolean => {
+  const ms = Date.parse(value)
+  return Number.isFinite(ms)
+}
+
+const isValidUuid = (value: string): boolean =>
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
+
+/** Same rule as media gallery — avoid brittle PostgREST uuid[] `cs` filters. */
+const isDeletedForUser = (deletedFor: unknown, userId: string): boolean =>
+  Array.isArray(deletedFor) && deletedFor.includes(userId)
 
 type RouteContext = { params: Promise<{ threadId: string }> }
 const DEDUPED_CALL_SIGNAL_TYPES = new Set([
@@ -146,8 +198,17 @@ export async function GET(request: NextRequest, context: RouteContext) {
     const parsedPage = parseInt(searchParams.get('page') || '0', 10)
     const limit = Number.isNaN(parsedLimit) ? 20 : Math.min(Math.max(parsedLimit, 1), 100)
     const page = Number.isNaN(parsedPage) ? 0 : Math.max(parsedPage, 0)
+    const beforeRaw = (searchParams.get('before') || '').trim()
+    const beforeIdRaw = (searchParams.get('before_id') || '').trim()
+    const before =
+      beforeRaw && isValidIsoTimestamp(beforeRaw) ? beforeRaw : ''
+    const beforeId =
+      beforeIdRaw && isValidUuid(beforeIdRaw) ? beforeIdRaw : ''
+    const useCursor = before.length > 0
     const from = page * limit
     const to = from + limit - 1
+    // Fetch one extra row to determine hasMore without an exact COUNT(*).
+    const fetchLimit = limit + 1
 
     const keywordRaw = (searchParams.get('keyword') ?? searchParams.get('q') ?? '').trim()
     const keyword =
@@ -160,37 +221,58 @@ export async function GET(request: NextRequest, context: RouteContext) {
       .select(MESSAGE_SELECT)
       .eq('thread_id', threadId)
       .eq('is_deleted', false)
-    let countQuery = serviceClient
-      .from('chat_messages')
-      .select('id', { count: 'exact', head: true })
-      .eq('thread_id', threadId)
-      .eq('is_deleted', false)
 
     if (keyword.length > 0) {
       const pattern = `%${keyword.replace(/[(),"]/g, '')}%`
       const storedMatch = `content.ilike.${pattern},content.like.e2ee1.%`
       messagesQuery = messagesQuery.or(storedMatch)
-      countQuery = countQuery.or(storedMatch)
     }
 
-    const [messagesRes, countRes] = await Promise.all([
-      messagesQuery
-        // Fetch newest slice first so page 0 contains latest messages.
+    if (useCursor) {
+      // Cursor: messages strictly older than (before, before_id) tie-break.
+      if (beforeId) {
+        messagesQuery = messagesQuery.or(
+          `created_at.lt."${before}",and(created_at.eq."${before}",id.lt.${beforeId})`
+        )
+      } else {
+        messagesQuery = messagesQuery.lt('created_at', before)
+      }
+      messagesQuery = messagesQuery
         .order('created_at', { ascending: false })
-        .range(from, to),
-      countQuery,
-    ])
+        .order('id', { ascending: false })
+        .limit(fetchLimit)
+    } else if (keyword.length > 0 || page > 0) {
+      // Keyword / legacy offset pages still use range; skip exact count below.
+      messagesQuery = messagesQuery
+        .order('created_at', { ascending: false })
+        .order('id', { ascending: false })
+        .range(from, to + 1)
+    } else {
+      // Initial load: newest N messages.
+      messagesQuery = messagesQuery
+        .order('created_at', { ascending: false })
+        .order('id', { ascending: false })
+        .limit(fetchLimit)
+    }
 
+    const messagesRes = await messagesQuery
     const { data: messages, error } = messagesRes
 
     if (error) return errorResponse(error.message, 400)
-    if (countRes.error) return errorResponse(countRes.error.message, 400)
-    const list = messages || []
-    const totalCount = countRes.count || 0
-    const totalPages = totalCount > 0 ? Math.ceil(totalCount / limit) : 0
+    const rawList = messages || []
+    const hasMore = rawList.length > limit
+    const pageRows = hasMore ? rawList.slice(0, limit) : rawList
+    // Filter delete-for-me in app code (PostgREST uuid[] contains filters are unreliable).
+    const list = pageRows.filter((m: any) => !isDeletedForUser(m?.deleted_for, user.id))
 
     if (list.length === 0) {
-      return jsonResponse({ data: [], page, pageSize: limit, hasMore: false, totalCount, totalPages })
+      return jsonResponse({
+        data: [],
+        page,
+        pageSize: limit,
+        hasMore: false,
+        nextCursor: null,
+      })
     }
 
     const messageIds = list.map((m: any) => m.id)
@@ -252,14 +334,18 @@ export async function GET(request: NextRequest, context: RouteContext) {
     })
     // Preserve natural chat display (oldest -> newest) inside the fetched page.
     const chronological = [...formatted].reverse()
+    const oldest = chronological[0]
+    const nextCursor =
+      hasMore && oldest
+        ? { before: oldest.created_at as string, before_id: oldest.id as string }
+        : null
 
     return jsonResponse({
       data: chronological,
       page,
       pageSize: limit,
-      hasMore: totalCount > (to + 1),
-      totalCount,
-      totalPages,
+      hasMore,
+      nextCursor,
     })
   } catch (error: any) {
     if (error.message === 'Unauthorized' || error.message === 'Missing Authorization header') {
@@ -447,7 +533,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
     if (DEDUPED_CALL_SIGNAL_TYPES.has(normalizedMessageType)) {
       const { data: sameTypeMessages, error: sameTypeError } = await serviceClient
         .from('chat_messages')
-        .select(MESSAGE_SELECT)
+        .select(MESSAGE_DEDUP_SELECT)
         .eq('thread_id', threadId)
         .eq('message_type', normalizedMessageType)
         .eq('is_deleted', false)
@@ -468,7 +554,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
     if (normalizedMessageType === 'missed') {
       const { data: terminalConflictMessages, error: terminalConflictError } = await serviceClient
         .from('chat_messages')
-        .select(MESSAGE_SELECT)
+        .select(MESSAGE_DEDUP_SELECT)
         .eq('thread_id', threadId)
         .in('message_type', [...CALL_TERMINAL_CONFLICT_TYPES])
         .eq('is_deleted', false)
@@ -490,7 +576,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
     if (isEndedMessageType && (incomingIdentity.callId || incomingIdentity.roomId)) {
       const { data: missedRows, error: missedLookupError } = await serviceClient
         .from('chat_messages')
-        .select(MESSAGE_SELECT)
+        .select(MESSAGE_DEDUP_SELECT)
         .eq('thread_id', threadId)
         .in('message_type', ['missed'])
         .eq('is_deleted', false)

@@ -132,7 +132,7 @@ export function SettingsChoiceRow<T extends string>({
   return (
     <label
       className={`flex min-h-11 cursor-pointer items-center justify-between gap-4 px-4 py-3.5 transition-colors duration-200 sm:px-5 ${
-        selected ? 'bg-primary/10' : 'hover:bg-surface-hover'
+        selected ? 'bg-surface-secondary' : 'hover:bg-surface-hover'
       }`}
     >
       <input
@@ -146,13 +146,13 @@ export function SettingsChoiceRow<T extends string>({
       <div className="flex min-w-0 items-start gap-3">
         <div
           className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-[12px] transition-colors duration-200 ${
-            selected ? 'bg-primary/15 text-primary' : 'bg-surface-secondary text-content-secondary'
+            selected ? 'bg-surface-tertiary text-content' : 'bg-surface-secondary text-content-secondary'
           }`}
         >
           <Icon className="h-[18px] w-[18px]" aria-hidden />
         </div>
         <div className="min-w-0">
-          <div className={`text-[15px] font-medium ${selected ? 'text-primary' : 'text-content'}`}>
+          <div className="text-[15px] font-medium text-content">
             {title}
           </div>
           <p className="mt-0.5 text-sm leading-5 text-content-secondary">{description}</p>
@@ -160,12 +160,12 @@ export function SettingsChoiceRow<T extends string>({
       </div>
       <span
         className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors duration-200 ${
-          selected ? 'border-primary' : 'border-border-strong'
+          selected ? 'border-content' : 'border-border-strong'
         }`}
         aria-hidden
       >
         <span
-          className={`h-2.5 w-2.5 rounded-full bg-primary transition-transform duration-200 ${
+          className={`h-2.5 w-2.5 rounded-full bg-content transition-transform duration-200 ${
             selected ? 'scale-100' : 'scale-0'
           }`}
         />

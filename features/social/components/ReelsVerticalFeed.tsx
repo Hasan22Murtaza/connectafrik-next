@@ -387,7 +387,7 @@ export function ReelsVerticalFeed({
 
   if (loading && reels.length === 0) {
     return (
-      <div className="flex min-h-[calc(100dvh-3.5rem)] flex-col items-center justify-center bg-white text-content lg:min-h-[calc(100dvh-4.5rem)]">
+      <div className="flex min-h-[calc(100dvh-3.5rem)] flex-col items-center justify-center bg-surface text-content lg:min-h-[calc(100dvh-4.5rem)]">
         <div
           className="h-10 w-10 animate-spin rounded-full border-2 border-border border-t-[var(--african-orange)]"
           aria-hidden
@@ -399,7 +399,7 @@ export function ReelsVerticalFeed({
 
   if (error) {
     return (
-      <div className="flex min-h-[calc(100dvh-3.5rem)] flex-col items-center justify-center bg-white px-6 text-center text-content lg:min-h-[calc(100dvh-4.5rem)]">
+      <div className="flex min-h-[calc(100dvh-3.5rem)] flex-col items-center justify-center bg-surface px-6 text-center text-content lg:min-h-[calc(100dvh-4.5rem)]">
         <Clock className="mb-4 h-14 w-14 text-content-tertiary" />
         <h2 className="text-lg font-semibold">Couldn’t load reels</h2>
         <p className="mt-2 text-sm text-content-secondary">{error}</p>
@@ -412,8 +412,8 @@ export function ReelsVerticalFeed({
 
   if (reels.length === 0) {
     return (
-      <div className="fixed inset-0 z-40 flex flex-col items-center justify-center bg-white px-6 pb-10 pt-16 text-center text-content lg:static lg:z-auto lg:min-h-[calc(100dvh-4.5rem)] lg:pb-6 lg:pt-0">
-        <div className="fixed bottom-0 left-0 right-0 z-[46] border-t border-border bg-white/95 px-2 pb-[calc(0.4rem+env(safe-area-inset-bottom))] pt-1 lg:hidden">
+      <div className="fixed inset-0 z-40 flex flex-col items-center justify-center bg-surface px-6 pb-10 pt-16 text-center text-content lg:static lg:z-auto lg:min-h-[calc(100dvh-4.5rem)] lg:pb-6 lg:pt-0">
+        <div className="fixed bottom-0 left-0 right-0 z-[46] border-t border-border bg-surface/95 px-2 pb-[calc(0.4rem+env(safe-area-inset-bottom))] pt-1 lg:hidden">
           <div className="mx-auto max-w-lg">
             <ReelsNav variant="video-bottom" />
           </div>
@@ -431,20 +431,20 @@ export function ReelsVerticalFeed({
 
   return (
     <>
-      <div className="fixed inset-0 z-40 bg-white lg:static lg:z-auto lg:min-h-[calc(100dvh-4.5rem)]">
-        <div className="fixed bottom-0 left-0 right-0 z-[46] border-t border-border bg-white/95 px-2 pb-[calc(0.4rem+env(safe-area-inset-bottom))] pt-1 lg:hidden">
+      <div className="fixed inset-0 z-40 bg-surface lg:static lg:z-auto lg:min-h-[calc(100dvh-4.5rem)]">
+        <div className="fixed bottom-0 left-0 right-0 z-[46] border-t border-border bg-surface/95 px-2 pb-[calc(0.4rem+env(safe-area-inset-bottom))] pt-1 lg:hidden">
           <div className="mx-auto max-w-lg">
             <ReelsNav variant="video-bottom" />
           </div>
         </div>
 
         <div className="lg:flex lg:min-h-[calc(100dvh-4.5rem)]">
-          <div className="relative min-w-0 flex-1 bg-white">
+          <div className="relative min-w-0 flex-1 bg-surface">
             {exploreBackHref && (
               <button
                 type="button"
                 onClick={() => router.push(exploreBackHref)}
-                className="absolute left-3 top-14 z-30 inline-flex items-center gap-1 rounded-full bg-white/95 px-3 py-2 text-sm font-medium text-content shadow-sm ring-1 ring-border backdrop-blur-md transition hover:bg-surface sm:top-16 lg:left-6 lg:top-6"
+                className="absolute left-3 top-14 z-30 inline-flex items-center gap-1 rounded-full bg-surface/95 px-3 py-2 text-sm font-medium text-content shadow-sm ring-1 ring-border backdrop-blur-md transition hover:bg-surface sm:top-16 lg:left-6 lg:top-6"
               >
                 <ChevronLeft className="h-4 w-4" />
                 {listBackLabel}
@@ -459,7 +459,7 @@ export function ReelsVerticalFeed({
               <button
                 type="button"
                 aria-label="Previous reel"
-                className="flex h-11 w-11 items-center justify-center rounded-full border border-border bg-white text-content-secondary shadow-sm transition hover:bg-surface-secondary"
+                className="flex h-11 w-11 items-center justify-center rounded-full border border-border bg-surface text-content-secondary shadow-sm transition hover:bg-surface-secondary"
                 onClick={() => {
                   const el = scrollRef.current
                   if (!el) return
@@ -471,7 +471,7 @@ export function ReelsVerticalFeed({
               <button
                 type="button"
                 aria-label="Next reel"
-                className="flex h-11 w-11 items-center justify-center rounded-full border border-border bg-white text-content-secondary shadow-sm transition hover:bg-surface-secondary"
+                className="flex h-11 w-11 items-center justify-center rounded-full border border-border bg-surface text-content-secondary shadow-sm transition hover:bg-surface-secondary"
                 onClick={() => {
                   const el = scrollRef.current
                   if (!el) return
@@ -484,7 +484,7 @@ export function ReelsVerticalFeed({
 
             <div
               ref={scrollRef}
-              className="h-[100dvh] w-full overflow-y-auto overflow-x-hidden overscroll-y-contain scroll-smooth bg-white [-webkit-overflow-scrolling:touch] snap-y snap-mandatory pb-[calc(5.25rem+env(safe-area-inset-bottom))] pt-14 sm:pt-16 lg:h-[calc(100dvh-4.5rem)] lg:pb-0 lg:pt-0"
+              className="h-[100dvh] w-full overflow-y-auto overflow-x-hidden overscroll-y-contain scroll-smooth bg-surface [-webkit-overflow-scrolling:touch] snap-y snap-mandatory pb-[calc(5.25rem+env(safe-area-inset-bottom))] pt-14 sm:pt-16 lg:h-[calc(100dvh-4.5rem)] lg:pb-0 lg:pt-0"
               style={{ scrollSnapStop: 'always' } as React.CSSProperties}
             >
               {reels.map((reel, index) => (
@@ -505,7 +505,7 @@ export function ReelsVerticalFeed({
               {hasMore && (
                 <div
                   ref={sentinelRef}
-                  className="flex h-24 w-full shrink-0 snap-start items-center justify-center bg-white"
+                  className="flex h-24 w-full shrink-0 snap-start items-center justify-center bg-surface"
                   aria-hidden
                 >
                   {loading && (

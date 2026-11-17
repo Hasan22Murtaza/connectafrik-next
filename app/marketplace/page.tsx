@@ -402,7 +402,7 @@ const MarketplacePage: React.FC = () => {
               type="button"
               onClick={() => selectCategory("")}
               className={`shrink-0 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${selectedCategory === ""
-                  ? "bg-primary-50 text-orange-500 border border-orange-500"
+                  ? "bg-surface-tertiary text-content border border-border"
                   : "bg-surface-secondary text-content hover:bg-surface-hover"
                 }`}
             >
@@ -414,7 +414,7 @@ const MarketplacePage: React.FC = () => {
                 type="button"
                 onClick={() => selectCategory(category.value)}
                 className={`shrink-0 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${selectedCategory === category.value
-                    ? "bg-primary-50 text-orange-500 border border-orange-500"
+                    ? "bg-surface-tertiary text-content border border-border"
                     : "bg-surface-secondary text-content hover:bg-surface-hover"
                   }`}
               >

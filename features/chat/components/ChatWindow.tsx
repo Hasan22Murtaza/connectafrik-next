@@ -314,7 +314,7 @@ function sortChatWindowMessages(msgs: ChatMessage[]): ChatMessage[] {
   );
 }
 
-const MESSAGES_PAGE_SIZE = 50;
+const MESSAGES_PAGE_SIZE = 20;
 const PRIVATE_REPLY_STORAGE_KEY = "cribstalk.chat.privateReply";
 
 const ComposerEmojiPicker = dynamic(() => import("emoji-picker-react"), {
@@ -1072,10 +1072,19 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         });
         setSearchPage(nextPage);
       } else {
-        const nextPage = historyPage + 1;
+        const currentMessages = getMessagesForThread(threadId);
+        const oldest = currentMessages[0];
+        if (!oldest?.created_at) {
+          setHasOlderMessages(false);
+          hasOlderByThreadLocalRef.current[threadId] = false;
+          unlockWithoutRestore();
+          return;
+        }
+
         const { messages: olderMessages, hasMore } = await supabaseMessagingService.getThreadMessages(threadId, {
-          page: nextPage,
           limit: MESSAGES_PAGE_SIZE,
+          before: oldest.created_at,
+          beforeId: oldest.id,
         });
 
         if (!olderMessages.length) {
@@ -1084,25 +1093,33 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           unlockWithoutRestore();
           return;
         }
-        if (!hasMore) {
-          setHasOlderMessages(false);
-          hasOlderByThreadLocalRef.current[threadId] = false;
-        }
 
-        const currentMessages = getMessagesForThread(threadId);
         const mergedMap = new Map<string, ChatMessage>();
         currentMessages.forEach((msg: ChatMessage) => mergedMap.set(msg.id, msg));
-        olderMessages.forEach((msg: ChatMessage) => mergedMap.set(msg.id, msg));
+        let added = 0;
+        olderMessages.forEach((msg: ChatMessage) => {
+          if (!mergedMap.has(msg.id)) added += 1;
+          mergedMap.set(msg.id, msg);
+        });
+
+        // All rows already in cache (e.g. realtime raced): stop looping / unlock.
+        if (added === 0) {
+          setHasOlderMessages(hasMore);
+          hasOlderByThreadLocalRef.current[threadId] = hasMore;
+          unlockWithoutRestore();
+          return;
+        }
+
         const merged = Array.from(mergedMap.values()).sort(
           (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
         );
 
+        const nextPage = historyPage + 1;
         setMessagesForThread(threadId, merged);
         setHistoryPage(nextPage);
         historyPageByThreadRef.current[threadId] = nextPage;
-        if (hasMore) {
-          hasOlderByThreadLocalRef.current[threadId] = true;
-        }
+        setHasOlderMessages(hasMore);
+        hasOlderByThreadLocalRef.current[threadId] = hasMore;
       }
     } catch (error) {
       console.error("Error loading older messages:", error);
@@ -1142,11 +1159,19 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
       try {
         while (canLoadMore && page < 40) {
+          const currentMessages = getMessagesForThread(threadId);
+          const oldest = currentMessages[0];
+          if (!oldest?.created_at) {
+            setHasOlderMessages(false);
+            break;
+          }
+
           page += 1;
           const { messages: olderMessages, hasMore } =
             await supabaseMessagingService.getThreadMessages(threadId, {
-              page,
               limit: MESSAGES_PAGE_SIZE,
+              before: oldest.created_at,
+              beforeId: oldest.id,
             });
 
           if (!olderMessages.length) {
@@ -1156,15 +1181,23 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
           canLoadMore = hasMore;
           setHasOlderMessages(hasMore);
-          const currentMessages = getMessagesForThread(threadId);
           const mergedMap = new Map<string, ChatMessage>();
           currentMessages.forEach((msg) => mergedMap.set(msg.id, msg));
-          olderMessages.forEach((msg) => mergedMap.set(msg.id, msg));
+          let added = 0;
+          olderMessages.forEach((msg) => {
+            if (!mergedMap.has(msg.id)) added += 1;
+            mergedMap.set(msg.id, msg);
+          });
+          if (added === 0) {
+            setHasOlderMessages(false);
+            break;
+          }
           const merged = Array.from(mergedMap.values()).sort(
             (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
           );
           setMessagesForThread(threadId, merged);
           setHistoryPage(page);
+          historyPageByThreadRef.current[threadId] = page;
 
           if (hasMessage()) return true;
         }

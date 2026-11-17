@@ -44,7 +44,7 @@ const FriendsSidebar: React.FC<FriendsSidebarProps> = ({
               aria-current={isActive ? "page" : undefined}
               className={`group flex w-full items-center justify-between rounded-lg px-3 py-1.5 text-left transition-colors duration-200 ${
                 isActive
-                  ? "bg-orange-50 text-primary-600 dark:bg-orange-500/15 dark:text-orange-300"
+                  ? "bg-surface-secondary text-content"
                   : "text-content-secondary hover:bg-gray-50 hover:text-gray-700 dark:hover:bg-surface-hover dark:hover:text-content"
               }`}
             >
@@ -52,7 +52,7 @@ const FriendsSidebar: React.FC<FriendsSidebarProps> = ({
                 <Icon
                   className={`text-md transition-colors ${
                     isActive
-                      ? "text-primary-600 dark:text-orange-300"
+                      ? "text-content"
                       : "text-content-secondary group-hover:text-gray-600 dark:group-hover:text-content"
                   }`}
                 />

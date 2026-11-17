@@ -27,6 +27,7 @@ import { usePathname, useRouter } from "next/navigation";
 import React, { useEffect, useRef, useState } from "react";
 import { FaBars } from "react-icons/fa";
 import MobileSideDrawer from "../ui/MobileSideDrawer";
+import Logo from "../ui/Logo";
 import PlayMedia from "@/shared/icons/PlayMedia";
 import { Handbag } from "lucide-react";
 
@@ -153,9 +154,14 @@ const Header: React.FC<HeaderProps> = ({
             }
           >
             <div className="flex items-center flex-1 min-w-0 gap-3 sm:gap-4">
-              {/* Logo - Pinned to left */}
+              {/* Logo: full wordmark when there's room; icon-only on narrow screens */}
               <Link href="/" className="flex-shrink-0" aria-label="CribsTalk home">
-                <img src="/assets/images/logo_2.png" alt="CribsTalk" className="sm:w-40 w-32" />
+                <span className="hidden sm:block">
+                  <Logo variant="full" size="md" />
+                </span>
+                <span className="sm:hidden">
+                  <Logo variant="icon" size="md" />
+                </span>
               </Link>
 
               {/* Search Bar - Only when logged in; hidden on mobile, visible on tablet+ */}
@@ -228,6 +234,19 @@ const Header: React.FC<HeaderProps> = ({
 
 
                   <ThemeToggle />
+
+                  <Link
+                    href="/chat"
+                    className="relative p-1 sm:p-1.5 lg:p-2 text-content-tertiary hover:text-primary-600 transition-colors"
+                    aria-label="Messages"
+                  >
+                    <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5" />
+                    {unreadMessages > 0 && (
+                      <span className="absolute -top-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 sm:p-1 p-0.5 sm:text-xs text-[10px] font-medium text-white tabular-nums dark:bg-zinc-50 dark:text-zinc-950">
+                        {unreadMessages > 99 ? "99+" : unreadMessages}
+                      </span>
+                    )}
+                  </Link>
 
                   <div className="relative">
                     <button
@@ -372,8 +391,8 @@ const Header: React.FC<HeaderProps> = ({
                 <Link
                   href="/feed"
                   className={`flex items-center justify-center py-2 px-3 transition-colors ${pathname === "/feed"
-                    ? "text-primary-600"
-                    : "text-gray-500 hover:text-primary-600"
+                    ? "text-content"
+                    : "text-gray-500 hover:text-content"
                     }`}
                 >
                   <Home className="w-6 h-6" />
@@ -385,8 +404,8 @@ const Header: React.FC<HeaderProps> = ({
                 <Link
                   href="/reels/foryou"
                   className={`flex items-center justify-center py-2 px-3 transition-colors ${pathname?.startsWith("/reels")
-                    ? "text-primary-600"
-                    : "text-gray-500 hover:text-primary-600"
+                    ? "text-content"
+                    : "text-gray-500 hover:text-content"
                     }`}
                 >
                   <PlayMedia className="w-6 h-6" />
@@ -399,8 +418,8 @@ const Header: React.FC<HeaderProps> = ({
                 <Link
                   href="/chat"
                   className={`flex items-center justify-center py-2 px-3 transition-colors ${pathname === "/chat"
-                    ? "text-primary-600"
-                    : "text-gray-500 hover:text-primary-600"
+                    ? "text-content"
+                    : "text-gray-500 hover:text-content"
                     }`}
                 >
                   <MessageCircle className="w-6 h-6" />
@@ -417,8 +436,8 @@ const Header: React.FC<HeaderProps> = ({
                 <Link
                   href="/friends"
                   className={`flex items-center justify-center py-2 px-3 transition-colors ${pathname === "/friends"
-                    ? "text-primary-600"
-                    : "text-gray-500 hover:text-primary-600"
+                    ? "text-content"
+                    : "text-gray-500 hover:text-content"
                     }`}
                 >
                   <UserRound className="w-6 h-6" />
@@ -435,8 +454,8 @@ const Header: React.FC<HeaderProps> = ({
                 <Link
                   href="/marketplace"
                   className={`flex items-center justify-center py-2 px-3 transition-colors ${pathname === "/marketplace"
-                    ? "text-primary-600"
-                    : "text-gray-500 hover:text-primary-600"
+                    ? "text-content"
+                    : "text-gray-500 hover:text-content"
                     }`}
                 >
                   <Handbag className="w-6 h-6" />

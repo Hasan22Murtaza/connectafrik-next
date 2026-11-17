@@ -132,8 +132,8 @@ export default function AdminReelsPage() {
               }}
               className={`rounded-md border px-3 py-1.5 text-xs font-medium ${
                 filter === opt.value
-                  ? "border-primary-600 bg-primary-600 text-white"
-                  : "border-gray-200 bg-white text-gray-700 hover:bg-primary-50"
+                  ? "border-gray-400 bg-gray-200 text-gray-900"
+                  : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
               }`}
             >
               {opt.label}

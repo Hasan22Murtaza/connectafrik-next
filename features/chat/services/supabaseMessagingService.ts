@@ -689,30 +689,12 @@ const formatThread = async (thread: any, currentUserId: string): Promise<ChatThr
     thread.created_at ||
     new Date().toISOString()
 
-  // Get unread count for current user using a subquery approach
-  let unreadCount: number
-  if (typeof thread.unread_count === 'number' && Number.isFinite(thread.unread_count)) {
-    unreadCount = thread.unread_count
-  } else {
-    const { data: unreadMessages } = await supabase
-      .from('chat_messages')
-      .select('id')
-      .eq('thread_id', thread.id)
-      .neq('sender_id', currentUserId)
-
-    unreadCount = 0
-    if (unreadMessages && unreadMessages.length > 0) {
-      const messageIds = unreadMessages.map(m => m.id)
-      const { data: readMessages } = await supabase
-        .from('message_reads')
-        .select('message_id')
-        .in('message_id', messageIds)
-        .eq('user_id', currentUserId)
-
-      const readMessageIds = new Set((readMessages || []).map(r => r.message_id))
-      unreadCount = messageIds.filter(id => !readMessageIds.has(id)).length
-    }
-  }
+  // Prefer server-provided unread_count. Never scan full message history as a fallback
+  // (that was an N+1 / full-thread load on every list item missing the field).
+  const unreadCount =
+    typeof thread.unread_count === 'number' && Number.isFinite(thread.unread_count)
+      ? thread.unread_count
+      : 0
 
   const bannerFromEmbed =
     thread.group_banner && typeof thread.group_banner === 'object'
@@ -1420,34 +1402,61 @@ export const supabaseMessagingService = {
 
   async getThreadMessages(
     threadId: string,
-    options?: { limit?: number; page?: number; keyword?: string }
-  ): Promise<{ messages: ChatMessage[]; hasMore: boolean }> {
-    const limit = options?.limit ?? 50
+    options?: {
+      limit?: number
+      page?: number
+      keyword?: string
+      /** Cursor: load messages older than this timestamp (prefer over page). */
+      before?: string
+      /** Tie-breaker UUID for stable cursor pagination. */
+      beforeId?: string
+    }
+  ): Promise<{
+    messages: ChatMessage[]
+    hasMore: boolean
+    nextCursor?: { before: string; before_id: string } | null
+  }> {
+    const limit = options?.limit ?? 20
     const page = options?.page ?? 0
     const keyword = options?.keyword?.trim()
+    const before = options?.before?.trim()
+    const beforeId = options?.beforeId?.trim()
 
     const readPage = (res: unknown, pageSize: number) => {
       const payload = res as Record<string, unknown>
       const rawList = Array.isArray(payload)
         ? payload
-        : (Array.isArray(payload?.data) ? payload.data : []) as any[]
+        : ((Array.isArray(payload?.data) ? payload.data : []) as any[])
       const hasMore =
         typeof payload?.hasMore === 'boolean'
           ? payload.hasMore
           : rawList.length >= pageSize
-      return { rawList, hasMore }
+      const nextCursor =
+        payload?.nextCursor &&
+        typeof payload.nextCursor === 'object' &&
+        payload.nextCursor !== null
+          ? (payload.nextCursor as { before: string; before_id: string })
+          : null
+      return { rawList, hasMore, nextCursor }
     }
 
     try {
       if (!keyword) {
+        const params: Record<string, string | number> = { limit }
+        if (before) {
+          params.before = before
+          if (beforeId) params.before_id = beforeId
+        } else {
+          params.page = page
+        }
         const res = await apiClient.get<Record<string, unknown>>(
           `/api/chat/threads/${threadId}/messages`,
-          { limit, page }
+          params
         )
-        const { rawList, hasMore } = readPage(res, limit)
+        const { rawList, hasMore, nextCursor } = readPage(res, limit)
         if (fallbackEnabled) fallbackEnabled = false
         const messages = await Promise.all(rawList.map((m: any) => showStoredMessage(m)))
-        return { messages, hasMore }
+        return { messages, hasMore, nextCursor }
       }
 
       const needle = keyword.toLowerCase()
@@ -1473,6 +1482,7 @@ export const supabaseMessagingService = {
       return {
         messages: matched.slice(start, start + limit),
         hasMore: dbHasMore || matched.length > start + limit,
+        nextCursor: null,
       }
     } catch (error) {
       console.error('Error in getThreadMessages:', error)
@@ -1482,11 +1492,36 @@ export const supabaseMessagingService = {
         const k = keyword.toLowerCase()
         list = list.filter((m) => (m.content || '').toLowerCase().includes(k))
       }
-      const from = page * limit
-      const slice = list.slice(from, from + limit)
+      // Local fallback: newest-first storage is not guaranteed; sort then page from end.
+      const sorted = [...list].sort(
+        (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+      )
+      if (before) {
+        const beforeMs = Date.parse(before)
+        const older = sorted.filter((m) => {
+          const ms = Date.parse(m.created_at)
+          if (!Number.isFinite(beforeMs) || !Number.isFinite(ms)) return false
+          if (ms < beforeMs) return true
+          if (ms > beforeMs) return false
+          return beforeId ? m.id < beforeId : false
+        })
+        const slice = older.slice(Math.max(0, older.length - limit))
+        return {
+          messages: slice,
+          hasMore: older.length > limit,
+          nextCursor:
+            older.length > limit && slice[0]
+              ? { before: slice[0].created_at, before_id: slice[0].id }
+              : null,
+        }
+      }
+      const fromEnd = Math.max(0, sorted.length - (page + 1) * limit)
+      const toEnd = sorted.length - page * limit
+      const slice = sorted.slice(fromEnd, Math.max(fromEnd, toEnd))
       return {
         messages: slice,
-        hasMore: from + slice.length < list.length,
+        hasMore: fromEnd > 0,
+        nextCursor: null,
       }
     }
   },

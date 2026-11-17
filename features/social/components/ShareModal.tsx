@@ -112,7 +112,7 @@ const MemberAvatar: React.FC<{
   >
     <div
       className={`relative rounded-full p-0.5 transition-colors ${
-        selected ? "ring-2 ring-[#F97316] ring-offset-1" : ""
+        selected ? "ring-2 ring-content ring-offset-1" : ""
       }`}
     >
       {avatarUrl ? (

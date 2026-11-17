@@ -607,7 +607,7 @@ const ProductDetailPage: React.FC = () => {
                       onClick={() => setSelectedImage(index)}
                       className={`shrink-0 w-16 h-16 rounded-lg overflow-hidden ring-2 transition-all duration-200 ${
                         selectedImage === index
-                          ? "ring-primary-600 opacity-100"
+                          ? "ring-content opacity-100"
                           : "ring-transparent opacity-70 hover:opacity-100"
                       }`}
                       aria-label={`View image ${index + 1}`}
@@ -634,7 +634,7 @@ const ProductDetailPage: React.FC = () => {
                       onClick={() => setSelectedImage(index)}
                       className={`h-1.5 rounded-full transition-all duration-300 ${
                         selectedImage === index
-                          ? "w-5 bg-primary-600"
+                          ? "w-5 bg-content"
                           : "w-1.5 bg-border hover:bg-content-tertiary"
                       }`}
                       aria-label={`Go to image ${index + 1}`}

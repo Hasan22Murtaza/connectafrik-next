@@ -350,14 +350,15 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
     }
 
     const haveThread =
-      Boolean(seedThread?.id === threadId) || threads.some((t) => t.id === threadId)
+      Boolean(seedThread?.id === threadId) ||
+      threadsRef.current.some((t) => t.id === threadId)
 
     if (!haveThread && currentUser) {
       try {
         let thread = await supabaseMessagingService.fetchThreadDetail(currentUser.id, threadId)
         if (!thread) {
           const { threads: userThreads } = await supabaseMessagingService.getUserThreads(currentUser, {
-            limit: 100,
+            limit: 20,
             page: 0,
           })
           thread = userThreads.find((t) => t.id === threadId) ?? null
@@ -383,7 +384,7 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('openChatThread', { detail: { threadId } }))
     }
-  }, [threads, currentUser])
+  }, [currentUser])
 
   const closeThread = useCallback((threadId: string) => {
     setOpenThreads(prev => prev.filter(id => id !== threadId))
@@ -819,11 +820,8 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
         return null
       }
 
-      const { threads: userThreads } = await supabaseMessagingService.getUserThreads(currentUser, {
-        limit: 100,
-        page: 0,
-      })
-      const createdThread = userThreads.find(t => t.id === threadId)
+      const createdThread =
+        (await supabaseMessagingService.fetchThreadDetail(currentUser.id, threadId)) ?? null
 
       let threadToAdd: ChatThread | null = null
 
@@ -1689,7 +1687,7 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
         try {
           const { messages: threadMessages, hasMore } = await supabaseMessagingService.getThreadMessages(
             threadId,
-            { limit: 50, page: 0 },
+            { limit: 20, page: 0 },
           )
           setHasOlderByThread((prev) => ({ ...prev, [threadId]: hasMore }))
           setMessages(prev => {
@@ -1816,7 +1814,8 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
     return () => {
       unsubscribeCallbacks.forEach(unsubscribe => unsubscribe())
     }
-  }, [currentUser, openThreads, clearCallRequest, isThreadUnlocked, unlockedThreadKey, threads])
+    // Use threadsRef for lock checks — do not resubscribe when thread list metadata changes.
+  }, [currentUser, openThreads, clearCallRequest, isThreadUnlocked, unlockedThreadKey])
 
   useEffect(() => {
     if (!currentUser?.id) return

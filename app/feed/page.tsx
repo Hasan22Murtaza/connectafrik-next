@@ -392,8 +392,8 @@ const FeedPage: React.FC = () => {
                 }}
                 className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors cursor-pointer ${
                   explorationBoost
-                    ? 'border-primary-500 bg-primary-50 text-orange-500'
-                    : 'border-border bg-surface text-content-secondary hover:border-primary-200 hover:text-primary-600'
+                    ? 'border-border-strong bg-surface-secondary text-content'
+                    : 'border-border bg-surface text-content-secondary hover:border-border-strong hover:text-content'
                 }`}
               >
                 <Sparkles className="h-3.5 w-3.5" />
@@ -408,10 +408,10 @@ const FeedPage: React.FC = () => {
                     key={id}
                     type="button"
                     onClick={() => setActiveCategory(id)}
-                    className={`flex items-center gap-1 rounded-full border sm:px-4 px-3 sm:py-1 py-2 text-sm transition-colors focus:outline-none focus:ring-1 focus:ring-orange-400 cursor-pointer ${
+                    className={`flex items-center gap-1 rounded-full border sm:px-4 px-3 sm:py-1 py-2 text-sm transition-colors focus:outline-none focus:ring-1 focus:ring-border-strong cursor-pointer ${
                       isActive
-                        ? 'border-orange-400 bg-primary-50 text-orange-600'
-                        : 'border-border bg-surface-secondary text-content-secondary hover:border-orange-400 hover:text-orange-600 hover:bg-primary-50'
+                        ? 'border-border-strong bg-surface-secondary text-content'
+                        : 'border-border bg-surface-secondary text-content-secondary hover:border-border-strong hover:text-content hover:bg-surface-hover'
                     }`}
                   >
                     <Icon className="h-3 w-3" />

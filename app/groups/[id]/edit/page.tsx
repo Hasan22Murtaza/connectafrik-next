@@ -531,7 +531,7 @@ const EditGroupPage: React.FC = () => {
               <div className="overflow-hidden rounded-[16px] border border-border-subtle bg-surface">
                 <label
                   className={`flex min-h-11 cursor-pointer items-center justify-between gap-4 px-4 py-3.5 transition-colors duration-200 sm:px-5 ${
-                    formData.is_public ? 'bg-primary/10' : 'hover:bg-surface-hover'
+                    formData.is_public ? 'bg-surface-secondary' : 'hover:bg-surface-hover'
                   }`}
                 >
                   <input
@@ -542,7 +542,7 @@ const EditGroupPage: React.FC = () => {
                     className="sr-only"
                   />
                   <div className="flex min-w-0 items-start gap-3">
-                    <div className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-[12px] transition-colors duration-200 ${formData.is_public ? 'bg-primary/15 text-primary' : 'bg-surface-secondary text-content-secondary'}`}>
+                    <div className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-[12px] transition-colors duration-200 ${formData.is_public ? 'bg-surface-tertiary text-content' : 'bg-surface-secondary text-content-secondary'}`}>
                       <Globe className="h-[18px] w-[18px]" aria-hidden />
                     </div>
                     <div className="min-w-0">
@@ -557,7 +557,7 @@ const EditGroupPage: React.FC = () => {
                 <div className="h-px bg-border-subtle" />
                 <label
                   className={`flex min-h-11 cursor-pointer items-center justify-between gap-4 px-4 py-3.5 transition-colors duration-200 sm:px-5 ${
-                    !formData.is_public ? 'bg-primary/10' : 'hover:bg-surface-hover'
+                    !formData.is_public ? 'bg-surface-secondary' : 'hover:bg-surface-hover'
                   }`}
                 >
                   <input
@@ -568,7 +568,7 @@ const EditGroupPage: React.FC = () => {
                     className="sr-only"
                   />
                   <div className="flex min-w-0 items-start gap-3">
-                    <div className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-[12px] transition-colors duration-200 ${!formData.is_public ? 'bg-primary/15 text-primary' : 'bg-surface-secondary text-content-secondary'}`}>
+                    <div className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-[12px] transition-colors duration-200 ${!formData.is_public ? 'bg-surface-tertiary text-content' : 'bg-surface-secondary text-content-secondary'}`}>
                       <Lock className="h-[18px] w-[18px]" aria-hidden />
                     </div>
                     <div className="min-w-0">

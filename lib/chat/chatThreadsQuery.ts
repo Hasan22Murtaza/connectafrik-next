@@ -59,6 +59,42 @@ const THREAD_SELECT = `
   )
 `
 
+/**
+ * Load only enough threads for the requested page instead of the full inbox.
+ * Walks DB-ordered batches (last_message_at DESC) and dedupes by participant set.
+ */
+async function fetchPagedThreads(
+  buildOrderedQuery: () => any,
+  from: number,
+  limit: number
+): Promise<{ threads: any[]; hasMore: boolean }> {
+  const needed = from + limit + 1
+  const batchSize = Math.min(Math.max(limit * 2, 40), 100)
+  const collected: any[] = []
+  let dbOffset = 0
+  let exhausted = false
+
+  while (collected.length < needed && !exhausted) {
+    const res = await buildOrderedQuery().range(dbOffset, dbOffset + batchSize - 1)
+    if (res.error) throw new Error(res.error.message)
+    const rows = res.data || []
+    if (rows.length === 0) {
+      exhausted = true
+      break
+    }
+    dbOffset += rows.length
+    if (rows.length < batchSize) exhausted = true
+    const merged = deduplicateThreadsByParticipants([...collected, ...rows])
+    collected.length = 0
+    collected.push(...merged)
+  }
+
+  return {
+    threads: collected.slice(from, from + limit),
+    hasMore: collected.length > from + limit || !exhausted,
+  }
+}
+
 const mapRpcRowsToThreadShape = (rows: any[]) => {
   return rows.map((row: any) => {
     const lastTimestamp = row.last_message_at ?? new Date().toISOString()
@@ -226,13 +262,13 @@ export async function queryUserThreads(
   const { user, supabase } = await getAuthenticatedUser(request)
   const { searchParams } = new URL(request.url)
 
-  const parsedLimit = parseInt(searchParams.get('limit') || '50', 10)
+  const parsedLimit = parseInt(searchParams.get('limit') || '20', 10)
   const parsedPage = parseInt(searchParams.get('page') || '0', 10)
   const limit =
     typeof options.limit === 'number'
       ? Math.min(Math.max(options.limit, 1), 100)
       : Number.isNaN(parsedLimit)
-        ? 50
+        ? 20
         : Math.min(Math.max(parsedLimit, 1), 100)
   const page =
     typeof options.page === 'number'
@@ -396,50 +432,44 @@ export async function queryUserThreads(
     return emptyResult()
   }
 
-  let threads: any[] | null = null
-  let dedupedTotal = 0
-  let threadError: any = null
+  let threads: any[] = []
+  let hasMore = false
 
   if (groupId) {
-    const allGroupThreadsRes = await serviceClient
-      .from('chat_threads')
-      .select(THREAD_SELECT)
-      .eq('group_id', groupId)
-      .eq('type', 'group')
-      .in('id', threadIds)
-      .order('last_message_at', { ascending: false, nullsFirst: false })
-
-    threadError = allGroupThreadsRes.error
-    if (!threadError) {
-      const deduped = deduplicateThreadsByParticipants(allGroupThreadsRes.data || [])
-      dedupedTotal = deduped.length
-      threads = deduped.slice(from, to + 1)
-    }
+    const paged = await fetchPagedThreads(
+      () =>
+        serviceClient
+          .from('chat_threads')
+          .select(THREAD_SELECT)
+          .eq('group_id', groupId)
+          .eq('type', 'group')
+          .in('id', threadIds)
+          .order('last_message_at', { ascending: false, nullsFirst: false }),
+      from,
+      limit
+    )
+    threads = paged.threads
+    hasMore = paged.hasMore
   } else {
-    let threadsQuery = serviceClient.from('chat_threads').select(THREAD_SELECT).in('id', threadIds)
-
-    if (filter === 'groups') {
-      threadsQuery = threadsQuery.eq('type', 'group')
-    } else if (category === 'marketplace') {
-      threadsQuery = threadsQuery.eq('type', 'marketplace')
-    } else if (category === 'general') {
-      threadsQuery = threadsQuery.neq('type', 'marketplace')
-    }
-
-    const threadsRes = await threadsQuery.order('last_message_at', {
-      ascending: false,
-      nullsFirst: false,
-    })
-
-    threadError = threadsRes.error
-    if (!threadError) {
-      const deduped = deduplicateThreadsByParticipants(threadsRes.data || [])
-      dedupedTotal = deduped.length
-      threads = deduped.slice(from, to + 1)
-    }
+    const paged = await fetchPagedThreads(
+      () => {
+        let q = serviceClient.from('chat_threads').select(THREAD_SELECT).in('id', threadIds)
+        if (filter === 'groups') {
+          q = q.eq('type', 'group')
+        } else if (category === 'marketplace') {
+          q = q.eq('type', 'marketplace')
+        } else if (category === 'general') {
+          q = q.neq('type', 'marketplace')
+        }
+        return q.order('last_message_at', { ascending: false, nullsFirst: false })
+      },
+      from,
+      limit
+    )
+    threads = paged.threads
+    hasMore = paged.hasMore
   }
 
-  if (threadError) throw new Error(threadError.message)
   if (!threads || threads.length === 0) {
     return emptyResult()
   }
@@ -462,8 +492,15 @@ export async function queryUserThreads(
     }
   })
 
+  // Re-sort page by activity after prefs attach (matches prior inbox ordering).
+  result.sort((a, b) => {
+    const pinDiff = Number(Boolean(b.pinned)) - Number(Boolean(a.pinned))
+    if (pinDiff !== 0) return pinDiff
+    return getThreadActivityTime(b) - getThreadActivityTime(a)
+  })
+
   return {
     data: await sanitizeThreadsPresence(result, user.id),
-    meta: { page, pageSize: limit, hasMore: dedupedTotal > to + 1 },
+    meta: { page, pageSize: limit, hasMore },
   }
 }

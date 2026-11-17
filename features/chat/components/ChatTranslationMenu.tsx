@@ -43,8 +43,8 @@ export default function ChatTranslationMenu({
         }}
         className={`flex h-9 w-9 items-center justify-center rounded-full transition ${
           value !== 'off'
-            ? 'text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-950/40'
-            : ' text-content-tertiary transition duration-200 hover:bg-orange-500 hover:text-white dark:text-content-secondary dark:hover:bg-surface-hover'
+            ? 'text-content hover:bg-surface-hover'
+            : ' text-content-tertiary transition duration-200 hover:bg-surface-hover hover:text-content dark:text-content-secondary'
         } disabled:cursor-not-allowed disabled:opacity-40`}
         aria-expanded={open}
         aria-haspopup="menu"
@@ -75,7 +75,7 @@ export default function ChatTranslationMenu({
                   setOpen(false)
                 }}
                 className={`w-full px-3 py-1.5 text-left text-sm transition hover:bg-surface-hover ${
-                  selected ? 'font-medium text-primary-600' : 'text-content'
+                  selected ? 'font-medium text-content' : 'text-content'
                 }`}
               >
                 {language.label}

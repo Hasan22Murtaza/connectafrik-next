@@ -78,7 +78,7 @@ export default function ChatCloseView({ onFocusSearch }: ChatCloseViewProps) {
         let hasMore = true;
         while (hasMore) {
           const result = await supabaseMessagingService.getUserThreads(currentUser, {
-            limit: 50,
+            limit: 20,
             page,
             category: "general",
           });
@@ -385,7 +385,7 @@ export default function ChatCloseView({ onFocusSearch }: ChatCloseViewProps) {
                       return (
                         <li key={thread.id}>
                           <label
-                            className={`group flex cursor-pointer items-center gap-3 px-4 py-3 transition ${selected ? "bg-[#FB700E]/5" : "hover:bg-surface-hover"} ${sending ? "cursor-not-allowed opacity-60" : ""}`}
+                            className={`group flex cursor-pointer items-center gap-3 px-4 py-3 transition ${selected ? "bg-surface-secondary" : "hover:bg-surface-hover"} ${sending ? "cursor-not-allowed opacity-60" : ""}`}
                           >
                             <input
                               type="checkbox"
@@ -397,7 +397,7 @@ export default function ChatCloseView({ onFocusSearch }: ChatCloseViewProps) {
                             />
                             <span
                               aria-hidden="true"
-                              className={`flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-[4px] border transition peer-focus-visible:ring-2 peer-focus-visible:ring-[#FB700E]/40 ${selected ? "border-[#FB700E] bg-[#FB700E] text-white" : "border-gray-400 bg-surface group-hover:border-[#FB700E]"}`}
+                              className={`flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-[4px] border transition peer-focus-visible:ring-2 peer-focus-visible:ring-content/30 ${selected ? "border-content bg-content text-white" : "border-gray-400 bg-surface group-hover:border-content"}`}
                             >
                               {selected ? <Check className="h-3.5 w-3.5" strokeWidth={3} /> : null}
                             </span>

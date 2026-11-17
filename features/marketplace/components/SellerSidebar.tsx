@@ -29,7 +29,7 @@ export function SellerMobileNav() {
           onClick={() => router.push(item.path)}
           className={`shrink-0 px-3 py-1.5 rounded-full text-sm font-medium ${
             activeId === item.id
-              ? "bg-primary-50 text-primary-600"
+              ? "bg-surface-tertiary text-content"
               : "bg-surface-secondary text-content-secondary"
           }`}
         >
