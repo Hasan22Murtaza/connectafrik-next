@@ -586,7 +586,7 @@ export async function getMonitoringSnapshot(
       status: row.is_deleted ? 'blocked' : 'success',
       severity: 'info',
       timestamp: row.created_at,
-      href: `/reels?id=${row.id}`,
+      href: `/reels/${row.id}`,
       metadata: { is_deleted: row.is_deleted },
     })
   }
@@ -793,7 +793,7 @@ export async function getMonitoringSnapshot(
       reports: 0,
       status: row.is_deleted ? 'removed' : 'published',
       created_at: row.created_at,
-      href: `/reels?id=${row.id}`,
+      href: `/reels/${row.id}`,
     })
   }
 

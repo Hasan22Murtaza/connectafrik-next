@@ -3,12 +3,16 @@ import { getAuthenticatedUser, createServiceClient, getAccessTokenFromRequest } 
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
 
 const REEL_SELECT = `
-  *,
+  id, author_id, title, description, video_url, thumbnail_url, duration, aspect_ratio,
+  category, tags, likes_count, comments_count, shares_count, views_count, saves_count,
+  reposts_count, is_public, is_featured, engagement_score, created_at, updated_at,
   profiles:profiles!reels_author_id_fkey(username, full_name, avatar_url)
 `
 
 const REEL_SELECT_LOCATION = `
-  *,
+  id, author_id, title, description, video_url, thumbnail_url, duration, aspect_ratio,
+  category, tags, likes_count, comments_count, shares_count, views_count, saves_count,
+  reposts_count, is_public, is_featured, engagement_score, created_at, updated_at,
   profiles:profiles!reels_author_id_fkey!inner(username, full_name, avatar_url, country)
 `
 
@@ -302,8 +306,17 @@ export async function POST(request: NextRequest) {
       is_public,
     } = body
 
-    if (!title || !video_url || duration == null) {
-      return errorResponse('title, video_url, and duration are required', 400)
+    if (!title || typeof title !== 'string' || !title.trim()) {
+      return errorResponse('title is required', 400)
+    }
+    if (!video_url || typeof video_url !== 'string') {
+      return errorResponse('video_url is required', 400)
+    }
+    if (duration == null || Number.isNaN(Number(duration)) || Number(duration) <= 0) {
+      return errorResponse('duration must be a positive number', 400)
+    }
+    if (Number(duration) > 600) {
+      return errorResponse('duration exceeds the maximum allowed length', 400)
     }
 
     const resolvedCategory =

@@ -357,7 +357,7 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onC
         case 'reel_comment_like': {
           const reelId = data.reel_id || data.content_id
           if (reelId) {
-            router.push(`/reels?reel=${reelId}`)
+            router.push(`/reels/${reelId}`)
           } else if (fallbackUrl) {
             router.push(fallbackUrl)
           } else {

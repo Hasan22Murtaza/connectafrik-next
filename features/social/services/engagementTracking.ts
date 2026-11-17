@@ -291,7 +291,10 @@ export const trackEvent = {
     logEngagementEvent({ userId, postId, type: 'save', contentType }),
 
   watch: (userId: string, postId: string, percentViewed: number, contentType: 'post' | 'reel' = 'post') =>
-    logEngagementEvent({ userId, postId, type: 'watch', percentViewed, contentType })
+    logEngagementEvent({ userId, postId, type: 'watch', percentViewed, contentType }),
+
+  notInterested: (userId: string, postId: string, contentType: 'post' | 'reel' = 'post') =>
+    logEngagementEvent({ userId, postId, type: 'not_interested', contentType }),
 }
 
 export default {

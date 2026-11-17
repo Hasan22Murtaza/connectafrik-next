@@ -1,13 +1,18 @@
 import { createServiceClient } from '@/lib/supabase-server'
 import { jsonResponse } from '@/lib/api-utils'
 
+/** Lean feed payload — only fields needed to render a reel slide/card. */
 export const REEL_SELECT = `
-  *,
+  id, author_id, title, description, video_url, thumbnail_url, duration, aspect_ratio,
+  category, tags, likes_count, comments_count, shares_count, views_count, saves_count,
+  reposts_count, is_public, is_featured, engagement_score, created_at, updated_at,
   profiles:profiles!reels_author_id_fkey(username, full_name, avatar_url)
 `
 
 export const REEL_SELECT_LOCATION = `
-  *,
+  id, author_id, title, description, video_url, thumbnail_url, duration, aspect_ratio,
+  category, tags, likes_count, comments_count, shares_count, views_count, saves_count,
+  reposts_count, is_public, is_featured, engagement_score, created_at, updated_at,
   profiles:profiles!reels_author_id_fkey!inner(username, full_name, avatar_url, country)
 `
 

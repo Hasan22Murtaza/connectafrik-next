@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useCallback, useEffect, useRef, useState } from 'react'
+import Link from 'next/link'
 import {
   Heart,
   Bookmark,
@@ -12,12 +13,18 @@ import {
   Trash2,
   MoreVertical,
   Repeat2,
-  ThumbsUp,
+  Volume2,
+  VolumeX,
+  Link2,
+  Flag,
+  EyeOff,
+  UserPlus,
 } from '@/shared/icons'
 import { useAuth } from '@/contexts/AuthContext'
 import { useReelInteractions } from '@/shared/hooks/useReels'
 import { Reel } from '@/shared/types/reels'
 import { trackEvent, VideoWatchTracker } from '@/features/social/services/engagementTracking'
+import { followUser, unfollowUser } from '@/features/social/services/followService'
 import toast from 'react-hot-toast'
 import { HeartIcon } from 'lucide-react'
 
@@ -64,6 +71,8 @@ export interface ReelShortsSlideProps {
   isOwner: boolean
   onEdit: () => void
   onDelete: () => void
+  onReport?: () => void
+  onNotInterested?: () => void
 }
 
 const ReelShortsSlide: React.FC<ReelShortsSlideProps> = ({
@@ -76,6 +85,8 @@ const ReelShortsSlide: React.FC<ReelShortsSlideProps> = ({
   isOwner,
   onEdit,
   onDelete,
+  onReport,
+  onNotInterested,
 }) => {
   const { user } = useAuth()
   const { toggleLike, toggleSave, toggleRepost, recordView, shareReel, loading: interactionLoading } =
@@ -87,11 +98,17 @@ const ReelShortsSlide: React.FC<ReelShortsSlideProps> = ({
   const tapCountRef = useRef(0)
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const wakeLockRef = useRef<WakeLockSentinel | null>(null)
+  const viewRecordedRef = useRef(false)
 
   const [isPlaying, setIsPlaying] = useState(true)
+  const [isMuted, setIsMuted] = useState(false)
+  const [progress, setProgress] = useState(0)
+  const [mediaError, setMediaError] = useState(false)
   const [isLiked, setIsLiked] = useState(Boolean(reel.is_liked))
   const [isSaved, setIsSaved] = useState(Boolean(reel.is_saved))
   const [isReposted, setIsReposted] = useState(Boolean(reel.is_reposted))
+  const [isFollowing, setIsFollowing] = useState(Boolean(reel.is_following))
+  const [followBusy, setFollowBusy] = useState(false)
   const [likesCount, setLikesCount] = useState(reel.likes_count)
   const [savesCount, setSavesCount] = useState(reel.saves_count ?? 0)
   const [repostsCount, setRepostsCount] = useState(reel.reposts_count ?? 0)
@@ -103,6 +120,21 @@ const ReelShortsSlide: React.FC<ReelShortsSlideProps> = ({
 
   const username = reel.profiles?.username || 'user'
   const displayName = reel.profiles?.full_name || username
+  const profileHref = `/user/${username}`
+
+  useEffect(() => {
+    setIsLiked(Boolean(reel.is_liked))
+    setIsSaved(Boolean(reel.is_saved))
+    setIsReposted(Boolean(reel.is_reposted))
+    setIsFollowing(Boolean(reel.is_following))
+    setLikesCount(reel.likes_count)
+    setSavesCount(reel.saves_count ?? 0)
+    setRepostsCount(reel.reposts_count ?? 0)
+    setSharesCount(reel.shares_count ?? 0)
+    setMediaError(false)
+    setProgress(0)
+    viewRecordedRef.current = Boolean(reel.is_viewed)
+  }, [reel])
 
   const releaseWakeLock = useCallback(async () => {
     try {
@@ -131,11 +163,12 @@ const ReelShortsSlide: React.FC<ReelShortsSlideProps> = ({
       if (document.hidden && videoRef.current) {
         videoRef.current.pause()
         setIsPlaying(false)
+        void releaseWakeLock()
       }
     }
     document.addEventListener('visibilitychange', onVis)
     return () => document.removeEventListener('visibilitychange', onVis)
-  }, [])
+  }, [releaseWakeLock])
 
   useEffect(() => {
     const v = videoRef.current
@@ -145,6 +178,7 @@ const ReelShortsSlide: React.FC<ReelShortsSlideProps> = ({
       void playVideoPreferUnmuted(v).then((ok) => {
         if (ok) {
           setIsPlaying(true)
+          setIsMuted(v.muted)
           void requestWakeLock()
         } else {
           setIsPlaying(false)
@@ -158,6 +192,7 @@ const ReelShortsSlide: React.FC<ReelShortsSlideProps> = ({
       } catch {
         /* no-op */
       }
+      setProgress(0)
       void releaseWakeLock()
       if (videoRef.current) {
         watchTrackerRef.current?.cleanup(videoRef.current.currentTime)
@@ -176,18 +211,20 @@ const ReelShortsSlide: React.FC<ReelShortsSlideProps> = ({
   }, [releaseWakeLock])
 
   useEffect(() => {
-    if (isPlaying && isActive && user) {
+    if (isPlaying && isActive && user && !viewRecordedRef.current) {
+      viewRecordedRef.current = true
       void recordView()
     }
   }, [isPlaying, isActive, user, recordView])
 
   const togglePlayPause = useCallback(() => {
     const v = videoRef.current
-    if (!v || !loadMedia) return
+    if (!v || !loadMedia || mediaError) return
     if (v.paused) {
       void playVideoPreferUnmuted(v).then((ok) => {
         if (ok) {
           setIsPlaying(true)
+          setIsMuted(v.muted)
           setShowPlayIcon(true)
           void requestWakeLock()
           window.setTimeout(() => setShowPlayIcon(false), 600)
@@ -200,7 +237,15 @@ const ReelShortsSlide: React.FC<ReelShortsSlideProps> = ({
       void releaseWakeLock()
       window.setTimeout(() => setShowPlayIcon(false), 600)
     }
-  }, [loadMedia, requestWakeLock, releaseWakeLock])
+  }, [loadMedia, mediaError, requestWakeLock, releaseWakeLock])
+
+  const toggleMute = useCallback((e?: React.SyntheticEvent) => {
+    e?.stopPropagation()
+    const v = videoRef.current
+    if (!v) return
+    v.muted = !v.muted
+    setIsMuted(v.muted)
+  }, [])
 
   const runLike = useCallback(
     async (fromDoubleTap: boolean) => {
@@ -213,23 +258,32 @@ const ReelShortsSlide: React.FC<ReelShortsSlideProps> = ({
         window.setTimeout(() => setShowHeartBurst(false), 900)
         return
       }
+      const prevLiked = isLiked
+      const prevCount = likesCount
+      setIsLiked(!prevLiked)
+      setLikesCount((c) => (prevLiked ? Math.max(0, c - 1) : c + 1))
+      if (fromDoubleTap) {
+        setShowHeartBurst(true)
+        window.setTimeout(() => setShowHeartBurst(false), 900)
+      }
       try {
-        const { success, error } = await toggleLike()
+        const { success, liked, error } = await toggleLike()
         if (success) {
-          const wasLiked = isLiked
-          setIsLiked(!wasLiked)
-          setLikesCount((c) => (wasLiked ? Math.max(0, c - 1) : c + 1))
+          setIsLiked(liked)
+          setLikesCount(liked ? prevCount + (prevLiked ? 0 : 1) : Math.max(0, prevLiked ? prevCount - 1 : prevCount))
           onLikeTracked?.(reel.id)
-          if (fromDoubleTap) {
-            setShowHeartBurst(true)
-            window.setTimeout(() => setShowHeartBurst(false), 900)
-          }
-        } else if (error) toast.error(error)
+        } else {
+          setIsLiked(prevLiked)
+          setLikesCount(prevCount)
+          if (error) toast.error(error)
+        }
       } catch {
+        setIsLiked(prevLiked)
+        setLikesCount(prevCount)
         toast.error('Failed to update like')
       }
     },
-    [user, toggleLike, onLikeTracked, reel.id, isLiked]
+    [user, toggleLike, onLikeTracked, reel.id, isLiked, likesCount]
   )
 
   const handleLikeButton = useCallback(() => {
@@ -241,20 +295,27 @@ const ReelShortsSlide: React.FC<ReelShortsSlideProps> = ({
       toast.error('Please sign in to save reels')
       return
     }
+    const prevSaved = isSaved
+    const prevCount = savesCount
+    setIsSaved(!prevSaved)
+    setSavesCount((c) => (prevSaved ? Math.max(0, c - 1) : c + 1))
     try {
-      const { success, error } = await toggleSave()
+      const { success, saved, error } = await toggleSave()
       if (!success) {
+        setIsSaved(prevSaved)
+        setSavesCount(prevCount)
         if (error) toast.error(error)
         return
       }
-      const wasSaved = isSaved
-      setIsSaved(!wasSaved)
-      setSavesCount((c) => (wasSaved ? Math.max(0, c - 1) : c + 1))
+      setIsSaved(saved)
+      setSavesCount(saved ? (prevSaved ? prevCount : prevCount + 1) : Math.max(0, prevSaved ? prevCount - 1 : prevCount))
       trackEvent.save(user.id, reel.id, 'reel')
     } catch {
+      setIsSaved(prevSaved)
+      setSavesCount(prevCount)
       toast.error('Failed to update save')
     }
-  }, [user, toggleSave, isSaved, reel.id])
+  }, [user, toggleSave, isSaved, savesCount, reel.id])
 
   const handleRepostButton = useCallback(async () => {
     if (!user) {
@@ -280,6 +341,56 @@ const ReelShortsSlide: React.FC<ReelShortsSlideProps> = ({
       toast.error('Failed to update repost')
     }
   }, [user, toggleRepost, isReposted, reel.id])
+
+  const handleFollow = useCallback(async () => {
+    if (!user) {
+      toast.error('Please sign in to follow creators')
+      return
+    }
+    if (!reel.author_id || reel.author_id === user.id || followBusy) return
+    setFollowBusy(true)
+    try {
+      if (isFollowing) {
+        const ok = await unfollowUser(user.id, reel.author_id)
+        if (ok) {
+          setIsFollowing(false)
+          toast.success('Unfollowed')
+        } else toast.error('Could not unfollow')
+      } else {
+        const ok = await followUser(user.id, reel.author_id)
+        if (ok) {
+          setIsFollowing(true)
+          toast.success('Following')
+        } else toast.error('Could not follow')
+      }
+    } catch {
+      toast.error('Failed to update follow')
+    } finally {
+      setFollowBusy(false)
+    }
+  }, [user, reel.author_id, isFollowing, followBusy])
+
+  const handleCopyLink = useCallback(async () => {
+    const url =
+      typeof window !== 'undefined'
+        ? `${window.location.origin}/reels/${reel.id}`
+        : `/reels/${reel.id}`
+    try {
+      await navigator.clipboard.writeText(url)
+      toast.success('Link copied')
+      if (user) {
+        try {
+          await shareReel('copy_link')
+          setSharesCount((c) => c + 1)
+        } catch {
+          /* no-op */
+        }
+      }
+    } catch {
+      toast.error('Could not copy link')
+    }
+    setOptionsOpen(false)
+  }, [reel.id, user, shareReel])
 
   const handleVideoAreaTap = useCallback(() => {
     tapCountRef.current += 1
@@ -329,7 +440,11 @@ const ReelShortsSlide: React.FC<ReelShortsSlideProps> = ({
 
   const handleTimeUpdate = useCallback(() => {
     const v = videoRef.current
-    if (v) watchTrackerRef.current?.updateProgress(v.currentTime)
+    if (!v) return
+    watchTrackerRef.current?.updateProgress(v.currentTime)
+    if (v.duration > 0) {
+      setProgress(Math.min(1, v.currentTime / v.duration))
+    }
   }, [])
 
   const handleShare = useCallback(async () => {
@@ -360,6 +475,75 @@ const ReelShortsSlide: React.FC<ReelShortsSlideProps> = ({
       className={`${size} ${isLiked ? 'fill-red-600 text-red-600' : ''}`}
       strokeWidth={isLiked ? 0 : 2}
     />
+  )
+
+  const creatorRow = (overlay: boolean) => (
+    <div className="flex items-center gap-2.5">
+      <Link
+        href={profileHref}
+        className="shrink-0"
+        onClick={(e) => e.stopPropagation()}
+        onPointerDown={(e) => e.stopPropagation()}
+      >
+        {reel.profiles?.avatar_url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={reel.profiles.avatar_url}
+            alt=""
+            className={`h-9 w-9 rounded-full object-cover sm:h-10 sm:w-10 ${
+              overlay ? 'border border-white/25' : 'border border-border'
+            }`}
+          />
+        ) : (
+          <div
+            className={`flex h-9 w-9 items-center justify-center rounded-full text-sm font-bold sm:h-10 sm:w-10 ${
+              overlay
+                ? 'border border-white/25 bg-white/15 text-white'
+                : 'bg-surface-secondary text-content ring-1 ring-border'
+            }`}
+          >
+            {username.charAt(0).toUpperCase()}
+          </div>
+        )}
+      </Link>
+      <div className="min-w-0 flex-1">
+        <Link
+          href={profileHref}
+          className={`block truncate text-sm font-bold ${overlay ? 'text-white drop-shadow' : 'text-content'}`}
+          onClick={(e) => e.stopPropagation()}
+          onPointerDown={(e) => e.stopPropagation()}
+        >
+          @{username}
+        </Link>
+        {displayName !== username && (
+          <p className={`truncate text-xs ${overlay ? 'text-white/85 drop-shadow' : 'text-content-secondary'}`}>
+            {displayName}
+          </p>
+        )}
+      </div>
+      {!isOwner && user && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation()
+            void handleFollow()
+          }}
+          onPointerDown={(e) => e.stopPropagation()}
+          disabled={followBusy}
+          className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold transition disabled:opacity-60 ${
+            overlay
+              ? isFollowing
+                ? 'bg-white/20 text-white ring-1 ring-white/40'
+                : 'bg-white text-black'
+              : isFollowing
+                ? 'bg-surface-secondary text-content ring-1 ring-border'
+                : 'bg-primary-600 text-white'
+          }`}
+        >
+          {isFollowing ? 'Following' : 'Follow'}
+        </button>
+      )}
+    </div>
   )
 
   const actionButtons = (overlay: boolean) => {
@@ -414,10 +598,7 @@ const ReelShortsSlide: React.FC<ReelShortsSlideProps> = ({
           aria-label={isReposted ? 'Undo repost' : 'Repost'}
         >
           <span className={actionCircleClass}>
-            <Repeat2
-              className={`${iconSize} ${isReposted ? 'text-emerald-600' : ''}`}
-              strokeWidth={2}
-            />
+            <Repeat2 className={`${iconSize} ${isReposted ? 'text-emerald-600' : ''}`} strokeWidth={2} />
           </span>
           <span className={`${labelClass} tabular-nums`}>{formatShortCount(repostsCount)}</span>
         </button>
@@ -435,6 +616,16 @@ const ReelShortsSlide: React.FC<ReelShortsSlideProps> = ({
           </span>
           <span className={`${labelClass} tabular-nums`}>{formatShortCount(sharesCount)}</span>
         </button>
+        <button
+          type="button"
+          onClick={() => setOptionsOpen(true)}
+          className="flex flex-col items-center gap-0.5 lg:gap-1"
+          aria-label="More options"
+        >
+          <span className={actionCircleClass}>
+            <MoreVertical className={iconSize} strokeWidth={2} />
+          </span>
+        </button>
       </>
     )
   }
@@ -448,26 +639,7 @@ const ReelShortsSlide: React.FC<ReelShortsSlideProps> = ({
     >
       <div className="flex h-full w-full items-center justify-center lg:grid lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] lg:items-end lg:gap-x-5 lg:px-8 lg:pb-8 lg:pt-6">
         <div className="hidden min-w-0 justify-self-end self-end pb-1 lg:flex lg:w-full lg:max-w-[260px] lg:flex-col">
-          <div className="flex items-center gap-2.5">
-            {reel.profiles?.avatar_url ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={reel.profiles.avatar_url}
-                alt=""
-                className="h-10 w-10 shrink-0 rounded-full border border-border object-cover"
-              />
-            ) : (
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-surface-secondary text-sm font-bold text-content ring-1 ring-border">
-                {username.charAt(0).toUpperCase()}
-              </div>
-            )}
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-bold text-content">@{username}</p>
-              {displayName !== username && (
-                <p className="truncate text-xs text-content-secondary">{displayName}</p>
-              )}
-            </div>
-          </div>
+          {creatorRow(false)}
           <p className="mt-2 text-sm leading-snug text-content">
             <span className={isCaptionExpanded ? '' : 'line-clamp-3'}>{captionLine}</span>{' '}
             {shouldTruncateCaption && (
@@ -500,7 +672,7 @@ const ReelShortsSlide: React.FC<ReelShortsSlideProps> = ({
             }}
             aria-label={isPlaying ? 'Pause video' : 'Play video'}
           >
-            {loadMedia ? (
+            {loadMedia && !mediaError ? (
               <video
                 ref={videoRef}
                 src={reel.video_url}
@@ -508,22 +680,54 @@ const ReelShortsSlide: React.FC<ReelShortsSlideProps> = ({
                 className="h-full w-full object-cover"
                 loop
                 playsInline
-                preload="metadata"
+                preload={isActive ? 'auto' : 'metadata'}
                 onLoadedMetadata={handleLoadedMetadata}
                 onTimeUpdate={handleTimeUpdate}
+                onError={() => setMediaError(true)}
               />
             ) : (
               <div
-                className="h-full w-full bg-zinc-900 bg-cover bg-center"
-                style={reel.thumbnail_url ? { backgroundImage: `url(${reel.thumbnail_url})` } : undefined}
-              />
+                className="flex h-full w-full items-center justify-center bg-zinc-900 bg-cover bg-center"
+                style={
+                  !mediaError && reel.thumbnail_url
+                    ? { backgroundImage: `url(${reel.thumbnail_url})` }
+                    : undefined
+                }
+              >
+                {mediaError && (
+                  <p className="px-6 text-center text-sm text-white/80">
+                    This video is unavailable
+                  </p>
+                )}
+              </div>
             )}
           </div>
 
           <div
-            className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-black/70 lg:to-transparent"
+            className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-black/70 lg:to-black/20"
             aria-hidden
           />
+
+          <div className="pointer-events-auto absolute left-3 top-3 z-20 flex items-center gap-2 lg:left-4 lg:top-4">
+            <button
+              type="button"
+              onClick={toggleMute}
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-black/45 text-white backdrop-blur-sm"
+              aria-label={isMuted ? 'Unmute' : 'Mute'}
+            >
+              {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+            </button>
+          </div>
+
+          <div
+            className="pointer-events-none absolute bottom-0 left-0 right-0 z-20 h-0.5 bg-white/20"
+            aria-hidden
+          >
+            <div
+              className="h-full bg-white/90 transition-[width] duration-100 ease-linear"
+              style={{ width: `${progress * 100}%` }}
+            />
+          </div>
 
           {showHeartBurst && (
             <div className="pointer-events-none absolute inset-0 flex items-center justify-center" aria-hidden>
@@ -543,27 +747,8 @@ const ReelShortsSlide: React.FC<ReelShortsSlideProps> = ({
             </div>
           )}
 
-          <div className="absolute bottom-0 left-0 z-10 w-full px-3 pb-[max(0.65rem,env(safe-area-inset-bottom))] pr-14 pt-10 lg:hidden">
-            <div className="flex items-center gap-2.5">
-              {reel.profiles?.avatar_url ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={reel.profiles.avatar_url}
-                  alt=""
-                  className="h-9 w-9 shrink-0 rounded-full border border-white/25 object-cover"
-                />
-              ) : (
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/25 bg-white/15 text-sm font-bold text-white">
-                  {username.charAt(0).toUpperCase()}
-                </div>
-              )}
-              <div className="min-w-0 flex-1">
-                {displayName !== username && (
-                  <p className="truncate text-[13px] font-bold text-white drop-shadow">{displayName}</p>
-                )}
-                <p className="truncate text-[11px] text-white/85 drop-shadow">@{username}</p>
-              </div>
-            </div>
+          <div className="absolute bottom-0 left-0 z-10 w-full px-3 pb-[max(0.85rem,env(safe-area-inset-bottom))] pr-14 pt-10 lg:hidden">
+            {creatorRow(true)}
             <p className="mt-1.5 text-[13px] leading-snug text-white/95 drop-shadow">
               <span className={isCaptionExpanded ? '' : 'line-clamp-2'}>{captionLine}</span>{' '}
               {shouldTruncateCaption && (
@@ -604,11 +789,43 @@ const ReelShortsSlide: React.FC<ReelShortsSlideProps> = ({
             aria-label="Close menu"
             onClick={() => setOptionsOpen(false)}
           />
-          <div className="fixed left-1/2 top-1/2 z-[70] w-[min(100%,280px)] -translate-x-1/2 -translate-y-1/2 rounded-xl border border-border bg-surface p-2 shadow-xl">
+          <div className="fixed left-1/2 top-1/2 z-[70] w-[min(100%,300px)] -translate-x-1/2 -translate-y-1/2 rounded-xl border border-border bg-surface p-2 shadow-xl">
             <div className="flex items-center gap-2 border-b border-border px-3 py-2 text-content-secondary">
               <MoreVertical className="h-4 w-4" />
               <span className="text-sm font-medium">Reel options</span>
             </div>
+            <button
+              type="button"
+              className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-content hover:bg-surface-hover"
+              onClick={() => void handleCopyLink()}
+            >
+              <Link2 className="h-5 w-5" />
+              Copy link
+            </button>
+            <button
+              type="button"
+              className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-content hover:bg-surface-hover"
+              onClick={() => {
+                setOptionsOpen(false)
+                void handleShare()
+              }}
+            >
+              <Send className="h-5 w-5" />
+              Share reel
+            </button>
+            {!isOwner && (
+              <button
+                type="button"
+                className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-content hover:bg-surface-hover"
+                onClick={() => {
+                  setOptionsOpen(false)
+                  void handleSaveButton()
+                }}
+              >
+                <Bookmark className="h-5 w-5" />
+                {isSaved ? 'Unsave reel' : 'Save reel'}
+              </button>
+            )}
             {isOwner ? (
               <>
                 <button
@@ -635,7 +852,47 @@ const ReelShortsSlide: React.FC<ReelShortsSlideProps> = ({
                 </button>
               </>
             ) : (
-              <p className="px-3 py-4 text-sm text-content-secondary">Report and other actions can be added here.</p>
+              <>
+                {onNotInterested && (
+                  <button
+                    type="button"
+                    className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-content hover:bg-surface-hover"
+                    onClick={() => {
+                      setOptionsOpen(false)
+                      onNotInterested()
+                    }}
+                  >
+                    <EyeOff className="h-5 w-5" />
+                    Not interested
+                  </button>
+                )}
+                {onReport && (
+                  <button
+                    type="button"
+                    className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-red-500 hover:bg-surface-hover"
+                    onClick={() => {
+                      setOptionsOpen(false)
+                      onReport()
+                    }}
+                  >
+                    <Flag className="h-5 w-5" />
+                    Report reel
+                  </button>
+                )}
+                {!isFollowing && user && (
+                  <button
+                    type="button"
+                    className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-content hover:bg-surface-hover"
+                    onClick={() => {
+                      setOptionsOpen(false)
+                      void handleFollow()
+                    }}
+                  >
+                    <UserPlus className="h-5 w-5" />
+                    Follow @{username}
+                  </button>
+                )}
+              </>
             )}
           </div>
         </>

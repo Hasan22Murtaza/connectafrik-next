@@ -22,6 +22,7 @@ import { useMembers } from '@/shared/hooks/useMembers'
 import ReelShortsSlide from '@/features/social/components/ReelShortsSlide'
 import ShareModal from '@/features/social/components/ShareModal'
 import ReelComments from '@/features/social/components/ReelComments'
+import { ReportReelModal } from '@/features/social/components/ReportReelModal'
 import { ReelsNav } from '@/features/social/components/ReelsNav'
 import { trackEvent } from '@/features/social/services/engagementTracking'
 import { sendNotification } from '@/shared/services/notificationService'
@@ -100,14 +101,19 @@ export function ReelsVerticalFeed({
     return true
   }, [enabled, feed, user?.id])
 
-  const { reels, loading, error, hasMore, loadMore, refresh } = useReels(reelFilters, sortOptions, {
-    enabled: reelsEnabled,
-  })
+  const { reels, loading, error, hasMore, loadMore, refresh, removeReel, patchReel } = useReels(
+    reelFilters,
+    sortOptions,
+    {
+      enabled: reelsEnabled,
+    }
+  )
   const { updateReel, loading: updating } = useUpdateReel()
   const { deleteReel, loading: deleting } = useDeleteReel()
   const { members } = useMembers()
   const memoizedMembers = useMemo(() => members, [members])
   const { confirm, dialog } = useConfirmDialog()
+  const [reportReelId, setReportReelId] = useState<string | null>(null)
 
   const activeShareReel = useMemo(
     () => (shareModalState.reelId ? reels.find((reel) => reel.id === shareModalState.reelId) : null),
@@ -120,7 +126,8 @@ export function ReelsVerticalFeed({
   const shareUrl = useMemo(() => {
     if (!shareModalState.reelId) return ''
     if (typeof window === 'undefined') return `/reels/${shareModalState.reelId}`
-    return `${process.env.NEXT_PUBLIC_APP_URL}/reels/${shareModalState.reelId}`
+    const base = process.env.NEXT_PUBLIC_APP_URL || window.location.origin
+    return `${base.replace(/\/$/, '')}/reels/${shareModalState.reelId}`
   }, [shareModalState.reelId])
 
   const activeIndex = useMemo(() => {
@@ -231,12 +238,21 @@ export function ReelsVerticalFeed({
       const { success, error: deleteError } = await deleteReel(reelId)
       if (success) {
         toast.success('Reel deleted successfully')
-        refresh()
+        removeReel(reelId)
       } else {
         toast.error(deleteError || 'Failed to delete reel')
       }
     },
-    [deleteReel, refresh, confirm]
+    [deleteReel, removeReel, confirm]
+  )
+
+  const handleNotInterested = useCallback(
+    (reelId: string) => {
+      removeReel(reelId)
+      if (user?.id) trackEvent.notInterested(user.id, reelId, 'reel')
+      toast.success('We will show fewer reels like this')
+    },
+    [removeReel, user?.id]
   )
 
   const openEditModal = useCallback((reel: Reel) => {
@@ -276,13 +292,23 @@ export function ReelsVerticalFeed({
       })
       if (data) {
         toast.success('Reel updated successfully')
+        patchReel(editingReel.id, data)
         closeEditModal()
-        refresh()
       } else {
         toast.error(updateError || 'Failed to update reel')
       }
     },
-    [editingReel, editTitle, editDescription, editCategory, editTags, editIsPublic, updateReel, closeEditModal, refresh]
+    [
+      editingReel,
+      editTitle,
+      editDescription,
+      editCategory,
+      editTags,
+      editIsPublic,
+      updateReel,
+      closeEditModal,
+      patchReel,
+    ]
   )
 
   const addEditTag = useCallback(() => {
@@ -499,6 +525,8 @@ export function ReelsVerticalFeed({
                   isOwner={!!user?.id && user.id === reel.author_id}
                   onEdit={() => openEditModal(reel)}
                   onDelete={() => handleDelete(reel.id)}
+                  onReport={() => setReportReelId(reel.id)}
+                  onNotInterested={() => handleNotInterested(reel.id)}
                 />
               ))}
 
@@ -707,8 +735,8 @@ export function ReelsVerticalFeed({
                       const { success } = await deleteReel(editingReel.id)
                       if (success) {
                         toast.success('Reel deleted successfully')
+                        removeReel(editingReel.id)
                         closeEditModal()
-                        refresh()
                       } else {
                         toast.error('Failed to delete reel')
                       }
@@ -740,6 +768,17 @@ export function ReelsVerticalFeed({
             </form>
           </div>
         </div>
+      )}
+      {reportReelId && (
+        <ReportReelModal
+          reelId={reportReelId}
+          isOpen={!!reportReelId}
+          onClose={() => setReportReelId(null)}
+          onSubmitted={(id) => {
+            removeReel(id)
+            setReportReelId(null)
+          }}
+        />
       )}
       {dialog}
     </>

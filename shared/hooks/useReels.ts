@@ -123,13 +123,23 @@ export const useReels = (
     fetchReels(0, false, filters, sortOptions)
   }, [enabled, fetchReels, JSON.stringify(filters), JSON.stringify(sortOptions)])
 
+  const removeReel = useCallback((reelId: string) => {
+    setReels((prev) => prev.filter((r) => r.id !== reelId))
+  }, [])
+
+  const patchReel = useCallback((reelId: string, patch: Partial<Reel>) => {
+    setReels((prev) => prev.map((r) => (r.id === reelId ? { ...r, ...patch } : r)))
+  }, [])
+
   return {
     reels,
     loading,
     error,
     hasMore,
     loadMore,
-    refresh
+    refresh,
+    removeReel,
+    patchReel,
   }
 }
 
@@ -311,16 +321,16 @@ export const useReelInteractions = (reelId: string) => {
       setLoading(true)
       setError(null)
 
-      await apiClient.post<{ data: { liked: boolean; reaction_type: string | null } }>(
+      const res = await apiClient.post<{ data: { liked: boolean; reaction_type: string | null } }>(
         `/api/reels/${reelId}/like`,
         { reaction_type: 'love' }
       )
-      return { success: true, error: null }
+      return { success: true, liked: !!res?.data?.liked, error: null }
     } catch (err) {
       console.error('Error toggling reel like:', err)
       const errorMessage = err instanceof Error ? err.message : 'Failed to toggle like'
       setError(errorMessage)
-      return { success: false, error: errorMessage }
+      return { success: false, liked: false, error: errorMessage }
     } finally {
       setLoading(false)
     }
@@ -335,13 +345,13 @@ export const useReelInteractions = (reelId: string) => {
       setLoading(true)
       setError(null)
 
-      await apiClient.post<{ data: { saved: boolean } }>(`/api/reels/${reelId}/save`)
-      return { success: true, error: null }
+      const res = await apiClient.post<{ data: { saved: boolean } }>(`/api/reels/${reelId}/save`)
+      return { success: true, saved: !!res?.data?.saved, error: null }
     } catch (err) {
       console.error('Error toggling reel save:', err)
       const errorMessage = err instanceof Error ? err.message : 'Failed to toggle save'
       setError(errorMessage)
-      return { success: false, error: errorMessage }
+      return { success: false, saved: false, error: errorMessage }
     } finally {
       setLoading(false)
     }
@@ -417,22 +427,39 @@ export const useReelComments = (reelId: string, enabled: boolean = false) => {
   const { user } = useAuth()
   const [comments, setComments] = useState<ReelComment[]>([])
   const [loading, setLoading] = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [page, setPage] = useState(0)
+  const [hasMore, setHasMore] = useState(false)
+  const pageSize = 20
 
-  const fetchComments = useCallback(async () => {
+  const fetchComments = useCallback(async (pageNum: number = 0, append: boolean = false) => {
     try {
-      setLoading(true)
+      if (append) setLoadingMore(true)
+      else setLoading(true)
       setError(null)
 
-      const res = await apiClient.get<{ data: ReelComment[] }>(`/api/reels/${reelId}/comments`)
-      setComments(res?.data ?? [])
+      const res = await apiClient.get<{ data: ReelComment[]; hasMore?: boolean }>(
+        `/api/reels/${reelId}/comments`,
+        { limit: pageSize, page: pageNum }
+      )
+      const next = res?.data ?? []
+      setComments((prev) => (append ? [...prev, ...next] : next))
+      setHasMore(Boolean(res?.hasMore ?? next.length === pageSize))
+      setPage(pageNum)
     } catch (err) {
       console.error('Error fetching reel comments:', err)
       setError(err instanceof Error ? err.message : 'Failed to fetch comments')
     } finally {
       setLoading(false)
+      setLoadingMore(false)
     }
   }, [reelId])
+
+  const loadMore = useCallback(() => {
+    if (loading || loadingMore || !hasMore) return
+    void fetchComments(page + 1, true)
+  }, [loading, loadingMore, hasMore, page, fetchComments])
 
   const addComment = useCallback(async (content: string, parentId?: string) => {
     if (!user) {
@@ -449,7 +476,19 @@ export const useReelComments = (reelId: string, enabled: boolean = false) => {
       })
 
       const data = res?.data ?? null
-      await fetchComments()
+      if (data) {
+        if (parentId) {
+          setComments((prev) =>
+            prev.map((c) =>
+              c.id === parentId
+                ? { ...c, replies: [...(c.replies || []), data], replies_count: (c.replies_count || 0) + 1 }
+                : c
+            )
+          )
+        } else {
+          setComments((prev) => [...prev, { ...data, replies: [] }])
+        }
+      }
       return { data, error: null }
     } catch (err) {
       console.error('Error adding reel comment:', err)
@@ -459,7 +498,7 @@ export const useReelComments = (reelId: string, enabled: boolean = false) => {
     } finally {
       setLoading(false)
     }
-  }, [user, reelId, fetchComments])
+  }, [user, reelId])
 
   const deleteComment = useCallback(async (commentId: string) => {
     if (!user) {
@@ -471,7 +510,18 @@ export const useReelComments = (reelId: string, enabled: boolean = false) => {
       setError(null)
 
       await apiClient.delete(`/api/reels/${reelId}/comments/${commentId}`)
-      await fetchComments()
+      setComments((prev) =>
+        prev
+          .filter((c) => c.id !== commentId)
+          .map((c) => ({
+            ...c,
+            replies: (c.replies || []).filter((r) => r.id !== commentId),
+            replies_count:
+              (c.replies || []).some((r) => r.id === commentId)
+                ? Math.max(0, (c.replies_count || 0) - 1)
+                : c.replies_count,
+          }))
+      )
       return { success: true, error: null }
     } catch (err) {
       console.error('Error deleting reel comment:', err)
@@ -481,7 +531,7 @@ export const useReelComments = (reelId: string, enabled: boolean = false) => {
     } finally {
       setLoading(false)
     }
-  }, [user, reelId, fetchComments])
+  }, [user, reelId])
 
   const toggleCommentLike = useCallback(async (commentId: string) => {
     if (!user) {
@@ -491,30 +541,58 @@ export const useReelComments = (reelId: string, enabled: boolean = false) => {
     try {
       setError(null)
       const res = await apiClient.post<{ data: { liked: boolean } }>(`/api/reels/${reelId}/comments/${commentId}/like`)
-      await fetchComments()
-      return { liked: !!res?.data?.liked, error: null }
+      const liked = !!res?.data?.liked
+      setComments((prev) =>
+        prev.map((c) => {
+          if (c.id === commentId) {
+            return {
+              ...c,
+              likes_count: Math.max(0, (c.likes_count || 0) + (liked ? 1 : -1)),
+            }
+          }
+          return {
+            ...c,
+            replies: (c.replies || []).map((r) =>
+              r.id === commentId
+                ? {
+                    ...r,
+                    likes_count: Math.max(0, (r.likes_count || 0) + (liked ? 1 : -1)),
+                  }
+                : r
+            ),
+          }
+        })
+      )
+      return { liked, error: null }
     } catch (err) {
       console.error('Error toggling reel comment like:', err)
       const errorMessage = err instanceof Error ? err.message : 'Failed to like comment'
       setError(errorMessage)
       return { liked: false, error: errorMessage }
     }
-  }, [user, reelId, fetchComments])
+  }, [user, reelId])
 
   useEffect(() => {
     if (enabled) {
-      fetchComments()
+      void fetchComments(0, false)
+    } else {
+      setComments([])
+      setPage(0)
+      setHasMore(false)
     }
   }, [fetchComments, enabled])
 
   return {
     comments,
     loading,
+    loadingMore,
     error,
+    hasMore,
+    loadMore,
     addComment,
     deleteComment,
     toggleCommentLike,
-    refresh: fetchComments
+    refresh: () => fetchComments(0, false),
   }
 }
 

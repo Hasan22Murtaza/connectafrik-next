@@ -3,7 +3,8 @@ import { getAuthenticatedUser, createServiceClient, getAccessTokenFromRequest } 
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
 
 const COMMENT_SELECT = `
-  *,
+  id, reel_id, user_id, content, parent_id, thread_depth, likes_count, replies_count,
+  is_deleted, created_at, updated_at,
   author:profiles!reel_comments_user_id_fkey(username, full_name, avatar_url)
 `
 
@@ -23,6 +24,13 @@ export async function GET(
   try {
     const { id: reelId } = await params
     const supabase = createServiceClient()
+    const { searchParams } = new URL(request.url)
+    const parsedLimit = parseInt(searchParams.get('limit') || '20', 10)
+    const parsedPage = parseInt(searchParams.get('page') || '0', 10)
+    const limit = Number.isNaN(parsedLimit) ? 20 : Math.min(Math.max(parsedLimit, 1), 50)
+    const page = Number.isNaN(parsedPage) ? 0 : Math.max(parsedPage, 0)
+    const from = page * limit
+    const to = from + limit - 1
 
     const { data: topLevel, error: topError } = await supabase
       .from('reel_comments')
@@ -31,10 +39,13 @@ export async function GET(
       .is('parent_id', null)
       .eq('is_deleted', false)
       .order('created_at', { ascending: true })
+      .range(from, to)
 
     if (topError) return errorResponse(topError.message, 400)
     const comments = topLevel ?? []
-    if (comments.length === 0) return jsonResponse({ data: [] })
+    if (comments.length === 0) {
+      return jsonResponse({ data: [], page, pageSize: limit, hasMore: false })
+    }
 
     const parentIds = comments.map((c: { id: string }) => c.id)
     const { data: replies, error: repliesError } = await supabase
@@ -58,7 +69,12 @@ export async function GET(
       ...normalizeComment(c),
       replies: (repliesByParent.get(c.id) ?? []).map((r) => normalizeComment(r as Record<string, unknown>)),
     }))
-    return jsonResponse({ data })
+    return jsonResponse({
+      data,
+      page,
+      pageSize: limit,
+      hasMore: comments.length === limit,
+    })
   } catch (error: unknown) {
     const err = error as { message?: string }
     return errorResponse(err.message || 'Failed to fetch comments', 500)
@@ -76,14 +92,40 @@ export async function POST(
     const body = await request.json()
     const { content, parent_id } = body
 
-    if (!content) return errorResponse('content is required', 400)
+    if (!content || typeof content !== 'string' || !content.trim()) {
+      return errorResponse('content is required', 400)
+    }
+    const trimmed = content.trim()
+    if (trimmed.length > 2000) return errorResponse('Comment is too long', 400)
+
+    const { data: reel } = await supabase
+      .from('reels')
+      .select('author_id, title, is_deleted, is_public')
+      .eq('id', reelId)
+      .maybeSingle()
+
+    if (!reel || reel.is_deleted) return errorResponse('Reel not found', 404)
+    if (!reel.is_public && reel.author_id !== user.id) {
+      return errorResponse('Reel not found', 404)
+    }
+
+    if (parent_id) {
+      const { data: parent } = await supabase
+        .from('reel_comments')
+        .select('id, reel_id, is_deleted')
+        .eq('id', parent_id)
+        .maybeSingle()
+      if (!parent || parent.is_deleted || parent.reel_id !== reelId) {
+        return errorResponse('Parent comment not found', 404)
+      }
+    }
 
     const { data: comment, error } = await supabase
       .from('reel_comments')
       .insert({
         reel_id: reelId,
         user_id: user.id,
-        content,
+        content: trimmed,
         parent_id: parent_id ?? null,
       })
       .select(COMMENT_SELECT)
@@ -91,8 +133,9 @@ export async function POST(
 
     if (error) return errorResponse(error.message, 400)
 
-    const { data: reel } = await supabase.from('reels').select('author_id, title').eq('id', reelId).maybeSingle()
-    const { actorDisplayName, notifyIfAllowed, notifyMentionedUsers } = await import('@/lib/notifications')
+    const { actorDisplayName, notifyIfAllowed, notifyMentionedUsers } = await import(
+      '@/lib/notifications'
+    )
     const actorName = actorDisplayName(user)
     if (reel?.author_id && reel.author_id !== user.id) {
       void notifyIfAllowed({
@@ -111,7 +154,7 @@ export async function POST(
       })
     }
     void notifyMentionedUsers({
-      text: content,
+      text: trimmed,
       actorId: user.id,
       actorName,
       accessToken: getAccessTokenFromRequest(request),

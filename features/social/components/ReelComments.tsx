@@ -59,7 +59,16 @@ function CommentAvatar({
 
 function useReelCommentsLogic(reelId: string, isOpen: boolean) {
   const { user } = useAuth()
-  const { comments, loading, addComment, deleteComment, toggleCommentLike } = useReelComments(reelId, isOpen)
+  const {
+    comments,
+    loading,
+    loadingMore,
+    hasMore,
+    loadMore,
+    addComment,
+    deleteComment,
+    toggleCommentLike,
+  } = useReelComments(reelId, isOpen)
 
   const [newComment, setNewComment] = useState('')
   const [replyingTo, setReplyingTo] = useState<string | null>(null)
@@ -157,6 +166,9 @@ function useReelCommentsLogic(reelId: string, isOpen: boolean) {
     userAvatarUrl,
     comments,
     loading,
+    loadingMore,
+    hasMore,
+    loadMore,
     newComment,
     setNewComment,
     replyingTo,
@@ -369,6 +381,18 @@ function CommentsList({
       {comments.map((comment) => (
         <CommentRow key={comment.id} comment={comment} logic={logic} />
       ))}
+      {logic.hasMore && (
+        <div className="flex justify-center py-4">
+          <button
+            type="button"
+            onClick={() => logic.loadMore()}
+            disabled={logic.loadingMore}
+            className="rounded-full border border-border px-4 py-2 text-sm font-medium text-content transition hover:bg-surface-hover disabled:opacity-50"
+          >
+            {logic.loadingMore ? 'Loading…' : 'Load more comments'}
+          </button>
+        </div>
+      )}
     </div>
   )
 }
