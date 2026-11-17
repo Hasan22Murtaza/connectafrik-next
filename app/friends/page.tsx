@@ -329,7 +329,7 @@ const FriendsPageContent: React.FC = () => {
   const { user } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { startChatWithMembers, openThread } = useProductionChat();
+  const { startChatWithMembers, openThread, sendMessage } = useProductionChat();
   const [friends, setFriends] = useState<Friend[]>([]);
   const [requests, setRequests] = useState<FriendRequest[]>([]);
   const [sentRequests, setSentRequests] = useState<SentFriendRequest[]>([]);
@@ -352,6 +352,9 @@ const FriendsPageContent: React.FC = () => {
   const [birthdayDisplayLimit, setBirthdayDisplayLimit] = useState(10);
   const [birthdayTabFriends, setBirthdayTabFriends] = useState<Friend[]>([]);
   const [birthdaysLoading, setBirthdaysLoading] = useState(false);
+  const [birthdayWishesSent, setBirthdayWishesSent] = useState<Set<string>>(new Set());
+  const [birthdayWishesSending, setBirthdayWishesSending] = useState<Set<string>>(new Set());
+  const birthdayWishesInFlightRef = useRef(new Set<string>());
   const [countdownFriend, setCountdownFriend] = useState<Friend | null>(null);
   const [countdownNow, setCountdownNow] = useState(() => new Date());
   const birthdaySentinelRef = useRef<HTMLDivElement>(null);
@@ -700,8 +703,14 @@ const FriendsPageContent: React.FC = () => {
   };
 
   const handleStartBirthdayChat = async (friend: Friend) => {
-    if (!user) return;
+    if (
+      !user ||
+      birthdayWishesSent.has(friend.id) ||
+      birthdayWishesInFlightRef.current.has(friend.id)
+    ) return;
 
+    birthdayWishesInFlightRef.current.add(friend.id);
+    setBirthdayWishesSending((current) => new Set(current).add(friend.id));
     try {
       const chatParticipant = {
         id: friend.id,
@@ -716,10 +725,22 @@ const FriendsPageContent: React.FC = () => {
 
       if (threadId) {
         openThread(threadId);
+        const sent = await sendMessage(threadId, "Happy birthday!");
+        if (sent) {
+          setBirthdayWishesSent((current) => new Set(current).add(friend.id));
+          toast.success(`Birthday wish sent to ${friend.full_name}!`);
+        }
       }
     } catch (error) {
       console.error("Error starting birthday chat:", error);
       toast.error("Failed to open chat");
+    } finally {
+      birthdayWishesInFlightRef.current.delete(friend.id);
+      setBirthdayWishesSending((current) => {
+        const next = new Set(current);
+        next.delete(friend.id);
+        return next;
+      });
     }
   };
 
@@ -1238,10 +1259,20 @@ const FriendsPageContent: React.FC = () => {
                           <button
                             type="button"
                             onClick={() => handleStartBirthdayChat(friend)}
-                            className="flex shrink-0 items-center gap-1.5 rounded-xl border border-orange-200 bg-orange-50 px-3 py-2 text-xs font-semibold text-orange-600 transition-colors hover:bg-orange-100 dark:border-orange-400/30 dark:bg-orange-500/10 dark:text-orange-300 dark:hover:bg-orange-500/20 sm:px-4"
+                            disabled={
+                              birthdayWishesSending.has(friend.id) ||
+                              birthdayWishesSent.has(friend.id)
+                            }
+                            className="flex shrink-0 items-center gap-1.5 rounded-xl border border-orange-200 bg-orange-50 px-3 py-2 text-xs font-semibold text-orange-600 transition-colors hover:bg-orange-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-orange-400/30 dark:bg-orange-500/10 dark:text-orange-300 dark:hover:bg-orange-500/20 sm:px-4"
                           >
                             <PartyPopper className="h-4 w-4" />
-                            <span>Wish</span>
+                            <span>
+                              {birthdayWishesSending.has(friend.id)
+                                ? "Sending..."
+                                : birthdayWishesSent.has(friend.id)
+                                  ? "Sent"
+                                  : "Wish"}
+                            </span>
                           </button>
                         ) : (
                           <button
