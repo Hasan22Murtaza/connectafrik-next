@@ -17,8 +17,8 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useReelStats } from '@/shared/hooks/useReels'
 import type { ReelAnalyticsTopReel } from '@/shared/types/reels'
 import { ReelsNav } from '@/features/social/components/ReelsNav'
-import { ReelsMainTabs } from '@/features/social/components/ReelsBrowseHeader'
 import { reelsFeedHref } from '@/lib/reels/feedHref'
+import { ReelsAnalyticsShimmer } from '@/shared/components/ui/ShimmerLoaders'
 
 function formatCount(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1).replace(/\.0$/, '')}M`
@@ -41,22 +41,6 @@ const KPI_META = [
   { key: 'total_shares' as const, label: 'Shares', icon: Share2, accent: 'text-amber-600' },
   { key: 'avg_engagement' as const, label: 'Avg score', icon: TrendingUp, accent: 'text-[var(--african-orange)]', raw: true },
 ]
-
-function KpiSkeleton() {
-  return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-      {Array.from({ length: 6 }).map((_, i) => (
-        <div
-          key={i}
-          className="animate-pulse rounded-2xl bg-surface-secondary px-4 py-4 ring-1 ring-border"
-        >
-          <div className="h-3 w-16 rounded bg-border/70" />
-          <div className="mt-3 h-7 w-12 rounded bg-border/70" />
-        </div>
-      ))}
-    </div>
-  )
-}
 
 function EngagementBar({
   label,
@@ -144,26 +128,6 @@ export function ReelsAnalyticsPanel() {
 
   return (
     <div className="relative w-full min-h-[calc(100dvh-4.5rem)] bg-surface pb-[calc(5.5rem+env(safe-area-inset-bottom))] text-content lg:pb-10">
-      <header className="sticky top-[4.5rem] z-20 w-full bg-surface/95 backdrop-blur-md lg:top-0">
-        <div className="mx-auto w-full max-w-[1600px]">
-          <ReelsMainTabs />
-          <div className="flex items-end justify-between gap-3 border-b border-border px-3 py-2.5 sm:px-4 lg:px-5">
-            <div>
-              <h1 className="text-[15px] font-semibold text-content">Analytics</h1>
-              <p className="mt-0.5 text-xs text-content-tertiary">Performance across your reels</p>
-            </div>
-            {user?.id && (
-              <Link
-                href="/reels/my-videos"
-                className="hidden shrink-0 items-center gap-1 text-xs font-semibold text-[var(--african-orange)] sm:inline-flex"
-              >
-                My videos <ChevronRight className="h-3.5 w-3.5" />
-              </Link>
-            )}
-          </div>
-        </div>
-      </header>
-
       <div className="mx-auto w-full max-w-[1600px] px-3 py-5 sm:px-4 lg:px-5">
         {!user?.id ? (
           <div className="flex min-h-[40vh] flex-col items-center justify-center text-center">
@@ -193,10 +157,7 @@ export function ReelsAnalyticsPanel() {
             </button>
           </div>
         ) : loading && !stats ? (
-          <div className="space-y-6">
-            <div className="h-24 animate-pulse rounded-2xl bg-surface-secondary ring-1 ring-border" />
-            <KpiSkeleton />
-          </div>
+          <ReelsAnalyticsShimmer />
         ) : !hasReels ? (
           <div className="flex min-h-[45vh] flex-col items-center justify-center px-4 text-center">
             <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-[color-mix(in_srgb,var(--african-orange)_12%,transparent)]">

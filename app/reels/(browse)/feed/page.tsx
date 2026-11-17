@@ -1,15 +1,9 @@
 import { Suspense } from 'react'
 import { FeedInner } from './FeedInner'
+import { ReelsVerticalFeedShimmer } from '@/shared/components/ui/ShimmerLoaders'
 
 function Fallback() {
-  return (
-    <div className="flex min-h-[50vh] items-center justify-center bg-white">
-      <div
-        className="h-10 w-10 animate-spin rounded-full border-2 border-border border-t-[var(--african-orange)]"
-        aria-hidden
-      />
-    </div>
-  )
+  return <ReelsVerticalFeedShimmer />
 }
 
 export default function ReelsFeedPage() {

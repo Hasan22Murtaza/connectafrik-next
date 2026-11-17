@@ -2,14 +2,13 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import { Plus } from '@/shared/icons'
 import { useAuth } from '@/contexts/AuthContext'
 import { apiClient } from '@/lib/api-client'
 import { Reel } from '@/shared/types/reels'
 import { ReelCard } from '@/features/social/components/ReelCard'
 import { ReelsNav } from '@/features/social/components/ReelsNav'
-import { ReelsMainTabs } from '@/features/social/components/ReelsBrowseHeader'
 import { reelsFeedHref } from '@/lib/reels/feedHref'
+import { ReelsGridShimmer } from '@/shared/components/ui/ShimmerLoaders'
 
 type Mode = 'saved' | 'liked' | 'reposted'
 
@@ -88,16 +87,12 @@ export function ReelsLibraryGrid({ mode }: Props) {
   }, [hasMore, loading, loadPage, page, user?.id])
 
   const gridClass =
-    'columns-2 gap-2.5 sm:columns-3 sm:gap-3 lg:columns-4 xl:columns-5 [column-fill:_balance]'
+    'columns-3 gap-2 sm:columns-4 sm:gap-2.5 lg:columns-5 xl:columns-6 2xl:columns-7 [column-fill:_balance]'
 
   const feedHref = (id: string) => reelsFeedHref({ start: id, feed: mode })
 
   return (
     <div className="relative mx-auto w-full max-w-[1600px]  min-h-[calc(100dvh-4.5rem)] bg-surface pb-[calc(5.5rem+env(safe-area-inset-bottom))] text-content lg:pb-10">
-      <header className="sticky top-[4.5rem] z-20 w-full bg-surface/95 backdrop-blur-md lg:top-0">
-          <ReelsMainTabs />
-      </header>
-
       <div className="">
         {!user?.id ? (
           <div className="flex min-h-[50vh] flex-col items-center justify-center px-6 text-center">
@@ -118,9 +113,7 @@ export function ReelsLibraryGrid({ mode }: Props) {
             </button>
           </div>
         ) : loading && reels.length === 0 ? (
-          <div className="flex min-h-[50vh] items-center justify-center">
-            <div className="h-10 w-10 animate-spin rounded-full border-2 border-border border-t-[var(--african-orange)]" />
-          </div>
+          <ReelsGridShimmer />
         ) : reels.length === 0 ? (
           <div className="flex min-h-[50vh] flex-col items-center justify-center px-6 text-center">
             <p className="text-sm text-content-secondary">{emptyCopy}</p>
@@ -144,16 +137,7 @@ export function ReelsLibraryGrid({ mode }: Props) {
         <div ref={sentinelRef} className="h-8 w-full" aria-hidden />
       </div>
 
-      <Link
-        href="/reels/create"
-        aria-label="Create reel"
-        className="fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom))] left-1/2 z-[47] flex h-14 w-14 -translate-x-1/2 items-center justify-center rounded-full bg-[var(--african-orange)] text-white shadow-lg ring-2 ring-black/5 lg:bottom-8"
-      >
-        <Plus className="h-7 w-7" strokeWidth={2.5} />
-      </Link>
-
-      <div className="fixed bottom-0 left-0 right-0 z-[46] border-t border-border bg-surface/90 px-2 pb-[calc(0.4rem+env(safe-area-inset-bottom))] pt-1 lg:hidden">
-        <div className="mx-auto max-w-lg">
+      <div className="fixed bottom-0 left-0 right-0 z-[46] border-t border-border bg-surface/90 px-2 pb-[calc(0.4rem+env(safe-area-inset-bottom))] pt-1 lg:hidden">        <div className="mx-auto max-w-lg">
           <ReelsNav variant="video-bottom" />
         </div>
       </div>

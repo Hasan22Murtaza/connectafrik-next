@@ -827,3 +827,203 @@ export function OrderDetailPageShimmer() {
     </div>
   );
 }
+
+// ============== Reels ==============
+
+const REEL_TILE_ASPECTS = [
+  "aspect-[9/16]",
+  "aspect-[4/5]",
+  "aspect-square",
+  "aspect-[3/4]",
+  "aspect-[9/14]",
+  "aspect-[5/6]",
+] as const;
+
+/** Masonry reel-card grid shimmer (For You list, Explore, Saved, Liked, Reposted). */
+export function ReelsGridShimmer({ count = 12 }: { count?: number }) {
+  return (
+    <div
+      className="columns-3 gap-2 px-2.5 pt-2 sm:columns-4 sm:gap-2.5 sm:px-4 lg:columns-5 lg:px-5 xl:columns-6 2xl:columns-7 [column-fill:_balance]"
+      aria-hidden
+    >
+      {Array.from({ length: count }).map((_, i) => (
+        <div key={i} className="mb-2.5 break-inside-avoid sm:mb-3">
+          <div
+            className={`w-full overflow-hidden rounded-xl animate-shimmer ${REEL_TILE_ASPECTS[i % REEL_TILE_ASPECTS.length]}`}
+          />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** Compact row of shimmer tiles for infinite-scroll “load more”. */
+export function ReelsGridLoadMoreShimmer({ count = 3 }: { count?: number }) {
+  return (
+    <div className="flex justify-center gap-2 px-2.5 py-4 sm:px-4" aria-hidden>
+      {Array.from({ length: count }).map((_, i) => (
+        <div key={i} className="h-20 w-14 animate-shimmer rounded-lg sm:h-24 sm:w-16" />
+      ))}
+    </div>
+  );
+}
+
+/** Full analytics dashboard shimmer matching ReelsAnalyticsPanel layout. */
+export function ReelsAnalyticsShimmer() {
+  return (
+    <div className="space-y-6" aria-hidden>
+      {/* Overview banner */}
+      <div className="rounded-2xl bg-surface-secondary px-4 py-5 ring-1 ring-border sm:px-5">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div className="space-y-2.5 flex-1 min-w-0">
+            <div className="h-3 w-16 animate-shimmer rounded" />
+            <div className="h-8 w-48 max-w-full animate-shimmer rounded sm:h-9" />
+            <div className="h-4 w-72 max-w-full animate-shimmer rounded" />
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <div className="h-9 w-32 animate-shimmer rounded-full" />
+            <div className="h-9 w-28 animate-shimmer rounded-full" />
+          </div>
+        </div>
+      </div>
+
+      {/* KPI cards */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div
+            key={i}
+            className="rounded-2xl bg-surface-secondary px-3.5 py-3.5 ring-1 ring-border sm:px-4"
+          >
+            <div className="flex items-center justify-between gap-2">
+              <div className="h-3 w-12 animate-shimmer rounded" />
+              <div className="h-3.5 w-3.5 animate-shimmer rounded" />
+            </div>
+            <div className="mt-3 h-7 w-10 animate-shimmer rounded" />
+          </div>
+        ))}
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-5">
+        {/* Engagement mix */}
+        <div className="rounded-2xl bg-surface-secondary/60 p-4 ring-1 ring-border lg:col-span-2 sm:p-5">
+          <div className="mb-4 space-y-1.5">
+            <div className="h-4 w-28 animate-shimmer rounded" />
+            <div className="h-3 w-40 animate-shimmer rounded" />
+          </div>
+          <div className="space-y-3.5">
+            {[72, 48, 28, 56].map((w, i) => (
+              <div key={i}>
+                <div className="mb-1.5 flex items-center justify-between">
+                  <div className="h-3 w-14 animate-shimmer rounded" />
+                  <div className="h-3 w-16 animate-shimmer rounded" />
+                </div>
+                <div className="h-2 overflow-hidden rounded-full bg-surface-secondary ring-1 ring-border/60">
+                  <div className="h-full animate-shimmer rounded-full" style={{ width: `${w}%` }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Top reels */}
+        <div className="rounded-2xl bg-surface-secondary/60 p-4 ring-1 ring-border lg:col-span-3 sm:p-5">
+          <div className="mb-3 flex items-center justify-between gap-2">
+            <div className="space-y-1.5">
+              <div className="h-4 w-20 animate-shimmer rounded" />
+              <div className="h-3 w-24 animate-shimmer rounded" />
+            </div>
+            <div className="h-3 w-12 animate-shimmer rounded" />
+          </div>
+          <div className="-mx-1 divide-y divide-border/70">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="flex items-center gap-3 px-2 py-2">
+                <div className="h-3 w-5 animate-shimmer rounded shrink-0" />
+                <div className="h-14 w-10 shrink-0 animate-shimmer rounded-lg" />
+                <div className="min-w-0 flex-1 space-y-1.5">
+                  <div className="h-3.5 w-28 max-w-full animate-shimmer rounded" />
+                  <div className="h-3 w-36 max-w-full animate-shimmer rounded" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Full-screen vertical player shimmer (For You / Following feed / My videos / detail). */
+export function ReelsVerticalFeedShimmer({
+  variant = "light",
+}: {
+  variant?: "light" | "dark"
+}) {
+  const dark = variant === "dark"
+  return (
+    <div
+      className={`flex min-h-[calc(100dvh-3.5rem)] flex-col items-center justify-center px-4 lg:min-h-[calc(100dvh-4.5rem)] ${
+        dark ? "bg-black" : "bg-surface"
+      }`}
+      aria-hidden
+    >
+      <div
+        className={`relative w-full max-w-[420px] overflow-hidden rounded-2xl aspect-[9/16] max-h-[min(78dvh,720px)] ${
+          dark ? "bg-white/10 ring-1 ring-white/10" : "bg-surface-secondary ring-1 ring-border"
+        }`}
+      >
+        <div className={`absolute inset-0 ${dark ? "bg-white/10 animate-pulse" : "animate-shimmer"}`} />
+        <div className="absolute bottom-0 inset-x-0 space-y-3 p-4">
+          <div className="flex items-center gap-2">
+            <div className="h-9 w-9 animate-shimmer rounded-full bg-white/20" />
+            <div className="h-3.5 w-28 animate-shimmer rounded bg-white/20" />
+          </div>
+          <div className="h-3 w-3/4 max-w-xs animate-shimmer rounded bg-white/20" />
+          <div className="h-3 w-1/2 max-w-[12rem] animate-shimmer rounded bg-white/20" />
+        </div>
+        <div className="absolute right-3 bottom-24 flex flex-col gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="h-10 w-10 animate-shimmer rounded-full bg-white/20" />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Comments panel list shimmer. */
+export function ReelCommentsShimmer({ count = 5 }: { count?: number }) {
+  return (
+    <div className="divide-y divide-border/40 px-3 py-2" aria-hidden>
+      {Array.from({ length: count }).map((_, i) => (
+        <div key={i} className="flex gap-3 py-3">
+          <div className="h-9 w-9 shrink-0 animate-shimmer rounded-full" />
+          <div className="min-w-0 flex-1 space-y-2 pt-0.5">
+            <div className="h-3 w-24 animate-shimmer rounded" />
+            <div className="h-3 w-full max-w-sm animate-shimmer rounded" />
+            <div className="h-3 w-2/3 max-w-xs animate-shimmer rounded" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** Horizontal reels strip shimmer (home feed). */
+export function ReelsStripShimmer() {
+  return (
+    <div className="rounded-xl border border-border overflow-hidden shadow-md shadow-gray-200/60" aria-hidden>
+      <div className="flex items-center justify-between px-4 pt-4 pb-2">
+        <div className="flex items-center gap-2">
+          <div className="h-5 w-5 animate-shimmer rounded" />
+          <div className="h-4 w-24 animate-shimmer rounded" />
+        </div>
+        <div className="h-8 w-8 animate-shimmer rounded-full" />
+      </div>
+      <div className="flex gap-3 overflow-hidden px-4 pb-4">
+        {[1, 2, 3, 4, 5].map((i) => (
+          <div key={i} className="h-[180px] w-[100px] shrink-0 animate-shimmer rounded-xl sm:h-[200px] sm:w-[112px]" />
+        ))}
+      </div>
+    </div>
+  );
+}

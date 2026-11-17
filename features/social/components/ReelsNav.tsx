@@ -2,8 +2,8 @@
 
 import type { ReactNode } from 'react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
-import { Compass, Home, SquarePlus, Video, Users } from '@/shared/icons'
+import { usePathname, useSearchParams } from 'next/navigation'
+import { Compass, Home, Plus, Video, Users } from '@/shared/icons'
 
 export type ReelsTabId = 'foryou' | 'explore' | 'following' | 'mine'
 
@@ -29,11 +29,17 @@ function isExplorePath(pathname: string) {
   return pathname === '/reels/explore' || pathname.startsWith('/reels/explore/')
 }
 
-function resolveActive(pathname: string): ReelsTabId {
+function resolveActive(pathname: string, feedParam: string | null): ReelsTabId {
   if (pathname.startsWith('/reels/foryou')) return 'foryou'
   if (isExplorePath(pathname)) return 'explore'
   if (pathname.startsWith('/reels/following')) return 'following'
   if (pathname.startsWith('/reels/my-videos')) return 'mine'
+  if (pathname === '/reels/feed' || pathname.endsWith('/feed')) {
+    if (feedParam === 'explore') return 'explore'
+    if (feedParam === 'following') return 'following'
+    if (feedParam === 'mine') return 'mine'
+    return 'foryou'
+  }
   return 'foryou'
 }
 
@@ -43,7 +49,8 @@ type Props = {
 
 export function ReelsNav({ variant }: Props) {
   const pathname = usePathname() || ''
-  const active = resolveActive(pathname)
+  const searchParams = useSearchParams()
+  const active = resolveActive(pathname, searchParams.get('feed'))
 
   if (variant === 'video-top') {
     return (
@@ -66,7 +73,7 @@ export function ReelsNav({ variant }: Props) {
 
   if (variant === 'video-bottom') {
     return (
-      <div className="grid w-full grid-cols-5 items-center gap-1 text-[11px]">
+      <div className="grid w-full grid-cols-5 items-end gap-0.5 text-[11px]">
         <Link
           href={HREF.foryou}
           scroll={false}
@@ -83,13 +90,16 @@ export function ReelsNav({ variant }: Props) {
           <Compass className="h-4 w-4" strokeWidth={2} />
           <span>Explore</span>
         </Link>
-
-        <Link href="/reels/create" className="flex items-center justify-center py-1" aria-label="Create reel">
-          <span className="inline-flex h-8 w-11 items-center justify-center rounded-xl bg-[var(--african-orange)] text-white shadow-sm">
-            <SquarePlus className="h-5 w-5" strokeWidth={2.5} />
+        <Link
+          href="/reels/create"
+          scroll={false}
+          aria-label="Create reel"
+          className="flex flex-col items-center justify-center pb-0.5"
+        >
+          <span className="flex h-11 w-11 items-center justify-center rounded-full bg-[var(--african-orange)] text-white shadow-md shadow-[color-mix(in_srgb,var(--african-orange)_35%,transparent)] ring-2 ring-surface">
+            <Plus className="h-6 w-6" strokeWidth={2.5} />
           </span>
         </Link>
-
         <Link
           href={HREF.following}
           scroll={false}
@@ -112,8 +122,31 @@ export function ReelsNav({ variant }: Props) {
 
   if (variant === 'mobile') {
     return (
-      <div className="flex w-full items-stretch justify-between gap-0.5">
-        {items.map(({ id, label, icon }) => (
+      <div className="flex w-full items-end justify-between gap-0.5">
+        {items.slice(0, 2).map(({ id, label, icon }) => (
+          <Link
+            key={id}
+            href={HREF[id]}
+            scroll={false}
+            className={`flex min-w-0 flex-1 flex-col items-center gap-0.5 rounded-lg px-0.5 py-1 text-[10px] font-semibold sm:text-xs ${
+              active === id ? 'text-content' : 'text-content-tertiary'
+            }`}
+          >
+            <span className={active === id ? 'text-content' : 'text-content-secondary'}>{icon}</span>
+            <span className="max-w-full truncate">{label}</span>
+          </Link>
+        ))}
+        <Link
+          href="/reels/create"
+          scroll={false}
+          aria-label="Create reel"
+          className="flex min-w-0 flex-1 flex-col items-center justify-center pb-0.5"
+        >
+          <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--african-orange)] text-white shadow-md">
+            <Plus className="h-5 w-5" strokeWidth={2.5} />
+          </span>
+        </Link>
+        {items.slice(2).map(({ id, label, icon }) => (
           <Link
             key={id}
             href={HREF[id]}
@@ -143,13 +176,6 @@ export function ReelsNav({ variant }: Props) {
           {label}
         </Link>
       ))}
-      <Link
-        href="/reels/create"
-        className="mt-2 flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-content transition-colors hover:bg-surface-hover"
-      >
-        <SquarePlus className="h-5 w-5 shrink-0 text-content-secondary" strokeWidth={1.75} />
-        Upload
-      </Link>
     </nav>
   )
 }

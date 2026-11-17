@@ -19,6 +19,7 @@ import {
   ReelCategory,
 } from '@/shared/types/reels'
 import { useConfirmDialog } from '@/shared/components/ui/ConfirmDialog'
+import { ReelsVerticalFeedShimmer } from '@/shared/components/ui/ShimmerLoaders'
 import toast from 'react-hot-toast'
 
 export default function ReelDetailClient({ reelId }: { reelId: string }) {
@@ -131,11 +132,7 @@ export default function ReelDetailClient({ reelId }: { reelId: string }) {
   }
 
   if (loading) {
-    return (
-      <div className="flex min-h-[70vh] items-center justify-center bg-black">
-        <div className="h-10 w-10 animate-spin rounded-full border-2 border-white/20 border-t-white" />
-      </div>
-    )
+    return <ReelsVerticalFeedShimmer variant="dark" />
   }
 
   if (error || !reel) {

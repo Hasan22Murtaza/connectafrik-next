@@ -6,6 +6,7 @@ import { Clapperboard, ChevronLeft, ChevronRight, MoreVertical, Play } from '@/s
 import { useReels } from '@/shared/hooks/useReels'
 import type { Reel } from '@/shared/types/reels'
 import { reelsFeedHref } from '@/lib/reels/feedHref'
+import { ReelsStripShimmer } from '@/shared/components/ui/ShimmerLoaders'
 
 const THUMB_WIDTH = 'w-[118px] sm:w-[132px]'
 
@@ -154,25 +155,7 @@ export const FeedReelsStrip: React.FC = () => {
   }, [])
 
   if (loading) {
-    return (
-      <div className="rounded-xl border border-border  overflow-hidden shadow-md shadow-gray-200/60">
-        <div className="flex items-center justify-between px-4 pt-4 pb-2">
-          <div className="flex items-center gap-2">
-            <div className="h-5 w-5 rounded bg-primary-100 animate-pulse" />
-            <div className="h-4 w-24 rounded bg-surface-tertiary animate-pulse" />
-          </div>
-          <div className="h-8 w-8 rounded-full bg-surface-secondary animate-pulse" />
-        </div>
-        <div className="flex gap-3 overflow-hidden px-4 pb-4">
-          {[1, 2, 3, 4, 5].map((i) => (
-            <div
-              key={i}
-              className={`shrink-0 ${THUMB_WIDTH} aspect-[9/16] rounded-xl bg-surface-tertiary animate-pulse`}
-            />
-          ))}
-        </div>
-      </div>
-    )
+    return <ReelsStripShimmer />
   }
 
   if (isHidden || displayReels.length === 0) {

@@ -54,7 +54,8 @@ export function FeedInner() {
       case 'reposted':
         return { backHref: '/reels/reposted', listBackLabel: 'Reposted' }
       default:
-        return { backHref: '/reels/foryou', listBackLabel: 'For you' }
+        // For You is the primary one-by-one player — no list back target
+        return { backHref: undefined as string | undefined, listBackLabel: 'For You' }
     }
   }, [feed, exploreCategory])
 

@@ -1,5 +1,5 @@
-﻿import { ReelsListGrid } from '@/features/social/components/ReelsListGrid'
+﻿import { ReelsVerticalFeed } from '@/features/social/components/ReelsVerticalFeed'
 
 export default function ForYouPage() {
-  return <ReelsListGrid feed="foryou" />
+  return <ReelsVerticalFeed feed="foryou" />
 }

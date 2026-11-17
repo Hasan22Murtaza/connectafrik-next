@@ -1,3 +1,5 @@
+import { YouthLeadershipShell } from '@/features/youth-leadership/components/YouthLeadershipShell'
+
 export default function YouthLeadershipLayout({
   children,
 }: {
@@ -5,7 +7,7 @@ export default function YouthLeadershipLayout({
 }) {
   return (
     <div className="relative min-h-screen bg-background">
-      <div className="relative">{children}</div>
+      <YouthLeadershipShell>{children}</YouthLeadershipShell>
     </div>
   )
 }

@@ -1,31 +1,13 @@
 'use client'
 
-import Link from 'next/link'
-import { usePathname } from 'next/navigation'
-import { ShieldCheck } from '@/shared/icons'
-import {
-  YOUTH_NAV_ITEMS,
-  YOUTH_PAGE_SHELL,
-  type YouthNavItem,
-} from '@/features/youth-leadership/constants/nav'
 import YouthHubTabs, { type YouthHubTab } from './YouthHubTabs'
-
-function isActive(pathname: string, item: YouthNavItem) {
-  if (item.match?.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`))) {
-    return true
-  }
-  if (item.href === '/youth-leadership') {
-    return pathname === item.href
-  }
-  return pathname === item.href || pathname.startsWith(`${item.href}/`)
-}
+import { YOUTH_PAGE_SHELL } from '@/features/youth-leadership/constants/nav'
 
 export default function YouthShell({
   children,
   title,
   subtitle,
   actions,
-  showSafetyBadge = true,
   tabs,
   activeTab,
   onTabChange,
@@ -39,8 +21,6 @@ export default function YouthShell({
   activeTab?: string
   onTabChange?: (id: string) => void
 }) {
-  const pathname = usePathname()
-
   return (
     <div className={YOUTH_PAGE_SHELL}>
       <div className="mb-6 space-y-4">
@@ -52,7 +32,6 @@ export default function YouthShell({
                   {title}
                 </h1>
               ) : null}
-             
             </div>
             {subtitle ? (
               <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-content-secondary">
@@ -65,29 +44,6 @@ export default function YouthShell({
             <div className="flex flex-wrap items-center gap-2 sm:shrink-0">{actions}</div>
           ) : null}
         </div>
-
-        <nav
-          className="flex gap-1 overflow-x-auto border-b border-border/70 pb-px [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-          aria-label="Youth Leadership sections"
-        >
-          {YOUTH_NAV_ITEMS.map((item) => {
-            const active = isActive(pathname, item)
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                aria-current={active ? 'page' : undefined}
-                className={
-                  active
-                    ? '-mb-px whitespace-nowrap border-b-2 border-content px-3.5 py-2.5 text-sm font-semibold text-content'
-                    : '-mb-px whitespace-nowrap border-b-2 border-transparent px-3.5 py-2.5 text-sm font-medium text-content-secondary transition hover:border-border hover:text-content'
-                }
-              >
-                {item.label}
-              </Link>
-            )
-          })}
-        </nav>
 
         {tabs && activeTab && onTabChange ? (
           <YouthHubTabs tabs={tabs} activeId={activeTab} onChange={onTabChange} />

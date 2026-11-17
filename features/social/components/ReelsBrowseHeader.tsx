@@ -1,92 +1,65 @@
 'use client'
 
-import type { ReactNode } from 'react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
-import {
-  BarChart3,
-  Bookmark,
-  Compass,
-  Heart,
-  Repeat2,
-  Users,
-} from '@/shared/icons'
+import { usePathname, useSearchParams } from 'next/navigation'
+import { REEL_CATEGORIES, type ReelCategory } from '@/shared/types/reels'
 
-type TabLinkProps = {
-  href: string
-  label: string
-  icon: typeof Bookmark
-  active: boolean
+function chipClass(active: boolean) {
+  return `shrink-0 rounded-full px-3.5 py-1.5 text-xs font-medium transition sm:text-[13px] ${
+    active
+      ? 'bg-surface-secondary text-content ring-1 ring-border'
+      : 'text-content-secondary hover:bg-surface-secondary hover:text-content'
+  }`
 }
 
-function TabLink({ href, label, icon: Icon, active }: TabLinkProps) {
-  return (
-    <Link
-      href={href}
-      className={`relative flex items-center justify-center gap-1.5 pb-2.5 pt-2 px-3.5 text-[13px] font-medium transition sm:text-sm ${
-        active ? 'text-content' : 'text-content-tertiary hover:text-content'
-      }`}
-      aria-current={active ? 'page' : undefined}
-    >
-      <Icon
-        className={`h-4 w-4 ${active ? 'text-content' : 'text-current'}`}
-        strokeWidth={1.75}
-      />
-      <span>{label}</span>
-      {active && (
-        <span className="absolute inset-x-2 -bottom-px h-[3px] bg-content sm:inset-x-4" />
-      )}
-    </Link>
-  )
-}
-
-export function ReelsMainTabs({
-  feed,
-}: {
-  feed?: 'foryou' | 'following' | 'explore'
-}) {
+export function ReelsCategoriesBar() {
   const pathname = usePathname() || ''
-  const forYouActive =
-    feed === 'foryou' ||
-    feed === 'explore' ||
-    pathname === '/reels' ||
-    pathname.startsWith('/reels/foryou') ||
-    pathname.startsWith('/reels/explore')
-  const followingActive = feed === 'following' || pathname.startsWith('/reels/following')
-  const savedActive = pathname.startsWith('/reels/saved')
-  const repostedActive = pathname.startsWith('/reels/reposted')
-  const likedActive = pathname.startsWith('/reels/liked')
-  const analyticsActive = pathname.startsWith('/reels/analytics')
+  const searchParams = useSearchParams()
+  const activeCategory = searchParams.get('category')
+  const onExplore = pathname.startsWith('/reels/explore')
+  const allActive =
+    onExplore &&
+    (!activeCategory || !REEL_CATEGORIES.some((c) => c.value === activeCategory))
 
   return (
     <nav
-      aria-label="Reels sections"
-      className="flex justify-around w-full  border-b border-border px-1 sm:px-2  "
+      aria-label="Reel categories"
+      className="flex gap-1.5 overflow-x-auto px-3 py-2 sm:gap-2 sm:px-4 lg:px-5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
     >
-      <TabLink active={forYouActive} href="/reels/foryou" label="For you" icon={Compass} />
-      <TabLink active={followingActive} href="/reels/following" label="Tapping In" icon={Users} />
-      <TabLink href="/reels/saved" label="Saved" icon={Bookmark} active={savedActive} />
-      <TabLink href="/reels/reposted" label="Reposted" icon={Repeat2} active={repostedActive} />
-      <TabLink href="/reels/liked" label="Liked" icon={Heart} active={likedActive} />
-      <TabLink href="/reels/analytics" label="Analytics" icon={BarChart3} active={analyticsActive} />
+      <Link
+        href="/reels/explore"
+        aria-current={allActive ? 'page' : undefined}
+        className={chipClass(allActive)}
+      >
+        All
+      </Link>
+      {REEL_CATEGORIES.map((cat) => {
+        const isActive = onExplore && activeCategory === cat.value
+        return (
+          <Link
+            key={cat.value}
+            href={`/reels/explore?category=${cat.value}`}
+            aria-current={isActive ? 'page' : undefined}
+            className={chipClass(isActive)}
+          >
+            {cat.label}
+          </Link>
+        )
+      })}
     </nav>
   )
 }
 
 type BrowseHeaderProps = {
   feed: 'foryou' | 'following' | 'explore'
-  exploreCategories?: ReactNode
+  activeCategory?: ReelCategory
 }
 
-export function ReelsBrowseHeader({ feed, exploreCategories }: BrowseHeaderProps) {
+/** Top category chips only — section tabs live in the Reels sub-sidebar. */
+export function ReelsBrowseHeader(_props: BrowseHeaderProps) {
   return (
-    <header className="sticky top-16 z-20 w-full bg-surface/95 py-2 backdrop-blur-md">
-      <div>
-        <ReelsMainTabs feed={feed} />
-        {exploreCategories ? (
-          <div className="border-b border-border px-3 py-2 sm:px-4 lg:px-5">{exploreCategories}</div>
-        ) : null}
-      </div>
+    <header className="sticky top-16 z-20 w-full border-b border-border bg-surface/95 backdrop-blur-md md:top-0">
+      <ReelsCategoriesBar />
     </header>
   )
 }

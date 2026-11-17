@@ -2,8 +2,8 @@
 
 import { Suspense, useCallback, useEffect, useMemo, useRef } from 'react'
 import Link from 'next/link'
-import { useRouter, useSearchParams } from 'next/navigation'
-import { Home, Plus } from '@/shared/icons'
+import { useSearchParams } from 'next/navigation'
+import { Home } from '@/shared/icons'
 import { useAuth } from '@/contexts/AuthContext'
 import { useReels } from '@/shared/hooks/useReels'
 import { REEL_CATEGORIES, ReelCategory, ReelFeedType } from '@/shared/types/reels'
@@ -11,13 +11,16 @@ import { ReelCard } from '@/features/social/components/ReelCard'
 import { ReelsNav } from '@/features/social/components/ReelsNav'
 import { ReelsBrowseHeader } from '@/features/social/components/ReelsBrowseHeader'
 import { reelsFeedHref } from '@/lib/reels/feedHref'
+import {
+  ReelsGridLoadMoreShimmer,
+  ReelsGridShimmer,
+} from '@/shared/components/ui/ShimmerLoaders'
 
 type Props = {
   feed: Extract<ReelFeedType, 'foryou' | 'following' | 'explore'>
 }
 
 function ListBody({ feed }: Props) {
-  const router = useRouter()
   const { user } = useAuth()
   const searchParams = useSearchParams()
   const categoryParam = searchParams.get('category')
@@ -62,15 +65,6 @@ function ListBody({ feed }: Props) {
     return () => io.disconnect()
   }, [hasMore, loading, loadMore, reels.length])
 
-  const setCategory = useCallback(
-    (cat: ReelCategory | null) => {
-      const p = new URLSearchParams()
-      if (cat) p.set('category', cat)
-      router.push(`/reels/explore${p.toString() ? `?${p.toString()}` : ''}`, { scroll: false })
-    },
-    [router]
-  )
-
   const feedHrefFor = useCallback(
     (reelId: string) =>
       reelsFeedHref({ start: reelId, feed, category: exploreCategory }),
@@ -78,38 +72,7 @@ function ListBody({ feed }: Props) {
   )
 
   const gridClass =
-    'columns-2 gap-2.5 sm:columns-3 sm:gap-3 lg:columns-4 xl:columns-5 [column-fill:_balance]'
-
-  const exploreCategories =
-    feed === 'explore' ? (
-      <div className="flex gap-2 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden py-1">
-        <button
-          type="button"
-          onClick={() => setCategory(null)}
-          className={`shrink-0 rounded-full px-3.5 py-1.5 text-xs font-medium transition ${
-            !exploreCategory
-              ? 'bg-[var(--african-orange)] text-white'
-              : 'bg-surface-secondary text-content-secondary ring-1 ring-border hover:bg-surface-hover'
-          }`}
-        >
-          All
-        </button>
-        {REEL_CATEGORIES.map((c) => (
-          <button
-            key={c.value}
-            type="button"
-            onClick={() => setCategory(c.value)}
-            className={`shrink-0 rounded-full px-3.5 py-1.5 text-xs font-medium transition ${
-              exploreCategory === c.value
-                ? 'bg-[var(--african-orange)] text-white'
-                : 'bg-surface-secondary text-content-secondary ring-1 ring-border hover:bg-surface-hover'
-            }`}
-          >
-            {c.label}
-          </button>
-        ))}
-      </div>
-    ) : null
+    'columns-3 gap-2 sm:columns-4 sm:gap-2.5 lg:columns-5 xl:columns-6 2xl:columns-7 [column-fill:_balance]'
 
   if (!enabled) {
     return (
@@ -129,7 +92,7 @@ function ListBody({ feed }: Props) {
   if (error) {
     return (
       <div className="flex min-h-[calc(100dvh-4.5rem)] flex-col bg-surface text-content">
-        <ReelsBrowseHeader feed={feed} exploreCategories={exploreCategories} />
+        <ReelsBrowseHeader feed={feed} activeCategory={exploreCategory} />
         <div className="flex flex-1 flex-col items-center justify-center px-6 text-center">
           <p className="text-sm text-content-secondary">{error}</p>
           <button type="button" onClick={refresh} className="btn-primary mt-4 inline-flex rounded-full text-sm">
@@ -142,26 +105,17 @@ function ListBody({ feed }: Props) {
 
   return (
     <div className="relative mx-auto w-full max-w-[1600px] min-h-[calc(100dvh-4.5rem)] bg-surface pb-[calc(5.5rem+env(safe-area-inset-bottom))] text-content lg:pb-10">
-      <ReelsBrowseHeader feed={feed} exploreCategories={exploreCategories} />
+      <ReelsBrowseHeader feed={feed} activeCategory={exploreCategory} />
 
       <div>
         {loading && reels.length === 0 ? (
-          <div className="flex min-h-[50vh] items-center justify-center">
-            <div className="h-10 w-10 animate-spin rounded-full border-2 border-border border-t-[var(--african-orange)]" />
-          </div>
+          <ReelsGridShimmer />
         ) : reels.length === 0 ? (
           <div className="flex min-h-[50vh] flex-col items-center justify-center px-6 text-center">
             <Home className="mb-3 h-12 w-12 text-content-tertiary" />
             <p className="text-sm text-content-secondary">
               {feed === 'following' ? 'No reels from people you follow yet.' : 'No reels here yet.'}
             </p>
-            <Link
-              href="/reels/create"
-              className="mt-4 inline-flex items-center gap-2 rounded-full bg-[var(--african-orange)] px-5 py-2.5 text-sm font-semibold text-white"
-            >
-              <Plus className="h-4 w-4" />
-              Create reel
-            </Link>
           </div>
         ) : (
           <div className={`px-2.5 pt-2 sm:px-4 lg:px-5 ${gridClass}`}>
@@ -175,25 +129,8 @@ function ListBody({ feed }: Props) {
 
         <div ref={sentinelRef} className="h-8 w-full" aria-hidden />
 
-        {loading && reels.length > 0 && (
-          <div className="flex justify-center py-4">
-            <div className="h-7 w-7 animate-spin rounded-full border-2 border-border border-t-[var(--african-orange)]" />
-          </div>
-        )}
+        {loading && reels.length > 0 && <ReelsGridLoadMoreShimmer />}
       </div>
-
-<Link
-  href="/reels/create"
-  aria-label="Create reel"
-  className="fixed hidden left-[54vw] bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-[47] lg:flex h-14 w-14 -translate-x-1/2 items-center justify-center rounded-full bg-[var(--african-orange)] text-white shadow-lg ring-2 ring-black/5 lg:bottom-8"
->
-  <Plus
-    className="h-7 w-7 shrink-0"
-    strokeWidth={2.5}
-  />
-</Link>
-
-
 
       <div className="fixed bottom-0 left-0 right-0 z-[46] border-t border-border bg-surface/90 px-2 pb-[calc(0.4rem+env(safe-area-inset-bottom))] pt-1 lg:hidden">
         <div className="mx-auto max-w-lg">
@@ -206,8 +143,8 @@ function ListBody({ feed }: Props) {
 
 function Fallback() {
   return (
-    <div className="flex min-h-[40vh] items-center justify-center bg-surface">
-      <div className="h-10 w-10 animate-spin rounded-full border-2 border-border border-t-[var(--african-orange)]" />
+    <div className="relative mx-auto w-full max-w-[1600px] min-h-[calc(100dvh-4.5rem)] bg-surface pb-[calc(5.5rem+env(safe-area-inset-bottom))] text-content lg:pb-10">
+      <ReelsGridShimmer />
     </div>
   )
 }

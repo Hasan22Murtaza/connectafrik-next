@@ -117,13 +117,13 @@ const LeftSidebar = () => {
   const hoverExpanded = mode === "hover" && hovered;
   const showLabels = mode === "expanded" || hoverExpanded;
 
-  // Collapsed rail ~56px; expanded panel ~224px (matches reference)
-  const railClass = mode === "expanded" ? "w-56" : "w-14";
+  // Collapsed rail ~56px; expanded panel ~192px
+  const railClass = mode === "expanded" ? "w-48" : "w-14";
 
   const itemClass = (isActive) =>
     [
-      "group relative flex w-full items-center rounded-lg text-[15px] font-medium transition-colors duration-150",
-      showLabels ? "gap-3 px-3 py-2.5" : "justify-center px-2 py-2.5",
+      "group relative flex w-full items-center rounded-lg text-sm font-medium transition-colors duration-150",
+      showLabels ? "gap-2.5 px-2.5 py-2" : "justify-center px-2 py-2",
       isActive
         ? "bg-surface-secondary text-content hover:bg-surface-hover"
         : "text-content-secondary hover:bg-surface-hover hover:text-content",
@@ -143,7 +143,7 @@ const LeftSidebar = () => {
       <div
         className={`flex h-full flex-col border-r border-[#e4e6eb] dark:border-[#415474] bg-white ${
           hoverExpanded
-            ? "absolute inset-y-0 left-0 z-40 w-56 shadow-lg"
+            ? "absolute inset-y-0 left-0 z-40 w-48 shadow-lg"
             : "relative w-full"
         }`}
       >
@@ -168,7 +168,7 @@ const LeftSidebar = () => {
                     <span className="relative shrink-0">
                       <Icon
                         aria-hidden="true"
-                        className="h-[22px] w-[22px]"
+                        className="h-5 w-5"
                         strokeWidth={1.75}
                       />
                       {badge && !showLabels && (
@@ -202,15 +202,15 @@ const LeftSidebar = () => {
             type="button"
             onClick={() => setControlOpen((o) => !o)}
             className={[
-              "flex w-full items-center rounded-lg text-[15px] font-medium text-content-secondary transition-colors hover:bg-surface-hover hover:text-content",
-              showLabels ? "gap-3 px-3 py-2.5" : "justify-center px-2 py-2.5",
+              "flex w-full items-center rounded-lg text-sm font-medium text-content-secondary transition-colors hover:bg-surface-hover hover:text-content",
+              showLabels ? "gap-2.5 px-2.5 py-2" : "justify-center px-2 py-2",
             ].join(" ")}
             aria-expanded={controlOpen}
             aria-haspopup="dialog"
             title={!showLabels ? "Sidebar control" : undefined}
           >
             <PanelLeft
-              className="h-[22px] w-[22px] shrink-0"
+              className="h-5 w-5 shrink-0"
               strokeWidth={1.75}
               aria-hidden
             />

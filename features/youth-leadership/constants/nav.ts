@@ -5,6 +5,16 @@ export type YouthNavItem = {
   match?: string[]
 }
 
+export function isYouthNavActive(pathname: string, item: YouthNavItem) {
+  if (item.match?.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`))) {
+    return true
+  }
+  if (item.href === '/youth-leadership') {
+    return pathname === item.href
+  }
+  return pathname === item.href || pathname.startsWith(`${item.href}/`)
+}
+
 export const YOUTH_NAV_ITEMS: YouthNavItem[] = [
   {
     href: '/youth-leadership',

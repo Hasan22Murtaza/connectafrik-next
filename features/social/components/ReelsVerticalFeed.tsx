@@ -35,6 +35,7 @@ import {
 import { Reel, ReelCategory, ReelFeedType } from '@/shared/types/reels'
 import toast from 'react-hot-toast'
 import { useConfirmDialog } from '@/shared/components/ui/ConfirmDialog'
+import { ReelsVerticalFeedShimmer } from '@/shared/components/ui/ShimmerLoaders'
 
 type Props = {
   feed: ReelFeedType
@@ -412,15 +413,7 @@ export function ReelsVerticalFeed({
   }
 
   if (loading && reels.length === 0) {
-    return (
-      <div className="flex min-h-[calc(100dvh-3.5rem)] flex-col items-center justify-center bg-surface text-content lg:min-h-[calc(100dvh-4.5rem)]">
-        <div
-          className="h-10 w-10 animate-spin rounded-full border-2 border-border border-t-[var(--african-orange)]"
-          aria-hidden
-        />
-        <p className="mt-4 text-sm text-content-secondary">Loading reels…</p>
-      </div>
-    )
+    return <ReelsVerticalFeedShimmer />
   }
 
   if (error) {
@@ -537,7 +530,7 @@ export function ReelsVerticalFeed({
                   aria-hidden
                 >
                   {loading && (
-                    <div className="h-8 w-8 animate-spin rounded-full border-2 border-border border-t-[var(--african-orange)]" />
+                    <div className="h-16 w-10 animate-shimmer rounded-lg" aria-hidden />
                   )}
                 </div>
               )}

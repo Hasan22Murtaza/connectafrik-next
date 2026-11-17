@@ -10,6 +10,7 @@ import { formatDistanceToNow } from 'date-fns'
 import TextFieldSelectionToolbar from '@/features/chat/richtext/TextFieldSelectionToolbar'
 import ChatRichTextRenderer from '@/features/chat/richtext/ChatRichTextRenderer'
 import toast from 'react-hot-toast'
+import { ReelCommentsShimmer } from '@/shared/components/ui/ShimmerLoaders'
 
 interface ReelCommentsProps {
   reelId: string
@@ -356,12 +357,7 @@ function CommentsList({
   comments: ReelComment[]
 }) {
   if (loading && comments.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center py-16">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-border border-t-primary-600" />
-        <p className="mt-3 text-sm text-content-secondary">Loading comments…</p>
-      </div>
-    )
+    return <ReelCommentsShimmer />
   }
 
   if (comments.length === 0) {
