@@ -153,7 +153,7 @@ interface ProductionChatContextType {
   isMessagesLoadingForThread: (threadId: string) => boolean
   /** Whether older pages exist beyond the initial page-0 load (undefined while loading). */
   getThreadHasOlderMessages: (threadId: string) => boolean | undefined
-  sendMessage: (threadId: string, text: string, payload?: any) => Promise<void>
+  sendMessage: (threadId: string, text: string, payload?: any) => Promise<boolean>
   minimizedThreadIds: string[]
   markThreadRead: (threadId: string) => void
   threads: ChatThread[]
@@ -551,7 +551,7 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
   const sendMessage = useCallback(async (threadId: string, text: string, payload?: any) => {
     if (!currentUser) {
       console.error('Cannot send message: no current user')
-      return
+      return false
     }
 
     const skipContextOptimistic = payload?.skipContextOptimistic === true
@@ -674,6 +674,7 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
         }
         return { ...prev, [threadId]: sortChatMessagesByCreatedAt([...current, message]) }
       })
+      return true
     } catch (error) {
       console.error('Error sending message:', error)
       removeOptimisticBySendId(clientSendId)
@@ -683,11 +684,11 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
             ? error.message
             : 'This action is restricted by your parent.'
         )
-        return
+        return false
       }
       if (error instanceof ApiError && (error.status === 404 || error.status === 403)) {
         toast.error('You can no longer send messages in this chat')
-        return
+        return false
       }
       if (!eligibleForOptimistic && !clientSendIdFromPayload) {
         const fallbackMessage: ChatMessage = {
@@ -707,6 +708,7 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
       } else {
         toast.error('Failed to send message')
       }
+      return false
     }
   }, [currentUser])
 
