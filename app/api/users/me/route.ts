@@ -185,6 +185,44 @@ export async function PATCH(request: NextRequest) {
         return errorResponse('No updatable fields', 400)
       }
 
+      if (typeof allowed.birthday === 'string') {
+        const { data: currentProfile } = await supabase
+          .from('profiles')
+          .select('birthday')
+          .eq('id', user.id)
+          .maybeSingle()
+
+        const { maybeGateChildBirthdayUpdate } = await import('@/lib/family')
+        const gate = await maybeGateChildBirthdayUpdate(serviceClient, {
+          userId: user.id,
+          nextBirthday: allowed.birthday,
+          currentBirthday: currentProfile?.birthday ?? null,
+        })
+
+        if (gate.gated) {
+          delete allowed.birthday
+          if (Object.keys(allowed).length === 0) {
+            return jsonResponse(
+              {
+                data: null,
+                presence: presenceJson,
+                birthday_pending_verification: true,
+              },
+              202,
+              gate.message ||
+                'A verification email was sent to your parent. Birthday updates after approval.'
+            )
+          }
+        }
+      }
+
+      if (Object.keys(allowed).length === 0) {
+        if (hasPresence && presenceJson) {
+          return jsonResponse({ data: null, presence: presenceJson })
+        }
+        return errorResponse('No updatable fields', 400)
+      }
+
       const updates: Record<string, unknown> = {
         ...allowed,
         updated_at: new Date().toISOString(),

@@ -13,7 +13,7 @@ import {
   requireOrgRole,
 } from '@/lib/youth-leadership/auth'
 import { notifyYouthUser } from '@/lib/youth-leadership/notify'
-import { getActiveMembership, isManagedRole } from '@/lib/family/auth'
+import { getActiveMembership, isParentalControlsActive } from '@/lib/family/auth'
 
 type Params = { params: Promise<{ id: string }> }
 
@@ -115,7 +115,7 @@ export async function POST(request: NextRequest, { params }: Params) {
     const membership = await getActiveMembership(supabase, user.id)
     const needsGuardian =
       program.requires_guardian_approval ||
-      (membership && isManagedRole(membership.role) && (age == null || age < 18))
+      (membership && isParentalControlsActive(membership) && (age == null || age < 18))
 
     const questions = Array.isArray(program.application_questions)
       ? program.application_questions

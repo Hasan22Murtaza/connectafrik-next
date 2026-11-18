@@ -6,8 +6,8 @@ import {
   FamilyAuthError,
   ensureDefaultControls,
   getActiveMembership,
-  isManagedRole,
-  requireParentOfMember,
+  isParentalControlsActive,
+  requireParentCanManageMember,
 } from '@/lib/family'
 
 export async function GET(
@@ -37,7 +37,7 @@ export async function GET(
       return errorResponse('Forbidden', 403)
     }
 
-    if (!isManagedRole(target.role)) {
+    if (!isParentalControlsActive(target)) {
       return jsonResponse(null)
     }
 
@@ -59,10 +59,10 @@ export async function PATCH(
   try {
     const { id } = await params
     const { user, supabase } = await getAuthenticatedUser(request)
-    const { target } = await requireParentOfMember(supabase, user.id, id)
+    const { target } = await requireParentCanManageMember(supabase, user.id, id)
 
-    if (!isManagedRole(target.role)) {
-      return errorResponse('Controls only apply to child or teen members', 400)
+    if (!isParentalControlsActive(target)) {
+      return errorResponse('Controls only apply to managed child or opted-in teen members', 400)
     }
 
     await ensureDefaultControls(supabase, id)

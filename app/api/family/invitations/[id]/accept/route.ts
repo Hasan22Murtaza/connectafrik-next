@@ -3,10 +3,11 @@ import { createServiceClient, getAuthenticatedUser } from '@/lib/supabase-server
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
 import { createNotification } from '@/lib/notifications/createNotification'
 import {
+  ageFromBirthday,
   ensureDefaultControls,
   getActiveMembership,
   hashInviteToken,
-  isManagedRole,
+  inviteRoleAgeError,
 } from '@/lib/family'
 
 export async function POST(
@@ -62,6 +63,18 @@ export async function POST(
 
     const now = new Date().toISOString()
 
+    const { data: inviteeProfile } = await service
+      .from('profiles')
+      .select('birthday')
+      .eq('id', user.id)
+      .maybeSingle()
+
+    const age = ageFromBirthday(inviteeProfile?.birthday)
+    const ageError = inviteRoleAgeError(invitation.role, age)
+    if (ageError) return errorResponse(ageError, 400)
+
+    const parentalOversightEnabled = invitation.role === 'child'
+
     // Soft-removed (or stale) rows still occupy (family_id, user_id); reactivate instead of insert.
     const { data: priorMembership } = await service
       .from('family_members')
@@ -84,6 +97,7 @@ export async function POST(
           role: invitation.role,
           status: 'active',
           joined_at: now,
+          parental_oversight_enabled: parentalOversightEnabled,
         })
         .eq('id', priorMembership.id)
         .select('*')
@@ -99,6 +113,7 @@ export async function POST(
           role: invitation.role,
           status: 'active',
           joined_at: now,
+          parental_oversight_enabled: parentalOversightEnabled,
         })
         .select('*')
         .single()
@@ -125,7 +140,8 @@ export async function POST(
       })
       .eq('id', id)
 
-    if (isManagedRole(invitation.role)) {
+    // Default controls for Child; teens get rows only when they opt into oversight.
+    if (invitation.role === 'child') {
       await ensureDefaultControls(service, membership.id)
       await service.from('screen_time_rules').upsert(
         {

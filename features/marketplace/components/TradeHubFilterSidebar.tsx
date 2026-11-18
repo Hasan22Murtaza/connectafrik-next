@@ -48,14 +48,14 @@ interface TradeHubFilterSidebarProps {
 }
 
 const menuRowClass =
-  "w-full flex items-center justify-between gap-3 px-4 py-2 text-left text-[15px]  hover:bg-primary-50 transition-colors";
+  "w-full flex items-center justify-between gap-3 px-3 py-1.5 text-left text-sm hover:bg-primary-50 transition-colors rounded-lg";
 
 const categoryRowClass =
-  "w-full flex items-center justify-between gap-3 px-4 py-2 text-left text-[15px] hover:bg-surface-hover transition-colors";
+  "w-full flex items-center justify-between gap-3 px-3 py-1.5 text-left text-sm hover:bg-surface-hover transition-colors rounded-lg";
 
-const menuRowActiveClass = "bg-surface-secondary text-content ";
+const menuRowActiveClass = "bg-surface-secondary text-content";
 
-const sectionTitleClass = "px-4 pt-4 pb-2 text-[17px] font-bold ";
+const sectionTitleClass = "px-3 pt-3 pb-1.5 text-sm font-semibold text-content";
 
 const dividerClass = "border-t border-gray-100 my-1";
 
@@ -134,7 +134,6 @@ const TradeHubFilterSidebar: React.FC<TradeHubFilterSidebarProps> = ({
         >
           {/* —— Main menu —— */}
           <div className="w-1/2 h-full shrink-0 overflow-y-auto scrollbar-hover pb-6">
-            <div className={sectionTitleClass}>Shop by Category</div>
 
           <button
             type="button"
@@ -194,7 +193,7 @@ const TradeHubFilterSidebar: React.FC<TradeHubFilterSidebarProps> = ({
 
           <div className={sectionTitleClass}>Filters</div>
 
-          <div className="px-4 pb-3 space-y-3">
+          <div className="px-3 pb-3 space-y-3">
             {location && onLocationChange && (
               <div>
                 <label className="block text-xs font-semibold text-orange-500 mb-1.5">
@@ -373,15 +372,15 @@ const TradeHubFilterSidebar: React.FC<TradeHubFilterSidebarProps> = ({
           <button
             type="button"
             onClick={backToMain}
-            className="w-full flex items-center gap-2 px-4 py-3.5 text-left border-b border-gray-200 hover:bg-primary-50 transition-colors sticky top-0 bg-surface z-10"
+            className="w-full flex items-center gap-2 px-3 py-2.5 text-left border-b border-gray-200 hover:bg-primary-50 transition-colors sticky top-0 bg-surface z-10"
           >
             <ChevronRight className="w-4 h-4 text-primary-600 rotate-180 shrink-0" />
-            <span className="text-[13px] font-bold uppercase tracking-wide text-orange-500">
+            <span className="text-xs font-semibold uppercase tracking-wide text-orange-500">
               Main Menu
             </span>
           </button>
 
-          <h3 className="px-4 pt-4 pb-2 text-[20px] font-bold text-orange-500 leading-tight">
+          <h3 className="px-3 pt-3 pb-1.5 text-xl font-semibold text-content leading-tight">
             {drillCategory?.label || getCategoryLabel(filters.category)}
           </h3>
 

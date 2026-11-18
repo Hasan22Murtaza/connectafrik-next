@@ -110,9 +110,18 @@ export const useProfile = () => {
     async (updates: Partial<Profile>) => {
       try {
         if (!user) throw new Error('No user found')
-        await apiClient.patch<{ data: Profile }>('/api/users/me', updates)
+        const result = await apiClient.patch<{
+          data: Profile | null
+          birthday_pending_verification?: boolean
+        }>('/api/users/me', updates)
         apiClient.invalidateCache('/api/users/me')
         await loadProfile(user.id, true)
+        if (result?.birthday_pending_verification) {
+          return {
+            error: null,
+            info: 'A verification email was sent to your parent. Your birthday will update after they approve it.',
+          }
+        }
         return { error: null }
       } catch (error: unknown) {
         return { error: error instanceof Error ? error.message : 'Failed to update profile' }

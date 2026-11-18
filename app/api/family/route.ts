@@ -29,7 +29,9 @@ export async function GET(request: NextRequest) {
 
     const { data: members, error: membersError } = await supabase
       .from('family_members')
-      .select('id, family_id, user_id, role, relationship, status, joined_at, created_at, updated_at')
+      .select(
+        'id, family_id, user_id, role, relationship, status, parental_oversight_enabled, joined_at, created_at, updated_at'
+      )
       .eq('family_id', membership.family_id)
       .neq('status', 'removed')
       .order('created_at', { ascending: true })

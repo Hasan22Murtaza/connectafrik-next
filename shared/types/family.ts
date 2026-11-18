@@ -1,5 +1,5 @@
 export type FamilyStatus = 'active' | 'archived'
-export type FamilyMemberRole = 'parent' | 'child' | 'teen'
+export type FamilyMemberRole = 'parent' | 'child' | 'teen' | 'member'
 export type FamilyMemberStatus = 'pending' | 'active' | 'suspended' | 'removed'
 export type FamilyInvitationStatus = 'pending' | 'accepted' | 'rejected' | 'expired' | 'cancelled'
 export type ContentFilterLevel = 'off' | 'low' | 'medium' | 'high'
@@ -47,6 +47,11 @@ export interface FamilyMember {
   role: FamilyMemberRole
   relationship: string | null
   status: FamilyMemberStatus
+  /**
+   * Teen opt-in: when true, parents may monitor/control this teen.
+   * Children are always managed regardless of this flag.
+   */
+  parental_oversight_enabled?: boolean
   joined_at: string | null
   created_at: string
   updated_at: string

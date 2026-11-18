@@ -71,7 +71,7 @@ const MarketplaceHubNav: React.FC<MarketplaceHubNavProps> = ({
     <div className={compact ? "mb-3" : MP.section}>
       {!compact && (
         <div className={`hidden md:flex ${MP.sidebarHeader}`}>
-          <h2 className={MP.pageTitleLg}>TradeHub</h2>
+          <h2 className={MP.sidebarTitle}>TradeHub</h2>
           {onOpenFilters && (
             <button
               type="button"

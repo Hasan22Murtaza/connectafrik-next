@@ -1,7 +1,11 @@
 import { NextRequest } from 'next/server'
 import { createServiceClient, getAuthenticatedUser } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
-import { FamilyAuthError, isManagedRole, requireParentOfMember } from '@/lib/family'
+import {
+  FamilyAuthError,
+  isParentalControlsActive,
+  requireParentCanManageMember,
+} from '@/lib/family'
 
 export async function GET(
   request: NextRequest,
@@ -10,9 +14,9 @@ export async function GET(
   try {
     const { id } = await params
     const { user, supabase } = await getAuthenticatedUser(request)
-    const { target } = await requireParentOfMember(supabase, user.id, id)
+    const { target } = await requireParentCanManageMember(supabase, user.id, id)
 
-    if (!isManagedRole(target.role)) {
+    if (!isParentalControlsActive(target)) {
       return jsonResponse([])
     }
 

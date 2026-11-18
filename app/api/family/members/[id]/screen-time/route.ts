@@ -7,8 +7,8 @@ import {
   buildDailySessionMinutes,
   evaluateScreenTime,
   getActiveMembership,
-  isManagedRole,
-  requireParentOfMember,
+  isParentalControlsActive,
+  requireParentCanManageMember,
   sumSessionMinutesToday,
 } from '@/lib/family'
 
@@ -61,8 +61,12 @@ export async function GET(
       return errorResponse('Forbidden', 403)
     }
 
-    if (!isManagedRole(target.role)) {
-      return jsonResponse(null)
+    if (!isParentalControlsActive(target)) {
+      if (isSelf) return jsonResponse(null)
+      return errorResponse(
+        'Parents can only view screen time for children or teens who allowed monitoring',
+        403
+      )
     }
 
     const { searchParams } = new URL(request.url)
@@ -98,10 +102,13 @@ export async function PATCH(
   try {
     const { id } = await params
     const { user, supabase } = await getAuthenticatedUser(request)
-    const { target } = await requireParentOfMember(supabase, user.id, id)
+    const { target } = await requireParentCanManageMember(supabase, user.id, id)
 
-    if (!isManagedRole(target.role)) {
-      return errorResponse('Screen time only applies to child or teen members', 400)
+    if (!isParentalControlsActive(target)) {
+      return errorResponse(
+        'Screen time only applies to managed child or opted-in teen members',
+        400
+      )
     }
 
     await ensureScreenTimeRules(supabase, id)

@@ -339,7 +339,7 @@ const MarketplacePage: React.FC = () => {
               aria-label="TradeHub filters"
             >
               <div className="flex items-center justify-between px-4 py-3 border-b border-border-subtle shrink-0">
-                <span className="font-bold text-[16px] text-content">Filters</span>
+                <span className="font-semibold text-sm text-content">Filters</span>
                 <button
                   type="button"
                   onClick={() => setIsFilterDrawerOpen(false)}

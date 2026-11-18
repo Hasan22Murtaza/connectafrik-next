@@ -32,31 +32,32 @@ export const MP = {
     "w-full flex items-center gap-2 p-2 bg-surface rounded-lg border border-border-subtle hover:bg-surface-hover transition-colors text-left shadow-sm",
   listThumb: "w-14 h-14 sm:w-16 sm:h-16 rounded-lg overflow-hidden bg-surface-secondary shrink-0",
 
-  navList: "space-y-2",
+  navList: "space-y-1",
   navItem:
-    "group w-full flex items-center gap-2.5 px-2 py-2 rounded-lg transition-colors duration-150 text-[15px] font-medium cursor-pointer",
+    "group w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg transition-colors duration-200 text-sm cursor-pointer",
   navItemActive: "bg-surface-secondary text-content",
-  navItemInactive: "text-content hover:bg-gray-50",
-  navIcon: "w-5 h-5 shrink-0",
+  navItemInactive:
+    "text-content-secondary hover:bg-gray-50 hover:text-gray-700 dark:hover:bg-surface-hover dark:hover:text-content",
+  navIcon: "w-4 h-4 shrink-0",
   navIconActive: "text-content",
   navIconInactive: "text-content-secondary",
 
   sidebarTitleBlock: "mb-3 px-1",
-  sidebarTitle: "text-xl font-bold text-content leading-tight",
+  sidebarTitle: "text-xl font-semibold text-content leading-tight",
   sidebarNav: "border-t border-border pt-2",
 
   section: "mb-4",
-  sectionTitle: "text-[17px] font-bold text-content mb-2",
+  sectionTitle: "text-sm font-semibold text-content mb-2",
   sectionDivider: "border-t border-border my-4",
 
   filterHeader: "flex items-center justify-between mb-2 px-1",
-  filterTitle: "text-[17px] font-bold text-content",
+  filterTitle: "text-sm font-semibold text-content",
   filterClear: "text-primary-600 text-sm font-medium hover:underline",
   filterSectionBtn:
-    "w-full flex items-center justify-between px-2 py-2 rounded-lg bg-surface-secondary hover:bg-surface-hover text-[15px] font-semibold text-content transition-colors",
+    "w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-surface-secondary hover:bg-surface-hover text-sm font-semibold text-content transition-colors",
   filterOptionsList: "mt-1 mb-2 space-y-0.5",
   filterOption:
-    "flex items-center gap-2.5 py-1.5 px-2 rounded-lg hover:bg-surface-hover cursor-pointer text-[15px] text-content",
+    "flex items-center gap-2.5 py-1.5 px-2.5 rounded-lg hover:bg-surface-hover cursor-pointer text-sm text-content",
   filterRadio:
     "h-4 w-4 cursor-pointer appearance-none rounded-full border-2 border-border bg-surface transition-colors hover:border-orange-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/30 focus-visible:ring-offset-0 checked:border-orange-500 checked:bg-[radial-gradient(circle,_white_0_32%,_#f97316_36%)]",
 
@@ -77,7 +78,7 @@ export const MP = {
   pageTitleLg: "text-xl sm:text-2xl font-bold text-content",
 
   createListingBtn:
-    "w-full mt-4 flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-lg bg-primary-50 text-primary-600 font-semibold text-[15px] hover:bg-primary-100 transition-colors dark:bg-primary-50/15",
+    "w-full mt-4 flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg bg-primary-50 text-primary-600 font-semibold text-sm hover:bg-primary-100 transition-colors dark:bg-primary-50/15",
   createListingBtnTop:
     "w-full mb-3 flex items-center justify-center gap-1.5 py-2 px-2 rounded-lg bg-primary-50 text-primary-600 font-semibold text-sm hover:bg-primary-100 transition-colors dark:bg-primary-50/15",
   createListingBtnInline:

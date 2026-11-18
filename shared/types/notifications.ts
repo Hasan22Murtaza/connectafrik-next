@@ -69,6 +69,8 @@ export type NotificationType =
   | 'family_screen_time_limit'
   | 'family_safety_alert'
   | 'family_friend_request_approved'
+  | 'family_child_turned_16'
+  | 'family_verification_required'
   // Youth Leadership
   | 'youth_program_application'
   | 'youth_application_status'
@@ -120,6 +122,8 @@ export const CANONICAL_NOTIFICATION_TYPES = [
   'family_screen_time_limit',
   'family_safety_alert',
   'family_friend_request_approved',
+  'family_child_turned_16',
+  'family_verification_required',
   'youth_program_application',
   'youth_application_status',
   'youth_program_accepted',

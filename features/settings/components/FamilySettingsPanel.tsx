@@ -46,7 +46,6 @@ import {
 import { ApiError } from '@/lib/api-client'
 import { useProfile } from '@/shared/hooks/useProfile'
 import { isAdultForFamily } from '@/lib/family/age'
-import { isManagedRole } from '@/lib/family/auth'
 import { ScreenTimeUsageChart } from '@/features/family/components/ScreenTimeUsageChart'
 
 type MemberView = 'list' | 'controls' | 'screen-time' | 'activity' | 'alerts' | 'friends'
@@ -78,7 +77,14 @@ function memberInitials(m: FamilyMember) {
 function roleLabel(role: string) {
   if (role === 'parent') return 'Parent'
   if (role === 'teen') return 'Teen'
+  if (role === 'member') return 'Member'
   return 'Child'
+}
+
+function canParentControlMember(member: FamilyMember): boolean {
+  if (member.role === 'child') return true
+  if (member.role === 'teen') return member.parental_oversight_enabled === true
+  return false
 }
 
 function MemberAvatar({
@@ -126,7 +132,9 @@ function RoleBadge({ role }: { role: string }) {
       ? 'bg-primary/10 text-primary'
       : role === 'teen'
         ? 'bg-amber-500/10 text-amber-700 dark:text-amber-400'
-        : 'bg-sky-500/10 text-sky-700 dark:text-sky-400'
+        : role === 'member'
+          ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
+          : 'bg-sky-500/10 text-sky-700 dark:text-sky-400'
 
   return (
     <span
@@ -193,9 +201,9 @@ export function FamilySettingsPanel() {
   }, [load])
 
   const isParent = overview?.membership?.role === 'parent'
-  const isManaged =
-    me?.controls_active === true ||
-    (overview?.membership?.role != null && isManagedRole(overview.membership.role))
+  const isManaged = me?.controls_active === true
+  const isTeenMember =
+    overview?.membership?.role === 'teen' || me?.role === 'teen' || me?.membership?.role === 'teen'
   const canCreateFamily = isAdultForFamily(profile?.birthday)
 
   async function createFamily() {
@@ -364,16 +372,57 @@ export function FamilySettingsPanel() {
 
   async function removeMember(member: FamilyMember) {
     if (!overview?.family?.id) return
-    if (!window.confirm(`Remove ${memberLabel(member)} from the family?`)) return
+    const confirmMsg =
+      member.role === 'child'
+        ? `Remove ${memberLabel(member)} from the family? We'll email you a verification link first.`
+        : `Remove ${memberLabel(member)} from the family?`
+    if (!window.confirm(confirmMsg)) return
     setSaving(true)
     try {
-      await familyService.removeMember(overview.family.id, member.id)
-      toast.success('Member removed')
-      setSelectedMember(null)
-      setMemberView('list')
-      await load()
+      const result = await familyService.removeMember(overview.family.id, member.id)
+      if (result && typeof result === 'object' && 'pending_verification' in result && result.pending_verification) {
+        toast.success('Verification email sent. Confirm the link to finish removing this child.')
+      } else {
+        toast.success('Member removed')
+        setSelectedMember(null)
+        setMemberView('list')
+        await load()
+      }
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : 'Failed to remove member')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function changeChildToTeen(member: FamilyMember) {
+    if (!window.confirm(`Change ${memberLabel(member)} from Child to Teen? Parental controls will stop unless they opt in later.`)) {
+      return
+    }
+    setSaving(true)
+    try {
+      await familyService.updateMemberRole(member.id, 'teen')
+      toast.success('Member is now a Teen')
+      await load()
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : 'Failed to update role')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function toggleTeenOversight(enabled: boolean) {
+    setSaving(true)
+    try {
+      await familyService.setParentalOversight(enabled)
+      toast.success(
+        enabled
+          ? 'Parents can now monitor and set restrictions for your account'
+          : 'Parental monitoring is turned off'
+      )
+      await load()
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : 'Failed to update oversight')
     } finally {
       setSaving(false)
     }
@@ -387,7 +436,36 @@ export function FamilySettingsPanel() {
     )
   }
 
-  // Child / teen: read-only view of what their parent manages
+  // Teen (no oversight): choose whether parents can monitor/control
+  if (isTeenMember && !isManaged) {
+    return (
+      <div className="space-y-4">
+        {overview?.family ? (
+          <SettingsCard>
+            <SettingsSectionHeader
+              title={overview.family.name}
+              description="You are a Teen in this family. Parents cannot monitor your account unless you allow it."
+            />
+          </SettingsCard>
+        ) : null}
+        <SettingsCard>
+          <SettingsSectionHeader
+            title="Parental oversight"
+            description="As a Teen, you decide whether parents can see your activity and set restrictions."
+          />
+          <SettingsToggleRow
+            title="Allow parental monitoring"
+            description="When on, parents can view activity and manage permissions for your account."
+            checked={false}
+            onChange={(next) => void toggleTeenOversight(next)}
+            disabled={saving}
+          />
+        </SettingsCard>
+      </div>
+    )
+  }
+
+  // Child / opted-in teen: read-only view of what their parent manages
   if (isManaged && me) {
     return (
       <div className="space-y-4">
@@ -466,6 +544,17 @@ export function FamilySettingsPanel() {
             />
           </div>
         </SettingsCard>
+        {isTeenMember ? (
+          <SettingsCard>
+            <SettingsToggleRow
+              title="Allow parental monitoring"
+              description="Turn this off to stop parental monitoring and controls."
+              checked={true}
+              onChange={(next) => void toggleTeenOversight(next)}
+              disabled={saving}
+            />
+          </SettingsCard>
+        ) : null}
       </div>
     )
   }
@@ -1058,9 +1147,7 @@ export function FamilySettingsPanel() {
     )
   }
 
-  const managedMembers = (overview.members || []).filter(
-    (m) => m.role === 'child' || m.role === 'teen'
-  )
+  const managedMembers = (overview.members || []).filter((m) => canParentControlMember(m))
 
   return (
     <div className="space-y-4">
@@ -1075,7 +1162,7 @@ export function FamilySettingsPanel() {
             </h3>
             <p className="mt-0.5 text-sm leading-5 text-content-secondary">
               {isParent
-                ? 'View account status, screen time, friends, communities, safety alerts, and permissions for connected child and teen accounts.'
+                ? 'View account status, screen time, friends, communities, safety alerts, and permissions for Child accounts (and Teens who allow monitoring).'
                 : 'You are part of this family.'}
             </p>
           </div>
@@ -1115,7 +1202,7 @@ export function FamilySettingsPanel() {
                       </p>
                     </div>
                   </div>
-                  {isParent && (member.role === 'child' || member.role === 'teen') ? (
+                  {isParent && canParentControlMember(member) ? (
                     <div className="flex flex-wrap gap-2 pl-0 sm:pl-14">
                       <ActionChip
                         icon={Shield}
@@ -1142,6 +1229,27 @@ export function FamilySettingsPanel() {
                         label="Friends"
                         onClick={() => void openMember(member, 'friends')}
                       />
+                      {member.role === 'child' ? (
+                        <ActionChip
+                          icon={UserCheck}
+                          label="Change to Teen"
+                          onClick={() => void changeChildToTeen(member)}
+                        />
+                      ) : null}
+                      <ActionChip
+                        icon={Trash2}
+                        label="Remove"
+                        danger
+                        onClick={() => void removeMember(member)}
+                      />
+                    </div>
+                  ) : isParent && member.user_id !== overview.membership?.user_id ? (
+                    <div className="flex flex-wrap gap-2 pl-0 sm:pl-14">
+                      {member.role === 'teen' ? (
+                        <p className="w-full text-sm text-content-secondary">
+                          Teen privacy on — no parental monitoring unless they allow it.
+                        </p>
+                      ) : null}
                       <ActionChip
                         icon={Trash2}
                         label="Remove"
@@ -1168,7 +1276,8 @@ export function FamilySettingsPanel() {
                 Invite a member
               </h3>
               <p className="mt-0.5 text-sm leading-5 text-content-secondary">
-                Invite a CribsTalk user by email. This is separate from friend requests.
+                Invite by email. Roles depend on age: under 16 Child only; 16–19 Child or Teen;
+                20+ Member, Teen, or Parent.
               </p>
             </div>
           </div>
@@ -1207,6 +1316,7 @@ export function FamilySettingsPanel() {
               >
                 <option value="child">Child</option>
                 <option value="teen">Teen</option>
+                <option value="member">Member</option>
                 <option value="parent">Parent</option>
               </select>
             </div>

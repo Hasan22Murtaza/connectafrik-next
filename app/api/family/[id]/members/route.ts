@@ -1,7 +1,12 @@
 import { NextRequest } from 'next/server'
-import { getAuthenticatedUser } from '@/lib/supabase-server'
+import { createServiceClient, getAuthenticatedUser } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
-import { FamilyAuthError, getActiveMembership, requireParentOfFamily } from '@/lib/family'
+import {
+  FamilyAuthError,
+  createFamilyVerificationRequest,
+  getActiveMembership,
+  requireParentOfFamily,
+} from '@/lib/family'
 
 export async function GET(
   request: NextRequest,
@@ -18,7 +23,9 @@ export async function GET(
 
     const { data: members, error } = await supabase
       .from('family_members')
-      .select('id, family_id, user_id, role, relationship, status, joined_at, created_at, updated_at')
+      .select(
+        'id, family_id, user_id, role, relationship, status, parental_oversight_enabled, joined_at, created_at, updated_at'
+      )
       .eq('family_id', id)
       .neq('status', 'removed')
       .order('created_at', { ascending: true })
@@ -70,6 +77,34 @@ export async function DELETE(
 
     if (target.user_id === user.id) {
       return errorResponse('You cannot remove yourself with this endpoint', 400)
+    }
+
+    // Removing a Child requires parent email verification first.
+    if (target.role === 'child' && target.status === 'active') {
+      const service = createServiceClient()
+      const { data: childProfile } = await service
+        .from('profiles')
+        .select('full_name, username')
+        .eq('id', target.user_id)
+        .maybeSingle()
+
+      await createFamilyVerificationRequest(service, {
+        familyId,
+        type: 'child_removal',
+        requesterUserId: user.id,
+        targetMemberId: memberId,
+        payload: { member_id: memberId },
+        childName: childProfile?.full_name || childProfile?.username || 'your child',
+      })
+
+      return jsonResponse(
+        {
+          pending_verification: true,
+          member_id: memberId,
+        },
+        202,
+        'Verification email sent. The child will be removed after you confirm the email link.'
+      )
     }
 
     const { data, error } = await supabase

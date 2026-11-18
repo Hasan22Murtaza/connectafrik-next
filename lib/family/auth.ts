@@ -13,8 +13,28 @@ export class FamilyAuthError extends Error {
 
 type MemberRow = Pick<
   FamilyMember,
-  'id' | 'family_id' | 'user_id' | 'role' | 'status' | 'relationship' | 'joined_at' | 'created_at' | 'updated_at'
+  | 'id'
+  | 'family_id'
+  | 'user_id'
+  | 'role'
+  | 'status'
+  | 'relationship'
+  | 'parental_oversight_enabled'
+  | 'joined_at'
+  | 'created_at'
+  | 'updated_at'
 >
+
+const MEMBER_SELECT =
+  'id, family_id, user_id, role, status, relationship, parental_oversight_enabled, joined_at, created_at, updated_at'
+
+function normalizeMemberRow(row: MemberRow | null): MemberRow | null {
+  if (!row) return null
+  return {
+    ...row,
+    parental_oversight_enabled: Boolean(row.parental_oversight_enabled),
+  }
+}
 
 export async function getActiveMembership(
   supabase: SupabaseClient,
@@ -22,13 +42,13 @@ export async function getActiveMembership(
 ): Promise<MemberRow | null> {
   const { data, error } = await supabase
     .from('family_members')
-    .select('id, family_id, user_id, role, status, relationship, joined_at, created_at, updated_at')
+    .select(MEMBER_SELECT)
     .eq('user_id', userId)
     .eq('status', 'active')
     .maybeSingle()
 
   if (error) throw new Error(error.message)
-  return data
+  return normalizeMemberRow(data as MemberRow | null)
 }
 
 export async function getMembershipById(
@@ -37,12 +57,12 @@ export async function getMembershipById(
 ): Promise<MemberRow | null> {
   const { data, error } = await supabase
     .from('family_members')
-    .select('id, family_id, user_id, role, status, relationship, joined_at, created_at, updated_at')
+    .select(MEMBER_SELECT)
     .eq('id', memberId)
     .maybeSingle()
 
   if (error) throw new Error(error.message)
-  return data
+  return normalizeMemberRow(data as MemberRow | null)
 }
 
 export async function requireActiveMembership(
@@ -90,8 +110,51 @@ export async function requireParentOfMember(
   return { parent, target }
 }
 
-export function isManagedRole(role: FamilyMemberRole): boolean {
+/**
+ * Parent may apply parental controls / monitoring only for:
+ * - Child members (always)
+ * - Teen members who opted into parental oversight
+ */
+export async function requireParentCanManageMember(
+  supabase: SupabaseClient,
+  parentUserId: string,
+  targetMemberId: string
+): Promise<{ parent: MemberRow; target: MemberRow }> {
+  const result = await requireParentOfMember(supabase, parentUserId, targetMemberId)
+  if (!isParentalControlsActive(result.target)) {
+    throw new FamilyAuthError(
+      result.target.role === 'teen'
+        ? 'This teen has not allowed parental monitoring or controls'
+        : 'Parental controls do not apply to this family member',
+      403
+    )
+  }
+  return result
+}
+
+/** Roles that can optionally be under parental controls. */
+export function isChildOrTeenRole(role: FamilyMemberRole): boolean {
   return role === 'child' || role === 'teen'
+}
+
+/**
+ * @deprecated Prefer isChildOrTeenRole / isParentalControlsActive.
+ * Kept as alias for child|teen eligibility checks.
+ */
+export function isManagedRole(role: FamilyMemberRole): boolean {
+  return isChildOrTeenRole(role)
+}
+
+/** Whether parental restrictions currently apply to this membership. */
+export function isParentalControlsActive(membership: {
+  role: FamilyMemberRole
+  status?: string
+  parental_oversight_enabled?: boolean | null
+}): boolean {
+  if (membership.status && membership.status !== 'active') return false
+  if (membership.role === 'child') return true
+  if (membership.role === 'teen') return membership.parental_oversight_enabled === true
+  return false
 }
 
 /** Whether a parent may manage a target member in the same family. */

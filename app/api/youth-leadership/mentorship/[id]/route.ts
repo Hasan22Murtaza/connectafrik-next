@@ -8,7 +8,7 @@ import {
 } from '@/lib/api-utils'
 import { checkYouthLeadershipAccess } from '@/lib/youth-leadership/auth'
 import { notifyYouthUser } from '@/lib/youth-leadership/notify'
-import { getActiveMembership, isManagedRole } from '@/lib/family/auth'
+import { getActiveMembership, isParentalControlsActive } from '@/lib/family/auth'
 import type {
   YouthGuardianApprovalStatus,
   YouthMentorshipStatus,
@@ -29,7 +29,7 @@ async function isParentOfYouth(
     parent &&
       youth &&
       parent.role === 'parent' &&
-      isManagedRole(youth.role) &&
+      isParentalControlsActive(youth) &&
       parent.family_id === youth.family_id
   )
 }

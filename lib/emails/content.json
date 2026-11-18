@@ -189,6 +189,34 @@
       "text": "Friend request accepted\n\nHi {{recipientName}},\n\n{{actorName}} accepted your friend request on CribsTalk. You’re now connected.\n\nView profile: {{url}}\n\n— The CribsTalk team\n",
       "badge": "Connected"
     },
+    "familyChildTurned16": {
+      "subject": "{{childName}} is now 16+",
+      "headerTitle": "Family update",
+      "headerSubtitle": "{{childName}} turned 16",
+      "preheader": "{{childName}} is 16 or older. You can change their status from Child to Teen.",
+      "headline": "{{childName}} is now 16+",
+      "lead": "Hi {{parentName}} — {{childName}} has reached age 16. You can change their family status from Child to Teen if you want.",
+      "eyebrow": "Optional next step",
+      "boxBody": "Teen status keeps them in your family without parental monitoring unless they choose to allow it.",
+      "buttonLabel": "Open Family Circle",
+      "signOff": "Looking after families,",
+      "text": "{{childName}} is now 16+\n\nHi {{parentName}},\n\n{{childName}} has reached age 16 on CribsTalk. You can change their family status from Child to Teen if you want.\n\nOpen Family Circle: {{url}}\n\n— The CribsTalk team\n",
+      "badge": "Family"
+    },
+    "familyParentVerification": {
+      "subject": "Confirm a family request",
+      "headerTitle": "Family verification",
+      "headerSubtitle": "Action needed",
+      "preheader": "Please verify a family request for {{childName}}.",
+      "headline": "Please verify this family request",
+      "lead": "Hi {{parentName}} — you need to {{actionLabel}} for {{childName}}.",
+      "eyebrow": "Secure confirmation",
+      "boxBody": "This link expires in 48 hours. If you did not expect this request, you can ignore the email.",
+      "buttonLabel": "Verify request",
+      "signOff": "Keeping families safe,",
+      "text": "Family verification\n\nHi {{parentName}},\n\nPlease {{actionLabel}} for {{childName}} on CribsTalk.\n\nVerify: {{url}}\n\nThis link expires in 48 hours.\n\n— The CribsTalk team\n",
+      "badge": "Family"
+    },
     "groupInvite": {
       "subject": "{{inviterName}} invited you to {{groupName}}",
       "headerTitle": "You're invited!",

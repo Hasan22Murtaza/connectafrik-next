@@ -46,6 +46,14 @@ import {
   type FriendRequestEmailDetails,
 } from '@/lib/emails/friendRequestEmail'
 import {
+  getFamilyChildTurned16EmailHtml,
+  getFamilyChildTurned16EmailText,
+  getFamilyParentVerificationEmailHtml,
+  getFamilyParentVerificationEmailText,
+  type FamilyChildTurned16Details,
+  type FamilyParentVerificationDetails,
+} from '@/lib/emails/familyParentalEmail'
+import {
   getGroupJoinRequestEmailHtml,
   getGroupJoinRequestEmailText,
   getGroupRequestApprovedEmailHtml,
@@ -645,5 +653,33 @@ export const sendPlatformAnnouncementEmail = async (
       ...meta,
       preheader: details.body.replace(/\s+/g, ' ').trim().slice(0, 140),
     }
+  )
+}
+
+export const sendFamilyChildTurned16Email = async (
+  parentEmail: string,
+  details: FamilyChildTurned16Details
+): Promise<boolean> => {
+  const meta = getEmailMeta('familyChildTurned16', details)
+  return sendBrandedEmail(
+    parentEmail,
+    meta.subject,
+    getFamilyChildTurned16EmailHtml(details),
+    getFamilyChildTurned16EmailText(details),
+    meta
+  )
+}
+
+export const sendFamilyParentVerificationEmail = async (
+  parentEmail: string,
+  details: FamilyParentVerificationDetails
+): Promise<boolean> => {
+  const meta = getEmailMeta('familyParentVerification', details)
+  return sendBrandedEmail(
+    parentEmail,
+    meta.subject,
+    getFamilyParentVerificationEmailHtml(details),
+    getFamilyParentVerificationEmailText(details),
+    meta
   )
 }

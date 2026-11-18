@@ -5,7 +5,8 @@ import {
   FamilyAuthError,
   buildActivitySummary,
   getActiveMembership,
-  requireParentOfMember,
+  isParentalControlsActive,
+  requireParentCanManageMember,
 } from '@/lib/family'
 
 export async function GET(
@@ -37,9 +38,15 @@ export async function GET(
       return errorResponse('Forbidden', 403)
     }
 
-    // Parents get full summary; self can see own aggregate counts only.
+    // Parents get full summary only when oversight applies; self can see own counts.
     if (!isSelf) {
-      await requireParentOfMember(supabase, user.id, id)
+      await requireParentCanManageMember(supabase, user.id, id)
+      if (!isParentalControlsActive(target)) {
+        return errorResponse(
+          'Parents can only view activity for children or teens who allowed monitoring',
+          403
+        )
+      }
     }
 
     const periodEnd = new Date()

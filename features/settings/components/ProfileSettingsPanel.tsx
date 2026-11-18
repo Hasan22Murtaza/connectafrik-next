@@ -81,7 +81,7 @@ export function ProfileSettingsPanel() {
   const handleSave = async () => {
     setIsSaving(true)
     try {
-      const { error } = await updateProfile({
+      const result = await updateProfile({
         username: form.username,
         full_name: form.full_name,
         bio: form.bio,
@@ -92,8 +92,11 @@ export function ProfileSettingsPanel() {
         country: form.country,
         birthday: form.birthday,
       })
-      if (error) {
-        toast.error(error)
+      if (result.error) {
+        toast.error(result.error)
+      } else if ('info' in result && result.info) {
+        toast.success(result.info)
+        setSaved({ ...form, birthday: saved.birthday })
       } else {
         toast.success('Profile updated successfully!')
         setSaved(form)

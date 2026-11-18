@@ -4,14 +4,16 @@ import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-uti
 import { createNotification } from '@/lib/notifications/createNotification'
 import {
   FamilyAuthError,
+  ageFromBirthday,
   findUserIdByEmail,
   generateInviteToken,
   getActiveMembership,
+  inviteRoleAgeError,
   requireParentOfFamily,
 } from '@/lib/family'
 import type { FamilyMemberRole } from '@/shared/types/family'
 
-const VALID_ROLES: FamilyMemberRole[] = ['parent', 'child', 'teen']
+const VALID_ROLES: FamilyMemberRole[] = ['parent', 'child', 'teen', 'member']
 
 export async function GET(request: NextRequest) {
   try {
@@ -91,7 +93,7 @@ export async function POST(request: NextRequest) {
 
     if (!familyId) return errorResponse('family_id is required', 400)
     if (!VALID_ROLES.includes(role)) {
-      return errorResponse('role must be parent, child, or teen', 400)
+      return errorResponse('role must be parent, child, teen, or member', 400)
     }
     if (!inviteeUserId && !inviteeEmail) {
       return errorResponse('Email or user id is required', 400)
@@ -148,6 +150,21 @@ export async function POST(request: NextRequest) {
           // optional
         }
       }
+
+      const { data: inviteeProfile } = await service
+        .from('profiles')
+        .select('birthday')
+        .eq('id', inviteeUserId)
+        .maybeSingle()
+
+      const age = ageFromBirthday(inviteeProfile?.birthday)
+      const ageError = inviteRoleAgeError(role, age)
+      if (ageError) return errorResponse(ageError, 400)
+    } else if (role !== 'child') {
+      return errorResponse(
+        'Without a CribsTalk account (and birthday), people can only be invited as Child. Invite by an existing account email for Teen, Member, or Parent.',
+        400
+      )
     }
 
     const { token, tokenHash } = generateInviteToken()

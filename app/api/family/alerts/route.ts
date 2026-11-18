@@ -1,7 +1,11 @@
 import { NextRequest } from 'next/server'
 import { getAuthenticatedUser } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
-import { FamilyAuthError, getActiveMembership } from '@/lib/family'
+import {
+  FamilyAuthError,
+  getActiveMembership,
+  isParentalControlsActive,
+} from '@/lib/family'
 
 export async function GET(request: NextRequest) {
   try {
@@ -18,11 +22,13 @@ export async function GET(request: NextRequest) {
 
     const { data: members } = await supabase
       .from('family_members')
-      .select('id')
+      .select('id, role, status, parental_oversight_enabled')
       .eq('family_id', membership.family_id)
       .neq('status', 'removed')
 
-    const memberIds = (members || []).map((m) => m.id)
+    const memberIds = (members || [])
+      .filter((m) => isParentalControlsActive(m))
+      .map((m) => m.id)
     if (memberIds.length === 0) return jsonResponse([])
 
     let query = supabase

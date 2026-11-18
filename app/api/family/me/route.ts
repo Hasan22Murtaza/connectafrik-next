@@ -1,21 +1,24 @@
 import { NextRequest } from 'next/server'
-import { getAuthenticatedUser } from '@/lib/supabase-server'
+import { createServiceClient, getAuthenticatedUser } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
 import { createNotification } from '@/lib/notifications/createNotification'
 import {
+  ensureDefaultControls,
   evaluateScreenTime,
   getActiveMembership,
-  getEffectiveControls,
-  isManagedRole,
+  isChildOrTeenRole,
+  isParentalControlsActive,
+  processAgeMilestoneForMember,
   recordActivityEvent,
   sumSessionMinutesToday,
+  getEffectiveControls,
 } from '@/lib/family'
 
 /** Child/teen view of active controls + optional usage ping. */
 export async function GET(request: NextRequest) {
   try {
     const { user, supabase } = await getAuthenticatedUser(request)
-    const membership = await getActiveMembership(supabase, user.id)
+    let membership = await getActiveMembership(supabase, user.id)
 
     if (!membership) {
       return jsonResponse({
@@ -27,31 +30,51 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    if (!isManagedRole(membership.role)) {
+    // Age milestones for Child accounts (16 notice / 18 auto Teen).
+    if (membership.role === 'child') {
+      const service = createServiceClient()
+      const { data: profile } = await service
+        .from('profiles')
+        .select('birthday')
+        .eq('id', user.id)
+        .maybeSingle()
+
+      await processAgeMilestoneForMember(service, membership, profile?.birthday)
+      membership = (await getActiveMembership(supabase, user.id)) || membership
+    }
+
+    if (!isChildOrTeenRole(membership.role)) {
       return jsonResponse({
         has_family: true,
         role: membership.role,
         controls_active: false,
+        parental_oversight_enabled: false,
         membership,
         controls: null,
         screen_time: null,
       })
     }
 
-    const effective = await getEffectiveControls(supabase, user.id)
-    const { data: rules } = await supabase
-      .from('screen_time_rules')
-      .select('*')
-      .eq('family_member_id', membership.id)
-      .maybeSingle()
+    const controlsActive = isParentalControlsActive(membership)
+    const effective = controlsActive ? await getEffectiveControls(supabase, user.id) : null
+    const { data: rules } = controlsActive
+      ? await supabase
+          .from('screen_time_rules')
+          .select('*')
+          .eq('family_member_id', membership.id)
+          .maybeSingle()
+      : { data: null }
 
-    const usedMinutes = await sumSessionMinutesToday(supabase, membership.id)
+    const usedMinutes = controlsActive
+      ? await sumSessionMinutesToday(supabase, membership.id)
+      : 0
     const evaluation = evaluateScreenTime(rules, usedMinutes)
 
     return jsonResponse({
       has_family: true,
       role: membership.role,
-      controls_active: true,
+      controls_active: controlsActive,
+      parental_oversight_enabled: Boolean(membership.parental_oversight_enabled),
       membership,
       controls: effective?.controls ?? null,
       screen_time: rules
@@ -67,19 +90,57 @@ export async function GET(request: NextRequest) {
   }
 }
 
-/** Record a 1-minute session ping for CribsTalk usage (managed members only). */
+/**
+ * Teen opt-in/out for parental oversight, or session ping for managed members.
+ */
 export async function POST(request: NextRequest) {
   try {
     const { user, supabase } = await getAuthenticatedUser(request)
     const body = await request.json().catch(() => ({}))
     const action = body?.action || 'session_ping'
 
+    if (action === 'set_parental_oversight') {
+      const enabled = body?.enabled === true
+      const membership = await getActiveMembership(supabase, user.id)
+      if (!membership || membership.role !== 'teen') {
+        return errorResponse('Only teens can change parental oversight settings', 403)
+      }
+
+      // Service role: teens may update their own membership, but parental_controls /
+      // screen_time_rules inserts are parent-only under RLS.
+      const service = createServiceClient()
+      const { data, error } = await service
+        .from('family_members')
+        .update({ parental_oversight_enabled: enabled })
+        .eq('id', membership.id)
+        .eq('user_id', user.id)
+        .eq('role', 'teen')
+        .select('*')
+        .maybeSingle()
+
+      if (error) return errorResponse(error.message, 400)
+      if (!data) return errorResponse('Could not update parental oversight', 400)
+
+      if (enabled) {
+        await ensureDefaultControls(service, membership.id)
+        await service.from('screen_time_rules').upsert(
+          { family_member_id: membership.id, enabled: false },
+          { onConflict: 'family_member_id' }
+        )
+      }
+
+      return jsonResponse({
+        membership: data,
+        parental_oversight_enabled: enabled,
+      })
+    }
+
     if (action !== 'session_ping') {
       return errorResponse('Unsupported action', 400)
     }
 
     const membership = await getActiveMembership(supabase, user.id)
-    if (!membership || !isManagedRole(membership.role)) {
+    if (!membership || !isParentalControlsActive(membership)) {
       return jsonResponse({ recorded: false })
     }
 
@@ -107,7 +168,6 @@ export async function POST(request: NextRequest) {
           .maybeSingle()
 
         if (!existingExcessAlert) {
-          const { createServiceClient } = await import('@/lib/supabase-server')
           const { createSafetyAlertForUser } = await import('@/lib/family/alerts')
           await createSafetyAlertForUser(createServiceClient(), {
             userId: user.id,

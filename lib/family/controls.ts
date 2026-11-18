@@ -8,7 +8,7 @@ import {
   type ParentalControls,
   type ParentalRestrictionFeature,
 } from '@/shared/types/family'
-import { getActiveMembership, isManagedRole } from './auth'
+import { getActiveMembership, isParentalControlsActive } from './auth'
 import { evaluateScreenTime, type ScreenTimeEvaluation } from './screenTime'
 import type { ParentalMessageKind } from './messageKinds'
 
@@ -39,7 +39,7 @@ function deny(
   }
 }
 
-/** Non-managed users are unrestricted; only active child/teen members are gated. */
+/** Non-managed users are unrestricted; only actively managed child/teen members are gated. */
 export async function getEffectiveControls(
   supabase: SupabaseClient,
   userId: string
@@ -48,7 +48,7 @@ export async function getEffectiveControls(
   controls: ParentalControls | null
 } | null> {
   const membership = await getActiveMembership(supabase, userId)
-  if (!membership || !isManagedRole(membership.role) || membership.status !== 'active') {
+  if (!membership || !isParentalControlsActive(membership)) {
     return null
   }
 

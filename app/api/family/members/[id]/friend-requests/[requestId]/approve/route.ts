@@ -4,9 +4,9 @@ import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-uti
 import { createNotification } from '@/lib/notifications/createNotification'
 import {
   FamilyAuthError,
-  isManagedRole,
+  isParentalControlsActive,
   recordActivityEvent,
-  requireParentOfMember,
+  requireParentCanManageMember,
 } from '@/lib/family'
 
 /**
@@ -20,10 +20,13 @@ export async function POST(
   try {
     const { id: memberId, requestId } = await params
     const { user, supabase } = await getAuthenticatedUser(request)
-    const { target } = await requireParentOfMember(supabase, user.id, memberId)
+    const { target } = await requireParentCanManageMember(supabase, user.id, memberId)
 
-    if (!isManagedRole(target.role) || target.status !== 'active') {
-      return errorResponse('Friend approval only applies to active child or teen members', 400)
+    if (!isParentalControlsActive(target) || target.status !== 'active') {
+      return errorResponse(
+        'Friend approval only applies to managed child or opted-in teen members',
+        400
+      )
     }
 
     const service = createServiceClient()

@@ -21,6 +21,7 @@ export type FamilyMeStatus = {
   has_family: boolean
   role: FamilyMemberRole | null
   controls_active: boolean
+  parental_oversight_enabled?: boolean
   membership?: FamilyMember | null
   controls: ParentalControls | null
   screen_time: {
@@ -88,9 +89,21 @@ export const familyService = {
     apiClient.patch<FamilyInvitation>('/api/family/invitations', { id }),
 
   removeMember: (familyId: string, memberId: string) =>
-    apiClient.delete<FamilyMember>(`/api/family/${familyId}/members`, {
-      member_id: memberId,
-    }),
+    apiClient.delete<FamilyMember | { pending_verification: boolean; member_id: string }>(
+      `/api/family/${familyId}/members`,
+      {
+        member_id: memberId,
+      }
+    ),
+
+  updateMemberRole: (memberId: string, role: FamilyMemberRole) =>
+    apiClient.patch<FamilyMember>(`/api/family/members/${memberId}`, { role }),
+
+  setParentalOversight: (enabled: boolean) =>
+    apiClient.post<{ parental_oversight_enabled: boolean; membership: FamilyMember }>(
+      '/api/family/me',
+      { action: 'set_parental_oversight', enabled }
+    ),
 
   getControls: (memberId: string) =>
     apiClient.get<ParentalControls | null>(`/api/family/members/${memberId}/controls`),

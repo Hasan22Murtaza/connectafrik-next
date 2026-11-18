@@ -5,7 +5,7 @@ import type {
   DailyScreenTimeUsage,
   ScreenTimeDailyHistory,
 } from '@/shared/types/family'
-import { getActiveMembership, isManagedRole } from './auth'
+import { getActiveMembership, isParentalControlsActive } from './auth'
 
 function startOfUtcDay(date: Date): Date {
   return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()))
@@ -29,7 +29,7 @@ export async function recordActivityEvent(
   metadata?: Record<string, unknown>
 ): Promise<void> {
   const membership = await getActiveMembership(supabase, userId)
-  if (!membership || !isManagedRole(membership.role)) {
+  if (!membership || !isParentalControlsActive(membership)) {
     return
   }
 

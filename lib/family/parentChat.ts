@@ -1,9 +1,9 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { getActiveMembership, isManagedRole } from './auth'
+import { getActiveMembership, isParentalControlsActive } from './auth'
 
 /**
  * Active parent user ids in the same family as a managed child/teen.
- * Empty when the user is not a managed child/teen.
+ * Empty when the user is not under active parental controls.
  */
 export async function getFamilyParentUserIds(
   supabase: SupabaseClient,
@@ -12,7 +12,7 @@ export async function getFamilyParentUserIds(
   if (!childUserId) return new Set()
 
   const membership = await getActiveMembership(supabase, childUserId)
-  if (!membership || !isManagedRole(membership.role)) return new Set()
+  if (!membership || !isParentalControlsActive(membership)) return new Set()
 
   const { data, error } = await supabase
     .from('family_members')

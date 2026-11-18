@@ -1,7 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { SafetyAlertSeverity, SafetyAlertType } from '@/shared/types/family'
 import { createNotification } from '@/lib/notifications/createNotification'
-import { getActiveMembership, isManagedRole } from './auth'
+import { getActiveMembership, isParentalControlsActive } from './auth'
 
 export async function createSafetyAlertForUser(
   serviceSupabase: SupabaseClient,
@@ -17,7 +17,7 @@ export async function createSafetyAlertForUser(
   }
 ): Promise<string | null> {
   const membership = await getActiveMembership(serviceSupabase, params.userId)
-  if (!membership || !isManagedRole(membership.role)) {
+  if (!membership || !isParentalControlsActive(membership)) {
     return null
   }
 

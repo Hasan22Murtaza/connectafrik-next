@@ -3,7 +3,7 @@ import { getAuthenticatedUser } from '@/lib/supabase-server'
 import { errorResponse, jsonResponse, unauthorizedResponse } from '@/lib/api-utils'
 import { checkYouthLeadershipAccess } from '@/lib/youth-leadership/auth'
 import { notifyYouthUser } from '@/lib/youth-leadership/notify'
-import { getActiveMembership, isManagedRole } from '@/lib/family/auth'
+import { getActiveMembership, isParentalControlsActive } from '@/lib/family/auth'
 
 const MATCH_SELECT = `
   id, mentor_id, participant_id, program_id, status, guardian_approval_status,
@@ -103,7 +103,7 @@ export async function POST(request: NextRequest) {
     }
 
     const membership = await getActiveMembership(supabase, user.id)
-    const isManagedMinor = Boolean(membership && isManagedRole(membership.role))
+    const isManagedMinor = Boolean(membership && isParentalControlsActive(membership))
 
     let status: 'requested' | 'pending_guardian' = 'requested'
     let guardianApproval: 'not_required' | 'pending' = 'not_required'
