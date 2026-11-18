@@ -13,10 +13,34 @@ function AuthCallbackContent() {
     let cancelled = false
 
     async function completeOAuth() {
+      const oauthError = searchParams.get('error')
+      const errorDescription = searchParams.get('error_description')
       const code = searchParams.get('code')
       const redirectParam = searchParams.get('redirect')
 
+      if (oauthError) {
+        const cancelledAuth =
+          oauthError === 'access_denied' ||
+          /cancel|denied|user.?cancel/i.test(errorDescription || oauthError)
+        window.location.replace(
+          cancelledAuth ? '/signin?error=auth_cancelled' : '/signin?error=auth'
+        )
+        return
+      }
+
       if (!code) {
+        // Callback opened without a code — recover an existing session or bail out.
+        const { data: existing } = await supabase.auth.getSession()
+        if (cancelled) return
+
+        if (existing.session?.user) {
+          const platformRole =
+            (existing.session.user.app_metadata?.platform_role as string | undefined) ??
+            (existing.session.user.user_metadata?.platform_role as string | undefined)
+          window.location.replace(getPostAuthRedirect(platformRole, redirectParam))
+          return
+        }
+
         window.location.replace('/signin?error=auth')
         return
       }
@@ -33,16 +57,26 @@ function AuthCallbackContent() {
       const accessToken = data.session?.access_token
       if (accessToken) {
         try {
-          await fetch('/api/auth/login-alert', {
-            method: 'POST',
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-              'Content-Type': 'application/json',
-            },
-            keepalive: true,
-          })
+          await Promise.all([
+            fetch('/api/auth/oauth/ensure-profile', {
+              method: 'POST',
+              headers: {
+                Authorization: `Bearer ${accessToken}`,
+                'Content-Type': 'application/json',
+              },
+              keepalive: true,
+            }),
+            fetch('/api/auth/login-alert', {
+              method: 'POST',
+              headers: {
+                Authorization: `Bearer ${accessToken}`,
+                'Content-Type': 'application/json',
+              },
+              keepalive: true,
+            }),
+          ])
         } catch {
-          /* login alert is best-effort */
+          /* profile ensure + login alert are best-effort; session is already valid */
         }
       }
 

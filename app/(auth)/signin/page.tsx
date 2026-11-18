@@ -12,6 +12,11 @@ import toast from "react-hot-toast";
 import { FcGoogle } from "react-icons/fc";
 import PhoneInput from "react-phone-number-input";
 import "react-phone-number-input/style.css";
+import { AppleLogo } from "@/shared/components/auth/AppleLogo";
+import { startOAuthSignIn } from "@/lib/auth/oauthSignIn";
+
+const oauthButtonClassName =
+  "flex h-12 w-full min-h-12 items-center justify-center gap-2 rounded-full border border-[#E5E7EB] bg-white text-sm font-medium text-[#374151] dark:text-slate-200 transition-colors !hover:bg-[#F9FAFB] disabled:cursor-not-allowed disabled:opacity-50";
 
 const SigninForm: React.FC = () => {
   const router = useRouter();
@@ -25,6 +30,7 @@ const SigninForm: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [isAppleLoading, setIsAppleLoading] = useState(false);
 
   useEffect(() => {
     const error = searchParams.get("error");
@@ -32,28 +38,20 @@ const SigninForm: React.FC = () => {
       toast.error("This confirmation link is invalid or has expired. Sign up again or request a new link.");
       return;
     }
+    if (error === "auth_cancelled") {
+      toast.error("Sign-in was cancelled. Please try again.");
+      return;
+    }
     if (error === "auth") {
-      toast.error("Sign-in link failed. Please try again.");
+      toast.error("Sign-in failed. Please try again.");
     }
   }, [searchParams]);
 
   const handleGoogleSignIn = async () => {
+    if (isGoogleLoading || isAppleLoading || isLoading) return;
     setIsGoogleLoading(true);
     try {
-      const redirectTo = searchParams.get("redirect") || "/feed";
-      // OAuth PKCE verifier cookies are host-scoped, so the callback must use the
-      // same origin the user started from (www vs apex). Universal/App Links still
-      // work because both hosts serve /auth/callback.
-      const callbackUrl = new URL("/auth/callback", window.location.origin);
-      callbackUrl.searchParams.set("redirect", redirectTo);
-
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo: callbackUrl.toString(),
-        },
-      });
-
+      const { error } = await startOAuthSignIn("google", searchParams.get("redirect"));
       if (error) {
         toast.error(error.message);
         setIsGoogleLoading(false);
@@ -61,6 +59,21 @@ const SigninForm: React.FC = () => {
     } catch {
       toast.error("Failed to sign in with Google");
       setIsGoogleLoading(false);
+    }
+  };
+
+  const handleAppleSignIn = async () => {
+    if (isGoogleLoading || isAppleLoading || isLoading) return;
+    setIsAppleLoading(true);
+    try {
+      const { error } = await startOAuthSignIn("apple", searchParams.get("redirect"));
+      if (error) {
+        toast.error(error.message);
+        setIsAppleLoading(false);
+      }
+    } catch {
+      toast.error("Failed to sign in with Apple");
+      setIsAppleLoading(false);
     }
   };
 
@@ -220,15 +233,29 @@ const SigninForm: React.FC = () => {
         </h1>
       </div>
 
-      <button
-        type="button"
-        onClick={handleGoogleSignIn}
-        disabled={isGoogleLoading || isLoading}
-        className="flex h-12 w-full min-h-12 items-center justify-center gap-2 rounded-full border border-[#E5E7EB] bg-white text-sm font-medium text-[#374151] dark:text-slate-200 transition-colors !hover:bg-[#F9FAFB] disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        <FcGoogle className="h-5 w-5" />
-        {isGoogleLoading ? "Redirecting..." : "Continue with Google"}
-      </button>
+      <div className="space-y-3">
+        <button
+          type="button"
+          onClick={handleAppleSignIn}
+          disabled={isAppleLoading || isGoogleLoading || isLoading}
+          className={oauthButtonClassName}
+          aria-label="Continue with Apple"
+        >
+          <AppleLogo className="h-5 w-5 text-black dark:text-slate-100" />
+          {isAppleLoading ? "Redirecting..." : "Continue with Apple"}
+        </button>
+
+        <button
+          type="button"
+          onClick={handleGoogleSignIn}
+          disabled={isGoogleLoading || isAppleLoading || isLoading}
+          className={oauthButtonClassName}
+          aria-label="Continue with Google"
+        >
+          <FcGoogle className="h-5 w-5" />
+          {isGoogleLoading ? "Redirecting..." : "Continue with Google"}
+        </button>
+      </div>
 
       <div className="relative my-3">
         <div className="absolute inset-0 flex items-center">
