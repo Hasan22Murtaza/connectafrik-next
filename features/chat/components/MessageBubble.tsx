@@ -70,6 +70,7 @@ import {
   extractCribsTalkPostId,
   extractFirstUrl,
   isEmojiOnlyMessage,
+  isVoiceNoteAttachment,
   participantNameColor,
   stripCribsTalkPostUrls,
 } from "./messageMediaUtils";
@@ -1057,6 +1058,10 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
     (message.attachments ?? []).every(
       (att) => att.type === "image" || att.type === "video"
     );
+  const voiceNoteOnly =
+    mediaOnly &&
+    message.attachments?.length === 1 &&
+    isVoiceNoteAttachment(message.attachments[0]);
 
   if (message.message_type === "marketplace_inquiry") {
     const meta = message.metadata || {};
@@ -1528,6 +1533,11 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                       message.sender?.avatarUrl ||
                       (isOwnMessage ? currentUserAvatarUrl : undefined)
                     }
+                    messageMetadata={
+                      voiceNoteOnly
+                        ? { createdAt: message.created_at, status: messageStatus }
+                        : undefined
+                    }
                     onOpenMedia={(items, index) => setMediaViewer({ items, index })}
                     isUploading={isUploading}
                     uploadProgressById={uploadProgressById}
@@ -1629,7 +1639,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
               </>
             )}
 
-            {!callPresentation ? (
+            {!callPresentation && !voiceNoteOnly ? (
               <div
                 className={
                   visualMediaOnly

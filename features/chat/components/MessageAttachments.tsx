@@ -4,13 +4,16 @@ import type { ChatAttachment } from "@/features/chat/services/supabaseMessagingS
 import {
   FileText,
   Headphones,
+  Mic,
   MapPin,
   Pause,
   Play,
   UserRound,
   X,
 } from '@/shared/icons';
+import { format } from "date-fns";
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import MessageStatusIndicator from "@/features/chat/components/MessageStatusIndicator";
 import type { ChatMediaViewerItem } from "./ChatMediaViewer";
 import {
   fileExtensionLabel,
@@ -30,6 +33,10 @@ interface MessageAttachmentsProps {
   isUploading?: boolean;
   uploadProgressById?: Record<string, number>;
   onCancelUpload?: () => void;
+  messageMetadata?: {
+    createdAt: string;
+    status: "sending" | "sent" | "delivered" | "read";
+  };
 }
 
 function CircularUploadProgress({
@@ -127,7 +134,7 @@ function openAttachment(att: ChatAttachment) {
 
 function WaveBars({ active }: { active?: boolean }) {
   const bars = useMemo(
-    () => Array.from({ length: 28 }, (_, i) => 4 + ((i * 7) % 14)),
+    () => Array.from({ length: 40 }, (_, i) => 4 + ((i * 7) % 14)),
     []
   );
   return (
@@ -152,7 +159,8 @@ const VoiceNotePlayer: React.FC<{
   att: ChatAttachment;
   isOwnMessage: boolean;
   profileImageUrl?: string;
-}> = ({ att, isOwnMessage, profileImageUrl }) => {
+  messageMetadata?: MessageAttachmentsProps["messageMetadata"];
+}> = ({ att, isOwnMessage, profileImageUrl, messageMetadata }) => {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [playing, setPlaying] = useState(false);
   const [duration, setDuration] = useState(0);
@@ -191,37 +199,69 @@ const VoiceNotePlayer: React.FC<{
 
   return (
     <div
-      className={`flex w-[min(100%,295px)] min-w-0 items-center gap-2.5 rounded-2xl px-2 py-1.5 ${
-        isOwnMessage ? "chat-bubble-own-file" : "bg-surface-secondary/80"
-      }`}
+      className={`w-[min(100%,330px)] min-w-0 rounded-2xl px-2.5 py-2 text-[#667085] shadow-[0_1px_2px_rgba(11,20,26,0.08)] ${
+        isOwnMessage ? "bg-[#fff3e9]" : "bg-white"
+      } dark:bg-surface-secondary`}
     >
-      <button
-        type="button"
-        onClick={(e) => {
-          e.stopPropagation();
-          toggle();
-        }}
-        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${isOwnMessage ? "bg-gray-50 text-orange-500" : "bg-primary-500 text-white"} transition`}
-        aria-label={playing ? "Pause voice note" : "Play voice note"}
-      >
-        {playing ? <Pause className="h-4 w-4 fill-current" /> : <Play className="h-4 w-4 fill-current ml-0.5" />}
-      </button>
-      <div className={`min-w-0 flex-1 flex items-center justify-between gap-2 ${isOwnMessage ? "text-white" : "text-content-secondary"}`}>
-        <WaveBars active={playing} />
-        <div className={`mt-0.5 text-[11px] tabular-nums ${isOwnMessage ? "text-white/80" : "text-content-tertiary"}`}>
-          {formatMediaDuration(playing || current > 0 ? current : duration)}
+      <div className="flex min-w-0 items-center gap-2.5">
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            toggle();
+          }}
+          className="flex h-[46px] w-[46px] shrink-0 items-center justify-center rounded-full bg-orange-500 text-white transition hover:bg-orange-600"
+          aria-label={playing ? "Pause voice note" : "Play voice note"}
+        >
+          {playing ? (
+            <Pause className="h-[18px] w-[18px] fill-current" />
+          ) : (
+            <Play className="ml-0.5 h-[18px] w-[18px] fill-current" />
+          )}
+        </button>
+        <div className="min-w-0 flex-1">
+          <div className=" h-9 min-w-0 items-center  text-[#9ca3af] dark:text-content-tertiary">
+            <WaveBars active={playing} />
+            <div className="flex items-center justify-between gap-2 text-[11px] leading-none">
+            <span className="shrink-0 tabular-nums">
+              {formatMediaDuration(playing || current > 0 ? current : duration)}
+            </span>
+            {messageMetadata ? (
+              <span className="flex shrink-0 items-center gap-1">
+                <span className="tabular-nums">
+                  {format(new Date(messageMetadata.createdAt), "h:mm a")}
+                </span>
+                <MessageStatusIndicator
+                  status={messageMetadata.status}
+                  isOwnMessage={isOwnMessage}
+                />
+              </span>
+            ) : null}
+          </div>
+           
+          </div>
+          
         </div>
-        {profileImageUrl ? (
-          <img
-            src={profileImageUrl}
-            alt=""
-            className="h-9 w-9 shrink-0 rounded-full object-cover"
-          />
-        ) : (
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-black/10">
-            <UserRound className="h-4 w-4" aria-hidden />
-          </span>
-        )}
+         <span className="relative h-10 w-10 shrink-0 items-center justify-center">
+              {profileImageUrl ? (
+                <img
+                  src={profileImageUrl}
+                  alt=""
+                  className="h-10 w-10 rounded-full object-cover"
+                />
+              ) : (
+                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-black/10">
+                  <UserRound className="h-4 w-4" aria-hidden />
+                </span>
+              )}
+              <span
+                className={`absolute -bottom-0.5 -left-0.5 flex h-[18px] w-[18px] items-center justify-center rounded-full border-2 bg-blue-500 text-white ${
+                  isOwnMessage ? "border-[#fff3e9]" : "border-white"
+                } dark:border-surface-secondary`}
+              >
+                <Mic className="h-[10px] w-[10px]" aria-hidden />
+              </span>
+            </span>
       </div>
     </div>
   );
@@ -271,6 +311,7 @@ const MessageAttachments: React.FC<MessageAttachmentsProps> = ({
   isUploading = false,
   uploadProgressById,
   onCancelUpload,
+  messageMetadata,
 }) => {
   if (!attachments.length) return null;
 
@@ -454,6 +495,7 @@ const MessageAttachments: React.FC<MessageAttachmentsProps> = ({
                 att={att}
                 isOwnMessage={isOwnMessage}
                 profileImageUrl={profileImageUrl}
+                messageMetadata={messageMetadata}
               />
               {isUploading ? (
                 <UploadMediaOverlay

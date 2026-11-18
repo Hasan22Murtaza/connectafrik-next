@@ -163,9 +163,9 @@ export const FeedReelsStrip: React.FC = () => {
   }
 
   return (
-    <div className="rounded-xl border border-border bg-surface overflow-hidden shadow-md shadow-gray-200/60">
+    <div className="rounded-xl border border-border bg-surface overflow-hidden shadow-md ">
       <div className="flex items-center justify-between px-4 pt-4 pb-1">
-        <h3 className="text-[15px] font-bold text-[#1c1e21] flex items-center gap-2">
+        <h3 className="text-[15px] font-bold text-content flex items-center gap-2">
           <Clapperboard className="w-5 h-5 text-primary-600 shrink-0" />
           Reels
         </h3>

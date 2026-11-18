@@ -1011,7 +1011,7 @@ export function ReelCommentsShimmer({ count = 5 }: { count?: number }) {
 /** Horizontal reels strip shimmer (home feed). */
 export function ReelsStripShimmer() {
   return (
-    <div className="rounded-xl border border-border overflow-hidden shadow-md shadow-gray-200/60" aria-hidden>
+    <div className="rounded-xl border border-border overflow-hidden shadow-md " aria-hidden>
       <div className="flex items-center justify-between px-4 pt-4 pb-2">
         <div className="flex items-center gap-2">
           <div className="h-5 w-5 animate-shimmer rounded" />
