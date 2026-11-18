@@ -1,6 +1,6 @@
 'use client'
 
-import type { ReactNode } from 'react'
+import { Suspense, type ReactNode } from 'react'
 import Link from 'next/link'
 import { usePathname, useSearchParams } from 'next/navigation'
 import { Compass, Home, Plus, Video, Users } from '@/shared/icons'
@@ -47,7 +47,7 @@ type Props = {
   variant: 'sidebar' | 'mobile' | 'video-top' | 'video-bottom'
 }
 
-export function ReelsNav({ variant }: Props) {
+function ReelsNavInner({ variant }: Props) {
   const pathname = usePathname() || ''
   const searchParams = useSearchParams()
   const active = resolveActive(pathname, searchParams.get('feed'))
@@ -177,5 +177,13 @@ export function ReelsNav({ variant }: Props) {
         </Link>
       ))}
     </nav>
+  )
+}
+
+export function ReelsNav(props: Props) {
+  return (
+    <Suspense fallback={null}>
+      <ReelsNavInner {...props} />
+    </Suspense>
   )
 }

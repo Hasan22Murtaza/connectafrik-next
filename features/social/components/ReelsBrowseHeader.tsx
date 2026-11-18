@@ -1,5 +1,6 @@
 'use client'
 
+import { Suspense } from 'react'
 import Link from 'next/link'
 import { usePathname, useSearchParams } from 'next/navigation'
 import { REEL_CATEGORIES, type ReelCategory } from '@/shared/types/reels'
@@ -12,7 +13,7 @@ function chipClass(active: boolean) {
   }`
 }
 
-export function ReelsCategoriesBar() {
+function ReelsCategoriesBarInner() {
   const pathname = usePathname() || ''
   const searchParams = useSearchParams()
   const activeCategory = searchParams.get('category')
@@ -47,6 +48,14 @@ export function ReelsCategoriesBar() {
         )
       })}
     </nav>
+  )
+}
+
+export function ReelsCategoriesBar() {
+  return (
+    <Suspense fallback={null}>
+      <ReelsCategoriesBarInner />
+    </Suspense>
   )
 }
 
