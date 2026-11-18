@@ -160,7 +160,7 @@ export default function ChatCloseView({ onFocusSearch }: ChatCloseViewProps) {
       toast.error("Only emergency text messages are allowed.");
       return;
     }
-    if (parental.controlsActive && !parental.canSendText) {
+    if (parental.controlsActive && !parental.canSendDocuments) {
       toast.error("Document sharing is restricted by your parent.");
       return;
     }
@@ -176,7 +176,7 @@ export default function ChatCloseView({ onFocusSearch }: ChatCloseViewProps) {
       toast.error("Only emergency text messages are allowed.");
       return;
     }
-    if (parental.controlsActive && !parental.canSendText) {
+    if (parental.controlsActive && !parental.canSendDocuments) {
       toast.error("Document sharing is restricted by your parent.");
       return;
     }
@@ -213,7 +213,7 @@ export default function ChatCloseView({ onFocusSearch }: ChatCloseViewProps) {
 
   const sendDocumentToSelectedContacts = async () => {
     if (sending || selectedThreadIds.size === 0 || selectedFiles.length === 0) return;
-    if (parental.onlyEmergencyMessaging || (parental.controlsActive && !parental.canSendText)) {
+    if (parental.onlyEmergencyMessaging || (parental.controlsActive && !parental.canSendDocuments)) {
       toast.error(
         parental.onlyEmergencyMessaging
           ? "Only emergency text messages are allowed."

@@ -8,8 +8,10 @@ import {
   Award,
   Clock,
   Eye,
+  FileText,
   Film,
   Image,
+  Info,
   Mail,
   MessageSquare,
   Mic,
@@ -296,6 +298,7 @@ export function FamilySettingsPanel() {
                 image_messaging_enabled: loaded.image_messaging_enabled ?? true,
                 video_messaging_enabled: loaded.video_messaging_enabled ?? true,
                 audio_messaging_enabled: loaded.audio_messaging_enabled ?? true,
+                document_messaging_enabled: loaded.document_messaging_enabled ?? true,
                 emergency_messaging_enabled: loaded.emergency_messaging_enabled ?? true,
                 audio_calling_enabled: loaded.audio_calling_enabled ?? true,
                 video_calling_enabled: loaded.video_calling_enabled ?? true,
@@ -498,6 +501,7 @@ export function FamilySettingsPanel() {
             <InfoRow
               icon={UserCheck}
               label="Friend requests"
+              detail="Your parent must approve new friend requests before you can connect with someone."
               value={
                 me.controls?.friend_request_approval
                   ? 'Parent approval required'
@@ -507,26 +511,31 @@ export function FamilySettingsPanel() {
             <InfoRow
               icon={MessageSquare}
               label="Messaging"
+              detail="Whether you can send and receive direct messages."
               value={me.controls?.messaging_enabled === false ? 'Restricted' : 'Allowed'}
             />
             <InfoRow
               icon={Phone}
               label="Calls"
+              detail="Whether you can make and receive voice or video calls."
               value={me.controls?.calling_enabled === false ? 'Restricted' : 'Allowed'}
             />
             <InfoRow
               icon={Users}
               label="Groups"
+              detail="Whether you can join communities and groups."
               value={me.controls?.group_joining_enabled === false ? 'Restricted' : 'Allowed'}
             />
             <InfoRow
               icon={ShoppingBag}
               label="Marketplace"
+              detail="Whether you can browse and buy in the marketplace."
               value={me.controls?.marketplace_enabled === false ? 'Restricted' : 'Allowed'}
             />
             <InfoRow
               icon={Award}
               label="Youth Leadership"
+              detail="Whether you can join Youth Leadership programs, projects, and mentorship."
               value={
                 me.controls?.youth_leadership_enabled === false ? 'Restricted' : 'Allowed'
               }
@@ -534,6 +543,7 @@ export function FamilySettingsPanel() {
             <InfoRow
               icon={Clock}
               label="Screen time"
+              detail="Daily time limits and restricted hours set by your parent."
               value={
                 me.controls?.screen_time_enabled && me.screen_time?.rules?.daily_limit_minutes
                   ? `${me.screen_time.rules.daily_limit_minutes} minutes/day · used ${me.screen_time.used_minutes_today || 0}m today`
@@ -771,6 +781,13 @@ export function FamilySettingsPanel() {
                     description="Allow voice notes and audio clips"
                     checked={controls.audio_messaging_enabled !== false}
                     onChange={(v) => setControls({ ...controls, audio_messaging_enabled: v })}
+                  />
+                  <SettingsToggleRow
+                    icon={FileText}
+                    title="Documents & files"
+                    description="Allow documents and other restricted file types"
+                    checked={controls.document_messaging_enabled !== false}
+                    onChange={(v) => setControls({ ...controls, document_messaging_enabled: v })}
                   />
                 </div>
               ) : null}
@@ -1384,10 +1401,12 @@ function InfoRow({
   icon: Icon,
   label,
   value,
+  detail,
 }: {
   icon: SettingsIcon
   label: string
   value: string
+  detail?: string
 }) {
   return (
     <div className="flex items-start justify-between gap-4 px-4 py-3.5 sm:px-5">
@@ -1395,7 +1414,26 @@ function InfoRow({
         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[12px] bg-surface-secondary text-content-secondary">
           <Icon className="h-[18px] w-[18px]" aria-hidden />
         </div>
-        <p className="text-sm font-medium text-content">{label}</p>
+        <div className="flex min-w-0 items-center gap-1.5">
+          <p className="text-sm font-medium text-content">{label}</p>
+          {detail ? (
+            <span className="group relative inline-flex shrink-0">
+              <button
+                type="button"
+                className="rounded-full p-0.5 text-content-tertiary transition-colors hover:text-content-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                aria-label={`About ${label}`}
+              >
+                <Info className="h-3.5 w-3.5" aria-hidden />
+              </button>
+              <span
+                role="tooltip"
+                className="pointer-events-none absolute left-1/2 top-full z-20 mt-1.5 w-56 -translate-x-1/2 rounded-md bg-black/85 px-2.5 py-1.5 text-left text-xs leading-4 text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
+              >
+                {detail}
+              </span>
+            </span>
+          ) : null}
+        </div>
       </div>
       <p className="text-sm text-content-secondary text-right">{value}</p>
     </div>

@@ -85,6 +85,8 @@ export interface ParentalControls {
   image_messaging_enabled: boolean
   video_messaging_enabled: boolean
   audio_messaging_enabled: boolean
+  /** Documents, archives, and other non-media file attachments. */
+  document_messaging_enabled: boolean
   /** Shown/used when all message types are locked — emergency-only escape hatch. */
   emergency_messaging_enabled: boolean
   calling_enabled: boolean
@@ -194,6 +196,7 @@ export const DEFAULT_PARENTAL_CONTROLS: Omit<
   image_messaging_enabled: true,
   video_messaging_enabled: true,
   audio_messaging_enabled: true,
+  document_messaging_enabled: true,
   emergency_messaging_enabled: true,
   calling_enabled: true,
   audio_calling_enabled: true,
@@ -219,6 +222,7 @@ export function areAllMessageTypesLocked(
     | 'image_messaging_enabled'
     | 'video_messaging_enabled'
     | 'audio_messaging_enabled'
+    | 'document_messaging_enabled'
   > | null
     | undefined
 ): boolean {
@@ -228,13 +232,23 @@ export function areAllMessageTypesLocked(
     controls.text_messaging_enabled === false &&
     controls.image_messaging_enabled === false &&
     controls.video_messaging_enabled === false &&
-    controls.audio_messaging_enabled === false
+    controls.audio_messaging_enabled === false &&
+    controls.document_messaging_enabled === false
   )
 }
 
+export type ParentalMessageKindName =
+  | 'text'
+  | 'image'
+  | 'video'
+  | 'audio'
+  | 'document'
+  | 'emergency'
+  | 'other'
+
 export function isMessageKindAllowed(
   controls: ParentalControls | null | undefined,
-  kind: 'text' | 'image' | 'video' | 'audio' | 'emergency' | 'other'
+  kind: ParentalMessageKindName
 ): boolean {
   if (!controls) return true
 
@@ -254,6 +268,8 @@ export function isMessageKindAllowed(
       return controls.video_messaging_enabled !== false
     case 'audio':
       return controls.audio_messaging_enabled !== false
+    case 'document':
+      return controls.document_messaging_enabled !== false
     default:
       return true
   }

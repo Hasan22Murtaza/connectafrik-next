@@ -76,6 +76,7 @@ export function normalizeControls(
     image_messaging_enabled: controls.image_messaging_enabled ?? true,
     video_messaging_enabled: controls.video_messaging_enabled ?? true,
     audio_messaging_enabled: controls.audio_messaging_enabled ?? true,
+    document_messaging_enabled: controls.document_messaging_enabled ?? true,
     emergency_messaging_enabled: controls.emergency_messaging_enabled ?? true,
     audio_calling_enabled: controls.audio_calling_enabled ?? true,
     video_calling_enabled: controls.video_calling_enabled ?? true,
@@ -150,7 +151,9 @@ export async function checkParentalRestriction(
             ? 'Video messages'
             : kind === 'audio'
               ? 'Audio messages'
-              : 'Messaging'
+              : kind === 'document'
+                ? 'Document messages'
+                : 'Messaging'
       return deny('messaging', `${label} are restricted by your parent.`)
     }
     return { allowed: true }

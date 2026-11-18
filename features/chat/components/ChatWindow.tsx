@@ -1607,6 +1607,16 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           (f.mimeType || "").startsWith("audio/") ||
           (f.name || "").startsWith("voice-")
       );
+      const hasDocument = filesSnapshot.some((f) => {
+        const mime = (f.mimeType || "").toLowerCase();
+        if (f.type === "file") return true;
+        if (!mime) return f.type !== "image" && f.type !== "video";
+        return (
+          !mime.startsWith("image/") &&
+          !mime.startsWith("video/") &&
+          !mime.startsWith("audio/")
+        );
+      });
       if (hasAudio && !parental.canSendAudio) {
         toast.error("Audio messages are restricted by your parent.");
         return;
@@ -1617,6 +1627,10 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       }
       if (hasImage && !parental.canSendImage) {
         toast.error("Image messages are restricted by your parent.");
+        return;
+      }
+      if (hasDocument && !parental.canSendDocuments) {
+        toast.error("Document messages are restricted by your parent.");
         return;
       }
     }
@@ -2195,6 +2209,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     !parental.canSendImage &&
     !parental.canSendVideo &&
     !parental.canSendAudio &&
+    !parental.canSendDocuments &&
     !parental.canSendEmergency;
   const canBlockContact = isDirectBlockableThread(thread, currentUser?.id);
   const reportableUserId =
@@ -2351,12 +2366,39 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const handlePasteFiles = useCallback(
     async (files: File[]) => {
       if (messagingBlocked || editingMessage || files.length === 0) return;
+      if (!chatWithParent && parental.onlyEmergencyMessaging) {
+        toast.error("Only emergency text messages are allowed.");
+        return;
+      }
+      if (!chatWithParent && parental.controlsActive) {
+        const blocked = files.some((file) => {
+          const mime = (file.type || "").toLowerCase();
+          if (mime.startsWith("image/")) return !parental.canSendImage;
+          if (mime.startsWith("video/")) return !parental.canSendVideo;
+          if (mime.startsWith("audio/")) return !parental.canSendAudio;
+          return !parental.canSendDocuments;
+        });
+        if (blocked) {
+          toast.error("Some file types are restricted by your parent.");
+          return;
+        }
+      }
       const results = await fileUploadService.fromFiles(files);
       if (results.length) {
         setPendingFiles((prev) => [...prev, ...results]);
       }
     },
-    [messagingBlocked, editingMessage]
+    [
+      messagingBlocked,
+      editingMessage,
+      chatWithParent,
+      parental.onlyEmergencyMessaging,
+      parental.controlsActive,
+      parental.canSendImage,
+      parental.canSendVideo,
+      parental.canSendAudio,
+      parental.canSendDocuments,
+    ]
   );
 
   const stopMediaStream = () => {
@@ -3678,7 +3720,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
             allowCamera={chatWithParent || parental.canSendImage}
             allowImages={chatWithParent || parental.canSendImage}
             allowVideos={chatWithParent || parental.canSendVideo}
-            allowDocuments={chatWithParent || parental.canSendText}
+            allowDocuments={chatWithParent || parental.canSendDocuments}
             allowLocation={chatWithParent || parental.canSendText}
           />
 
@@ -3899,6 +3941,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                         (parental.onlyEmergencyMessaging ||
                           (!parental.canSendImage &&
                             !parental.canSendVideo &&
+                            !parental.canSendDocuments &&
                             !parental.canSendText)))
                     }
                     className={`flex h-9 w-9 items-center justify-center rounded-full text-[#54656f] transition hover:bg-[#f0f2f5] disabled:pointer-events-none disabled:opacity-40 dark:text-content-secondary dark:hover:bg-surface-hover ${attachmentMenuOpen ? "text-[#F97316]" : ""

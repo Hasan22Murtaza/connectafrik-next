@@ -597,6 +597,7 @@ const UserProfilePage: React.FC = () => {
       !parental.canSendImage &&
       !parental.canSendVideo &&
       !parental.canSendAudio &&
+      !parental.canSendDocuments &&
       !parental.canSendEmergency
     ) {
       toast.error('Messaging is restricted by your parent.')
@@ -743,6 +744,7 @@ const UserProfilePage: React.FC = () => {
       parental.canSendImage ||
       parental.canSendVideo ||
       parental.canSendAudio ||
+      parental.canSendDocuments ||
       parental.canSendEmergency)
   const showCallBtn =
     (perms ? Boolean(perms.can_call) : Boolean(isMutual)) &&

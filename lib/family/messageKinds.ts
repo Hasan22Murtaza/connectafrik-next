@@ -1,4 +1,11 @@
-export type ParentalMessageKind = 'text' | 'image' | 'video' | 'audio' | 'emergency' | 'other'
+export type ParentalMessageKind =
+  | 'text'
+  | 'image'
+  | 'video'
+  | 'audio'
+  | 'document'
+  | 'emergency'
+  | 'other'
 
 type AttachmentLike = {
   mimeType?: string | null
@@ -54,13 +61,14 @@ export function resolveParentalMessageKind(input: {
     }
     if (attachments.some(attachmentIsVideo)) return 'video'
     if (attachments.some(attachmentIsImage)) return 'image'
-    // Documents / other files fall under "other" (gated by text + messaging master)
-    return 'other'
+    // Documents / archives / other restricted non-media files
+    return 'document'
   }
 
   if (rawType === 'audio' || rawType === 'voice') return 'audio'
   if (rawType === 'video') return 'video'
   if (rawType === 'image' || rawType === 'photo') return 'image'
+  if (rawType === 'file' || rawType === 'document') return 'document'
   if (rawType === 'location' || rawType === 'text' || !rawType) return 'text'
   return 'other'
 }

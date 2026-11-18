@@ -76,6 +76,7 @@ export async function PATCH(
       'image_messaging_enabled',
       'video_messaging_enabled',
       'audio_messaging_enabled',
+      'document_messaging_enabled',
       'emergency_messaging_enabled',
       'calling_enabled',
       'audio_calling_enabled',

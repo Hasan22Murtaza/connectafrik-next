@@ -21,6 +21,7 @@ export type ParentalCapabilities = {
   canSendImage: boolean
   canSendVideo: boolean
   canSendAudio: boolean
+  canSendDocuments: boolean
   canSendEmergency: boolean
   /** True when no regular message type is allowed (emergency may still be). */
   onlyEmergencyMessaging: boolean
@@ -29,7 +30,9 @@ export type ParentalCapabilities = {
   canGroupAudioCall: boolean
   canGroupVideoCall: boolean
   canCall: (kind: ParentalCallKind) => boolean
-  canMessage: (kind: 'text' | 'image' | 'video' | 'audio' | 'emergency' | 'other') => boolean
+  canMessage: (
+    kind: 'text' | 'image' | 'video' | 'audio' | 'document' | 'emergency' | 'other'
+  ) => boolean
   reelsRestrictionEnabled: boolean
   allowedReelCategories: string[] | null
 }
@@ -64,7 +67,7 @@ export function useParentalControls(): ParentalCapabilities {
 
   return useMemo(() => {
     const canMessage = (
-      kind: 'text' | 'image' | 'video' | 'audio' | 'emergency' | 'other'
+      kind: 'text' | 'image' | 'video' | 'audio' | 'document' | 'emergency' | 'other'
     ) => isMessageKindAllowed(controls, kind)
     const canCall = (kind: ParentalCallKind) => isCallKindAllowed(controls, kind)
 
@@ -82,6 +85,7 @@ export function useParentalControls(): ParentalCapabilities {
       canSendImage: canMessage('image'),
       canSendVideo: canMessage('video'),
       canSendAudio: canMessage('audio'),
+      canSendDocuments: canMessage('document'),
       canSendEmergency: canMessage('emergency'),
       onlyEmergencyMessaging: onlyEmergency,
       canAudioCall: canCall('audio'),
