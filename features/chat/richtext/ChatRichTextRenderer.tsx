@@ -45,7 +45,7 @@ const ChatRichTextRenderer: React.FC<ChatRichTextRendererProps> = ({
     <div className={`chat-rt-body ${isOwnMessage ? "chat-rt-own" : ""} ${className}`}>
       <div
         className={`chat-rt-content break-words leading-[1.45] ${
-          inheritColor ? "" : isOwnMessage ? "text-white" : "text-content"
+          inheritColor ? "" : isOwnMessage ? "text-[#292524] dark:text-white" : "text-content"
         } ${contentClassName ?? "text-[14px] sm:text-[14.5px]"}`}
         dangerouslySetInnerHTML={{ __html: html }}
       />

@@ -199,9 +199,11 @@ const VoiceNotePlayer: React.FC<{
 
   return (
     <div
-      className={`w-[min(100%,330px)] min-w-0 rounded-2xl px-2.5 py-2 text-[#667085] shadow-[0_1px_2px_rgba(11,20,26,0.08)] ${
-        isOwnMessage ? "bg-[#fff3e9]" : "bg-white"
-      } dark:bg-surface-secondary`}
+      className={`w-[min(100%,330px)] min-w-0 rounded-2xl px-2.5 py-0.5 text-[#667085] shadow-[0_1px_2px_rgba(11,20,26,0.08)] dark:text-content-secondary ${
+        isOwnMessage
+          ? "bg-[#fff3e9] dark:bg-[var(--chat-bubble-own-file)]"
+          : "bg-white dark:bg-surface-secondary"
+      }`}
     >
       <div className="flex min-w-0 items-center gap-2.5">
         <button
@@ -256,8 +258,8 @@ const VoiceNotePlayer: React.FC<{
               )}
               <span
                 className={`absolute -bottom-0.5 -left-0.5 flex h-[18px] w-[18px] items-center justify-center rounded-full border-2 bg-blue-500 text-white ${
-                  isOwnMessage ? "border-[#fff3e9]" : "border-white"
-                } dark:border-surface-secondary`}
+                  isOwnMessage ? "border-[#fff3e9] dark:border-[#3b2a22]" : "border-white dark:border-surface-secondary"
+                }`}
               >
                 <Mic className="h-[10px] w-[10px]" aria-hidden />
               </span>
@@ -588,8 +590,8 @@ const MessageAttachments: React.FC<MessageAttachmentsProps> = ({
                 <MapPin className="h-5 w-5" />
               </span>
               <div className="min-w-0">
-                <p className={`text-sm font-medium ${isOwnMessage ? "text-white" : "text-content"}`}>Location</p>
-                <p className={`truncate text-[11px] ${isOwnMessage ? "text-white" : "text-content-tertiary"}`}>{att.name}</p>
+                <p className={`text-sm font-medium ${isOwnMessage ? "text-[#292524] dark:text-white" : "text-content"}`}>Location</p>
+                <p className={`truncate text-[11px] ${isOwnMessage ? "text-[#667781] dark:text-content-tertiary" : "text-content-tertiary"}`}>{att.name}</p>
               </div>
               {isUploading ? (
                 <UploadMediaOverlay
@@ -640,10 +642,10 @@ const MessageAttachments: React.FC<MessageAttachmentsProps> = ({
             <div className="flex items-center gap-2.5 px-2.5 pb-2 pt-2.5">
               {fileIcon}
               <div className="min-w-0 flex-1">
-                <p className={`truncate text-[14px] font-medium leading-snug ${isOwnMessage ? "text-white" : "text-content"}`}>
+                <p className={`truncate text-[14px] font-medium leading-snug ${isOwnMessage ? "text-[#292524] dark:text-white" : "text-content"}`}>
                   {att.name}
                 </p>
-                <p className={`mt-0.5 text-[12px] leading-snug ${isOwnMessage ? "text-white" : "text-[#667781]"} dark:text-content-tertiary`}>
+                <p className="mt-0.5 text-[12px] leading-snug text-[#667781] dark:text-content-tertiary">
                   {fileMetaLine}
                 </p>
               </div>
@@ -660,7 +662,7 @@ const MessageAttachments: React.FC<MessageAttachmentsProps> = ({
                     e.stopPropagation();
                     openAttachment(att);
                   }}
-                  className={`py-1.5 text-center text-[13.5px] font-medium  transition hover:bg-black/[0.04]  ${isOwnMessage ? "text-white" : "text-[#027eb5]"}`}
+                  className={`py-1.5 text-center text-[13.5px] font-medium transition hover:bg-black/[0.04] ${isOwnMessage ? "text-[#c45a18] dark:text-orange-300" : "text-[#027eb5]"}`}
                 >
                   Open
                 </button>
@@ -670,7 +672,7 @@ const MessageAttachments: React.FC<MessageAttachmentsProps> = ({
                     e.stopPropagation();
                     saveAttachment(att);
                   }}
-                  className={`border-l border-black/[0.08] py-1.5 text-center text-[13.5px] font-medium  transition hover:bg-black/[0.04] dark:border-white/10 dark:text-sky-400 ${isOwnMessage ? "text-white" : "text-[#027eb5]"}`}
+                  className={`border-l border-black/[0.08] py-1.5 text-center text-[13.5px] font-medium transition hover:bg-black/[0.04] dark:border-white/10 dark:text-sky-400 ${isOwnMessage ? "text-[#c45a18] dark:text-orange-300" : "text-[#027eb5]"}`}
                 >
                   Save as...
                 </button>

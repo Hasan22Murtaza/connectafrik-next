@@ -78,9 +78,9 @@
   --scrollbar-thumb-hover: #d1d5dc;
 
   /* Chat bubbles - Light Mode */
---chat-bubble-own: #f97316;
---chat-bubble-own-file: #ea540c;
---chat-bubble-own-file-hover: #c2410c;
+--chat-bubble-own: #FFF3E9;
+--chat-bubble-own-file: #FFF3E9;
+--chat-bubble-own-file-hover: #fbe4d3;
 
 --chat-bubble-in: #ffffff;
 }
@@ -129,10 +129,10 @@
   --scrollbar-thumb: #475569;
   --scrollbar-thumb-hover: #64748b;
 
- /* Chat bubbles - Light Mode */
---chat-bubble-own: #f97316;
---chat-bubble-own-file: #ea580c;
---chat-bubble-own-file-hover: #c2410c;
+ /* Chat bubbles - Dark Mode */
+--chat-bubble-own: #3b2a22;
+--chat-bubble-own-file: #3b2a22;
+--chat-bubble-own-file-hover: #4a342a;
 
 --chat-bubble-in: var(--surface-tertiary);
 }

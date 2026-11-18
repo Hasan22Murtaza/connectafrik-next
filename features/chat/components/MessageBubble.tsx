@@ -495,7 +495,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
     Boolean((message.content || "").trim());
   const offerTranslateLink = canTranslate;
   const translateActionClass = `inline-flex items-center gap-1 text-[11px] font-medium hover:underline ${
-    isOwnMessage ? "text-white" : "text-primary-600"
+    isOwnMessage ? "text-[#c45a18] dark:text-orange-300" : "text-primary-600"
   }`;
   const showOverflowMenu =
     canEditMessage ||
@@ -962,7 +962,9 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
 
   /** Outgoing / incoming bubble fill — WhatsApp-inspired, tokenized for themes */
   const bubbleBg = isOwnMessage ? "chat-bubble-own" : "chat-bubble-in";
-  const bubbleShape = isOwnMessage ? "rounded-[18px] rounded-tr-none " : "rounded-[18px] rounded-tl-none border-gray-200 border";
+  const bubbleShape = isOwnMessage
+    ? "rounded-[18px] rounded-tr-none border border-[#f1dfcf] dark:border-[#5a4237]"
+    : "rounded-[18px] rounded-tl-none border-gray-200 border";
   const forwardAccent =
     showForwardBadge && isOwnMessage ? "border-l-[3px] border-gray-100 pl-[9px]" : "";
   const emojiOnly =
@@ -1446,11 +1448,11 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
             {showForwardBadge && !isDeleted ? (
               <div className="mb-1 flex items-center gap-1 pr-1">
                 <ChevronsRight
-                  className={`h-3.5 w-3.5 shrink-0 ${isOwnMessage ? "text-white/80" : "text-content-tertiary"}`}
+                  className={`h-3.5 w-3.5 shrink-0 ${isOwnMessage ? "text-[#8b6b5b] dark:text-white/80" : "text-content-tertiary"}`}
                   strokeWidth={2}
                   aria-hidden
                 />
-                <span className={`text-[12px] italic leading-snug ${isOwnMessage ? "text-white/80" : "text-content-tertiary"}`}>Forwarded</span>
+                <span className={`text-[12px] italic leading-snug ${isOwnMessage ? "text-[#8b6b5b] dark:text-white/80" : "text-content-tertiary"}`}>Forwarded</span>
               </div>
             ) : null}
 
@@ -1462,22 +1464,22 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                   onScrollToMessage?.(message.reply_to_id!);
                 }}
                 className={`mb-1.5 max-w-full overflow-hidden rounded-lg border-l-[3px] px-2 py-1.5 text-left transition hover:opacity-90 ${isOwnMessage
-                    ? "border-gray-100 bg-black/[0.06] dark:bg-white/10"
+                    ? "border-[#d9b8a0] bg-black/[0.04] dark:border-gray-100 dark:bg-white/10"
                     : "border-orange-500 bg-surface-secondary/70"
                   }`}
                 aria-label={`Jump to message from ${replyQuote.senderName}`}
               >
-                <div className={`truncate text-[13px] font-semibold ${isOwnMessage ? "text-white" : "text-content-tertiary"}`}>
+                <div className={`truncate text-[13px] font-semibold ${isOwnMessage ? "text-[#292524] dark:text-white" : "text-content-tertiary"}`}>
                   {replyQuote.senderName}
                 </div>
-                <div className={`truncate text-[12px] italic ${isOwnMessage ? "text-white/80" : "text-content-tertiary"}`}>
+                <div className={`truncate text-[12px] italic ${isOwnMessage ? "text-[#667781] dark:text-white/80" : "text-content-tertiary"}`}>
                   {replyQuote.preview}
                 </div>
               </button>
             ) : null}
 
             {isDeleted ? (
-              <p className="pr-1 text-sm italic text-white">This message was deleted</p>
+              <p className={`pr-1 text-sm italic ${isOwnMessage ? "text-[#292524] dark:text-white" : "text-content-secondary"}`}>This message was deleted</p>
             ) : callPresentation ? (
               <div className="flex min-w-0 items-start gap-2.5">
                 <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-surface shadow-[0_0.5px_1.5px_rgba(11,20,26,0.12)]">
@@ -1492,15 +1494,15 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                   )}
                 </div>
                 <div className="min-w-0 flex-1 pt-0.5">
-                  <p className={`text-[15px] font-medium leading-snug ${isOwnMessage ? "text-white" : "text-content"}`}>{callPresentation.title}</p>
-                  <p className={`mt-0.5 text-[13px] leading-snug ${isOwnMessage ? "text-white/80" : "text-content-tertiary"}`}>{callPresentation.subtitle}</p>
+                  <p className={`text-[15px] font-medium leading-snug ${isOwnMessage ? "text-[#292524] dark:text-white" : "text-content"}`}>{callPresentation.title}</p>
+                  <p className={`mt-0.5 text-[13px] leading-snug ${isOwnMessage ? "text-[#667781] dark:text-white/80" : "text-content-tertiary"}`}>{callPresentation.subtitle}</p>
                 </div>
                 <div className="flex shrink-0 flex-col items-end justify-end self-stretch">
                   <div className="flex items-end justify-end gap-1">
                     {showEditedBadge ? (
                       <span className="text-[11px] lowercase leading-none text-content-tertiary">edited</span>
                     ) : null}
-                    <span className= {`shrink-0 text-[11px] tabular-nums ${isOwnMessage ? " text-white" : " text-content-tertiary"}`}>
+                    <span className={`shrink-0 text-[11px] tabular-nums ${isOwnMessage ? "text-[#667781] dark:text-white" : "text-content-tertiary"}`}>
                       {format(new Date(message.created_at), "HH:mm")}
                     </span>
                     <MessageStatusIndicator status={messageStatus} isOwnMessage={isOwnMessage} />
@@ -1556,14 +1558,14 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                     rel="noopener noreferrer"
                     onClick={(e) => e.stopPropagation()}
                     className={`mb-1.5 flex max-w-full items-start gap-2 overflow-hidden rounded-lg border-l-[3px] p-2 transition hover:opacity-95 ${isOwnMessage
-                        ? "border-[#fff] bg-black/[0.05] dark:bg-white/5"
+                        ? "border-[#d9b8a0] bg-black/[0.04] dark:border-white dark:bg-white/5"
                         : "border-orange-500 bg-surface-secondary/60"
                       }`}
                   >
-                    <ExternalLink className={`mt-0.5 h-4 w-4 shrink-0 ${isOwnMessage ? "text-white" : "text-content-tertiary"}`} />
+                    <ExternalLink className={`mt-0.5 h-4 w-4 shrink-0 ${isOwnMessage ? "text-[#667781] dark:text-white" : "text-content-tertiary"}`} />
                     <div className="min-w-0 flex-1">
-                      <p className={`truncate text-[12px] font-semibold ${isOwnMessage ? "text-white" : "text-content-tertiary"}`}>Link</p>
-                      <p className={`break-all text-[11px] ${isOwnMessage ? "text-white" : "text-content-tertiary"}`}>{linkPreviewUrl}</p>
+                      <p className={`truncate text-[12px] font-semibold ${isOwnMessage ? "text-[#292524] dark:text-white" : "text-content-tertiary"}`}>Link</p>
+                      <p className={`break-all text-[11px] ${isOwnMessage ? "text-[#667781] dark:text-white" : "text-content-tertiary"}`}>{linkPreviewUrl}</p>
                     </div>
                   </a>
                 ) : null}
@@ -1591,7 +1593,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                     {isTranslating ? (
                       <span
                         className={`inline-flex items-center gap-1 text-[11px] ${
-                          isOwnMessage ? "text-white/85" : "text-content-tertiary"
+                        isOwnMessage ? "text-[#8b6b5b] dark:text-white/85" : "text-content-tertiary"
                         }`}
                       >
                         <Loader2 className="h-3 w-3 animate-spin" />
@@ -1659,7 +1661,9 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                     </span>
                   ) : null}
                   <span
-                    className={`shrink-0 text-[11px] tabular-nums ${isOwnMessage || visualMediaOnly ? "text-white" : "text-content-tertiary "}`}
+                    className={`shrink-0 text-[11px] tabular-nums ${
+                      visualMediaOnly ? "text-white" : "text-content-tertiary"
+                    }`}
                   >
                     {format(new Date(message.created_at), "HH:mm")}
                   </span>

@@ -15,7 +15,7 @@ const MessageStatusIndicator: React.FC<MessageStatusIndicatorProps> = ({
   if (!isOwnMessage) return null;
 
   const base = "h-[14px] w-[14px] shrink-0";
-  const muted = light ? "text-white/90" : "text-content-tertiary";
+  const muted = light ? "text-white/90" : "text-[#d97732] dark:text-content-tertiary";
 
   switch (status) {
     case "sending":
@@ -45,7 +45,7 @@ const MessageStatusIndicator: React.FC<MessageStatusIndicatorProps> = ({
     case "read":
       return (
         <CheckCheck
-          className={`${base} ${light ? "text-[#53bdeb]" : "text-[#53bdeb]"}`}
+          className={`${base} ${light ? "text-[#53bdeb]" : "text-[#f97316] dark:text-[#53bdeb]"}`}
           strokeWidth={2.25}
           aria-label="Read"
         />
