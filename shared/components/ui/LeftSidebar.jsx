@@ -39,7 +39,6 @@ const shortcuts = [
   { name: "TradeHub", to: "/marketplace", icon: Handbag },
   { name: "Youth Leadership", to: "/youth-leadership", icon: Award },
   { name: "Saved", to: "/saved", icon: Bookmark },
-  { name: "Feedback", to: "/feedback", icon: Megaphone },
 ];
 
 function formatBadge(count) {

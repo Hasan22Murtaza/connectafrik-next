@@ -127,7 +127,7 @@ export async function POST(request: NextRequest) {
               data: {
                 type: 'family_screen_time_limit',
                 family_member_id: membership.id,
-                url: '/settings?tab=family',
+                url: '/family-circle',
               },
             })
           } catch {

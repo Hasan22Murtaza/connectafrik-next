@@ -199,7 +199,7 @@ export async function POST(request: NextRequest) {
             invitation_id: invitation.id,
             family_id: familyId,
             role,
-            url: '/settings?tab=family',
+            url: '/family-circle',
           },
         })
       } catch (err) {

@@ -142,7 +142,7 @@ export async function PATCH(
         data: {
           type: 'family_controls_updated',
           family_member_id: id,
-          url: '/settings?tab=family',
+          url: '/family-circle',
         },
       })
     } catch (err) {

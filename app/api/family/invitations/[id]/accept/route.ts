@@ -147,7 +147,7 @@ export async function POST(
           invitation_id: id,
           family_id: invitation.family_id,
           member_id: membership.id,
-          url: '/settings?tab=family',
+          url: '/family-circle',
         },
       })
     } catch (err) {

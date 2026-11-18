@@ -549,7 +549,7 @@ export function ParentalSafetyPage() {
         <li>Show them how to block and how to report.</li>
         <li>Talk about not moving conversations with strangers off the platform.</li>
         <li>
-          Use <Link href="/settings?tab=family">Family &amp; Parental Controls</Link> to connect
+          Use <Link href="/family-circle">Family &amp; Parental Controls</Link> to connect
           accounts, set screen-time limits, approve contacts, and review safety alerts.
         </li>
         <li>
@@ -607,7 +607,7 @@ export function YouthSafetyPage() {
         Age-appropriate experiences differ for children (under 13), teens (13–17), and adults (18+).
       </p>
       <p>
-        Parents can use <Link href="/settings?tab=family">Family &amp; Parental Controls</Link> for
+        Parents can use <Link href="/family-circle">Family &amp; Parental Controls</Link> for
         screen-time limits, contact approval, and safety alerts without reading private messages.
       </p>
       <p>

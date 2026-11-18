@@ -145,7 +145,7 @@ const MobileSideDrawer: React.FC<MobileSideDrawerProps> = ({
           { label: 'Settings', path: '/settings', icon: Settings },
           {
             label: 'Family Circle',
-            path: '/settings?tab=family',
+            path: '/family-circle',
             icon: UsersRound,
           },
           { label: 'Feedback', path: '/feedback', icon: Megaphone },

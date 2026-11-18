@@ -68,7 +68,7 @@ export async function createSafetyAlertForUser(
           type: 'family_safety_alert',
           alert_id: alert.id,
           family_member_id: membership.id,
-          url: '/settings?tab=family',
+          url: '/family-circle',
         },
       })
     } catch (err) {

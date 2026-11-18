@@ -1,7 +1,7 @@
 'use client'
 
-import React, { Suspense } from 'react'
-import { usePathname, useSearchParams } from 'next/navigation'
+import React, { Suspense, useEffect } from 'react'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { parseSettingsTab, type SettingsTab } from '../types'
 import { SettingsShell } from './SettingsShell'
@@ -10,7 +10,6 @@ import { PrivacySettingsPanel } from './PrivacySettingsPanel'
 import { NotificationSettingsPanel } from './NotificationSettingsPanel'
 import { SecuritySettingsPanel } from './SecuritySettingsPanel'
 import { DevicesSettingsPanel } from './DevicesSettingsPanel'
-import { FamilySettingsPanel } from './FamilySettingsPanel'
 import { SettingsSignInPrompt } from './SettingsPrimitives'
 
 const PANEL_COPY: Record<SettingsTab, { title: string; description: string }> = {
@@ -34,20 +33,32 @@ const PANEL_COPY: Record<SettingsTab, { title: string; description: string }> = 
     title: 'Devices',
     description: 'Manage signed-in sessions and message encryption.',
   },
-  family: {
-    title: 'Family & Parental Controls',
-    description: 'Manage family members, permissions, screen time, and safety alerts.',
-  },
 }
 
 function SettingsExperienceInner() {
   const pathname = usePathname()
+  const router = useRouter()
   const searchParams = useSearchParams()
   const { user } = useAuth()
+  const rawTab = searchParams.get('tab')
 
-  const activeTab = parseSettingsTab(pathname, searchParams.get('tab'))
+  useEffect(() => {
+    if (rawTab === 'family') {
+      router.replace('/family-circle')
+    }
+  }, [rawTab, router])
+
+  const activeTab = parseSettingsTab(pathname, rawTab)
   const displayTab: SettingsTab = activeTab === 'hub' ? 'profile' : activeTab
   const copy = PANEL_COPY[displayTab]
+
+  if (rawTab === 'family') {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+      </div>
+    )
+  }
 
   if (!user) {
     return <SettingsSignInPrompt message="You need to be signed in to view your settings." />
@@ -60,7 +71,6 @@ function SettingsExperienceInner() {
       {displayTab === 'notifications' ? <NotificationSettingsPanel /> : null}
       {displayTab === 'security' ? <SecuritySettingsPanel /> : null}
       {displayTab === 'devices' ? <DevicesSettingsPanel /> : null}
-      {displayTab === 'family' ? <FamilySettingsPanel /> : null}
     </SettingsShell>
   )
 }
