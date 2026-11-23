@@ -77,7 +77,9 @@ export async function POST(request: NextRequest) {
         country: body.country ?? null,
         region: body.region ?? null,
         created_by: user.id,
-        verification_status: 'pending',
+        verification_status: 'verified',
+        verified_by: user.id,
+        verified_at: new Date().toISOString(),
       })
       .select('*')
       .single()

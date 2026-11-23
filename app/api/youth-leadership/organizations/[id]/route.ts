@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { getAuthenticatedUser } from '@/lib/supabase-server'
+import { createServiceClient, getAuthenticatedUser } from '@/lib/supabase-server'
 import {
   errorResponse,
   forbiddenResponse,
@@ -94,5 +94,34 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   } catch (error: any) {
     if (error?.message === 'Unauthorized') return unauthorizedResponse()
     return errorResponse(error?.message || 'Failed to update organization', 500)
+  }
+}
+
+export async function DELETE(request: NextRequest, { params }: Params) {
+  try {
+    const { id } = await params
+    const { user, supabase } = await getAuthenticatedUser(request)
+
+    const authz = await requireOrgRole(supabase, id, user.id, 'admin')
+    if (!authz.ok) return forbiddenResponse(authz.message)
+
+    // Authenticated role lacks DELETE grant; use service client after admin check.
+    const adminClient = createServiceClient()
+    const { error } = await adminClient.from('youth_organizations').delete().eq('id', id)
+
+    if (error) return errorResponse(error.message, 400)
+
+    await writeYouthAuditLog(supabase, {
+      actor_id: user.id,
+      action: 'organization_deleted',
+      entity_type: 'youth_organization',
+      entity_id: id,
+      metadata: {},
+    })
+
+    return jsonResponse({ deleted: true, id })
+  } catch (error: any) {
+    if (error?.message === 'Unauthorized') return unauthorizedResponse()
+    return errorResponse(error?.message || 'Failed to delete organization', 500)
   }
 }

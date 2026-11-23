@@ -30,10 +30,11 @@ import { AP } from '@/features/admin/constants/adminLayout'
 import YouthAvatar from '@/features/youth-leadership/components/YouthAvatar'
 
 type AdminSummary = {
-  pending_organizations: number
+  total_organizations: number
   published_programs: number
-  pending_programs: number
-  pending_mentors: number
+  flagged_organizations: number
+  total_mentors: number
+  flagged_mentors: number
   open_safety_reports: number
   total_applications: number
   active_enrollments: number
@@ -55,7 +56,7 @@ type AdminPayload = {
     created_at: string
     organization?: { id: string; name: string } | null
   }>
-  mentors_pending: Array<{
+  mentors: Array<{
     id: string
     verification_status: string
     created_at: string
@@ -87,17 +88,17 @@ const TAB_META: Record<
 > = {
   organizations: {
     label: 'Organizations',
-    description: 'Verify, reject, or suspend youth partner organizations.',
+    description: 'Review partner organizations and reject or suspend when needed.',
     emptyTitle: 'No organizations for this filter',
   },
   mentors: {
     label: 'Mentors',
-    description: 'Review mentor verification requests before they appear in matching.',
+    description: 'Review mentor profiles and reject or suspend when needed.',
     emptyTitle: 'No mentors for this filter',
   },
   programs: {
     label: 'Programs',
-    description: 'Publish pending programs or suspend ones that need intervention.',
+    description: 'Publish, suspend, or archive programs that need intervention.',
     emptyTitle: 'No programs for this filter',
   },
   safety: {
@@ -153,9 +154,9 @@ function AdminYouthLeadershipInner() {
   const [data, setData] = useState<AdminPayload | null>(null)
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
-  const [orgStatus, setOrgStatus] = useState('pending')
-  const [programStatus, setProgramStatus] = useState('pending_review')
-  const [mentorStatus, setMentorStatus] = useState('pending')
+  const [orgStatus, setOrgStatus] = useState('')
+  const [programStatus, setProgramStatus] = useState('')
+  const [mentorStatus, setMentorStatus] = useState('')
   const [safetyStatus, setSafetyStatus] = useState('open')
 
   const setTab = useCallback(
@@ -220,9 +221,9 @@ function AdminYouthLeadershipInner() {
       }
     }
     return {
-      organizations: data.summary.pending_organizations,
-      mentors: data.summary.pending_mentors,
-      programs: data.summary.pending_programs,
+      organizations: data.summary.flagged_organizations,
+      mentors: data.summary.flagged_mentors,
+      programs: data.summary.published_programs,
       safety: data.summary.open_safety_reports,
     }
   }, [data])
@@ -231,7 +232,7 @@ function AdminYouthLeadershipInner() {
     ? tab === 'organizations'
       ? data.organizations.length
       : tab === 'mentors'
-        ? data.mentors_pending.length
+        ? data.mentors.length
         : tab === 'programs'
           ? data.programs.length
           : data.safety_reports.length
@@ -276,10 +277,10 @@ function AdminYouthLeadershipInner() {
               onClick={() => setTab('organizations')}
             >
               <AdminStatCard
-                label="Pending orgs"
-                value={data.summary.pending_organizations}
+                label="Organizations"
+                value={data.summary.total_organizations}
                 icon={Building2}
-                highlight={data.summary.pending_organizations > 0 && tab === 'organizations'}
+                highlight={tab === 'organizations'}
               />
             </button>
             <button type="button" className="text-left" onClick={() => setTab('programs')}>
@@ -292,10 +293,10 @@ function AdminYouthLeadershipInner() {
             </button>
             <button type="button" className="text-left" onClick={() => setTab('mentors')}>
               <AdminStatCard
-                label="Pending mentors"
-                value={data.summary.pending_mentors}
+                label="Mentors"
+                value={data.summary.total_mentors}
                 icon={UserCheck}
-                highlight={data.summary.pending_mentors > 0 && tab === 'mentors'}
+                highlight={tab === 'mentors'}
               />
             </button>
             <button type="button" className="text-left" onClick={() => setTab('safety')}>
@@ -374,8 +375,7 @@ function AdminYouthLeadershipInner() {
                   aria-label="Organization filter"
                 >
                   <option value="">All orgs</option>
-                  <option value="pending">Pending</option>
-                  <option value="verified">Verified</option>
+                  <option value="verified">Active</option>
                   <option value="rejected">Rejected</option>
                   <option value="suspended">Suspended</option>
                 </select>
@@ -389,8 +389,7 @@ function AdminYouthLeadershipInner() {
                   aria-label="Mentor filter"
                 >
                   <option value="">All mentors</option>
-                  <option value="pending">Pending</option>
-                  <option value="verified">Verified</option>
+                  <option value="verified">Active</option>
                   <option value="rejected">Rejected</option>
                   <option value="suspended">Suspended</option>
                 </select>
@@ -404,7 +403,6 @@ function AdminYouthLeadershipInner() {
                   aria-label="Program filter"
                 >
                   <option value="">All programs</option>
-                  <option value="pending_review">Pending review</option>
                   <option value="published">Published</option>
                   <option value="suspended">Suspended</option>
                   <option value="draft">Draft</option>
@@ -458,20 +456,22 @@ function AdminYouthLeadershipInner() {
                       </AdminTableCell>
                       <AdminTableCell>
                         <div className="flex flex-wrap gap-1.5">
-                          <ActionButton
-                            variant="primary"
-                            disabled={busy || org.verification_status === 'verified'}
-                            onClick={() =>
-                              patchEntity(
-                                'organizations',
-                                org.id,
-                                { verification_status: 'verified' },
-                                'Organization verified'
-                              )
-                            }
-                          >
-                            Verify
-                          </ActionButton>
+                          {org.verification_status !== 'verified' ? (
+                            <ActionButton
+                              variant="primary"
+                              disabled={busy}
+                              onClick={() =>
+                                patchEntity(
+                                  'organizations',
+                                  org.id,
+                                  { verification_status: 'verified' },
+                                  'Organization reinstated'
+                                )
+                              }
+                            >
+                              Reinstate
+                            </ActionButton>
+                          ) : null}
                           <ActionButton
                             disabled={busy || org.verification_status === 'rejected'}
                             onClick={() =>
@@ -508,7 +508,7 @@ function AdminYouthLeadershipInner() {
           ) : null}
 
           {tab === 'mentors' ? (
-            data.mentors_pending.length === 0 ? (
+            data.mentors.length === 0 ? (
               <div className={AP.card}>
                 <AdminEmptyState icon={UserCheck} title={TAB_META.mentors.emptyTitle} />
               </div>
@@ -521,7 +521,7 @@ function AdminYouthLeadershipInner() {
                   <AdminTableHeadCell>Actions</AdminTableHeadCell>
                 </AdminTableHead>
                 <AdminTableBody>
-                  {data.mentors_pending.map((mentor) => {
+                  {data.mentors.map((mentor) => {
                     const mentorName =
                       mentor.profile?.full_name || mentor.profile?.username || 'Mentor'
                     return (
@@ -551,20 +551,22 @@ function AdminYouthLeadershipInner() {
                         </AdminTableCell>
                         <AdminTableCell>
                           <div className="flex flex-wrap gap-1.5">
-                            <ActionButton
-                              variant="primary"
-                              disabled={busy || mentor.verification_status === 'verified'}
-                              onClick={() =>
-                                patchEntity(
-                                  'mentors',
-                                  mentor.id,
-                                  { verification_status: 'verified' },
-                                  'Mentor verified'
-                                )
-                              }
-                            >
-                              Verify
-                            </ActionButton>
+                            {mentor.verification_status !== 'verified' ? (
+                              <ActionButton
+                                variant="primary"
+                                disabled={busy}
+                                onClick={() =>
+                                  patchEntity(
+                                    'mentors',
+                                    mentor.id,
+                                    { verification_status: 'verified' },
+                                    'Mentor reinstated'
+                                  )
+                                }
+                              >
+                                Reinstate
+                              </ActionButton>
+                            ) : null}
                             <ActionButton
                               disabled={busy || mentor.verification_status === 'rejected'}
                               onClick={() =>

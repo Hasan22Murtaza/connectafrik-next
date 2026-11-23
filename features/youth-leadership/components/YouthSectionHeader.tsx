@@ -20,7 +20,9 @@ export default function YouthSectionHeader({
       className={`mb-4 flex flex-wrap items-end justify-between gap-3 ${className}`.trim()}
     >
       <div className="flex min-w-0 flex-wrap items-center gap-2">
-        <h2 className="text-lg font-semibold tracking-tight text-content">{title}</h2>
+        <h2 className="text-base font-semibold tracking-tight text-content sm:text-lg">
+          {title}
+        </h2>
         {badge}
       </div>
       {children ? (

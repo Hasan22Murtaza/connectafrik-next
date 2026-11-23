@@ -87,7 +87,7 @@ export default function GuardianApplicationsPanel() {
                   <div className="flex min-w-0 items-center gap-3">
                     <YouthAvatar src={app.applicant?.avatar_url} name={childName} />
                     <div>
-                      <p className="font-medium text-content">
+                      <p className="text-[0.98rem] font-semibold leading-snug tracking-tight text-content">
                         {app.program?.title || 'Program'}
                       </p>
                       <p className="mt-1 text-sm text-content-secondary">

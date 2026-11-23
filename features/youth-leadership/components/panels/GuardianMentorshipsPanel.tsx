@@ -99,7 +99,9 @@ export default function GuardianMentorshipsPanel() {
                       />
                     </div>
                     <div>
-                      <p className="font-medium text-content">Mentor: {mentorName}</p>
+                      <p className="text-[0.98rem] font-semibold leading-snug tracking-tight text-content">
+                        Mentor: {mentorName}
+                      </p>
                       <p className="mt-1 text-sm text-content-secondary">
                         Participant: {childName}
                       </p>

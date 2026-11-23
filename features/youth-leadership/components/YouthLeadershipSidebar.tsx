@@ -29,12 +29,15 @@ export function YouthLeadershipSidebar() {
 
   return (
     <aside className="h-full w-full shrink-0 border-r border-border px-2 py-4 md:w-48">
-      <h2 className="mb-4 px-1 text-lg font-semibold text-content">Youth Leadership</h2>
+      <h2 className="mb-4 px-1 text-xl font-semibold leading-tight text-content">
+        Youth Leadership
+      </h2>
 
       <nav className="space-y-0.5" aria-label="Youth Leadership sections">
         {YOUTH_NAV_ITEMS.map((item) => {
           const active = isYouthNavActive(pathname, item)
           const Icon = ICONS[item.href] ?? Award
+
           return (
             <Link
               key={item.href}

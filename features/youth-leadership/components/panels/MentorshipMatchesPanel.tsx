@@ -115,7 +115,7 @@ export default function MentorshipMatchesPanel() {
                   <div className="flex items-center gap-3">
                     <YouthAvatar src={m.mentor?.profile?.avatar_url} name={mentorName} />
                     <div>
-                      <p className="text-sm font-medium text-content">
+                      <p className="text-[0.98rem] font-semibold leading-snug tracking-tight text-content">
                         As participant · {mentorName}
                       </p>
                       <div className="mt-1">
@@ -163,7 +163,7 @@ export default function MentorshipMatchesPanel() {
                   <div className="flex items-center gap-3">
                     <YouthAvatar src={m.participant?.avatar_url} name={participantName} />
                     <div>
-                      <p className="text-sm font-medium text-content">
+                      <p className="text-[0.98rem] font-semibold leading-snug tracking-tight text-content">
                         As mentor · {participantName}
                       </p>
                       <div className="mt-1">

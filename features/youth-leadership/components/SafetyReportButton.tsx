@@ -82,7 +82,6 @@ export default function SafetyReportButton({
       <YouthFormModal
         open={open}
         title="Report a safety concern"
-        description="Reports are reviewed by platform moderators. Provide clear details."
         onClose={close}
         size="md"
         footer={

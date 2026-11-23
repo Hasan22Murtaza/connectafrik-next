@@ -177,7 +177,12 @@ export async function POST(request: NextRequest) {
 
     const { data, error } = await supabase
       .from('youth_mentors')
-      .insert({ ...payload, verification_status: 'pending' })
+      .insert({
+        ...payload,
+        verification_status: 'verified',
+        verified_by: user.id,
+        verified_at: new Date().toISOString(),
+      })
       .select(MENTOR_MINE_SELECT)
       .single()
 

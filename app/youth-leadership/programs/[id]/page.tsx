@@ -17,6 +17,7 @@ import YouthFormModal, {
   YOUTH_FIELD,
   YouthFieldLabel,
 } from '@/features/youth-leadership/components/YouthFormModal'
+import YouthSkeleton from '@/features/youth-leadership/components/YouthSkeleton'
 import { YOUTH_CARD, YOUTH_CHIP } from '@/features/youth-leadership/constants/nav'
 import type {
   YouthApplicationQuestion,
@@ -126,7 +127,7 @@ export default function YouthProgramDetailPage() {
   if (authLoading || loading) {
     return (
       <YouthShell title="Program">
-        <div className={`${YOUTH_CARD} h-64 animate-pulse bg-surface-secondary/70`} />
+        <YouthSkeleton count={2} variant="row" />
         {dialog}
       </YouthShell>
     )
@@ -184,25 +185,6 @@ export default function YouthProgramDetailPage() {
           {verified ? <VerifiedBadge label="Verified organization" /> : null}
         </span>
       }
-      actions={
-        <div className="flex flex-wrap gap-2">
-          {canApply ? (
-            <button
-              type="button"
-              className="btn-primary"
-              onClick={() => setShowApplyModal(true)}
-            >
-              {application?.status === 'draft' ? 'Continue application' : 'Apply now'}
-            </button>
-          ) : null}
-          <SafetyReportButton
-            context={{
-              program_id: program.id,
-              organization_id: program.organization_id,
-            }}
-          />
-        </div>
-      }
     >
       {dialog}
 
@@ -249,8 +231,13 @@ export default function YouthProgramDetailPage() {
           ) : null}
           {questions.map((q) => (
             <div key={q.id}>
-              <YouthFieldLabel hint={q.required ? 'Required' : 'Optional'}>
+              <YouthFieldLabel>
                 {q.prompt}
+                {q.required ? (
+                  <span className="text-primary" aria-hidden="true">
+                    *
+                  </span>
+                ) : null}
               </YouthFieldLabel>
               <textarea
                 className={`${YOUTH_FIELD} min-h-[96px]`}

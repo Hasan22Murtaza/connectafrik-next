@@ -2,15 +2,15 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { useParams } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
-import { ArrowLeft, Plus, Users } from '@/shared/icons'
+import { Plus, Users } from '@/shared/icons'
 import { apiClient, ApiError } from '@/lib/api-client'
 import { useAuth } from '@/contexts/AuthContext'
+import { useConfirmDialog } from '@/shared/components/ui/ConfirmDialog'
 import YouthShell from '@/features/youth-leadership/components/YouthShell'
 import StatusBadge from '@/features/youth-leadership/components/StatusBadge'
 import EmptyState from '@/features/youth-leadership/components/EmptyState'
-import SafetyReportButton from '@/features/youth-leadership/components/SafetyReportButton'
 import YouthAvatar from '@/features/youth-leadership/components/YouthAvatar'
 import TasksBoard from '@/features/youth-leadership/components/TasksBoard'
 import YouthFormModal, {
@@ -38,6 +38,14 @@ const EMPTY_TASK_FORM = {
   assigned_to: '',
   priority: 'medium',
   due_date: '',
+}
+
+const EMPTY_PROJECT_FORM = {
+  title: '',
+  description: '',
+  objective: '',
+  skills_required: '',
+  max_participants: '',
 }
 
 type MemberRow = YouthProjectMember & {
@@ -68,15 +76,19 @@ function memberLabel(count: number) {
 
 export default function YouthProjectDetailPage() {
   const params = useParams()
+  const router = useRouter()
   const id = String(params?.id || '')
   const { user, loading: authLoading } = useAuth()
+  const { confirm, dialog: confirmDialog } = useConfirmDialog()
   const [project, setProject] = useState<ProjectDetail | null>(null)
   const [tasks, setTasks] = useState<TaskRow[]>([])
   const [orgs, setOrgs] = useState<OrgRow[]>([])
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
   const [showTaskModal, setShowTaskModal] = useState(false)
+  const [showEditModal, setShowEditModal] = useState(false)
   const [taskForm, setTaskForm] = useState(EMPTY_TASK_FORM)
+  const [projectForm, setProjectForm] = useState(EMPTY_PROJECT_FORM)
 
   const isCoordinator = useMemo(() => {
     if (!project || !user) return false
@@ -282,10 +294,80 @@ export default function YouthProjectDetailPage() {
     }
   }
 
+  function openEditProject() {
+    if (!project) return
+    setProjectForm({
+      title: project.title,
+      description: project.description || '',
+      objective: project.objective || '',
+      skills_required: project.skills_required?.join(', ') || '',
+      max_participants:
+        project.max_participants != null ? String(project.max_participants) : '',
+    })
+    setShowEditModal(true)
+  }
+
+  function closeEditProject() {
+    if (busy) return
+    setShowEditModal(false)
+  }
+
+  async function saveProject() {
+    if (!projectForm.title.trim()) {
+      toast.error('Title is required')
+      return
+    }
+    setBusy(true)
+    try {
+      const updated = await apiClient.patch<YouthProject>(
+        `/api/youth-leadership/projects/${id}`,
+        {
+          title: projectForm.title.trim(),
+          description: projectForm.description || null,
+          objective: projectForm.objective || null,
+          skills_required: projectForm.skills_required
+            ? projectForm.skills_required.split(',').map((s) => s.trim()).filter(Boolean)
+            : null,
+          max_participants: projectForm.max_participants
+            ? Number(projectForm.max_participants)
+            : null,
+        }
+      )
+      toast.success('Project updated')
+      setProject((prev) => (prev ? { ...prev, ...updated, members: prev.members } : prev))
+      setShowEditModal(false)
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : 'Failed to update project')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function deleteProject() {
+    if (!project) return
+    const ok = await confirm({
+      title: 'Delete project?',
+      message: `“${project.title}” and its related membership/tasks will be permanently removed. This cannot be undone.`,
+      confirmLabel: 'Delete',
+      variant: 'danger',
+    })
+    if (!ok) return
+
+    setBusy(true)
+    try {
+      await apiClient.delete(`/api/youth-leadership/projects/${id}`)
+      toast.success('Project deleted')
+      router.push('/youth-leadership/community?tab=projects')
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : 'Failed to delete project')
+      setBusy(false)
+    }
+  }
+
   if (authLoading || loading) {
     return (
       <YouthShell title="Project">
-        <YouthSkeleton count={2} />
+        <YouthSkeleton count={3} variant="row" />
       </YouthShell>
     )
   }
@@ -336,23 +418,7 @@ export default function YouthProjectDetailPage() {
     <YouthShell
       title={project.title}
       subtitle={project.organization?.name || 'Community project'}
-      actions={
-        <div className="flex flex-wrap items-center gap-2">
-          <Link
-            href="/youth-leadership/community?tab=projects"
-            className="btn-secondary inline-flex items-center gap-1.5 text-sm"
-          >
-            <ArrowLeft className="h-4 w-4" aria-hidden />
-            Projects
-          </Link>
-          <SafetyReportButton
-            context={{
-              project_id: project.id,
-              organization_id: project.organization_id,
-            }}
-          />
-        </div>
-      }
+      actions={undefined}
     >
       {project.status === 'pending_approval' ? (
         <div className="mb-6 rounded-2xl border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-sm text-amber-900 dark:text-amber-100">
@@ -371,7 +437,11 @@ export default function YouthProjectDetailPage() {
                 Approve project
               </button>
               <Link
-                href="/youth-leadership/organization?tab=projects"
+                href={
+                  project.organization_id
+                    ? `/youth-leadership/organization/${project.organization_id}?tab=projects`
+                    : '/youth-leadership/organization'
+                }
                 className="btn-secondary text-sm"
               >
                 Review in Organization
@@ -504,7 +574,9 @@ export default function YouthProjectDetailPage() {
                         size="sm"
                       />
                       <span className="min-w-0">
-                        <span className="block truncate font-medium">{memberName}</span>
+                        <span className="block truncate text-[0.98rem] font-semibold leading-snug tracking-tight">
+                          {memberName}
+                        </span>
                         <span className="block truncate text-xs capitalize text-content-tertiary">
                           {m.status}
                         </span>
@@ -575,6 +647,86 @@ export default function YouthProjectDetailPage() {
           />
         )}
       </section>
+
+      <YouthFormModal
+        open={showEditModal}
+        title="Edit project"
+        description="Update project details. Organization cannot be changed here."
+        onClose={closeEditProject}
+        size="md"
+        footer={
+          <>
+            <button
+              type="button"
+              className="btn-secondary"
+              disabled={busy}
+              onClick={closeEditProject}
+            >
+              Cancel
+            </button>
+            <button type="button" className="btn-primary" disabled={busy} onClick={saveProject}>
+              {busy ? 'Saving…' : 'Save changes'}
+            </button>
+          </>
+        }
+      >
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="sm:col-span-2">
+            <YouthFieldLabel htmlFor="edit-project-title">Project name</YouthFieldLabel>
+            <input
+              id="edit-project-title"
+              className={YOUTH_FIELD}
+              value={projectForm.title}
+              onChange={(e) => setProjectForm((f) => ({ ...f, title: e.target.value }))}
+              autoFocus
+            />
+          </div>
+          <div className="sm:col-span-2">
+            <YouthFieldLabel htmlFor="edit-project-description">Description</YouthFieldLabel>
+            <textarea
+              id="edit-project-description"
+              className={`${YOUTH_FIELD} min-h-[88px] resize-y`}
+              value={projectForm.description}
+              onChange={(e) => setProjectForm((f) => ({ ...f, description: e.target.value }))}
+            />
+          </div>
+          <div className="sm:col-span-2">
+            <YouthFieldLabel htmlFor="edit-project-objective">Objective</YouthFieldLabel>
+            <textarea
+              id="edit-project-objective"
+              className={`${YOUTH_FIELD} min-h-[80px] resize-y`}
+              value={projectForm.objective}
+              onChange={(e) => setProjectForm((f) => ({ ...f, objective: e.target.value }))}
+            />
+          </div>
+          <div>
+            <YouthFieldLabel htmlFor="edit-project-max">Max participants</YouthFieldLabel>
+            <input
+              id="edit-project-max"
+              className={YOUTH_FIELD}
+              type="number"
+              min={1}
+              value={projectForm.max_participants}
+              onChange={(e) =>
+                setProjectForm((f) => ({ ...f, max_participants: e.target.value }))
+              }
+            />
+          </div>
+          <div className="sm:col-span-2">
+            <YouthFieldLabel htmlFor="edit-project-skills">
+              Skills required (comma-separated)
+            </YouthFieldLabel>
+            <input
+              id="edit-project-skills"
+              className={YOUTH_FIELD}
+              value={projectForm.skills_required}
+              onChange={(e) =>
+                setProjectForm((f) => ({ ...f, skills_required: e.target.value }))
+              }
+            />
+          </div>
+        </div>
+      </YouthFormModal>
 
       <YouthFormModal
         open={showTaskModal}
@@ -661,6 +813,8 @@ export default function YouthProjectDetailPage() {
           </div>
         </div>
       </YouthFormModal>
+
+      {confirmDialog}
     </YouthShell>
   )
 }

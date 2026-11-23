@@ -79,7 +79,7 @@ export const YOUTH_CARD_INTERACTIVE =
   'rounded-2xl border border-border/80 bg-surface p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(15,23,42,0.06)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30'
 
 export const YOUTH_SECTION_TITLE =
-  'text-lg font-semibold tracking-tight text-content'
+  'text-base font-semibold tracking-tight text-content sm:text-lg'
 
 export const YOUTH_MUTED = 'text-sm text-content-secondary'
 

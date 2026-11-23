@@ -1,11 +1,10 @@
 'use client'
 
+import { useEffect, useId, useRef, useState } from 'react'
 import Link from 'next/link'
-import { Users } from '@/shared/icons'
+import { MoreHorizontal, Pencil, Trash2, Users } from '@/shared/icons'
 import type { YouthProject } from '@/shared/types/youthLeadership'
 import { YOUTH_CARD_INTERACTIVE, YOUTH_CHIP } from '@/features/youth-leadership/constants/nav'
-import StatusBadge from './StatusBadge'
-import YouthAvatar from './YouthAvatar'
 
 function memberLabel(count: number) {
   return `${count} member${count === 1 ? '' : 's'}`
@@ -14,13 +13,22 @@ function memberLabel(count: number) {
 export default function ProjectCard({
   project,
   busy = false,
+  canManage = false,
   onJoin,
+  onEdit,
+  onDelete,
 }: {
   project: YouthProject
   busy?: boolean
+  canManage?: boolean
   onJoin?: (projectId: string) => void
+  onEdit?: (project: YouthProject) => void
+  onDelete?: (project: YouthProject) => void
 }) {
-  const orgName = project.organization?.name || 'Community project'
+  const menuId = useId()
+  const [menuOpen, setMenuOpen] = useState(false)
+  const menuRef = useRef<HTMLDivElement>(null)
+
   const members = project.member_count ?? 0
   const capacity = project.max_participants
   const fillPct =
@@ -39,28 +47,78 @@ export default function ProjectCard({
     ['approved', 'active'].includes(project.status)
   const skills = (project.skills_required || []).filter(Boolean).slice(0, 3)
 
+  useEffect(() => {
+    if (!menuOpen) return
+
+    function onPointerDown(e: PointerEvent) {
+      if (!menuRef.current?.contains(e.target as Node)) setMenuOpen(false)
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setMenuOpen(false)
+    }
+
+    document.addEventListener('pointerdown', onPointerDown)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [menuOpen])
+
   return (
-    <article className={`${YOUTH_CARD_INTERACTIVE} group flex h-full flex-col`}>
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex min-w-0 items-start gap-3">
-          <YouthAvatar name={orgName} />
-          <div className="min-w-0">
-            <p className="truncate text-sm font-medium text-content">{orgName}</p>
-            {isMember ? (
-              <p className="mt-0.5 text-xs capitalize text-content-tertiary">
-                Your role · {project.my_membership?.role || 'member'}
-              </p>
-            ) : (
-              <p className="mt-0.5 text-xs text-content-tertiary">Open community project</p>
-            )}
-          </div>
+    <article className={`${YOUTH_CARD_INTERACTIVE} group relative flex h-full flex-col`}>
+      {canManage ? (
+        <div className="absolute right-3 top-3 z-10" ref={menuRef}>
+          <button
+            type="button"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-content-secondary transition hover:bg-surface-secondary hover:text-content disabled:opacity-50"
+            aria-label={`Actions for ${project.title}`}
+            aria-expanded={menuOpen}
+            aria-haspopup="menu"
+            aria-controls={menuId}
+            disabled={busy}
+            onClick={() => setMenuOpen((open) => !open)}
+          >
+            <MoreHorizontal className="h-4 w-4" />
+          </button>
+          {menuOpen ? (
+            <div
+              id={menuId}
+              role="menu"
+              className="absolute right-0 top-full z-30 mt-1 w-40 rounded-lg border border-border bg-surface py-1 shadow-lg"
+            >
+              <button
+                type="button"
+                role="menuitem"
+                className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-sm text-content transition hover:bg-surface-hover"
+                onClick={() => {
+                  setMenuOpen(false)
+                  onEdit?.(project)
+                }}
+              >
+                <Pencil className="h-4 w-4 shrink-0" />
+                Edit
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-sm text-red-600 transition hover:bg-red-50 dark:hover:bg-red-950/40"
+                onClick={() => {
+                  setMenuOpen(false)
+                  onDelete?.(project)
+                }}
+              >
+                <Trash2 className="h-4 w-4 shrink-0" />
+                Delete
+              </button>
+            </div>
+          ) : null}
         </div>
-        <StatusBadge status={project.status} />
-      </div>
+      ) : null}
 
       <Link
         href={`/youth-leadership/projects/${project.id}`}
-        className="mt-4 block min-w-0 focus-visible:outline-none"
+        className={`block min-w-0 focus-visible:outline-none ${canManage ? 'pr-10' : ''}`}
       >
         <h3 className="text-[0.98rem] font-semibold leading-snug tracking-tight text-content transition group-hover:text-primary">
           {project.title}

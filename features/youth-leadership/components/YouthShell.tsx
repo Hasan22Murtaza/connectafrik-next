@@ -28,7 +28,7 @@ export default function YouthShell({
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2.5">
               {title ? (
-                <h1 className="text-2xl font-semibold tracking-tight text-content sm:text-[1.75rem]">
+                <h1 className="text-xl font-semibold tracking-tight text-content sm:text-2xl">
                   {title}
                 </h1>
               ) : null}

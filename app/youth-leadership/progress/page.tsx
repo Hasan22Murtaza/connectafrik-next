@@ -20,7 +20,7 @@ function ProgressHub() {
       subtitle={
         tab === 'achievements'
           ? 'Certificates and badges verified by coordinators or admins.'
-          : 'Programs, projects, mentorship, and upcoming deadlines at a glance.'
+          : 'Track completion, open work, deadlines, and skills on one board.'
       }
       tabs={[...YOUTH_PROGRESS_TABS]}
       activeTab={tab}
@@ -37,7 +37,7 @@ export default function YouthProgressPage() {
     <Suspense
       fallback={
         <YouthShell title="Progress" subtitle="Loading…">
-          <YouthSkeleton count={6} variant="stat" />
+          <YouthSkeleton variant="dashboard" />
         </YouthShell>
       }
     >

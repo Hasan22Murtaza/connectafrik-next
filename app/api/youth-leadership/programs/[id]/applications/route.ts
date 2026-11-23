@@ -191,7 +191,7 @@ export async function POST(request: NextRequest, { params }: Params) {
             data: {
               program_id: programId,
               application_id: result.id,
-              href: `/youth-leadership/organization?program=${programId}`,
+              href: `/youth-leadership/organization/${program.organization_id}?tab=applications&program=${programId}`,
             },
           })
         )

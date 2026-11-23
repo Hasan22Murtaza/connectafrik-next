@@ -122,7 +122,7 @@ export default function ApplicationsPanel() {
                       <p className="text-xs text-content-tertiary">
                         {app.program?.organization?.name || 'Organization'}
                       </p>
-                      <p className="mt-0.5 truncate text-base font-semibold text-content">
+                      <p className="mt-0.5 truncate text-[0.98rem] font-semibold leading-snug tracking-tight text-content">
                         {app.program?.title || 'Program'}
                       </p>
                       <p className="mt-1 text-xs text-content-tertiary">

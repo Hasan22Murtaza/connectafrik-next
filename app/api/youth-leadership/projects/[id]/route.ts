@@ -175,3 +175,32 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     return errorResponse(error?.message || 'Failed to update project', 500)
   }
 }
+
+export async function DELETE(request: NextRequest, { params }: Params) {
+  try {
+    const { id } = await params
+    const { user, supabase } = await getAuthenticatedUser(request)
+
+    const { data: existing } = await supabase
+      .from('youth_projects')
+      .select('id, created_by, organization_id, title')
+      .eq('id', id)
+      .maybeSingle()
+
+    if (!existing) return errorResponse('Project not found', 404)
+
+    const allowedManage = await canManageProject(supabase, user.id, {
+      ...existing,
+      id,
+    } as { created_by: string; organization_id: string | null; id: string })
+    if (!allowedManage) return forbiddenResponse('Not authorized to delete this project.')
+
+    const { error } = await supabase.from('youth_projects').delete().eq('id', id)
+    if (error) return errorResponse(error.message, 400)
+
+    return jsonResponse({ deleted: true, id })
+  } catch (error: any) {
+    if (error?.message === 'Unauthorized') return unauthorizedResponse()
+    return errorResponse(error?.message || 'Failed to delete project', 500)
+  }
+}

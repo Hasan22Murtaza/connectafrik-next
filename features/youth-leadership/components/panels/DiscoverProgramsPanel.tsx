@@ -252,7 +252,6 @@ export default function DiscoverProgramsPanel() {
       <YouthFilterDrawer
         open={filtersOpen}
         title="Filter programs"
-        description="Narrow by age, skills, format, location, and deadline."
         onClose={() => setFiltersOpen(false)}
         footer={
           <>

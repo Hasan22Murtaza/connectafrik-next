@@ -20,7 +20,7 @@ function MentorshipHub() {
       subtitle={
         tab === 'matches'
           ? 'Track requests, accept mentees, and manage active mentorships.'
-          : 'Browse verified mentors, request matches, and manage your mentor profile.'
+          : 'Browse mentors, request matches, and manage your mentor profile.'
       }
       tabs={[...YOUTH_MENTORSHIP_TABS]}
       activeTab={tab}

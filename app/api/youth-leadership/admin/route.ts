@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const orgStatus = searchParams.get('org_status')
     const programStatus = searchParams.get('program_status')
-    const mentorStatus = searchParams.get('mentor_status') || 'pending'
+    const mentorStatus = searchParams.get('mentor_status')
     const safetyStatus = searchParams.get('safety_status') || 'open'
 
     const [
@@ -94,28 +94,31 @@ export async function GET(request: NextRequest) {
     if (safetyRes.error) return errorResponse(safetyRes.error.message, 400)
 
     const [
-      { count: pendingOrgs },
+      { count: totalOrganizations },
       { count: publishedPrograms },
-      { count: pendingPrograms },
-      { count: pendingMentors },
+      { count: suspendedOrganizations },
+      { count: totalMentors },
+      { count: suspendedMentors },
       { count: openSafety },
     ] = await Promise.all([
       supabase
         .from('youth_organizations')
-        .select('id', { count: 'exact', head: true })
-        .eq('verification_status', 'pending'),
+        .select('id', { count: 'exact', head: true }),
       supabase
         .from('youth_programs')
         .select('id', { count: 'exact', head: true })
         .eq('status', 'published'),
       supabase
-        .from('youth_programs')
+        .from('youth_organizations')
         .select('id', { count: 'exact', head: true })
-        .eq('status', 'pending_review'),
+        .in('verification_status', ['rejected', 'suspended']),
+      supabase
+        .from('youth_mentors')
+        .select('id', { count: 'exact', head: true }),
       supabase
         .from('youth_mentors')
         .select('id', { count: 'exact', head: true })
-        .eq('verification_status', 'pending'),
+        .in('verification_status', ['rejected', 'suspended']),
       supabase
         .from('youth_safety_reports')
         .select('id', { count: 'exact', head: true })
@@ -124,17 +127,18 @@ export async function GET(request: NextRequest) {
 
     return jsonResponse({
       summary: {
-        pending_organizations: pendingOrgs ?? 0,
+        total_organizations: totalOrganizations ?? 0,
         published_programs: publishedPrograms ?? 0,
-        pending_programs: pendingPrograms ?? 0,
-        pending_mentors: pendingMentors ?? 0,
+        flagged_organizations: suspendedOrganizations ?? 0,
+        total_mentors: totalMentors ?? 0,
+        flagged_mentors: suspendedMentors ?? 0,
         open_safety_reports: openSafety ?? 0,
         total_applications: appsRes.count ?? 0,
         active_enrollments: enrollmentsRes.count ?? 0,
       },
       organizations: orgsRes.data || [],
       programs: programsRes.data || [],
-      mentors_pending: mentorsRes.data || [],
+      mentors: mentorsRes.data || [],
       safety_reports: safetyRes.data || [],
     })
   } catch (error: any) {

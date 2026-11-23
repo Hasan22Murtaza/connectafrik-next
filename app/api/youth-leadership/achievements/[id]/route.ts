@@ -83,6 +83,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
         'skills',
         'achievement_type',
         'badge_slug',
+        'certificate_url',
       ] as const) {
         if (body[key] !== undefined) updates[key] = body[key]
       }
@@ -156,5 +157,45 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   } catch (error: any) {
     if (error?.message === 'Unauthorized') return unauthorizedResponse()
     return errorResponse(error?.message || 'Failed to update achievement', 500)
+  }
+}
+
+export async function DELETE(request: NextRequest, { params }: Params) {
+  try {
+    const { id } = await params
+    const { user, supabase } = await getAuthenticatedUser(request)
+
+    const { data: existing } = await supabase
+      .from('youth_achievements')
+      .select('id, user_id, organization_id, title')
+      .eq('id', id)
+      .maybeSingle()
+
+    if (!existing) return errorResponse('Achievement not found', 404)
+
+    const isOwner = existing.user_id === user.id
+    const isPlatformAdmin = await isPlatformYouthAdmin(supabase, user.id)
+    let isOrgCoordinator = false
+    if (existing.organization_id) {
+      const authz = await requireOrgRole(
+        supabase,
+        existing.organization_id,
+        user.id,
+        'coordinator'
+      )
+      isOrgCoordinator = authz.ok
+    }
+
+    if (!isOwner && !isOrgCoordinator && !isPlatformAdmin) {
+      return forbiddenResponse('Not authorized to delete this achievement.')
+    }
+
+    const { error } = await supabase.from('youth_achievements').delete().eq('id', id)
+    if (error) return errorResponse(error.message, 400)
+
+    return jsonResponse({ deleted: true, id })
+  } catch (error: any) {
+    if (error?.message === 'Unauthorized') return unauthorizedResponse()
+    return errorResponse(error?.message || 'Failed to delete achievement', 500)
   }
 }

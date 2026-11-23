@@ -82,7 +82,7 @@ export default function YouthFormModal({
         >
           <div className="flex shrink-0 items-start justify-between gap-3 border-b border-border bg-surface px-5 py-4">
             <div className="min-w-0 pr-2">
-              <h2 id={titleId} className="text-lg font-semibold text-content">
+              <h2 id={titleId} className="text-base font-semibold tracking-tight text-content sm:text-lg">
                 {title}
               </h2>
               {description ? (

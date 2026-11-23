@@ -5,6 +5,7 @@ import toast from 'react-hot-toast'
 import { Plus, Search } from '@/shared/icons'
 import { apiClient, ApiError } from '@/lib/api-client'
 import { useAuth } from '@/contexts/AuthContext'
+import { useConfirmDialog } from '@/shared/components/ui/ConfirmDialog'
 import EmptyState from '@/features/youth-leadership/components/EmptyState'
 import ProjectCard from '@/features/youth-leadership/components/ProjectCard'
 import YouthSkeleton from '@/features/youth-leadership/components/YouthSkeleton'
@@ -26,8 +27,18 @@ const EMPTY_FORM = {
   max_participants: '',
 }
 
+function canManageProject(project: YouthProject, userId?: string | null) {
+  if (!userId) return false
+  if (project.created_by === userId) return true
+  return (
+    project.my_membership?.status === 'active' &&
+    project.my_membership?.role === 'coordinator'
+  )
+}
+
 export default function ProjectsPanel() {
   const { user, loading: authLoading } = useAuth()
+  const { confirm, dialog: confirmDialog } = useConfirmDialog()
   const [projects, setProjects] = useState<YouthProject[]>([])
   const [orgs, setOrgs] = useState<OrgRow[]>([])
   const [loading, setLoading] = useState(true)
@@ -35,7 +46,8 @@ export default function ProjectsPanel() {
   const [search, setSearch] = useState('')
   const [searchInput, setSearchInput] = useState('')
   const [mineOnly, setMineOnly] = useState(false)
-  const [showCreate, setShowCreate] = useState(false)
+  const [showForm, setShowForm] = useState(false)
+  const [editing, setEditing] = useState<YouthProject | null>(null)
   const [form, setForm] = useState(EMPTY_FORM)
 
   const coordinatorOrgs = orgs.filter(
@@ -78,6 +90,33 @@ export default function ProjectsPanel() {
     load()
   }, [authLoading, user?.id, load])
 
+  function openCreate() {
+    setEditing(null)
+    setForm(EMPTY_FORM)
+    setShowForm(true)
+  }
+
+  function openEdit(project: YouthProject) {
+    setEditing(project)
+    setForm({
+      title: project.title,
+      description: project.description || '',
+      objective: project.objective || '',
+      organization_id: project.organization_id || '',
+      skills_required: project.skills_required?.join(', ') || '',
+      max_participants:
+        project.max_participants != null ? String(project.max_participants) : '',
+    })
+    setShowForm(true)
+  }
+
+  function closeForm() {
+    if (busy) return
+    setShowForm(false)
+    setEditing(null)
+    setForm(EMPTY_FORM)
+  }
+
   async function joinProject(projectId: string) {
     setBusy(true)
     try {
@@ -113,56 +152,103 @@ export default function ProjectsPanel() {
     }
   }
 
-  async function createProject() {
+  async function saveProject() {
     if (!form.title.trim()) {
       toast.error('Title is required')
       return
     }
     setBusy(true)
     try {
-      const created = await apiClient.post<YouthProject>('/api/youth-leadership/projects', {
+      const payload = {
         title: form.title.trim(),
         description: form.description || null,
         objective: form.objective || null,
-        organization_id: form.organization_id || null,
         skills_required: form.skills_required
           ? form.skills_required.split(',').map((s) => s.trim()).filter(Boolean)
           : null,
         max_participants: form.max_participants ? Number(form.max_participants) : null,
-        status: form.organization_id ? 'pending_approval' : 'draft',
-      })
-      toast.success('Project created')
-      setShowCreate(false)
+      }
+
+      if (editing) {
+        const updated = await apiClient.patch<YouthProject>(
+          `/api/youth-leadership/projects/${editing.id}`,
+          payload
+        )
+        toast.success('Project updated')
+        setProjects((list) =>
+          list.map((p) =>
+            p.id === updated.id
+              ? {
+                  ...p,
+                  ...updated,
+                  member_count: p.member_count,
+                  my_membership: p.my_membership,
+                }
+              : p
+          )
+        )
+      } else {
+        const created = await apiClient.post<YouthProject>('/api/youth-leadership/projects', {
+          ...payload,
+          organization_id: form.organization_id || null,
+          status: form.organization_id ? 'pending_approval' : 'draft',
+        })
+        toast.success('Project created')
+        setProjects((list) => {
+          if (list.some((p) => p.id === created.id)) return list
+          const now = new Date().toISOString()
+          const next: YouthProject = {
+            ...created,
+            member_count: created.member_count ?? 1,
+            my_membership: created.my_membership || {
+              id: `local-${created.id}`,
+              project_id: created.id,
+              user_id: user?.id || '',
+              role: 'coordinator',
+              status: 'active',
+              joined_at: now,
+              created_at: now,
+              updated_at: now,
+            },
+          }
+          return [next, ...list]
+        })
+      }
+      setShowForm(false)
+      setEditing(null)
       setForm(EMPTY_FORM)
-      setProjects((list) => {
-        if (list.some((p) => p.id === created.id)) return list
-        const now = new Date().toISOString()
-        const next: YouthProject = {
-          ...created,
-          member_count: created.member_count ?? 1,
-          my_membership: created.my_membership || {
-            id: `local-${created.id}`,
-            project_id: created.id,
-            user_id: user?.id || '',
-            role: 'coordinator',
-            status: 'active',
-            joined_at: now,
-            created_at: now,
-            updated_at: now,
-          },
-        }
-        return [next, ...list]
-      })
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : 'Failed to create project')
+      toast.error(
+        err instanceof ApiError
+          ? err.message
+          : editing
+            ? 'Failed to update project'
+            : 'Failed to create project'
+      )
     } finally {
       setBusy(false)
     }
   }
 
-  function closeCreate() {
-    if (busy) return
-    setShowCreate(false)
+  async function deleteProject(project: YouthProject) {
+    const ok = await confirm({
+      title: 'Delete project?',
+      message: `“${project.title}” and its related membership/tasks will be permanently removed. This cannot be undone.`,
+      confirmLabel: 'Delete',
+      variant: 'danger',
+    })
+    if (!ok) return
+
+    setBusy(true)
+    try {
+      await apiClient.delete(`/api/youth-leadership/projects/${project.id}`)
+      toast.success('Project deleted')
+      setProjects((list) => list.filter((p) => p.id !== project.id))
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : 'Failed to delete project')
+    } finally {
+      setBusy(false)
+    }
   }
 
   if (authLoading) return <YouthSkeleton count={4} />
@@ -195,7 +281,7 @@ export default function ProjectsPanel() {
         <button
           type="button"
           className="btn-primary inline-flex items-center gap-1.5"
-          onClick={() => setShowCreate(true)}
+          onClick={openCreate}
         >
           <Plus className="h-4 w-4" aria-hidden />
           Create project
@@ -247,7 +333,7 @@ export default function ProjectsPanel() {
                   <button
                     type="button"
                     className="btn-primary inline-flex items-center gap-1.5"
-                    onClick={() => setShowCreate(true)}
+                    onClick={openCreate}
                   >
                     <Plus className="h-4 w-4" aria-hidden />
                     Create project
@@ -262,7 +348,10 @@ export default function ProjectsPanel() {
                   key={project.id}
                   project={project}
                   busy={busy}
+                  canManage={canManageProject(project, user.id)}
                   onJoin={joinProject}
+                  onEdit={openEdit}
+                  onDelete={deleteProject}
                 />
               ))}
             </div>
@@ -271,21 +360,25 @@ export default function ProjectsPanel() {
       )}
 
       <YouthFormModal
-        open={showCreate}
-        title="Create project"
-        onClose={closeCreate}
+        open={showForm}
+        title={editing ? 'Edit project' : 'Create project'}
+        description={
+          editing ? 'Update project details. Organization cannot be changed here.' : undefined
+        }
+        onClose={closeForm}
         footer={
           <>
-            <button type="button" className="btn-secondary" disabled={busy} onClick={closeCreate}>
+            <button type="button" className="btn-secondary" disabled={busy} onClick={closeForm}>
               Cancel
             </button>
-            <button
-              type="button"
-              className="btn-primary"
-              disabled={busy}
-              onClick={createProject}
-            >
-              {busy ? 'Creating…' : 'Create'}
+            <button type="button" className="btn-primary" disabled={busy} onClick={saveProject}>
+              {busy
+                ? editing
+                  ? 'Saving…'
+                  : 'Creating…'
+                : editing
+                  ? 'Save changes'
+                  : 'Create'}
             </button>
           </>
         }
@@ -322,23 +415,25 @@ export default function ProjectsPanel() {
               placeholder="What outcome are you aiming for?"
             />
           </div>
-          <div>
-            <YouthFieldLabel htmlFor="project-org">Organization (optional)</YouthFieldLabel>
-            <select
-              id="project-org"
-              className={YOUTH_FIELD}
-              value={form.organization_id}
-              onChange={(e) => setForm((f) => ({ ...f, organization_id: e.target.value }))}
-            >
-              <option value="">None</option>
-              {coordinatorOrgs.map((o) => (
-                <option key={o.id} value={o.id}>
-                  {o.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
+          {!editing ? (
+            <div>
+              <YouthFieldLabel htmlFor="project-org">Organization (optional)</YouthFieldLabel>
+              <select
+                id="project-org"
+                className={YOUTH_FIELD}
+                value={form.organization_id}
+                onChange={(e) => setForm((f) => ({ ...f, organization_id: e.target.value }))}
+              >
+                <option value="">None</option>
+                {coordinatorOrgs.map((o) => (
+                  <option key={o.id} value={o.id}>
+                    {o.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ) : null}
+          <div className={editing ? 'sm:col-span-2 sm:max-w-xs' : undefined}>
             <YouthFieldLabel htmlFor="project-max">Max participants</YouthFieldLabel>
             <input
               id="project-max"
@@ -364,6 +459,8 @@ export default function ProjectsPanel() {
           </div>
         </div>
       </YouthFormModal>
+
+      {confirmDialog}
     </>
   )
 }

@@ -129,3 +129,42 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     return errorResponse(error?.message || 'Failed to update event', 500)
   }
 }
+
+export async function DELETE(request: NextRequest, { params }: Params) {
+  try {
+    const { id } = await params
+    const { user, supabase } = await getAuthenticatedUser(request)
+
+    const { data: existing } = await supabase
+      .from('youth_events')
+      .select('id, created_by, organization_id')
+      .eq('id', id)
+      .maybeSingle()
+
+    if (!existing) return errorResponse('Event not found', 404)
+
+    const isCreator = existing.created_by === user.id
+    let isCoordinator = false
+    if (existing.organization_id) {
+      const authz = await requireOrgRole(
+        supabase,
+        existing.organization_id,
+        user.id,
+        'coordinator'
+      )
+      isCoordinator = authz.ok
+    }
+
+    if (!isCreator && !isCoordinator) {
+      return forbiddenResponse('Not authorized to delete this event.')
+    }
+
+    const { error } = await supabase.from('youth_events').delete().eq('id', id)
+    if (error) return errorResponse(error.message, 400)
+
+    return jsonResponse({ deleted: true, id })
+  } catch (error: any) {
+    if (error?.message === 'Unauthorized') return unauthorizedResponse()
+    return errorResponse(error?.message || 'Failed to delete event', 500)
+  }
+}

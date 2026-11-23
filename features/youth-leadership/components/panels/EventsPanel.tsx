@@ -1,9 +1,11 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import toast from 'react-hot-toast'
+import { MoreHorizontal, Pencil, Trash2 } from '@/shared/icons'
 import { apiClient, ApiError } from '@/lib/api-client'
 import { useAuth } from '@/contexts/AuthContext'
+import { useConfirmDialog } from '@/shared/components/ui/ConfirmDialog'
 import StatusBadge from '@/features/youth-leadership/components/StatusBadge'
 import EmptyState from '@/features/youth-leadership/components/EmptyState'
 import YouthSkeleton from '@/features/youth-leadership/components/YouthSkeleton'
@@ -30,29 +32,53 @@ const EVENT_TYPES: YouthEventType[] = [
   'training',
 ]
 
+const EMPTY_FORM = {
+  organization_id: '',
+  title: '',
+  description: '',
+  event_type: 'workshop' as YouthEventType,
+  start_at: '',
+  end_at: '',
+  format: 'online',
+  location_region: '',
+  access_info: '',
+  capacity: '',
+}
+
+function toLocalInput(iso: string | null | undefined) {
+  if (!iso) return ''
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
 export default function EventsPanel() {
   const { user, loading: authLoading } = useAuth()
+  const { confirm, dialog: confirmDialog } = useConfirmDialog()
   const [events, setEvents] = useState<YouthEvent[]>([])
   const [orgs, setOrgs] = useState<OrgRow[]>([])
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
-  const [showCreate, setShowCreate] = useState(false)
+  const [showForm, setShowForm] = useState(false)
+  const [editing, setEditing] = useState<YouthEvent | null>(null)
   const [eventType, setEventType] = useState('')
-  const [form, setForm] = useState({
-    organization_id: '',
-    title: '',
-    description: '',
-    event_type: 'workshop' as YouthEventType,
-    start_at: '',
-    end_at: '',
-    format: 'online',
-    location_region: '',
-    access_info: '',
-    capacity: '',
-  })
+  const [form, setForm] = useState(EMPTY_FORM)
+  const [menuOpenId, setMenuOpenId] = useState<string | null>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
 
   const coordinatorOrgs = orgs.filter(
     (o) => o.my_role === 'admin' || o.my_role === 'coordinator'
+  )
+
+  const canManageEvent = useCallback(
+    (event: YouthEvent) => {
+      if (!user?.id) return false
+      if (event.created_by === user.id) return true
+      if (!event.organization_id) return false
+      return coordinatorOrgs.some((o) => o.id === event.organization_id)
+    },
+    [user?.id, coordinatorOrgs]
   )
 
   const loadOrgs = useCallback(async () => {
@@ -99,6 +125,59 @@ export default function EventsPanel() {
     load()
   }, [authLoading, user?.id, load])
 
+  useEffect(() => {
+    if (!menuOpenId) return
+
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setMenuOpenId(null)
+      }
+    }
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setMenuOpenId(null)
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    document.addEventListener('keydown', handleEscape)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+      document.removeEventListener('keydown', handleEscape)
+    }
+  }, [menuOpenId])
+
+  function openCreate() {
+    setEditing(null)
+    setForm((f) => ({
+      ...EMPTY_FORM,
+      organization_id: f.organization_id || coordinatorOrgs[0]?.id || '',
+    }))
+    setShowForm(true)
+  }
+
+  function openEdit(event: YouthEvent) {
+    setMenuOpenId(null)
+    setEditing(event)
+    setForm({
+      organization_id: event.organization_id || '',
+      title: event.title,
+      description: event.description || '',
+      event_type: event.event_type,
+      start_at: toLocalInput(event.start_at),
+      end_at: toLocalInput(event.end_at),
+      format: event.format,
+      location_region: event.location_region || '',
+      access_info: event.access_info || '',
+      capacity: event.capacity != null ? String(event.capacity) : '',
+    })
+    setShowForm(true)
+  }
+
+  function closeForm() {
+    if (busy) return
+    setShowForm(false)
+    setEditing(null)
+  }
+
   async function register(eventId: string, action: 'register' | 'cancel') {
     setBusy(true)
     try {
@@ -139,15 +218,19 @@ export default function EventsPanel() {
     }
   }
 
-  async function createEvent() {
-    if (!form.organization_id || !form.title.trim() || !form.start_at) {
+  async function saveEvent() {
+    if (!form.title.trim() || !form.start_at) {
+      toast.error('Title and start time are required')
+      return
+    }
+    if (!editing && !form.organization_id) {
       toast.error('Organization, title, and start time are required')
       return
     }
+
     setBusy(true)
     try {
-      const created = await apiClient.post<YouthEvent>('/api/youth-leadership/events', {
-        organization_id: form.organization_id,
+      const payload = {
         title: form.title.trim(),
         description: form.description || null,
         event_type: form.event_type,
@@ -157,37 +240,76 @@ export default function EventsPanel() {
         location_region: form.location_region || null,
         access_info: form.access_info || null,
         capacity: form.capacity ? Number(form.capacity) : null,
-        status: 'scheduled',
-      })
-      toast.success('Event created')
-      setShowCreate(false)
-      setForm((f) => ({
-        ...f,
-        title: '',
-        description: '',
-        start_at: '',
-        end_at: '',
-        location_region: '',
-        access_info: '',
-        capacity: '',
-      }))
-      setEvents((list) => {
-        if (list.some((e) => e.id === created.id)) return list
-        return [{ ...created, attendance_count: 0, my_attendance: null }, ...list]
-      })
+      }
+
+      if (editing) {
+        const updated = await apiClient.patch<YouthEvent>(
+          `/api/youth-leadership/events/${editing.id}`,
+          payload
+        )
+        toast.success('Event updated')
+        setEvents((list) =>
+          list.map((event) =>
+            event.id === updated.id
+              ? {
+                  ...event,
+                  ...updated,
+                  attendance_count: event.attendance_count,
+                  my_attendance: event.my_attendance,
+                }
+              : event
+          )
+        )
+      } else {
+        const created = await apiClient.post<YouthEvent>('/api/youth-leadership/events', {
+          ...payload,
+          organization_id: form.organization_id,
+          status: 'scheduled',
+        })
+        toast.success('Event created')
+        setEvents((list) => {
+          if (list.some((e) => e.id === created.id)) return list
+          return [{ ...created, attendance_count: 0, my_attendance: null }, ...list]
+        })
+      }
+      setShowForm(false)
+      setEditing(null)
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : 'Failed to create event')
+      toast.error(
+        err instanceof ApiError
+          ? err.message
+          : editing
+            ? 'Failed to update event'
+            : 'Failed to create event'
+      )
     } finally {
       setBusy(false)
     }
   }
 
-  function closeCreate() {
-    if (busy) return
-    setShowCreate(false)
+  async function deleteEvent(event: YouthEvent) {
+    setMenuOpenId(null)
+    const ok = await confirm({
+      title: 'Delete event?',
+      message: `“${event.title}” will be permanently removed. This cannot be undone.`,
+      confirmLabel: 'Delete',
+      variant: 'danger',
+    })
+    if (!ok) return
+
+    setBusy(true)
+    try {
+      await apiClient.delete(`/api/youth-leadership/events/${event.id}`)
+      toast.success('Event deleted')
+      setEvents((list) => list.filter((row) => row.id !== event.id))
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : 'Failed to delete event')
+    } finally {
+      setBusy(false)
+    }
   }
 
-  if (authLoading) return <YouthSkeleton count={3} variant="row" />
+  if (authLoading) return <YouthSkeleton count={3} variant="event" />
   if (!user) return <EmptyState title="Sign in required" />
 
   return (
@@ -216,14 +338,14 @@ export default function EventsPanel() {
           ))}
         </select>
         {coordinatorOrgs.length > 0 ? (
-          <button type="button" className="btn-primary" onClick={() => setShowCreate(true)}>
+          <button type="button" className="btn-primary" onClick={openCreate}>
             Create event
           </button>
         ) : null}
       </YouthSectionHeader>
 
       {loading ? (
-        <YouthSkeleton count={3} variant="row" />
+        <YouthSkeleton count={3} variant="event" />
       ) : events.length === 0 ? (
         <EmptyState
           title="No events"
@@ -235,12 +357,16 @@ export default function EventsPanel() {
             const registered =
               event.my_attendance &&
               ['registered', 'attended'].includes(event.my_attendance.attendance_status)
+            const manage = canManageEvent(event)
+            const isMenuOpen = menuOpenId === event.id
             return (
-              <li key={event.id} className={YOUTH_CARD}>
+              <li key={event.id} className={`${YOUTH_CARD} ${isMenuOpen ? 'relative z-20' : ''}`}>
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="font-semibold text-content">{event.title}</h3>
+                      <h3 className="text-[0.98rem] font-semibold leading-snug tracking-tight text-content">
+                        {event.title}
+                      </h3>
                       <StatusBadge status={event.status} />
                     </div>
                     <p className="mt-1 text-xs capitalize text-content-tertiary">
@@ -260,8 +386,52 @@ export default function EventsPanel() {
                       {event.capacity != null ? ` / ${event.capacity}` : ''}
                     </p>
                   </div>
-                  <div className="shrink-0">
-                    {registered ? (
+                  <div className="flex shrink-0 flex-wrap items-center gap-2">
+                    {manage ? (
+                      <div
+                        className="relative"
+                        ref={isMenuOpen ? menuRef : undefined}
+                      >
+                        <button
+                          type="button"
+                          className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-content-secondary transition hover:bg-surface-secondary hover:text-content disabled:opacity-50"
+                          aria-label={`Actions for ${event.title}`}
+                          aria-expanded={isMenuOpen}
+                          aria-haspopup="menu"
+                          disabled={busy}
+                          onClick={() =>
+                            setMenuOpenId((current) => (current === event.id ? null : event.id))
+                          }
+                        >
+                          <MoreHorizontal className="h-4 w-4" />
+                        </button>
+                        {isMenuOpen ? (
+                          <div
+                            role="menu"
+                            className="absolute right-0 top-full z-30 mt-1 w-40 rounded-lg border border-border bg-surface py-1 shadow-lg"
+                          >
+                            <button
+                              type="button"
+                              role="menuitem"
+                              className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-sm text-content transition hover:bg-surface-hover"
+                              onClick={() => openEdit(event)}
+                            >
+                              <Pencil className="h-4 w-4 shrink-0" />
+                              Edit
+                            </button>
+                            <button
+                              type="button"
+                              role="menuitem"
+                              className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-sm text-red-600 transition hover:bg-red-50"
+                              onClick={() => deleteEvent(event)}
+                            >
+                              <Trash2 className="h-4 w-4 shrink-0" />
+                              Delete
+                            </button>
+                          </div>
+                        ) : null}
+                      </div>
+                    ) : registered ? (
                       <button
                         type="button"
                         className="btn-secondary"
@@ -289,39 +459,51 @@ export default function EventsPanel() {
       )}
 
       <YouthFormModal
-        open={showCreate && coordinatorOrgs.length > 0}
-        title="Create event"
-        description="Publish a workshop or session for your organization."
-        onClose={closeCreate}
+        open={showForm && (Boolean(editing) || coordinatorOrgs.length > 0)}
+        title={editing ? 'Edit event' : 'Create event'}
+        description={
+          editing
+            ? 'Update event details for your organization.'
+            : 'Publish a workshop or session for your organization.'
+        }
+        onClose={closeForm}
         footer={
           <>
-            <button type="button" className="btn-secondary" disabled={busy} onClick={closeCreate}>
+            <button type="button" className="btn-secondary" disabled={busy} onClick={closeForm}>
               Cancel
             </button>
-            <button type="button" className="btn-primary" disabled={busy} onClick={createEvent}>
-              {busy ? 'Publishing…' : 'Publish event'}
+            <button type="button" className="btn-primary" disabled={busy} onClick={saveEvent}>
+              {busy
+                ? editing
+                  ? 'Saving…'
+                  : 'Publishing…'
+                : editing
+                  ? 'Save changes'
+                  : 'Publish event'}
             </button>
           </>
         }
       >
         <div className="grid gap-3 sm:grid-cols-2">
-          <div>
-            <YouthFieldLabel htmlFor="event-org">Organization</YouthFieldLabel>
-            <select
-              id="event-org"
-              className={YOUTH_FIELD}
-              value={form.organization_id}
-              onChange={(e) => setForm((f) => ({ ...f, organization_id: e.target.value }))}
-              required
-            >
-              {coordinatorOrgs.map((o) => (
-                <option key={o.id} value={o.id}>
-                  {o.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
+          {!editing ? (
+            <div>
+              <YouthFieldLabel htmlFor="event-org">Organization</YouthFieldLabel>
+              <select
+                id="event-org"
+                className={YOUTH_FIELD}
+                value={form.organization_id}
+                onChange={(e) => setForm((f) => ({ ...f, organization_id: e.target.value }))}
+                required
+              >
+                {coordinatorOrgs.map((o) => (
+                  <option key={o.id} value={o.id}>
+                    {o.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ) : null}
+          <div className={editing ? 'sm:col-span-2 sm:max-w-xs' : undefined}>
             <YouthFieldLabel htmlFor="event-type">Type</YouthFieldLabel>
             <select
               id="event-type"
@@ -426,6 +608,8 @@ export default function EventsPanel() {
           </div>
         </div>
       </YouthFormModal>
+
+      {confirmDialog}
     </>
   )
 }

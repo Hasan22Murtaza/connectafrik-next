@@ -113,9 +113,7 @@ export default function MentorsPanel() {
         mentorship_interests: splitCsv(mentorForm.mentorship_interests),
         accepts_minors: mentorForm.accepts_minors,
       })
-      toast.success(
-        myMentor ? 'Mentor profile updated' : 'Mentor profile submitted for verification'
-      )
+      toast.success(myMentor ? 'Mentor profile updated' : 'Mentor profile created')
       setShowMentorForm(false)
       if (saved) {
         setMyMentor(saved)
@@ -147,7 +145,7 @@ export default function MentorsPanel() {
   return (
     <>
       <YouthSectionHeader
-        title="Verified mentors"
+        title="Mentors"
         badge={
           !loading ? (
             <span className="rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-300">
@@ -194,8 +192,8 @@ export default function MentorsPanel() {
         <YouthSkeleton count={4} />
       ) : mentors.length === 0 ? (
         <EmptyState
-          title="No verified mentors yet"
-          description="Check back after mentors are verified by platform admins."
+          title="No mentors yet"
+          description="Be the first to create a mentor profile, or check back soon."
         />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2">
@@ -213,7 +211,9 @@ export default function MentorsPanel() {
                     />
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-1.5">
-                        <h3 className="font-semibold text-content">{mentorName}</h3>
+                        <h3 className="text-[0.98rem] font-semibold leading-snug tracking-tight text-content">
+                          {mentorName}
+                        </h3>
                         {mentor.verification_status === 'verified' ? (
                           <VerifiedBadge compact label="Verified mentor" />
                         ) : null}
