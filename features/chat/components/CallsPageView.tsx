@@ -699,7 +699,7 @@ export default function CallsPageView() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search name or username"
-            className="w-full rounded-full border-0 bg-surface py-2 pl-9 pr-9 text-sm text-content placeholder:text-content-secondary outline-none ring-1 ring-border-subtle focus:ring-primary-300"
+            className="w-full rounded-full border-0 bg-surface py-2 pl-9 pr-9 text-sm text-content placeholder:text-content-secondary outline-none ring-1 ring-border-subtle focus:ring-border-subtle"
           />
           {search ? (
             <button

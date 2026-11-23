@@ -3,32 +3,17 @@
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import LeftSidebar from "@/shared/components/ui/LeftSidebar";
-
-const HIDE_EXACT = new Set([
-  "/signin",
-  "/signup",
-  "/forgot-password",
-  "/reset-password",
-  "/account-activated",
-  "/confirm-signup",
-  "/auth/callback",
-  "/api-docs",
-  "/create-password",
-  "/verify-otp",
-]);
-
-function shouldHideSidebar(pathname: string | null): boolean {
-  if (!pathname) return true;
-  if (HIDE_EXACT.has(pathname)) return true;
-  if (pathname.startsWith("/call/")) return true;
-  if (pathname.startsWith("/admin")) return true;
-  if (pathname.startsWith("/auth/")) return true;
-  return false;
-}
+import {
+  isAppChromePath,
+  shouldHideAppSidebar,
+} from "@/shared/utils/appPaths";
 
 /**
  * Global app chrome: Supabase-style left nav on all authenticated pages.
  * Page-specific secondary sidebars (Friends, Settings, TradeHub, Chat) sit beside it.
+ *
+ * During auth hydration on app routes, keep the shell so a hard refresh does not
+ * collapse into a guest full-width layout (middleware already gates these paths).
  */
 export default function ConditionalAppSidebar({
   children,
@@ -38,9 +23,11 @@ export default function ConditionalAppSidebar({
   const pathname = usePathname();
   const { user, loading } = useAuth();
 
-  // Wait for auth to resolve before showing nav — otherwise a refresh flash
-  // shows LeftSidebar to logged-out users while `loading` is still true.
-  if (loading || !user || shouldHideSidebar(pathname)) {
+  const hide = shouldHideAppSidebar(pathname);
+  const showSidebar =
+    !hide && (Boolean(user) || (loading && isAppChromePath(pathname)));
+
+  if (!showSidebar) {
     return <>{children}</>;
   }
 

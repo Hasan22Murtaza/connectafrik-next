@@ -72,7 +72,7 @@ const MobileSearchModal: React.FC<MobileSearchModalProps> = ({ isOpen, onClose }
               ref={inputRef}
               type="text"
               placeholder="Search CribsTalk..."
-              className="w-full pl-10 pr-10 py-2 bg-surface-secondary rounded-lg focus:outline-none focus:ring-2 focus:ring-[#F97316] focus:bg-surface"
+              className="w-full pl-10 pr-10 py-2 bg-surface-secondary rounded-lg focus:outline-none focus:ring-0 focus:bg-surface"
               value={searchTerm}
               onChange={(e) => handleInputChange(e.target.value)}
             />

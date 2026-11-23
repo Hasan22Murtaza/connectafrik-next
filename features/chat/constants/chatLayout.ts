@@ -7,7 +7,7 @@ export const CH = {
   sidebarHeader: "border-b border-border bg-surface px-4 py-4",
   sidebarTitle: "text-xl font-semibold text-content",
   searchInput:
-    "w-full rounded-lg border border-border  py-2 pl-9 pr-3 text-sm text-content placeholder:text-content-secondary outline-none focus:border-primary-300 focus:ring-2 focus:ring-primary-100",
+    "w-full rounded-lg border border-border  py-2 pl-9 pr-3 text-sm text-content placeholder:text-content-secondary outline-none focus:border-border focus:ring-0",
   threadRow:
     "group relative flex w-full cursor-pointer items-start gap-3 border-b border-border-subtle px-4 py-3 text-left transition hover:bg-surface",
   threadRowActive: "bg-surface",
@@ -15,7 +15,7 @@ export const CH = {
   dropdown:
     "absolute z-[120] mt-3 w-65 max-w-[90vw] rounded-xl border border-border bg-surface-elevated p-3 shadow-dropdown sm:w-80 sm:p-4",
   dropdownSearch:
-    "w-full rounded-lg border border-border  py-2 pl-9 pr-3 text-sm text-content placeholder:text-content-secondary outline-none focus:border-primary-300 focus:ring-2 focus:ring-primary-100",
+    "w-full rounded-lg border border-border  py-2 pl-9 pr-3 text-sm text-content placeholder:text-content-secondary outline-none focus:border-border focus:ring-0",
   windowHeader: "flex items-center justify-between border-b border-border  p-2",
   messageArea: "flex flex-col space-y-3 overflow-y-auto overflow-x-hidden  px-3 py-2 sm:space-y-4 sm:px-4 sm:py-3",
   composer: "border-t border-border  px-2 py-2 sm:px-3 sm:py-3",

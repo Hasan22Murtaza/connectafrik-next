@@ -1,9 +1,11 @@
 export { default as StoryTypeSelector } from './StoryTypeSelector'
 export { default as StoryPreview } from './StoryPreview'
 export { default as StoryViewer } from './StoryViewer'
+export { default as StoryLinkCard } from './StoryLinkCard'
 export { default as StoriesBar } from './StoriesBar'
 export { default as GradientPicker, STORY_GRADIENTS } from './GradientPicker'
 export { default as TextEditor } from './TextEditor'
+export { extractStoryLink } from './storyLinkUtils'
 
 export type { StoryType } from './StoryTypeSelector'
 export type { GradientOption } from './GradientPicker'

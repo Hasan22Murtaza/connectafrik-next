@@ -200,7 +200,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
               {/* Play/Pause Button */}
               <button
                 onClick={togglePlay}
-                className="text-white hover:text-primary-400 transition-colors"
+                className="rounded-full p-1 text-white transition-colors hover:bg-white/10"
               >
                 {isPlaying ? (
                   <Pause className="w-6 h-6" />
@@ -213,7 +213,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
               <div className="flex items-center space-x-2">
                 <button
                   onClick={toggleMute}
-                  className="text-white hover:text-primary-400 transition-colors"
+                  className="rounded-full p-1 text-white transition-colors hover:bg-white/10"
                 >
                   {isMuted || volume === 0 ? (
                     <VolumeX className="w-5 h-5" />
@@ -242,7 +242,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
             {/* Fullscreen Button */}
             <button
               onClick={toggleFullscreen}
-              className="text-white hover:text-primary-400 transition-colors"
+              className="rounded-full p-1 text-white transition-colors hover:bg-white/10"
             >
               {isFullscreen ? (
                 <Minimize className="w-5 h-5" />

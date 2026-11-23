@@ -4,26 +4,26 @@ const RightSidebar = ({ birthdays = [], ads = [] }) => {
 
   return (
     <aside className="w-65 xl:w-80 2xl:w-[24rem] shrink-0 h-full overflow-y-auto py-6 scrollbar-hover">
-      {/* CribsTalk promo */}
+      {/* DataAfrik promo */}
       <div className="mb-8">
         <a
-          href="https://www.dataafrik.com"
+          href="https://www.dataafrik.com/"
           target="_blank"
           rel="noopener noreferrer"
           className="group flex items-center space-x-3 rounded-2xl border border-border-subtle bg-primary-50/40 dark:bg-primary-50/10 p-3 transition-all duration-300 hover:bg-primary-100/60 dark:hover:bg-primary-50/20 shadow-inner"
         >
           <img
-            src="/assets/logo.png"
-            alt="CribsTalk logo"
+            src="/assets/dataafrik.png"
+            alt="DataAfrik logo"
             className="h-10 w-10 rounded-full object-cover shadow-sm"
           />
 
           <div>
             <p className="font-semibold text-primary-600 group-hover:text-orange-500 transition-colors">
-              Discover CribsTalk
+              Discover DataAfrik
             </p>
             <p className="text-xs font-medium text-orange-500 dark:text-primary-400">
-              A global home for community
+              AI-powered data & finance insights
             </p>
           </div>
         </a>

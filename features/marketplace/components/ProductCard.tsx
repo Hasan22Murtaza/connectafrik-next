@@ -115,7 +115,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onSave, onView }) =>
             className={`absolute top-2 right-2 p-2 rounded-full transition-colors ${
               product.is_saved
                 ? 'bg-primary-600 text-white'
-                : 'bg-surface text-content-secondary hover:bg-primary-600 hover:text-white duration-300'
+                : 'bg-surface text-content-secondary transition-colors hover:bg-surface-hover hover:text-content'
             }`}
           >
             <Bookmark className={`w-4 h-4 ${product.is_saved ? 'fill-current' : ''}`} />
@@ -148,7 +148,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onSave, onView }) =>
         {/* Share Button */}
         <button
           onClick={handleShareProduct}
-          className="absolute top-12 right-2 p-2 rounded-full bg-surface text-content-secondary hover:bg-primary-600 hover:text-white duration-300 transition-colors shadow-md"
+          className="absolute top-12 right-2 rounded-full bg-surface p-2 text-content-secondary shadow-md transition-colors hover:bg-surface-hover hover:text-content"
           aria-label="Share product"
         >
           <Share2 className="w-4 h-4" />

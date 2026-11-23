@@ -184,7 +184,7 @@ export default function CreateChatGroupModal({
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search friends"
                 disabled={creating}
-                className="w-full rounded-full border border-border bg-surface py-2 pl-9 pr-3 text-sm text-content outline-none placeholder:text-content-secondary focus:border-primary-400 focus:ring-2 focus:ring-primary-100"
+                className="w-full rounded-full border border-border bg-surface py-2 pl-9 pr-3 text-sm text-content outline-none placeholder:text-content-secondary focus:border-border focus:ring-0"
               />
             </div>
             <p className="text-xs text-content-secondary">

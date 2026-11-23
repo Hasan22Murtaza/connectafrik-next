@@ -13,7 +13,7 @@ export type MessageE2eeClientStatus = {
   ready: boolean
 }
 
-export async function messageE2eeStatus(): Promise<MessageE2eeClientStatus> {
+export const messageE2eeStatus = async (): Promise<MessageE2eeClientStatus> => {
   if (typeof window === 'undefined') return { enabled: false, ready: false }
   if (cache && Date.now() - cache.at < 30_000) {
     return { enabled: cache.enabled, ready: cache.ready }
@@ -39,17 +39,17 @@ export async function messageE2eeStatus(): Promise<MessageE2eeClientStatus> {
  * True when this account should use Signal encrypt/decrypt paths.
  * Requires both the rollout flag and reachable crypto storage.
  */
-export async function messageE2eeActive(): Promise<boolean> {
+export const messageE2eeActive = async (): Promise<boolean> => {
   const status = await messageE2eeStatus()
   return status.enabled && status.ready
 }
 
 /** True when MESSAGE_E2EE is on — even if crypto storage is not ready yet. */
-export async function messageE2eeFlagOn(): Promise<boolean> {
+export const messageE2eeFlagOn = async (): Promise<boolean> => {
   const status = await messageE2eeStatus()
   return status.enabled
 }
 
-export function clearMessageE2eeStatusCache() {
+export const clearMessageE2eeStatusCache = () => {
   cache = null
 }

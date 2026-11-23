@@ -331,7 +331,7 @@ export default function GroupInfoDrawer({
       disabled={disabled}
       className="flex flex-col items-center gap-1.5 disabled:opacity-40"
     >
-      <span className="h-11 w-11 flex items-center justify-center rounded-full text-content-tertiary bg-surface-tertiary shrink-0 hover:bg-orange-500 hover:text-white  disabled:cursor-not-allowed disabled:opacity-40  dark:text-content-secondary dark:hover:bg-surface-hover">
+      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-surface-tertiary text-content-tertiary hover:bg-surface-hover hover:text-content disabled:cursor-not-allowed disabled:opacity-40 dark:text-content-secondary">
         {icon}
       </span>
       <span className="text-[12px] text-[#54656f]">{label}</span>

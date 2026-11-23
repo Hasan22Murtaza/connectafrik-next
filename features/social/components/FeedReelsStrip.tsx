@@ -90,7 +90,7 @@ function ReelThumb({ reel }: { reel: Reel; isFirst?: boolean }) {
   )
 }
 
-export const FeedReelsStrip: React.FC = () => {
+export function FeedReelsStrip() {
   const reelFilters = useMemo(() => ({ feed: 'explore' as const }), [])
   const sortOptions = useMemo(
     () => ({ field: 'engagement_score' as const, order: 'desc' as const }),
@@ -173,7 +173,7 @@ export const FeedReelsStrip: React.FC = () => {
           <button
             type="button"
             onClick={() => setShowOptions((open) => !open)}
-            className="flex h-9 w-9 items-center justify-center rounded-full text-content-secondary transition-colors hover:bg-primary-50 hover:text-orange-500"
+            className="flex h-9 w-9 items-center justify-center rounded-full text-content-secondary transition-colors hover:bg-surface-hover hover:text-content"
             aria-label="More reels options"
             aria-expanded={showOptions}
             aria-haspopup="menu"
@@ -215,7 +215,7 @@ export const FeedReelsStrip: React.FC = () => {
           <button
             type="button"
             onClick={() => scrollStrip('left')}
-            className="flex absolute left-1 sm:left-2 top-1/2 -translate-y-1/2 z-20 w-8 h-8 sm:w-9 sm:h-9 bg-surface rounded-full shadow-md items-center justify-center hover:bg-primary-50 transition-colors border border-border"
+            className="flex absolute left-1 sm:left-2 top-1/2 -translate-y-1/2 z-20 w-8 h-8 sm:w-9 sm:h-9 bg-surface rounded-full shadow-md items-center justify-center hover:bg-surface-hover transition-colors border border-border"
             aria-label="Scroll left"
           >
             <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5 text-primary-600" />
@@ -225,7 +225,7 @@ export const FeedReelsStrip: React.FC = () => {
           <button
             type="button"
             onClick={() => scrollStrip('right')}
-            className="flex absolute right-1 sm:right-2 top-1/2 -translate-y-1/2 z-20 w-8 h-8 sm:w-9 sm:h-9 bg-surface rounded-full shadow-md items-center justify-center hover:bg-primary-50 transition-colors border border-border"
+            className="flex absolute right-1 sm:right-2 top-1/2 -translate-y-1/2 z-20 w-8 h-8 sm:w-9 sm:h-9 bg-surface rounded-full shadow-md items-center justify-center hover:bg-surface-hover transition-colors border border-border"
             aria-label="Scroll right"
           >
             <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5 text-primary-600" />

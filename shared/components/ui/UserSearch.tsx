@@ -117,7 +117,7 @@ export const UserSearch: React.FC<UserSearchProps> = ({ onClose, onUserSelect })
               placeholder="Search by username or name..."
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              className="input-field !pl-10"
+              className="input-field !pl-10 focus:!border-border focus:!shadow-none"
             />
           </div>
         </div>

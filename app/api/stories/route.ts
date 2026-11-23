@@ -275,8 +275,8 @@ export async function POST(request: NextRequest) {
     const gradientFromMediaUrl = isGradientMediaUrl
       ? sanitizedMediaUrl.replace(/^gradient:/, '').trim()
       : null
-    const normalizedGradient =
-      sanitizedBackgroundGradient || gradientFromMediaUrl || `${sanitizedBackgroundColor},#1d4ed8`
+    // Only keep an explicit gradient — never invent one from the solid background color
+    const normalizedGradient = sanitizedBackgroundGradient || gradientFromMediaUrl || null
     const parsedGradient = colorsFromGradientString(normalizedGradient)
 
     if (isTextStory && !sanitizedText) {
@@ -292,7 +292,7 @@ export async function POST(request: NextRequest) {
           backgroundColor: 'transparent',
           align: 'center',
           isBold: false,
-          gradient: parsedGradient ? `${parsedGradient[0]},${parsedGradient[1]}` : normalizedGradient,
+          ...(parsedGradient ? { gradient: `${parsedGradient[0]},${parsedGradient[1]}` } : {}),
           x: 50,
           y: 50,
         })

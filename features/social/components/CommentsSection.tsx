@@ -354,7 +354,7 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({
                   type="button"
                   onClick={loadMoreComments}
                   disabled={isLoadingMore}
-                  className="inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-medium text-gray-600  disabled:cursor-not-allowed hover:text-primary-600"
+                  className="inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-medium text-gray-600 transition-colors hover:bg-surface-hover hover:text-content disabled:cursor-not-allowed"
                 >
                   {isLoadingMore && <Loader2 className="h-3 w-3 animate-spin" />}
                   {isLoadingMore ? 'Loading...' : 'Load more'}
@@ -428,7 +428,7 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({
                 <button
                   type="submit"
                   disabled={isCommentSubmitting}
-                  className="flex h-7 w-7 items-center justify-center rounded-full text-primary-600 hover:bg-primary-50 transition-colors disabled:opacity-50"
+                  className="flex h-7 w-7 items-center justify-center rounded-full text-content-secondary transition-colors hover:bg-surface-hover hover:text-content disabled:opacity-50"
                   aria-label="Post comment"
                 >
                   {isCommentSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
@@ -736,7 +736,7 @@ const FBCommentItem: React.FC<FBCommentItemProps> = ({
                     <button
                       onClick={() => onSubmitReply(comment.id)}
                       disabled={isReplySubmitting}
-                      className="flex h-6 w-6 items-center justify-center rounded-full text-primary-600 hover:bg-primary-50 disabled:opacity-50"
+                      className="flex h-6 w-6 items-center justify-center rounded-full text-content-secondary transition-colors hover:bg-surface-hover hover:text-content disabled:opacity-50"
                     >
                       {isReplySubmitting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
                     </button>

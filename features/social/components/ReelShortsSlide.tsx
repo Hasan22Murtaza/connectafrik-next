@@ -55,11 +55,11 @@ async function playVideoPreferUnmuted(v: HTMLVideoElement): Promise<boolean> {
 }
 
 const actionCircleClass =
-  'flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/90 text-content shadow-sm ring-1 ring-black/5 backdrop-blur-sm transition active:scale-[0.96] sm:h-11 sm:w-11 lg:h-12 lg:w-12 lg:bg-surface-secondary lg:hover:bg-surface-hover'
+  'flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/90 text-content shadow-sm ring-1 ring-black/5 backdrop-blur-sm transition active:scale-[0.96] sm:h-9 sm:w-9 lg:h-9 lg:w-9 lg:bg-surface-secondary lg:hover:bg-surface-hover'
 const actionLabelOverlayClass =
-  'max-w-[3.25rem] text-center text-[10px] font-semibold leading-tight text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.95)] sm:text-[11px]'
+  'max-w-[3rem] text-center text-[9px] font-semibold leading-none text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.95)] sm:text-[10px]'
 const actionLabelOutsideClass =
-  'max-w-[3.5rem] text-center text-[11px] font-semibold leading-tight text-content tabular-nums lg:text-xs'
+  'max-w-[3rem] text-center text-[10px] font-semibold leading-none text-content tabular-nums'
 
 export interface ReelShortsSlideProps {
   reel: Reel
@@ -344,7 +344,7 @@ const ReelShortsSlide: React.FC<ReelShortsSlideProps> = ({
 
   const handleFollow = useCallback(async () => {
     if (!user) {
-      toast.error('Please sign in to follow creators')
+      toast.error('Please sign in to tap in')
       return
     }
     if (!reel.author_id || reel.author_id === user.id || followBusy) return
@@ -354,17 +354,17 @@ const ReelShortsSlide: React.FC<ReelShortsSlideProps> = ({
         const ok = await unfollowUser(user.id, reel.author_id)
         if (ok) {
           setIsFollowing(false)
-          toast.success('Unfollowed')
-        } else toast.error('Could not unfollow')
+          toast.success('Untapped')
+        } else toast.error('Could not untap')
       } else {
         const ok = await followUser(user.id, reel.author_id)
         if (ok) {
           setIsFollowing(true)
-          toast.success('Following')
-        } else toast.error('Could not follow')
+          toast.success('Tapped in')
+        } else toast.error('Could not tap in')
       }
     } catch {
-      toast.error('Failed to update follow')
+      toast.error('Failed to update tap in')
     } finally {
       setFollowBusy(false)
     }
@@ -530,6 +530,7 @@ const ReelShortsSlide: React.FC<ReelShortsSlideProps> = ({
           }}
           onPointerDown={(e) => e.stopPropagation()}
           disabled={followBusy}
+          aria-label={isFollowing ? 'Tapping In' : 'Tap In'}
           className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold transition disabled:opacity-60 ${
             overlay
               ? isFollowing
@@ -540,7 +541,7 @@ const ReelShortsSlide: React.FC<ReelShortsSlideProps> = ({
                 : 'bg-primary-600 text-white'
           }`}
         >
-          {isFollowing ? 'Following' : 'Follow'}
+          {isFollowing ? 'Tapping In' : 'Tap In'}
         </button>
       )}
     </div>
@@ -548,14 +549,15 @@ const ReelShortsSlide: React.FC<ReelShortsSlideProps> = ({
 
   const actionButtons = (overlay: boolean) => {
     const labelClass = overlay ? actionLabelOverlayClass : actionLabelOutsideClass
-    const iconSize = overlay ? 'h-5 w-5' : 'h-6 w-6'
+    const iconSize = 'h-4 w-4'
+    const actionBtnClass = 'flex flex-col items-center gap-0.5 disabled:opacity-60'
     return (
       <>
         <button
           type="button"
           onClick={handleLikeButton}
           disabled={interactionLoading}
-          className="flex flex-col items-center gap-0.5 disabled:opacity-60 lg:gap-1"
+          className={actionBtnClass}
           aria-label={isLiked ? 'Unlike' : 'Like'}
         >
           <span className={actionCircleClass}>{likeIcon(iconSize)}</span>
@@ -567,7 +569,7 @@ const ReelShortsSlide: React.FC<ReelShortsSlideProps> = ({
             onComment()
             if (user?.id) trackEvent.comment(user.id, reel.id, 'reel')
           }}
-          className="flex flex-col items-center gap-0.5 lg:gap-1"
+          className={actionBtnClass}
           aria-label="Comments"
         >
           <span className={actionCircleClass}>
@@ -579,7 +581,7 @@ const ReelShortsSlide: React.FC<ReelShortsSlideProps> = ({
           type="button"
           onClick={() => void handleSaveButton()}
           disabled={interactionLoading}
-          className="flex flex-col items-center gap-0.5 disabled:opacity-60 lg:gap-1"
+          className={actionBtnClass}
           aria-label={isSaved ? 'Unsave' : 'Save'}
         >
           <span className={actionCircleClass}>
@@ -594,7 +596,7 @@ const ReelShortsSlide: React.FC<ReelShortsSlideProps> = ({
           type="button"
           onClick={() => void handleRepostButton()}
           disabled={interactionLoading}
-          className="flex flex-col items-center gap-0.5 disabled:opacity-60 lg:gap-1"
+          className={actionBtnClass}
           aria-label={isReposted ? 'Undo repost' : 'Repost'}
         >
           <span className={actionCircleClass}>
@@ -608,7 +610,7 @@ const ReelShortsSlide: React.FC<ReelShortsSlideProps> = ({
             void handleShare()
             if (user?.id) trackEvent.share(user.id, reel.id, 'reel')
           }}
-          className="flex flex-col items-center gap-0.5 lg:gap-1"
+          className={actionBtnClass}
           aria-label="Share"
         >
           <span className={actionCircleClass}>
@@ -619,7 +621,7 @@ const ReelShortsSlide: React.FC<ReelShortsSlideProps> = ({
         <button
           type="button"
           onClick={() => setOptionsOpen(true)}
-          className="flex flex-col items-center gap-0.5 lg:gap-1"
+          className={actionBtnClass}
           aria-label="More options"
         >
           <span className={actionCircleClass}>
@@ -768,7 +770,7 @@ const ReelShortsSlide: React.FC<ReelShortsSlideProps> = ({
           </div>
 
           <div
-            className="pointer-events-auto absolute bottom-[max(5.5rem,20%)] right-2 z-20 flex flex-col items-center gap-2 sm:right-3 lg:hidden"
+            className="pointer-events-auto absolute bottom-[max(4.5rem,14%)] right-2 z-20 flex flex-col items-center gap-1.5 sm:right-3 lg:hidden"
             onClick={(e) => e.stopPropagation()}
             onPointerDown={(e) => e.stopPropagation()}
           >
@@ -776,7 +778,7 @@ const ReelShortsSlide: React.FC<ReelShortsSlideProps> = ({
           </div>
         </div>
 
-        <div className="hidden min-w-0 justify-self-start self-center lg:flex lg:flex-col lg:items-center lg:gap-3">
+        <div className="hidden min-w-0 justify-self-start self-end pb-1 lg:flex lg:flex-col lg:items-center lg:gap-1.5">
           {actionButtons(false)}
         </div>
       </div>
@@ -889,7 +891,7 @@ const ReelShortsSlide: React.FC<ReelShortsSlideProps> = ({
                     }}
                   >
                     <UserPlus className="h-5 w-5" />
-                    Follow @{username}
+                    Tap In @{username}
                   </button>
                 )}
               </>

@@ -176,7 +176,7 @@ const GroupPostCommentsSection: React.FC<GroupPostCommentsSectionProps> = ({
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="flex h-7 w-7 items-center justify-center rounded-full text-primary-600 hover:bg-primary-50 transition-colors disabled:opacity-50"
+                  className="flex h-7 w-7 items-center justify-center rounded-full text-content-secondary transition-colors hover:bg-surface-hover hover:text-content disabled:opacity-50"
                   aria-label="Post comment"
                 >
                   {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
@@ -343,7 +343,7 @@ const FBGroupCommentItem: React.FC<FBGroupCommentItemProps> = ({
                     <button
                       onClick={() => onSubmitReply(comment.id)}
                       disabled={isReplySubmitting}
-                      className="flex h-6 w-6 items-center justify-center rounded-full text-primary-600 hover:bg-primary-50 disabled:opacity-50"
+                      className="flex h-6 w-6 items-center justify-center rounded-full text-content-secondary transition-colors hover:bg-surface-hover hover:text-content disabled:opacity-50"
                     >
                       {isReplySubmitting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
                     </button>

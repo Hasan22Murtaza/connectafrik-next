@@ -15,7 +15,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
       <div className="relative mx-auto grid min-h-screen w-full max-w-[1500px] grid-cols-1 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.95fr)]">
         <AuthIllustration />
 
-        <section className="flex min-h-screen min-w-0 w-full items-center justify-center px-4 py-8 sm:px-6 sm:py-5 lg:h-screen lg:overflow-y-auto lg:px-5 lg:py-8">
+        <section className="flex min-h-screen min-w-0 w-full items-center justify-center px-4 py-5 sm:px-6 sm:py-4 lg:h-screen lg:overflow-y-auto lg:px-5 lg:py-4">
           <div className="w-full max-w-[420px]">
             <div className="mb-6 flex justify-center lg:hidden">
               <Link href="/" aria-label="CribsTalk home">

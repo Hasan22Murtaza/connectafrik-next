@@ -33,7 +33,7 @@ export const AP = {
   headerInner: "flex h-14 items-center gap-3 px-4 sm:px-6 lg:px-8",
 
   searchInput:
-    "w-full rounded-md border border-gray-200 bg-white py-2 pl-10 pr-4 text-sm placeholder:text-gray-400 focus:border-primary-400 focus:outline-none focus:ring-1 focus:ring-primary-500/30",
+    "w-full rounded-md border border-gray-200 bg-white py-2 pl-10 pr-4 text-sm placeholder:text-gray-400 focus:border-gray-200 focus:outline-none focus:ring-0",
 
   tableWrap: "overflow-x-auto -mx-px",
   table: "w-full text-sm",

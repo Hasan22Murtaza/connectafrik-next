@@ -11,7 +11,7 @@ import {
 } from '@/shared/utils/sessionDeviceLabel'
 import toast from 'react-hot-toast'
 import { useConfirmDialog } from '@/shared/components/ui/ConfirmDialog'
-import { messageE2eeFlagOn } from '@/lib/message-e2ee/status'
+import { messageE2eeFlagOn } from '@/lib/message-e2ee/client-status'
 import { Divider, SettingsCard, SettingsPanelSkeleton, SettingsSectionHeader } from './SettingsPrimitives'
 
 type ListedAuthSession = {

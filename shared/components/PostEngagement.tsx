@@ -226,7 +226,7 @@ const PostEngagement: React.FC<PostEngagementProps> = ({
                       ? 'text-blue-600'
                       : 'text-amber-500'
                   } ${userReactionConfig.hoverBg}`
-                  : 'text-[#f28b45] hover:bg-orange-50'
+                  : 'text-[#f28b45] hover:bg-surface-hover'
               }`}
               aria-label={userReactionConfig ? `${userReactionConfig.label} reaction` : 'Like post'}
             >
@@ -248,7 +248,7 @@ const PostEngagement: React.FC<PostEngagementProps> = ({
               e.stopPropagation()
               onComment()
             }}
-            className="flex h-8 w-9 shrink-0 items-center justify-center rounded-full bg-surface-secondary text-slate-400 transition-colors hover:bg-orange-50 hover:text-orange-500"
+            className="flex h-8 w-9 shrink-0 items-center justify-center rounded-full bg-surface-secondary text-slate-400 transition-colors hover:bg-surface-hover hover:text-content"
             aria-label={`Comment on post${commentsCount > 0 ? `, ${commentsCount} ${commentsCount === 1 ? 'comment' : 'comments'}` : ''}`}
             title={commentsCount > 0 ? `${commentsCount} ${commentsCount === 1 ? 'comment' : 'comments'}` : 'Comment'}
           >

@@ -23,7 +23,7 @@ import {
 } from "@/features/marketplace/utils/marketplaceLocation";
 
 const modalFieldClass =
-  "w-full px-4  py-3 bg-surface-input border border-transparent rounded-xl text-sm text-content placeholder:text-content-tertiary focus:outline-none focus:bg-surface focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 transition-all";
+  "w-full px-4  py-3 bg-surface-input border border-transparent rounded-xl text-sm text-content placeholder:text-content-tertiary focus:outline-none focus:bg-surface focus:border-border focus:ring-0 transition-all";
 
 export type MarketplaceLocationPickerProps = {
   location: ProfileLocationValue;

@@ -14,7 +14,7 @@ import {
   type DeviceKeyBundle,
   type EncryptedEnvelope,
 } from '@/lib/message-e2ee/signal'
-import { messageE2eeActive } from '@/lib/message-e2ee/status'
+import { messageE2eeActive } from '@/lib/message-e2ee/client-status'
 
 export { SIGNAL_E2EE_VERSION }
 

@@ -330,7 +330,7 @@ export default function ChatCloseView({ onFocusSearch }: ChatCloseViewProps) {
                   autoComplete="off"
                   autoFocus
                   disabled={sending}
-                  className="input-field !pl-10 !pr-3 focus:!border-[#FB700E] focus:!shadow-[0_0_0_3px_rgba(251,112,14,0.2)]"
+                  className="input-field !pl-10 !pr-3 focus:!border-border focus:!ring-0 focus:!shadow-none"
                 />
               </div>
             </div>

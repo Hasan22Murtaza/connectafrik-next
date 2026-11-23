@@ -1824,7 +1824,7 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
     let cancelled = false
     let stop = () => {}
     void (async () => {
-      const { messageE2eeActive } = await import('@/lib/message-e2ee/status')
+      const { messageE2eeActive } = await import('@/lib/message-e2ee/client-status')
       if (cancelled || !(await messageE2eeActive())) return
       const { decryptStoredMessage, onMessageKeys } = await import('@/lib/message-e2ee/engine')
       if (cancelled) return

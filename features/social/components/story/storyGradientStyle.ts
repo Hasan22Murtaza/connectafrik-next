@@ -1,12 +1,20 @@
 import type React from 'react'
 import { colorsFromGradientString } from '@/features/social/services/storyApiCodec'
 
-/** Facebook-style text story background: prefer hex color array, then "c1,c2" string, then solid fallback. */
+/**
+ * Text/link story background.
+ * Prefer the solid color the user chose; only use an explicit gradient when
+ * `preferSolid` is false (legacy gradient text stories).
+ */
 export function storyTextBackgroundStyle(
   gradientColors: string[] | null | undefined,
   gradientString: string | null | undefined,
-  fallbackColor: string
+  fallbackColor: string,
+  preferSolid = true
 ): React.CSSProperties {
+  if (preferSolid) {
+    return { backgroundColor: fallbackColor }
+  }
   if (Array.isArray(gradientColors) && gradientColors.length >= 2) {
     return {
       backgroundImage: `linear-gradient(135deg, ${gradientColors[0]}, ${gradientColors[1]})`,

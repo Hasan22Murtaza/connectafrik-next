@@ -65,9 +65,9 @@ export interface SearchOptions {
   signal?: AbortSignal
 }
 
-const DEFAULT_SEARCH_LIMIT = 5
-const DEFAULT_MIN_QUERY_LENGTH = 2
-const SEARCH_DEBOUNCE_MS = 250
+export const DEFAULT_SEARCH_LIMIT = 5
+export const DEFAULT_MIN_QUERY_LENGTH = 2
+export const SEARCH_DEBOUNCE_MS = 250
 
 const USER_FIELDS = 'id, username, full_name, avatar_url, bio, follower_count'
 const POST_FIELDS = `
@@ -282,5 +282,3 @@ export const searchService = {
     )
   },
 }
-
-export { DEFAULT_SEARCH_LIMIT, DEFAULT_MIN_QUERY_LENGTH, SEARCH_DEBOUNCE_MS }

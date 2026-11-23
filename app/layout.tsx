@@ -15,6 +15,7 @@ import {
   websiteJsonLd,
   getRootMetadata,
 } from "@/lib/seo";
+import { THEME_STORAGE_KEY } from "@/shared/theme/types";
 
 
 
@@ -73,11 +74,15 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Apply saved theme before paint to avoid light→dark flash on reload.
+  const themeInitScript = `(function(){try{var t=localStorage.getItem(${JSON.stringify(THEME_STORAGE_KEY)});if(t==="dark")document.documentElement.classList.add("dark");else document.documentElement.classList.remove("dark");}catch(e){}})();`;
+
   return (
     <html lang="en" suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${poppins.variable} ${caveat.variable} antialiased`}
       >
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
         <Providers>
           <JsonLd data={[websiteJsonLd(), organizationJsonLd()]} />
           <div className="min-h-screen w-full mx-auto min-[1950px]:max-w-[1800px] ">

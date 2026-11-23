@@ -925,7 +925,7 @@ export default function ChatSidebar({
                       ? "Search locked chats"
                       : "Search or start a conversation..."
               }
-              className="w-full rounded-full border border-gray-300 py-2.5 pl-10 pr-9 text-sm text-content placeholder:text-content-secondary outline-none transition focus-visible:border-orange-300 focus-visible:bg-surface focus-visible:ring-2 focus-visible:ring-orange-100 dark:focus-visible:ring-orange-900/40"
+              className="w-full rounded-full border border-gray-300 py-2.5 pl-10 pr-9 text-sm text-content placeholder:text-content-secondary outline-none transition focus-visible:border-border focus-visible:bg-surface focus-visible:ring-0"
             />
             {search ? (
               <button

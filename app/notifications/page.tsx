@@ -570,7 +570,7 @@ const NotificationsPage: React.FC = () => {
                                 e.stopPropagation()
                                 markAsRead(notification.id)
                               }}
-                              className="p-2 text-content-tertiary hover:text-primary-600 hover:bg-orange-50 active:bg-orange-100 rounded-full transition-colors"
+                              className="rounded-full p-2 text-content-tertiary transition-colors hover:bg-surface-hover hover:text-content active:bg-surface-secondary"
                               title="Mark as read"
                             >
                               <Check className="w-4 h-4" />

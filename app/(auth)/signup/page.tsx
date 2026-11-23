@@ -151,8 +151,8 @@ const Signup: React.FC = () => {
       title="Create a new account"
       subtitle="Where every voice finds a home"
     >
-      <form onSubmit={handleSubmit} noValidate className="space-y-3.5">
-        <div className="grid grid-cols-2 gap-3">
+      <form onSubmit={handleSubmit} noValidate className="space-y-2.5">
+        <div className="grid grid-cols-2 gap-2.5">
           <div>
             <input
               type="text"
@@ -213,9 +213,9 @@ const Signup: React.FC = () => {
           )}
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-2.5">
           <div>
-            <label className="mb-1.5 block text-xs font-medium text-[#6B7280]">Date of Birthday</label>
+            <label className="mb-1 block text-xs font-medium text-[#6B7280]">Date of Birthday</label>
             <input
               type="date"
               name="birthday"
@@ -231,7 +231,7 @@ const Signup: React.FC = () => {
           </div>
 
           <div>
-            <label className="mb-1.5 block text-xs font-medium text-[#6B7280]">Gender</label>
+            <label className="mb-1 block text-xs font-medium text-[#6B7280]">Gender</label>
             <select
               name="gender"
               value={formData.gender}
@@ -308,7 +308,7 @@ const Signup: React.FC = () => {
           )}
         </button>
 
-        <p className="pt-1 text-center text-sm text-[#6B7280]">
+        <p className="text-center text-sm text-[#6B7280]">
           Already have an account?{' '}
           <Link href="/signin" className="font-medium text-[#22C55E] hover:text-[#16A34A]">
             Sign in

@@ -3248,14 +3248,14 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                  text-sm text-content placeholder:text-content-tertiary outline-none ring-0
                   transition-all duration-300 ease-in-out cursor-pointer group-hover:w-64
                    group-hover:bg-surface group-hover:border-border focus:w-64 focus:bg-surface focus:cursor-text
-                    focus:border-orange-500 focus:outline-none focus:ring-0"
+                    focus:border-border focus:outline-none focus:ring-0"
                 />
             </div>
             {/* this icon use on mobile */}
             <button
               type="button"
               onClick={openMessageSearchFromMenu}
-              className="sm:hidden flex h-10 w-10 items-center justify-center rounded-full text-content-tertiary transition duration-200 hover:bg-orange-500 hover:text-white dark:text-content-secondary dark:hover:bg-surface-hover"
+              className="sm:hidden flex h-10 w-10 items-center justify-center rounded-full text-content-tertiary transition duration-200 hover:bg-surface-hover hover:text-content dark:text-content-secondary"
               aria-label="Search messages"
             >
               <Search className="h-5 w-5" />
@@ -3277,7 +3277,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                   type="button"
                   onClick={() => handleStartCall("video")}
                   disabled={messagingBlocked || !canStartVideoCall}
-                  className="h-9 w-9 flex items-center justify-center rounded-full text-content-tertiary shrink-0 hover:bg-orange-500 hover:text-white  disabled:cursor-not-allowed disabled:opacity-40  dark:text-content-secondary dark:hover:bg-surface-hover"
+                  className="h-9 w-9 flex items-center justify-center rounded-full text-content-tertiary shrink-0 hover:bg-surface-hover hover:text-content disabled:cursor-not-allowed disabled:opacity-40 dark:text-content-secondary"
                   aria-label="Video call"
                   title={!canStartVideoCall ? "Video calls restricted by parent" : undefined}
                 >
@@ -3287,7 +3287,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                   type="button"
                   onClick={() => handleStartCall("audio")}
                   disabled={messagingBlocked || !canStartAudioCall}
-                  className="h-9 w-9 flex items-center justify-center rounded-full text-content-tertiary shrink-0 hover:bg-orange-500 hover:text-white  disabled:cursor-not-allowed disabled:opacity-40  dark:text-content-secondary dark:hover:bg-surface-hover"
+                  className="h-9 w-9 flex items-center justify-center rounded-full text-content-tertiary shrink-0 hover:bg-surface-hover hover:text-content disabled:cursor-not-allowed disabled:opacity-40 dark:text-content-secondary"
                   aria-label="Voice call"
                   title={!canStartAudioCall ? "Audio calls restricted by parent" : undefined}
                 >
@@ -3322,7 +3322,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                   event.stopPropagation();
                   setShowOptionsMenu((open) => !open);
                 }}
-                className="h-9 w-9 flex items-center justify-center rounded-full text-content-tertiary shrink-0 hover:bg-orange-500 hover:text-white  disabled:cursor-not-allowed disabled:opacity-40  dark:text-content-secondary dark:hover:bg-surface-hover"
+                className="h-9 w-9 flex items-center justify-center rounded-full text-content-tertiary shrink-0 hover:bg-surface-hover hover:text-content disabled:cursor-not-allowed disabled:opacity-40 dark:text-content-secondary"
                 aria-expanded={showOptionsMenu}
                 aria-haspopup="menu"
                 aria-label="More options"
@@ -3852,7 +3852,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
               <button
                 type="button"
                 onClick={() => setReplyingTo(null)}
-                className="flex-shrink-0 rounded-full p-1 text-content-secondary transition-colors hover:bg-orange-500/10 hover:text-orange-600"
+                className="flex-shrink-0 rounded-full p-1 text-content-secondary transition-colors hover:bg-surface-hover hover:text-content"
                 aria-label="Cancel reply"
               >
                 <X className="h-4 w-4" />
@@ -4266,7 +4266,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                     value={forwardSearch}
                     onChange={(e) => setForwardSearch(e.target.value)}
                     placeholder="Search contacts…"
-                    className="w-full rounded-lg border-0 bg-surface-input py-2.5 pl-10 pr-3 text-sm text-content shadow-sm placeholder:text-content-tertiary focus:outline-none focus:ring-2 focus:ring-primary-500/40"
+                    className="w-full rounded-lg border-0 bg-surface-input py-2.5 pl-10 pr-3 text-sm text-content shadow-sm placeholder:text-content-tertiary focus:outline-none focus:ring-0"
                     autoComplete="off"
                   />
                 </div>

@@ -335,8 +335,8 @@ const GroupsPage: React.FC = () => {
                   text-content
                   transition-all duration-200
                   focus:outline-none
-                focus:border-orange-500
-                  focus:ring-3 focus:ring-orange-500/10"
+                  focus:border-border
+                  focus:ring-0"
             />
           </div>
 
@@ -479,7 +479,7 @@ const GroupsPage: React.FC = () => {
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                       onKeyPress={(e) => e.key === "Enter" && handleSearch()}
-                      className=" w-full px-3 py-2.5 pl-9 bg-surface-input hover:bg-surface-hover focus-visible:bg-surface-hover border border-border rounded-full focus:border-orange-500 focus:ring-2 focus:ring-orange-200 focus:outline-none transition-colors text-sm text-content placeholder:text-content-tertiary"
+                      className=" w-full px-3 py-2.5 pl-9 bg-surface-input hover:bg-surface-hover focus-visible:bg-surface-hover border border-border rounded-full focus:border-border focus:ring-0 focus:outline-none transition-colors text-sm text-content placeholder:text-content-tertiary"
                     />
                   </div>
                 </div>
@@ -538,7 +538,7 @@ const GroupsPage: React.FC = () => {
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                       onKeyPress={(e) => e.key === "Enter" && handleSearch()}
-                      className=" w-full px-3 py-2.5 pl-9 bg-surface-input hover:bg-surface-hover focus-visible:bg-surface-hover border border-border rounded-full focus:border-orange-500 focus:ring-2 focus:ring-orange-200 focus:outline-none transition-colors text-sm text-content placeholder:text-content-tertiary"
+                      className=" w-full px-3 py-2.5 pl-9 bg-surface-input hover:bg-surface-hover focus-visible:bg-surface-hover border border-border rounded-full focus:border-border focus:ring-0 focus:outline-none transition-colors text-sm text-content placeholder:text-content-tertiary"
                     />
                   </div>
 

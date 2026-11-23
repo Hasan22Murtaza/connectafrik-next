@@ -179,7 +179,7 @@ export default function MentorsPanel() {
             aria-hidden
           />
           <input
-            className={`${YOUTH_FIELD} h-11 rounded-xl border-border/80 bg-surface pl-10 shadow-[0_1px_2px_rgba(15,23,42,0.04)]`}
+            className="h-11 w-full rounded-xl border border-border/80 bg-surface pl-10 pr-3 text-sm text-content outline-none transition placeholder:text-content-tertiary shadow-[0_1px_2px_rgba(15,23,42,0.04)] focus:border-border focus:ring-0"
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
             placeholder="Search mentors by name, skill, or expertise…"

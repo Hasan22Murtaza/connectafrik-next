@@ -30,6 +30,7 @@ import MobileSideDrawer from "../ui/MobileSideDrawer";
 import Logo from "../ui/Logo";
 import PlayMedia from "@/shared/icons/PlayMedia";
 import { Handbag } from "lucide-react";
+import { isAppChromePath } from "@/shared/utils/appPaths";
 
 interface HeaderProps {
   searchTerm?: string;
@@ -41,7 +42,7 @@ const Header: React.FC<HeaderProps> = ({
   onSearchTermChange,
 }) => {
   const router = useRouter();
-  const { user, signOut } = useAuth();
+  const { user, loading: authLoading, signOut } = useAuth();
   const { profile } = useProfile();
   const [showNotifications, setShowNotifications] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
@@ -50,6 +51,11 @@ const Header: React.FC<HeaderProps> = ({
   const [showSearchResults, setShowSearchResults] = useState(false);
   const [showMobileSearch, setShowMobileSearch] = useState(false);
   const searchContainerRef = useRef<HTMLDivElement>(null);
+  const pathname = usePathname();
+  // While session hydrates on app routes, keep authenticated chrome (no guest CTA flash).
+  const showAuthedChrome =
+    Boolean(user) || (authLoading && isAppChromePath(pathname));
+  const showGuestChrome = !authLoading && !user;
 
   // Search functionality using custom hook
   const {
@@ -64,7 +70,6 @@ const Header: React.FC<HeaderProps> = ({
 
   const { unreadMessages, callBadgeCount } = useHeaderInboxCounts();
   const { friendRequestCount } = useSpaceNavCounts();
-  const pathname = usePathname();
   const [scrolled, setScrolled] = useState(false);
   const [guestMenuOpen, setGuestMenuOpen] = useState(false);
 
@@ -76,12 +81,12 @@ const Header: React.FC<HeaderProps> = ({
   }, [externalSearchTerm, internalSearchTerm, handleSearch]);
 
   useEffect(() => {
-    if (user) return;
+    if (!showGuestChrome) return;
     const onScroll = () => setScrolled(window.scrollY > 8);
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
-  }, [user]);
+  }, [showGuestChrome]);
 
   // Handle search input change
   const handleSearchChange = (value: string) => {
@@ -131,24 +136,24 @@ const Header: React.FC<HeaderProps> = ({
     <>
       <header
         className={
-          user
+          showAuthedChrome
             ? "sticky top-0 z-50 bg-surface shadow-header"
             : `sticky top-0 z-50 border-b transition-[background-color,box-shadow,border-color] duration-300 ${scrolled
-              ? "border-black/[0.06] bg-white/90 shadow-sm backdrop-blur-xl"
-              : "border-transparent bg-white/70 backdrop-blur-md"
+              ? "border-black/[0.06] bg-white/90 shadow-sm backdrop-blur-xl dark:border-border dark:bg-surface/90"
+              : "border-transparent bg-white/70 backdrop-blur-md dark:bg-surface/80"
             }`
         }
       >
         <div
           className={
-            user
+            showAuthedChrome
               ? "max-w-full 4xl:max-w-screen-2xl mx-auto px-1 sm:px-2 2xl:px-6 overflow-visible"
               : "mx-auto flex h-[72px] max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8"
           }
         >
           <div
             className={
-              user
+              showAuthedChrome
                 ? "relative flex items-center h-14 sm:h-16 justify-between gap-2 w-full"
                 : "flex w-full items-center justify-between gap-4"
             }
@@ -165,14 +170,14 @@ const Header: React.FC<HeaderProps> = ({
               </Link>
 
               {/* Search Bar - Only when logged in; hidden on mobile, visible on tablet+ */}
-              {user && (
+              {user ? (
                 <div className="hidden md:flex max-w-[min(100%,28rem)] w-full min-w-0">
                   <div className="relative w-full" ref={searchContainerRef}>
                     <Search className="pointer-events-none absolute left-3.5 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-content-tertiary" />
                     <input
                       type="text"
                       placeholder="Search CribsTalk..."
-                      className="w-full rounded-full border border-border-subtle bg-surface-secondary py-2.5 pl-10 pr-4 text-sm text-content placeholder:text-content-tertiary transition-colors hover:bg-surface-hover focus:border-border focus:bg-surface focus:outline-none focus:ring-2 focus:ring-primary/20"
+                      className="w-full rounded-full border border-border/80 bg-surface py-2.5 pl-10 pr-4 text-sm text-content placeholder:text-content-tertiary transition-colors focus:border-border focus:outline-none focus:ring-0"
                       value={searchTerm}
                       onChange={(e) => handleSearchChange(e.target.value)}
                       onFocus={() => {
@@ -195,7 +200,11 @@ const Header: React.FC<HeaderProps> = ({
                     )}
                   </div>
                 </div>
-              )}
+              ) : showAuthedChrome ? (
+                <div className="hidden md:flex max-w-[min(100%,28rem)] w-full min-w-0">
+                  <div className="h-10 w-full animate-pulse rounded-full bg-surface-tertiary" aria-hidden />
+                </div>
+              ) : null}
             </div>
 
             {/* Navigation and User Menu - Pinned to right */}
@@ -207,7 +216,7 @@ const Header: React.FC<HeaderProps> = ({
                     <input
                       type="text"
                       placeholder="Search CribsTalk..."
-                      className="peer absolute top-8 right-0 w-0 rounded-full border-0 bg-surface py-2 px-3 opacity-0 outline-none transition-all duration-300 focus:w-62 focus:border focus:border-gray-300 focus:opacity-100 focus:ring-1 focus:ring-primary"
+                      className="peer absolute top-8 right-0 w-0 rounded-full border-0 bg-surface py-2 px-3 opacity-0 outline-none transition-all duration-300 focus:w-62 focus:border focus:border-gray-300 focus:opacity-100 focus:ring-0"
                       value={searchTerm}
                       onChange={(e) => handleSearchChange(e.target.value)}
                       onFocus={() => {
@@ -222,7 +231,7 @@ const Header: React.FC<HeaderProps> = ({
                       onClick={(e) => {
                         e.currentTarget.parentElement?.querySelector("input")?.focus();
                       }}
-                      className="relative z-10 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-content-secondary hover:bg-surface-secondary"
+                      className="relative z-10 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-content-secondary transition-colors hover:bg-surface-hover hover:text-content"
                       aria-label="Search"
                     >
                       <Search className="h-5 w-5" />
@@ -237,7 +246,7 @@ const Header: React.FC<HeaderProps> = ({
 
                   <Link
                     href="/chat"
-                    className="relative p-1 sm:p-1.5 lg:p-2 text-content-tertiary hover:text-primary-600 transition-colors"
+                    className="relative rounded-full p-1 sm:p-1.5 lg:p-2 text-content-tertiary transition-colors hover:bg-surface-hover hover:text-content"
                     aria-label="Messages"
                   >
                     <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -253,7 +262,7 @@ const Header: React.FC<HeaderProps> = ({
                       onClick={() => {
                         setShowNotifications(!showNotifications);
                       }}
-                      className="relative p-1 sm:p-1.5 lg:p-2 text-content-tertiary hover:text-primary-600 transition-colors"
+                      className="relative rounded-full p-1 sm:p-1.5 lg:p-2 text-content-tertiary transition-colors hover:bg-surface-hover hover:text-content"
                     >
                       <Bell className="w-4 h-4 sm:w-5 sm:h-5" />
                       {unreadNotificationCount > 0 && (
@@ -313,11 +322,16 @@ const Header: React.FC<HeaderProps> = ({
                   </button>
                 </div>
               </>
+            ) : showAuthedChrome ? (
+              <div className="relative flex items-center space-x-2 sm:space-x-2 border-border-subtle" aria-hidden>
+                <ThemeToggle />
+                <div className="h-8 w-8 sm:h-10 sm:w-10 animate-pulse rounded-full bg-surface-tertiary" />
+              </div>
             ) : (
               <div className="flex items-center gap-2 sm:gap-3">
                 <Link
                   href="/signin"
-                  className="hidden rounded-full  bg-white px-4 py-2.5 text-sm font-semibold text-[#111827] dark:text-slate-100 transition-colors hover:bg-[#F9FAFB] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F97316]/40 sm:inline-flex"
+                  className="hidden rounded-full bg-white px-4 py-2.5 text-sm font-semibold text-[#111827] transition-colors hover:bg-[#F9FAFB] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F97316]/40 dark:border dark:border-border dark:bg-surface-secondary dark:text-content dark:hover:bg-surface-hover sm:inline-flex"
                 >
                   Sign In
                 </Link>
@@ -330,7 +344,7 @@ const Header: React.FC<HeaderProps> = ({
 
                 <button
                   type="button"
-                  className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-[#E5E7EB] bg-white text-[#111827] transition-colors hover:bg-[#F9FAFB] dark:text-slate-50 dark:border-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F97316]/40 sm:hidden"
+                  className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-[#E5E7EB] bg-white text-[#111827] transition-colors hover:bg-[#F9FAFB] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F97316]/40 dark:border-border dark:bg-surface-secondary dark:text-content dark:hover:bg-surface-hover sm:hidden"
                   aria-label={guestMenuOpen ? "Close menu" : "Open menu"}
                   aria-expanded={guestMenuOpen}
                   onClick={() => setGuestMenuOpen((open) => !open)}
@@ -357,8 +371,8 @@ const Header: React.FC<HeaderProps> = ({
           </div>
         </div>
 
-        {!user && guestMenuOpen && (
-          <div className="border-t border-black/[0.06] bg-white sm:hidden">
+        {showGuestChrome && guestMenuOpen && (
+          <div className="border-t border-black/[0.06] bg-white dark:border-border dark:bg-surface sm:hidden">
             <nav
               className="mx-auto flex max-w-7xl sm:flex-col flex-row gap-2 px-4 py-4 sm:px-6"
               aria-label="Mobile"
@@ -366,7 +380,7 @@ const Header: React.FC<HeaderProps> = ({
               <Link
                 href="/signin"
                 onClick={() => setGuestMenuOpen(false)}
-                className="flex-1 inline-flex h-12 items-center justify-center rounded-full border border-[#E5E7EB] dark:border-slate-200 dark:text-slate-50 bg-white text-sm font-semibold text-[#111827]"
+                className="flex-1 inline-flex h-12 items-center justify-center rounded-full border border-[#E5E7EB] bg-white text-sm font-semibold text-[#111827] dark:border-border dark:bg-surface-secondary dark:text-content"
               >
                 Sign In
               </Link>
@@ -383,16 +397,16 @@ const Header: React.FC<HeaderProps> = ({
       </header>
       {/* Mobile Navigation */}
       {user && !pathname?.startsWith("/reels") && (
-        <div className="md:hidden fixed bottom-0 w-full  block bg-white border-t border-gray-200 py-1 z-50">
+        <div className="md:hidden fixed bottom-0 w-full block bg-white border-t border-gray-200 py-1 z-50 dark:bg-surface dark:border-border">
           <nav className="w-full">
             <ul className="flex justify-between w-full px-2">
               {/* Feed */}
               <li>
                 <Link
                   href="/feed"
-                  className={`flex items-center justify-center py-2 px-3 transition-colors ${pathname === "/feed"
+                  className={`flex items-center justify-center rounded-full py-2 px-3 transition-colors ${pathname === "/feed"
                     ? "text-content"
-                    : "text-gray-500 hover:text-content"
+                    : "text-gray-500 hover:bg-surface-hover hover:text-content"
                     }`}
                 >
                   <Home className="w-6 h-6" />
@@ -403,9 +417,9 @@ const Header: React.FC<HeaderProps> = ({
               <li>
                 <Link
                   href="/reels/foryou"
-                  className={`flex items-center justify-center py-2 px-3 transition-colors ${pathname?.startsWith("/reels")
+                  className={`flex items-center justify-center rounded-full py-2 px-3 transition-colors ${pathname?.startsWith("/reels")
                     ? "text-content"
-                    : "text-gray-500 hover:text-content"
+                    : "text-gray-500 hover:bg-surface-hover hover:text-content"
                     }`}
                 >
                   <PlayMedia className="w-6 h-6" />
@@ -417,9 +431,9 @@ const Header: React.FC<HeaderProps> = ({
               <li className="relative">
                 <Link
                   href="/chat"
-                  className={`flex items-center justify-center py-2 px-3 transition-colors ${pathname === "/chat"
+                  className={`flex items-center justify-center rounded-full py-2 px-3 transition-colors ${pathname === "/chat"
                     ? "text-content"
-                    : "text-gray-500 hover:text-content"
+                    : "text-gray-500 hover:bg-surface-hover hover:text-content"
                     }`}
                 >
                   <MessageCircle className="w-6 h-6" />
@@ -435,9 +449,9 @@ const Header: React.FC<HeaderProps> = ({
               <li className="relative">
                 <Link
                   href="/friends"
-                  className={`flex items-center justify-center py-2 px-3 transition-colors ${pathname === "/friends"
+                  className={`flex items-center justify-center rounded-full py-2 px-3 transition-colors ${pathname === "/friends"
                     ? "text-content"
-                    : "text-gray-500 hover:text-content"
+                    : "text-gray-500 hover:bg-surface-hover hover:text-content"
                     }`}
                 >
                   <UserRound className="w-6 h-6" />
@@ -453,9 +467,9 @@ const Header: React.FC<HeaderProps> = ({
               <li>
                 <Link
                   href="/marketplace"
-                  className={`flex items-center justify-center py-2 px-3 transition-colors ${pathname === "/marketplace"
+                  className={`flex items-center justify-center rounded-full py-2 px-3 transition-colors ${pathname === "/marketplace"
                     ? "text-content"
-                    : "text-gray-500 hover:text-content"
+                    : "text-gray-500 hover:bg-surface-hover hover:text-content"
                     }`}
                 >
                   <Handbag className="w-6 h-6" />

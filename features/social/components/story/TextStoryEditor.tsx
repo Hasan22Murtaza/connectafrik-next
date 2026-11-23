@@ -12,6 +12,7 @@ const StoryEmojiPicker = dynamic(() => import('emoji-picker-react'), { ssr: fals
 
 const TEXT_STORY_BACKGROUND_COLORS = [
   '#FFFFFF',
+  '#000000',
   '#F97316',
   '#3B82F6',
   '#7C3AED',
@@ -187,7 +188,7 @@ const TextStoryEditor: React.FC<TextStoryEditorProps> = ({ onPostingChange }) =>
               ))}
               <label
                 title="Choose custom background color"
-                className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-full border border-dashed border-slate-300 text-sm text-content-secondary transition hover:border-primary-500 hover:text-primary-600"
+                className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-full border border-dashed border-slate-300 text-sm text-content-secondary transition hover:border-border-strong hover:bg-surface-hover hover:text-content"
               >
                 +
                 <input

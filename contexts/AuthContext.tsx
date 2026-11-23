@@ -64,7 +64,12 @@ function nextStableUser(
   next: User | null,
   event: string
 ): User | null {
-  if (!next) return null
+  if (!next) {
+    // Only clear on definitive sign-out / initial empty session.
+    // Ignore transient nulls (e.g. mid-refresh) so chrome does not drop on reload.
+    if (event === 'SIGNED_OUT' || event === 'INITIAL_SESSION') return null
+    return prev
+  }
   if (event === 'USER_UPDATED') return next
   if (prev?.id === next.id) return prev
   return next

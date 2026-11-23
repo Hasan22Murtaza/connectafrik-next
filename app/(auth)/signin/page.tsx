@@ -226,14 +226,14 @@ const SigninForm: React.FC = () => {
   };
 
   return (
-    <div className="rounded-[28px] border border-black/[0.06] bg-white px-5 py-8 shadow-[0_12px_40px_rgba(15,23,42,0.08)] sm:px-8 sm:py-5">
-      <div className="mb-4 text-center">
+    <div className="rounded-[28px] border border-black/[0.06] bg-white px-5 py-5 shadow-[0_12px_40px_rgba(15,23,42,0.08)] sm:px-8 sm:py-4">
+      <div className="mb-2.5 text-center">
         <h1 className="text-[1.60rem] font-extrabold leading-tight tracking-tight text-[#111827] dark:text-slate-100 sm:text-[1.85rem]">
           Welcome back 
         </h1>
       </div>
 
-      <div className="space-y-3">
+      <div className="space-y-2">
         <button
           type="button"
           onClick={handleAppleSignIn}
@@ -257,7 +257,7 @@ const SigninForm: React.FC = () => {
         </button>
       </div>
 
-      <div className="relative my-3">
+      <div className="relative my-2">
         <div className="absolute inset-0 flex items-center">
           <div className="w-full border-t border-[#E5E7EB]" />
         </div>
@@ -266,7 +266,7 @@ const SigninForm: React.FC = () => {
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-3">
+      <form onSubmit={handleSubmit} className="space-y-2.5">
         {loginMethod === "email" ? (
           <>
             <div>
@@ -383,15 +383,15 @@ const SigninForm: React.FC = () => {
         </button>
       </form>
 
-      <p className="mt-5 text-center text-sm text-[#6B7280]">
+      <p className="mt-3 text-center text-sm text-[#6B7280]">
         New to Cribstalk?
       </p>
 
-      <Link href="/signup" className="mt-3 flex h-12 min-h-12 w-full items-center justify-center rounded-full border-2 border-[#22C55E]  text-sm font-semibold text-[#22C55E] transition-colors !hover:bg-[#F0FDF4] sm:text-base">
+      <Link href="/signup" className="mt-2 flex h-12 min-h-12 w-full items-center justify-center rounded-full border-2 border-[#22C55E]  text-sm font-semibold text-[#22C55E] transition-colors !hover:bg-[#F0FDF4] sm:text-base">
         Create account
       </Link>
 
-      <p className="mt-5 text-center text-[11px] leading-relaxed text-[#9CA3AF]">
+      <p className="mt-3 text-center text-[11px] leading-relaxed text-[#9CA3AF]">
         By continuing, you agree to our{" "}
         <Link
           href="/terms"

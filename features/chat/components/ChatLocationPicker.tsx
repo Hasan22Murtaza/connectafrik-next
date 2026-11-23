@@ -206,7 +206,7 @@ const ChatLocationPicker: React.FC<ChatLocationPickerProps> = ({
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search places or address"
-              className="w-full rounded-full border border-border bg-surface-secondary py-2.5 pl-9 pr-10 text-sm text-content placeholder:text-content-tertiary focus:outline-none focus:ring-2 focus:ring-[#F97316]/25"
+              className="w-full rounded-full border border-border bg-surface-secondary py-2.5 pl-9 pr-10 text-sm text-content placeholder:text-content-tertiary focus:outline-none focus:ring-0 focus:border-border"
               autoComplete="off"
             />
             {loading ? (

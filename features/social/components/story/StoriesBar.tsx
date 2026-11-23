@@ -285,13 +285,13 @@ const CreateStoryCard: React.FC<CreateStoryCardProps> = React.memo(({ userStorie
         </button>
 
         <div className="absolute bottom-2.5 left-2.5 right-2.5 h-9 rounded-full bg-surface-secondary flex items-center justify-around ">
-          <button type="button" aria-label="Add photo story" title="Add photo story" onClick={onCreate} className="p-1.5 text-content-secondary hover:text-primary-600 transition-colors">
+          <button type="button" aria-label="Add photo story" title="Add photo story" onClick={onCreate} className="rounded-full p-1.5 text-content-secondary transition-colors hover:bg-surface-hover hover:text-content">
             <Camera className="w-[17px] h-[17px]" />
           </button>
-          <button type="button" aria-label="Add video story" title="Add video story" onClick={onCreate} className="p-1.5 text-content-secondary hover:text-primary-600 transition-colors">
+          <button type="button" aria-label="Add video story" title="Add video story" onClick={onCreate} className="rounded-full p-1.5 text-content-secondary transition-colors hover:bg-surface-hover hover:text-content">
             <Video className="w-[17px] h-[17px]" />
           </button>
-          <button type="button" aria-label="Write text story" title="Write text story" onClick={onTextCreate} className="p-1.5 text-content-secondary hover:text-primary-600 transition-colors">
+          <button type="button" aria-label="Write text story" title="Write text story" onClick={onTextCreate} className="rounded-full p-1.5 text-content-secondary transition-colors hover:bg-surface-hover hover:text-content">
             <ListFilter className="w-[17px] h-[17px]" />
           </button>
         </div>

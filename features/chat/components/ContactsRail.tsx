@@ -112,7 +112,7 @@ const ContactsRail: React.FC = () => {
           <div className="flex items-center space-x-2">
             <button
               onClick={() => handleStartChat(contact)}
-              className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-secondary text-content-secondary transition-colors hover:bg-primary-100 hover:text-orange-500"
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-secondary text-content-secondary transition-colors hover:bg-surface-hover hover:text-content"
               title="Open chat"
             >
               <MessageCircle className="h-4 w-4" />
@@ -120,7 +120,7 @@ const ContactsRail: React.FC = () => {
             <button
               onClick={() => handleStartCall(contact, 'audio')}
               disabled={!parental.canAudioCall}
-              className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-secondary text-content-secondary transition-colors hover:bg-primary-100 hover:text-orange-500 disabled:cursor-not-allowed disabled:opacity-40"
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-secondary text-content-secondary transition-colors hover:bg-surface-hover hover:text-content disabled:cursor-not-allowed disabled:opacity-40"
               title={
                 parental.canAudioCall ? 'Start voice call' : 'Audio calls restricted by parent'
               }
@@ -130,7 +130,7 @@ const ContactsRail: React.FC = () => {
             <button
               onClick={() => handleStartCall(contact, 'video')}
               disabled={!parental.canVideoCall}
-              className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-secondary text-content-secondary transition-colors hover:bg-primary-100 hover:text-orange-500 disabled:cursor-not-allowed disabled:opacity-40"
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-secondary text-content-secondary transition-colors hover:bg-surface-hover hover:text-content disabled:cursor-not-allowed disabled:opacity-40"
               title={
                 parental.canVideoCall ? 'Start video call' : 'Video calls restricted by parent'
               }

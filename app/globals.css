@@ -86,55 +86,55 @@
 }
 
 
-/* ─── Dark theme (Facebook-inspired) ────────────────────────────────────── */
+/* ─── Dark theme (CastLooms-aligned black) ──────────────────────────────── */
 .dark {
   color-scheme: dark;
 
-  --background: #0f172a;
-  --foreground: #f8fafc;
+  --background: #121212;
+  --foreground: #ffffff;
 
-  --surface-canvas: #0f172a;
-  --surface-primary: #1e293b;
-  --surface-secondary: #334155;
-  --surface-tertiary: #475569;
-  --surface-elevated: #1e293b;
-  --surface-hover: #334155;
-  --surface-input: #334155;
-  --surface-overlay: rgba(2, 6, 23, 0.7);
+  --surface-canvas: #121212;
+  --surface-primary: #121212;
+  --surface-secondary: #272727;
+  --surface-tertiary: #333333;
+  --surface-elevated: #1a1a1a;
+  --surface-hover: #272727;
+  --surface-input: #272727;
+  --surface-overlay: rgba(0, 0, 0, 0.72);
 
-  --content-primary: #f8fafc;
-  --content-secondary: #cbd5e1;
-  --content-tertiary: #94a3b8;
-  --content-inverse: #0f172a;
+  --content-primary: #ffffff;
+  --content-secondary: #ffffff;
+  --content-tertiary: #e5e5e5;
+  --content-inverse: #121212;
   --content-link: #fb923c;
   --content-danger: #f02849;
 
-  --border-default: #334155;
-  --border-subtle: #1e293b;
-  --border-strong: #475569;
+  --border-default: #272727;
+  --border-subtle: #1a1a1a;
+  --border-strong: #3a3a3a;
 
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 1px 3px 0 rgba(0, 0, 0, 0.4), 0 1px 2px 0 rgba(0, 0, 0, 0.3);
-  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.35);
-  --shadow-dropdown: 0 12px 28px 0 rgba(0, 0, 0, 0.6), 0 2px 4px 0 rgba(0, 0, 0, 0.4);
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.45);
+  --shadow-md: 0 1px 3px 0 rgba(0, 0, 0, 0.55), 0 1px 2px 0 rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.55);
+  --shadow-dropdown: 0 12px 28px 0 rgba(0, 0, 0, 0.7), 0 2px 4px 0 rgba(0, 0, 0, 0.45);
 
-  --interactive-secondary: #334155;
-  --interactive-secondary-hover: #475569;
-  --interactive-secondary-text: #f8fafc;
+  --interactive-secondary: #272727;
+  --interactive-secondary-hover: #333333;
+  --interactive-secondary-text: #ffffff;
   --interactive-focus-ring: rgba(249, 115, 22, 0.35);
 
-  --shimmer-from: #1e293b;
-  --shimmer-mid: #334155;
+  --shimmer-from: #181818;
+  --shimmer-mid: #272727;
 
-  --scrollbar-thumb: #475569;
-  --scrollbar-thumb-hover: #64748b;
+  --scrollbar-thumb: #3a3a3a;
+  --scrollbar-thumb-hover: #525252;
 
- /* Chat bubbles - Dark Mode */
---chat-bubble-own: #3b2a22;
---chat-bubble-own-file: #3b2a22;
---chat-bubble-own-file-hover: #4a342a;
+  /* Chat bubbles - Dark Mode */
+  --chat-bubble-own: #3b2a22;
+  --chat-bubble-own-file: #3b2a22;
+  --chat-bubble-own-file-hover: #4a342a;
 
---chat-bubble-in: var(--surface-tertiary);
+  --chat-bubble-in: var(--surface-tertiary);
 }
 
 /* ─── Dark mode: bridge legacy Tailwind gray utilities ──────────────────── */
@@ -182,6 +182,78 @@
 .dark .bg-neutral-50,
 .dark .bg-neutral-100 {
   background-color: var(--surface-canvas);
+}
+.dark .bg-neutral-900 {
+  background-color: var(--surface-primary);
+}
+.dark .bg-neutral-800,
+.dark .bg-neutral-700 {
+  background-color: var(--surface-secondary);
+}
+/* Remap navy slate utilities → CastLooms black neutrals (incl. dark: variants) */
+.dark .bg-slate-950,
+.dark .bg-slate-900,
+.dark\:bg-slate-950:where(.dark, .dark *),
+.dark\:bg-slate-900:where(.dark, .dark *),
+.dark\:bg-slate-900\/80:where(.dark, .dark *) {
+  background-color: var(--surface-canvas);
+}
+.dark .bg-slate-800,
+.dark\:bg-slate-800:where(.dark, .dark *),
+.dark\:bg-slate-800\/70:where(.dark, .dark *),
+.dark\:bg-slate-800\/80:where(.dark, .dark *) {
+  background-color: var(--surface-primary);
+}
+.dark .bg-slate-700,
+.dark\:bg-slate-700:where(.dark, .dark *) {
+  background-color: var(--surface-secondary);
+}
+.dark .hover\:bg-slate-900:hover,
+.dark .hover\:bg-slate-800:hover,
+.dark .hover\:bg-slate-700:hover,
+.dark\:hover\:bg-slate-900:where(.dark, .dark *):hover,
+.dark\:hover\:bg-slate-800:where(.dark, .dark *):hover,
+.dark\:hover\:bg-slate-700:where(.dark, .dark *):hover {
+  background-color: var(--surface-hover);
+}
+.dark .border-slate-800,
+.dark .border-slate-700,
+.dark\:border-slate-800:where(.dark, .dark *),
+.dark\:border-slate-700:where(.dark, .dark *) {
+  border-color: var(--border-default);
+}
+.dark .border-slate-600,
+.dark\:border-slate-600:where(.dark, .dark *) {
+  border-color: var(--border-strong);
+}
+.dark .text-slate-50,
+.dark .text-slate-100,
+.dark .text-slate-200,
+.dark\:text-slate-50:where(.dark, .dark *),
+.dark\:text-slate-100:where(.dark, .dark *),
+.dark\:text-slate-200:where(.dark, .dark *) {
+  color: var(--content-primary);
+}
+.dark .text-slate-300,
+.dark\:text-slate-300:where(.dark, .dark *) {
+  color: var(--content-secondary);
+}
+.dark .text-slate-400,
+.dark .text-slate-500,
+.dark\:text-slate-400:where(.dark, .dark *),
+.dark\:text-slate-500:where(.dark, .dark *) {
+  color: var(--content-tertiary);
+}
+.dark .from-slate-800\/80,
+.dark\:from-slate-800\/80:where(.dark, .dark *) {
+  --tw-gradient-from: color-mix(in srgb, var(--surface-primary) 80%, transparent);
+}
+.dark .to-slate-900\/80,
+.dark\:to-slate-900\/80:where(.dark, .dark *) {
+  --tw-gradient-to: color-mix(in srgb, var(--surface-canvas) 80%, transparent);
+}
+.dark\:focus-visible\:ring-offset-slate-950:where(.dark, .dark *):focus-visible {
+  --tw-ring-offset-color: var(--surface-canvas);
 }
 .dark .text-zinc-800,
 .dark .text-zinc-900 {
@@ -336,11 +408,14 @@
   max-width: 100%;
   overflow-x: auto;
   border-radius: 8px;
-  background: #1e293b;
-  color: #e2e8f0;
+  background: #181818;
+  color: #e5e5e5;
   padding: 0.65rem 0.75rem;
   font-size: 0.8rem;
   line-height: 1.45;
+}
+.dark .chat-messages-pane {
+  background-color: var(--surface-canvas);
 }
 .chat-rt-own .chat-rt-pre {
   background: #0f3d36;

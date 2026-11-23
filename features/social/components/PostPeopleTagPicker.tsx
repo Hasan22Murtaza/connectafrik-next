@@ -101,7 +101,7 @@ const PostPeopleTagPicker: React.FC<PostPeopleTagPickerProps> = ({
             placeholder="Search friends"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            className="w-full pl-9 pr-10 py-2.5 text-sm rounded-full border border-border focus:outline-none focus:ring-2 focus:ring-orange-200 focus:border-orange-300 bg-surface placeholder:text-content-tertiary"
+            className="w-full pl-9 pr-10 py-2.5 text-sm rounded-full border border-border focus:outline-none focus:ring-0 focus:border-border bg-surface placeholder:text-content-tertiary"
           />
           {query ? (
             <button

@@ -70,7 +70,7 @@ const AddPeoplePanel: React.FC<AddPeoplePanelProps> = ({
             placeholder="Search friends..."
             value={addPeopleSearch}
             onChange={(e) => onSearchChange(e.target.value)}
-            className="w-full rounded-lg border border-white/10 bg-white/5 py-2 pl-9 pr-3 text-sm text-white outline-none transition placeholder:text-white/35 focus:border-primary-400/60 focus:ring-1 focus:ring-primary-400/30"
+            className="w-full rounded-lg border border-white/10 bg-white/5 py-2 pl-9 pr-3 text-sm text-white outline-none transition placeholder:text-white/35 focus:border-white/10 focus:ring-0"
             autoFocus
           />
         </div>

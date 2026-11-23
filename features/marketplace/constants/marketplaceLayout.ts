@@ -69,7 +69,7 @@ export const MP = {
   sidebarRightPadding: "p-3",
 
   searchInput:
-    "w-full px-3 py-2 pl-9 bg-surface-input hover:bg-surface-hover focus-visible:bg-surface-hover border border-border rounded-full focus:border-orange-500 focus:ring-2 focus:ring-orange-200 focus:outline-none transition-colors text-sm text-content placeholder:text-content-tertiary",
+    "w-full px-3 py-2 pl-9 bg-surface-input hover:bg-surface-hover focus-visible:bg-surface-hover border border-border rounded-full focus:border-border focus:ring-0 focus:outline-none transition-colors text-sm text-content placeholder:text-content-tertiary",
   selectInput:
     "w-full px-2.5 py-2 bg-surface-input hover:bg-surface-hover border-0 rounded-lg text-sm text-content focus:ring-2 focus:ring-orange-500 focus:outline-none cursor-pointer",
 
@@ -85,7 +85,7 @@ export const MP = {
     "w-full flex items-center justify-center gap-1.5 py-2 px-2 rounded-lg bg-primary-50 text-primary-600 font-semibold text-sm hover:bg-primary-100 transition-colors dark:bg-primary-50/15",
   sidebarHeader: "flex items-center justify-between mb-4",
   settingsBtn:
-    "p-2 rounded-full bg-primary-50 hover:bg-primary-100 transition-colors text-primary-600",
+    "rounded-full p-2 text-content-secondary transition-colors hover:bg-surface-hover hover:text-content",
 
   headerRow: "flex items-center justify-between mb-3 flex-wrap gap-2",
   headerActions: "flex items-center gap-1.5 flex-wrap",

@@ -31,7 +31,7 @@ const FEED_CATEGORIES = [
 type CategoryFilter = typeof FEED_CATEGORIES[number]['id'] | 'general'
 
 const FeedPage: React.FC = () => {
-  const { user } = useAuth()
+  const { user, loading: authLoading } = useAuth()
   const { profile } = useProfile()
   const [searchTerm, setSearchTerm] = useState('')
   const [activeCategory, setActiveCategory] = useState<CategoryFilter>('all')
@@ -349,7 +349,12 @@ const FeedPage: React.FC = () => {
 
 
           <section className="my-3">
-            {!user ? (
+            {authLoading ? (
+              <div className="flex w-full items-center gap-3 rounded-xl border border-border-subtle bg-surface py-3 p-2 shadow-card">
+                <span className="h-10 w-10 shrink-0 animate-pulse rounded-full bg-surface-tertiary" />
+                <div className="h-10 min-w-0 flex-1 animate-pulse rounded-full bg-surface-input" />
+              </div>
+            ) : !user ? (
               <div className="rounded-xl border border-dashed border-border bg-surface-secondary sm:px-4 sm:py-6 px-2 py-3 text-center text-sm text-content-secondary">
                 Sign in to share your thoughts with the community.
               </div>
