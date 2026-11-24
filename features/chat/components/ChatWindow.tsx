@@ -713,7 +713,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const mediaChunksRef = useRef<Blob[]>([]);
   const mediaStreamRef = useRef<MediaStream | null>(null);
-  const voiceRecordingSessionRef = useRef<{ cancelled: boolean } | null>(null);
+  const voiceRecordingSessionRef = useRef<{ cancelled: boolean; startedAt: number } | null>(null);
   const initialUnreadCountRef = useRef(0);
   const [pendingFiles, setPendingFiles] = useState<FileUploadResult[]>([]);
   const [viewOnceEnabled, setViewOnceEnabled] = useState(false);
@@ -2428,7 +2428,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
             : "";
       const mr = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream);
       mediaRecorderRef.current = mr;
-      const recordingSession = { cancelled: false };
+      const recordingSession = { cancelled: false, startedAt: performance.now() };
       voiceRecordingSessionRef.current = recordingSession;
       mr.ondataavailable = (e) => {
         if (!recordingSession.cancelled && e.data.size) {
@@ -2438,6 +2438,10 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       mr.onstop = () => {
         if (recordingSession.cancelled) return;
         void (async () => {
+          const voiceDurationSeconds = Math.max(
+            0.01,
+            (performance.now() - recordingSession.startedAt) / 1000
+          );
           const mimeType = mr.mimeType || "audio/webm";
           stopMediaStream();
           mediaRecorderRef.current = null;
@@ -2469,6 +2473,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                 type: f.type,
                 size: f.size,
                 mimeType: f.mimeType,
+                durationSeconds: voiceDurationSeconds,
               }));
               const optimisticMessage: ChatMessage = {
                 id: optimisticId,
@@ -2478,7 +2483,10 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString(),
                 message_type: "text",
-                metadata: { __clientSendId: prependSendId },
+                metadata: {
+                  __clientSendId: prependSendId,
+                  voiceDurationSeconds,
+                },
                 read_by: [currentUser.id],
                 is_deleted: false,
                 is_edited: false,
@@ -2515,13 +2523,13 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                 type: f.type,
                 size: f.size,
                 mimeType: f.mimeType,
+                durationSeconds: voiceDurationSeconds,
               })),
-              ...(prependSendId
-                ? {
-                  metadata: { __clientSendId: prependSendId },
-                  skipContextOptimistic: true,
-                }
-                : {}),
+              metadata: {
+                ...(prependSendId ? { __clientSendId: prependSendId } : {}),
+                voiceDurationSeconds,
+              },
+              ...(prependSendId ? { skipContextOptimistic: true } : {}),
             });
             fileUploadService.revokePreviews(results);
             stopTyping();

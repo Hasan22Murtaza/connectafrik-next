@@ -132,25 +132,97 @@ function openAttachment(att: ChatAttachment) {
   window.open(att.url, "_blank", "noopener,noreferrer");
 }
 
-function WaveBars({ active }: { active?: boolean }) {
+let activeAudio: HTMLMediaElement | null = null;
+
+function handleAudioPlay(audio: HTMLMediaElement) {
+  if (activeAudio && activeAudio !== audio) {
+    activeAudio.pause();
+  }
+  activeAudio = audio;
+}
+
+function handleAudioPause(audio: HTMLMediaElement) {
+  if (activeAudio === audio) {
+    activeAudio = null;
+  }
+}
+
+function WaveBars({
+  progress,
+  current,
+  duration,
+  onSeek,
+  onStart,
+}: {
+  progress: number;
+  current: number;
+  duration: number;
+  onSeek: (progress: number) => void;
+  onStart: () => void;
+}) {
+  const clampedProgress = Math.min(1, Math.max(0, progress));
   const bars = useMemo(
-    () => Array.from({ length: 40 }, (_, i) => 4 + ((i * 7) % 14)),
+    () =>
+      Array.from(
+        { length: 32 },
+        (_, i) => 4 + Math.round(Math.abs(Math.sin(i * 2.17 + 0.6) * Math.cos(i * 0.7)) * 14)
+      ),
     []
   );
   return (
-    <div className="flex h-8 min-w-0 flex-1 items-center gap-[2px] overflow-hidden" aria-hidden>
+    <div
+      className="relative flex h-8 min-w-0 flex-1 items-center gap-[2px] overflow-hidden "
+    >
       {bars.map((h, i) => (
         <span
           key={i}
-          className={`w-[2.5px] rounded-full bg-current opacity-70 ${
-            active ? "chat-wave-bar" : ""
+          className={`pointer-events-none min-w-0 flex-1 rounded-full ${
+            (i + 0.5) / bars.length <= clampedProgress
+              ? "bg-orange-500"
+              : "bg-current opacity-60"
           }`}
-          style={{
-            height: `${h}px`,
-            animationDelay: active ? `${(i % 8) * 60}ms` : undefined,
-          }}
+          style={{ height: `${h}px` }}
         />
       ))}
+      <span
+        aria-hidden
+        className="pointer-events-none absolute top-1/2 z-20 h-2.5 w-2.5 rounded-full border border-white bg-orange-500 shadow-sm"
+        style={{
+          left: `${clampedProgress * 100}%`,
+          transform:
+            clampedProgress === 0
+              ? "translateY(-50%)"
+              : clampedProgress === 1
+                ? "translate(-100%, -50%)"
+                : "translate(-50%, -50%)",
+        }}
+      />
+      <input
+        type="range"
+        min={0}
+        max={100}
+        step={0.1}
+        value={clampedProgress * 100}
+        aria-label="Voice message position"
+        aria-valuetext={`${formatMediaDuration(current)} of ${formatMediaDuration(duration)}`}
+        onChange={(event) => {
+          onSeek(Number(event.currentTarget.value) / 100);
+          onStart();
+        }}
+        onClick={(event) => event.stopPropagation()}
+        onPointerDown={(event) => event.stopPropagation()}
+        onPointerUp={(event) => {
+          event.stopPropagation();
+          onStart();
+        }}
+        onKeyUp={(event) => {
+          if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End"].includes(event.key)) {
+            event.stopPropagation();
+            onStart();
+          }
+        }}
+        className="absolute inset-0 z-10 m-0 h-full w-full cursor-pointer opacity-0 disabled:cursor-not-allowed !border-none focus:outline-none"
+      />
     </div>
   );
 }
@@ -163,43 +235,182 @@ const VoiceNotePlayer: React.FC<{
 }> = ({ att, isOwnMessage, profileImageUrl, messageMetadata }) => {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [playing, setPlaying] = useState(false);
-  const [duration, setDuration] = useState(0);
+  const [duration, setDuration] = useState(att.durationSeconds ?? 0);
   const [current, setCurrent] = useState(0);
-  useEffect(() => {
-    const audio = new Audio(att.url);
+  const [playbackRate, setPlaybackRate] = useState(1);
+  const [pendingSeekProgress, setPendingSeekProgress] = useState<number | null>(null);
+  const pendingSeekRef = useRef<number | null>(null);
+   useEffect(() => {
+    const audio = new Audio();
+    audio.preload = "auto";
     audioRef.current = audio;
-    const onMeta = () => setDuration(audio.duration || 0);
-    const onTime = () => setCurrent(audio.currentTime || 0);
+    let progressFrame: number | null = null;
+    let lastProgressUpdate = 0;
+    // true while we force the browser to calculate the real duration
+    let fixingDuration = false;
+
+    const updateProgress = (timestamp: number) => {
+      if (timestamp - lastProgressUpdate >= 100) {
+        setCurrent(audio.currentTime || 0);
+        lastProgressUpdate = timestamp;
+      }
+      if (!audio.paused && !audio.ended) {
+        progressFrame = requestAnimationFrame(updateProgress);
+      }
+    };
+    const stopProgressUpdates = () => {
+      if (progressFrame !== null) {
+        cancelAnimationFrame(progressFrame);
+        progressFrame = null;
+      }
+    };
+
+    const applyPendingSeek = (nextDuration: number) => {
+      if (nextDuration > 0 && pendingSeekRef.current !== null) {
+        const nextTime = pendingSeekRef.current * nextDuration;
+        pendingSeekRef.current = null;
+        setPendingSeekProgress(null);
+        audio.currentTime = nextTime;
+        setCurrent(nextTime);
+      }
+    };
+
+    const updateDuration = () => {
+      // MediaRecorder files (webm/ogg) report Infinity on first load.
+      // Seeking far past the end makes the browser calculate the real duration.
+      if (audio.duration === Infinity) {
+        if (!fixingDuration) {
+          fixingDuration = true;
+          audio.currentTime = 1e101;
+        }
+        const fallback = att.durationSeconds ?? 0;
+        if (fallback > 0) setDuration(fallback);
+        return;
+      }
+
+      // Real duration was just resolved: go back to the start
+      if (fixingDuration && Number.isFinite(audio.duration)) {
+        fixingDuration = false;
+        audio.currentTime = 0;
+        setCurrent(0);
+      }
+
+      const nextDuration =
+        Number.isFinite(audio.duration) && audio.duration > 0
+          ? audio.duration
+          : att.durationSeconds ?? 0;
+      setDuration(nextDuration);
+      applyPendingSeek(nextDuration);
+    };
+
+    const onTime = () => {
+      if (fixingDuration) {
+        // ignore the bogus huge currentTime used for the duration fix
+        if (Number.isFinite(audio.duration)) updateDuration();
+        return;
+      }
+      setCurrent(audio.currentTime || 0);
+      updateDuration();
+    };
+    const onPlay = () => {
+      handleAudioPlay(audio);
+      setPlaying(true);
+      stopProgressUpdates();
+      progressFrame = requestAnimationFrame(updateProgress);
+    };
+    const onPause = () => {
+      handleAudioPause(audio);
+      setPlaying(false);
+      stopProgressUpdates();
+    };
     const onEnd = () => {
+      if (fixingDuration) return;
+      handleAudioPause(audio);
+      pendingSeekRef.current = null;
+      setPendingSeekProgress(null);
       setPlaying(false);
       setCurrent(0);
+      stopProgressUpdates();
     };
-    audio.addEventListener("loadedmetadata", onMeta);
+    audio.addEventListener("loadedmetadata", updateDuration);
+    audio.addEventListener("durationchange", updateDuration);
+    audio.addEventListener("progress", updateDuration);
+    audio.addEventListener("canplay", updateDuration);
     audio.addEventListener("timeupdate", onTime);
+    audio.addEventListener("seeked", onTime);
+    audio.addEventListener("play", onPlay);
+    audio.addEventListener("pause", onPause);
     audio.addEventListener("ended", onEnd);
+    audio.src = att.url;
+    audio.load();
     return () => {
+      stopProgressUpdates();
       audio.pause();
-      audio.removeEventListener("loadedmetadata", onMeta);
+      handleAudioPause(audio);
+      audio.removeEventListener("loadedmetadata", updateDuration);
+      audio.removeEventListener("durationchange", updateDuration);
+      audio.removeEventListener("progress", updateDuration);
+      audio.removeEventListener("canplay", updateDuration);
       audio.removeEventListener("timeupdate", onTime);
+      audio.removeEventListener("seeked", onTime);
+      audio.removeEventListener("play", onPlay);
+      audio.removeEventListener("pause", onPause);
       audio.removeEventListener("ended", onEnd);
       audioRef.current = null;
     };
-  }, [att.url]);
+  }, [att.durationSeconds, att.url]);
 
   const toggle = () => {
     const audio = audioRef.current;
     if (!audio) return;
     if (playing) {
       audio.pause();
-      setPlaying(false);
     } else {
-      void audio.play().then(() => setPlaying(true)).catch(() => setPlaying(false));
+      void audio.play().catch(() => setPlaying(false));
     }
   };
 
+  const seek = (progress: number) => {
+    const audio = audioRef.current;
+    if (!audio || !Number.isFinite(progress)) return;
+    const clampedProgress = Math.min(1, Math.max(0, progress));
+    const audioDuration =
+      Number.isFinite(audio.duration) && audio.duration > 0
+        ? audio.duration
+        : duration;
+    if (audioDuration <= 0) {
+      pendingSeekRef.current = clampedProgress;
+      setPendingSeekProgress(clampedProgress);
+      return;
+    }
+    pendingSeekRef.current = null;
+    setPendingSeekProgress(null);
+    const nextTime = clampedProgress * audioDuration;
+    audio.currentTime = nextTime;
+    setCurrent(nextTime);
+  };
+
+  const startPlayback = () => {
+    const audio = audioRef.current;
+    if (!audio || !audio.paused) return;
+    void audio.play().catch(() => setPlaying(false));
+  };
+
+  const cyclePlaybackRate = () => {
+    const rates = [1, 1.5, 2];
+    const nextRate = rates[(rates.indexOf(playbackRate) + 1) % rates.length];
+    setPlaybackRate(nextRate);
+    if (audioRef.current) audioRef.current.playbackRate = nextRate;
+  };
+
+    const progressValue =
+    duration > 0
+      ? Math.min(1, Math.max(0, current / duration))
+      : pendingSeekProgress ?? 0;
+
   return (
     <div
-      className={`w-[min(100%,330px)] min-w-0 rounded-2xl px-2.5 py-0.5 text-[#667085] shadow-[0_1px_2px_rgba(11,20,26,0.08)] dark:text-content-secondary ${
+      className={`w-[250px] max-w-full min-w-0 rounded-2xl  py-0.5 text-[#667085] shadow-[0_1px_2px_rgba(11,20,26,0.08)] dark:text-content-secondary ${
         isOwnMessage
           ? "bg-[#fff3e9] dark:bg-[var(--chat-bubble-own-file)]"
           : "bg-white dark:bg-surface-secondary"
@@ -222,48 +433,64 @@ const VoiceNotePlayer: React.FC<{
           )}
         </button>
         <div className="min-w-0 flex-1">
-          <div className=" h-9 min-w-0 items-center  text-[#9ca3af] dark:text-content-tertiary">
-            <WaveBars active={playing} />
+          <div className="flex h-9 min-w-0 flex-col justify-center text-[#9ca3af] dark:text-content-tertiary">
+            <WaveBars
+              progress={progressValue}
+              current={current}
+              duration={duration}
+              onSeek={seek}
+              onStart={startPlayback}
+            />
             <div className="flex items-center justify-between gap-2 text-[11px] leading-none">
-            <span className="shrink-0 tabular-nums">
-              {formatMediaDuration(playing || current > 0 ? current : duration)}
-            </span>
-            {messageMetadata ? (
-              <span className="flex shrink-0 items-center gap-1">
-                <span className="tabular-nums">
-                  {format(new Date(messageMetadata.createdAt), "h:mm a")}
-                </span>
-                <MessageStatusIndicator
-                  status={messageMetadata.status}
-                  isOwnMessage={isOwnMessage}
-                />
+              <span className="shrink-0 tabular-nums">
+                {formatMediaDuration(playing || current > 0 ? current : duration)}
               </span>
-            ) : null}
-          </div>
-           
-          </div>
-          
-        </div>
-         <span className="relative h-10 w-10 shrink-0 items-center justify-center">
-              {profileImageUrl ? (
-                <img
-                  src={profileImageUrl}
-                  alt=""
-                  className="h-10 w-10 rounded-full object-cover"
-                />
-              ) : (
-                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-black/10">
-                  <UserRound className="h-4 w-4" aria-hidden />
-                </span>
-              )}
-              <span
-                className={`absolute -bottom-0.5 -left-0.5 flex h-[18px] w-[18px] items-center justify-center rounded-full border-2 bg-blue-500 text-white ${
-                  isOwnMessage ? "border-[#fff3e9] dark:border-[#3b2a22]" : "border-white dark:border-surface-secondary"
-                }`}
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  cyclePlaybackRate();
+                }}
+                className="shrink-0 rounded px-1 py-0.5 font-medium text-content-secondary transition hover:bg-black/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 dark:hover:bg-white/10"
+                aria-label={`Playback speed ${playbackRate}x. Change playback speed`}
+                title="Change playback speed"
               >
-                <Mic className="h-[10px] w-[10px]" aria-hidden />
-              </span>
+                {playbackRate}x
+              </button>
+              {messageMetadata ? (
+                <span className="flex shrink-0 items-center gap-1">
+                  <span className="tabular-nums">
+                    {format(new Date(messageMetadata.createdAt), "h:mm a")}
+                  </span>
+                  <MessageStatusIndicator
+                    status={messageMetadata.status}
+                    isOwnMessage={isOwnMessage}
+                  />
+                </span>
+              ) : null}
+            </div>
+          </div>
+        </div>
+        <span className="relative flex h-10 w-10 shrink-0 items-center justify-center">
+          {profileImageUrl ? (
+            <img
+              src={profileImageUrl}
+              alt=""
+              className="h-10 w-10 rounded-full object-cover"
+            />
+          ) : (
+            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-black/10">
+              <UserRound className="h-4 w-4" aria-hidden />
             </span>
+          )}
+          <span
+            className={`absolute -bottom-0.5 -left-0.5 flex h-[18px] w-[18px] items-center justify-center rounded-full border-2 bg-blue-500 text-white ${
+              isOwnMessage ? "border-[#fff3e9] dark:border-[#3b2a22]" : "border-white dark:border-surface-secondary"
+            }`}
+          >
+            <Mic className="h-[10px] w-[10px]" aria-hidden />
+          </span>
+        </span>
       </div>
     </div>
   );
@@ -302,6 +529,32 @@ const VideoThumb: React.FC<{
         </span>
       ) : null}
     </button>
+  );
+};
+
+const AudioAttachmentPlayer: React.FC<{ url: string }> = ({ url }) => {
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    return () => {
+      audio.pause();
+      handleAudioPause(audio);
+    };
+  }, [url]);
+
+  return (
+    <audio
+      ref={audioRef}
+      src={url}
+      controls
+      preload="metadata"
+      className="mt-1 h-8 w-full max-w-full"
+      onPlay={(event) => handleAudioPlay(event.currentTarget)}
+      onPause={(event) => handleAudioPause(event.currentTarget)}
+      onEnded={(event) => handleAudioPause(event.currentTarget)}
+    />
   );
 };
 
@@ -523,12 +776,7 @@ const MessageAttachments: React.FC<MessageAttachmentsProps> = ({
               <div className="min-w-0 flex-1 overflow-hidden">
                 <p className="truncate text-xs font-medium text-content">{att.name}</p>
                 {att.url ? (
-                  <audio
-                    src={att.url}
-                    controls
-                    preload="metadata"
-                    className="mt-1 h-8 w-full max-w-full"
-                  />
+                  <AudioAttachmentPlayer url={att.url} />
                 ) : (
                   <p className="mt-1 text-[11px] text-content-tertiary">Loading audio…</p>
                 )}

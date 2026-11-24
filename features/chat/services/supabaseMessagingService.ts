@@ -39,6 +39,7 @@ export interface ChatAttachment {
   type: 'image' | 'video' | 'file'
   size: number
   mimeType: string
+  durationSeconds?: number
   previewUrl?: string
   /** Present only in memory, and only until the message is sealed. Never send this to the server. */
   sealed?: {
@@ -929,6 +930,12 @@ const mapApiMessageToChatMessage = (message: any): ChatMessage => {
   const senderProfile = typeof sender === 'object' ? sender : null
   const attachmentsRaw = message.attachments ?? []
   const viewOnce = Boolean(message.view_once) || Boolean(message.metadata?.view_once)
+  const voiceDurationSeconds =
+    typeof message.metadata?.voiceDurationSeconds === 'number' &&
+    Number.isFinite(message.metadata.voiceDurationSeconds) &&
+    message.metadata.voiceDurationSeconds > 0
+      ? message.metadata.voiceDurationSeconds
+      : undefined
   const attachments: ChatAttachment[] = Array.isArray(attachmentsRaw)
     ? attachmentsRaw.map((att: any) => ({
         id: att.id,
@@ -938,6 +945,7 @@ const mapApiMessageToChatMessage = (message: any): ChatMessage => {
               (att.file_type ?? att.mimeType ?? '').startsWith('video/') ? 'video' as const : 'file' as const,
         size: att.file_size ?? att.size ?? 0,
         mimeType: att.file_type ?? att.mimeType ?? '',
+        durationSeconds: voiceDurationSeconds,
       }))
     : []
 
