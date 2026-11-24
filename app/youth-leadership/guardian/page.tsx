@@ -37,7 +37,7 @@ export default function YouthGuardianPage() {
     <Suspense
       fallback={
         <YouthShell title="Guardian Approvals" subtitle="Loading…">
-          <YouthSkeleton count={3} variant="row" />
+          <YouthSkeleton count={3} variant="action" />
         </YouthShell>
       }
     >

@@ -127,7 +127,7 @@ export default function YouthProgramDetailPage() {
   if (authLoading || loading) {
     return (
       <YouthShell title="Program">
-        <YouthSkeleton count={2} variant="row" />
+        <YouthSkeleton variant="detail" />
         {dialog}
       </YouthShell>
     )

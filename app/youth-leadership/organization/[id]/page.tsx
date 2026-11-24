@@ -329,7 +329,7 @@ function OrganizationDetailInner() {
   if (authLoading || loading) {
     return (
       <YouthShell title="Organization" subtitle="Loading…">
-        <YouthSkeleton count={3} variant="stat" />
+        <YouthSkeleton variant="detail" />
       </YouthShell>
     )
   }
@@ -850,7 +850,7 @@ export default function YouthOrganizationDetailPage() {
     <Suspense
       fallback={
         <YouthShell title="Organization" subtitle="Loading…">
-          <YouthSkeleton count={3} variant="stat" />
+          <YouthSkeleton variant="detail" />
         </YouthShell>
       }
     >

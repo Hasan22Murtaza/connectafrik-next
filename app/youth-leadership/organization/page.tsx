@@ -173,7 +173,7 @@ export default function YouthOrganizationListPage() {
         title="Organization"
         subtitle="Create an organization, publish programs, and review applications."
       >
-        <YouthSkeleton count={4} variant="row" />
+        <YouthSkeleton count={4} variant="table" />
       </YouthShell>
     )
   }

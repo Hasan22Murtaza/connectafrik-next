@@ -29,7 +29,7 @@ export function YouthLeadershipSidebar() {
 
   return (
     <aside className="h-full w-full shrink-0 border-r border-border px-2 py-4 md:w-48">
-      <h2 className="mb-4 px-1 text-xl font-semibold leading-tight text-content">
+      <h2 className="mb-4 px-1 font-semibold leading-tight text-content">
         Youth Leadership
       </h2>
 

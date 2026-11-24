@@ -37,7 +37,7 @@ export default function YouthMentorshipPage() {
     <Suspense
       fallback={
         <YouthShell title="Mentorship" subtitle="Loading…">
-          <YouthSkeleton count={4} />
+          <YouthSkeleton count={4} variant="mentor" />
         </YouthShell>
       }
     >

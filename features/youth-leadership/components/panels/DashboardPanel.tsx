@@ -56,8 +56,6 @@ function BoardColumn({
   count,
   icon: Icon,
   iconClass,
-  href,
-  hrefLabel,
   empty,
   children,
 }: {
@@ -65,8 +63,6 @@ function BoardColumn({
   count: number
   icon: LucideIcon
   iconClass: string
-  href?: string
-  hrefLabel?: string
   empty: string
   children: React.ReactNode
 }) {
@@ -81,14 +77,6 @@ function BoardColumn({
           {title}{' '}
           <span className="font-medium text-content-tertiary">({count})</span>
         </h3>
-        {href ? (
-          <Link
-            href={href}
-            className="shrink-0 text-xs font-medium text-primary hover:underline"
-          >
-            {hrefLabel || 'View'}
-          </Link>
-        ) : null}
       </header>
       <ul className="flex min-h-[8rem] flex-1 flex-col gap-2 overflow-y-auto px-2.5 pb-3">
         {count === 0 ? (
@@ -329,8 +317,6 @@ export default function DashboardPanel() {
               count={summary.upcoming.tasks.length}
               icon={Clock}
               iconClass="text-amber-500"
-              href="/youth-leadership/community?tab=projects"
-              hrefLabel="Projects"
               empty="No open project tasks"
             >
               {summary.upcoming.tasks.map((t) => (
@@ -352,8 +338,6 @@ export default function DashboardPanel() {
               count={summary.upcoming.application_deadlines.length}
               icon={Target}
               iconClass="text-orange-500"
-              href="/youth-leadership?tab=applications"
-              hrefLabel="Applications"
               empty="No deadlines in the next 30 days"
             >
               {summary.upcoming.application_deadlines.map((p) => (
@@ -375,8 +359,6 @@ export default function DashboardPanel() {
               count={summary.upcoming.events.length}
               icon={Calendar}
               iconClass="text-sky-500"
-              href="/youth-leadership/community?tab=events"
-              hrefLabel="Events"
               empty="No registered events soon"
             >
               {summary.upcoming.events.map((e) => (
@@ -398,8 +380,6 @@ export default function DashboardPanel() {
               count={summary.upcoming.mentorship_sessions.length}
               icon={Users}
               iconClass="text-emerald-500"
-              href="/youth-leadership/mentorship?tab=matches"
-              hrefLabel="Matches"
               empty="No active mentorship sessions"
             >
               {summary.upcoming.mentorship_sessions.map((m) => (

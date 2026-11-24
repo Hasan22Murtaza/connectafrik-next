@@ -81,7 +81,7 @@ export default function MentorshipMatchesPanel() {
     }
   }
 
-  if (authLoading || loading) return <YouthSkeleton count={3} variant="row" />
+  if (authLoading || loading) return <YouthSkeleton count={3} variant="action" />
   if (!user) return <EmptyState title="Sign in required" />
 
   const participantCount = matches?.as_participant.length ?? 0

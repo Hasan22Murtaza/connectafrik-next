@@ -139,7 +139,7 @@ export default function MentorsPanel() {
     setShowMentorForm(false)
   }
 
-  if (authLoading) return <YouthSkeleton count={4} />
+  if (authLoading) return <YouthSkeleton count={4} variant="mentor" />
   if (!user) return <EmptyState title="Sign in required" />
 
   return (
@@ -189,7 +189,7 @@ export default function MentorsPanel() {
       </form>
 
       {loading ? (
-        <YouthSkeleton count={4} />
+        <YouthSkeleton count={4} variant="mentor" />
       ) : mentors.length === 0 ? (
         <EmptyState
           title="No mentors yet"

@@ -1,12 +1,9 @@
 'use client'
 
 import Link from 'next/link'
-import { Clock } from '@/shared/icons'
+import { Clock, MapPin } from '@/shared/icons'
 import type { YouthProgram } from '@/shared/types/youthLeadership'
 import { YOUTH_CARD_INTERACTIVE, YOUTH_CHIP } from '@/features/youth-leadership/constants/nav'
-import StatusBadge from './StatusBadge'
-import VerifiedBadge from './VerifiedBadge'
-import YouthAvatar from './YouthAvatar'
 
 function daysUntil(deadline: string | null | undefined) {
   if (!deadline) return null
@@ -26,8 +23,7 @@ export default function ProgramCard({ program }: { program: YouthProgram }) {
       ? Math.min(100, Math.round((taken / capacity) * 100))
       : null
   const days = daysUntil(program.application_deadline)
-  const verified = program.organization?.verification_status === 'verified'
-  const orgName = program.organization?.name || 'Organization'
+  const orgName = program.organization?.name
   const location = [program.location_region, program.country].filter(Boolean).join(', ')
 
   return (
@@ -35,28 +31,18 @@ export default function ProgramCard({ program }: { program: YouthProgram }) {
       href={`/youth-leadership/programs/${program.id}`}
       className={`${YOUTH_CARD_INTERACTIVE} group flex h-full flex-col`}
     >
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex min-w-0 items-start gap-3">
-          <YouthAvatar src={program.organization?.logo_url} name={orgName} />
-          <div className="min-w-0">
-            <div className="flex min-w-0 items-center gap-1.5">
-              <p className="truncate text-sm font-medium text-content">{orgName}</p>
-              {verified ? <VerifiedBadge compact label="Verified organization" /> : null}
-            </div>
-            {location ? (
-              <p className="mt-0.5 truncate text-xs text-content-tertiary">{location}</p>
-            ) : null}
-          </div>
-        </div>
-        <StatusBadge status={program.status} />
-      </div>
-
-      <h3 className="mt-4 text-[0.98rem] font-semibold leading-snug tracking-tight text-content transition group-hover:text-primary">
+      <h3 className="text-[0.98rem] font-semibold leading-snug tracking-tight text-content transition group-hover:text-primary">
         {program.title}
       </h3>
 
+      {orgName ? (
+        <p className="mt-1.5 truncate text-xs text-content-tertiary">
+          by {orgName}
+        </p>
+      ) : null}
+
       {program.description ? (
-        <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-content-secondary">
+        <p className="mt-3 line-clamp-2 text-sm leading-relaxed text-content-secondary">
           {program.description}
         </p>
       ) : null}
@@ -73,6 +59,12 @@ export default function ProgramCard({ program }: { program: YouthProgram }) {
         {program.minimum_age != null || program.maximum_age != null ? (
           <span className={YOUTH_CHIP}>
             {program.minimum_age ?? '—'}–{program.maximum_age ?? '—'} yrs
+          </span>
+        ) : null}
+        {location ? (
+          <span className={`${YOUTH_CHIP} inline-flex max-w-full items-center gap-1`}>
+            <MapPin className="h-3 w-3 shrink-0" aria-hidden />
+            <span className="truncate">{location}</span>
           </span>
         ) : null}
         {program.requires_guardian_approval ? (

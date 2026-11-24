@@ -367,7 +367,7 @@ export default function YouthProjectDetailPage() {
   if (authLoading || loading) {
     return (
       <YouthShell title="Project">
-        <YouthSkeleton count={3} variant="row" />
+        <YouthSkeleton variant="detail" />
       </YouthShell>
     )
   }

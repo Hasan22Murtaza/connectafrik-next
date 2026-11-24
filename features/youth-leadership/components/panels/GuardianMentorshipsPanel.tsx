@@ -56,7 +56,7 @@ export default function GuardianMentorshipsPanel() {
     }
   }
 
-  if (authLoading || loading) return <YouthSkeleton count={3} variant="row" />
+  if (authLoading || loading) return <YouthSkeleton count={3} variant="action" />
   if (!user) return <EmptyState title="Sign in required" />
 
   return (
