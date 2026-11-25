@@ -9,7 +9,7 @@ export default function GlobalHubOpportunityDetailPage() {
   const id = String(params?.id || '')
 
   return (
-    <GschPageShell title="Opportunity">
+    <GschPageShell>
       {id ? <OpportunityDetailPanel id={id} /> : null}
     </GschPageShell>
   )

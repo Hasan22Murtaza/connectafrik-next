@@ -2,6 +2,7 @@ import {
   Award,
   Film,
   Flag,
+  Globe,
   LayoutDashboard,
   MessageSquare,
   Phone,
@@ -29,6 +30,7 @@ export const ADMIN_NAV_LINKS: AdminNavLink[] = [
   { href: "/admin/reels", label: "Reels", icon: Film },
   { href: "/admin/feedback", label: "Feedback", icon: MessageSquare },
   { href: "/admin/youth-leadership", label: "Youth Leadership", icon: Award },
+  { href: "/admin/global-hub", label: "Global Hub", icon: Globe },
   { href: "/admin/settings", label: "Settings", icon: Settings },
 ];
 

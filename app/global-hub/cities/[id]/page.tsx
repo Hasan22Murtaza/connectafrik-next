@@ -9,10 +9,7 @@ export default function GlobalHubCityDetailPage() {
   const id = String(params?.id || '')
 
   return (
-    <GschPageShell
-      title="City profile"
-      subtitle="Explore collaboration details and save cities you care about."
-    >
+    <GschPageShell>
       {id ? <CityDetailPanel cityId={id} /> : null}
     </GschPageShell>
   )

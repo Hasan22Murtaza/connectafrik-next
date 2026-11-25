@@ -1,13 +1,27 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
 import { apiClient, ApiError } from '@/lib/api-client'
 import { useAuth } from '@/contexts/AuthContext'
 import EmptyState from '@/features/gsch/components/EmptyState'
-import MatchCard from '@/features/gsch/components/MatchCard'
+import GschFilterDrawer from '@/features/gsch/components/GschFilterDrawer'
+import GschFiltersButton, {
+  countActiveFilters,
+} from '@/features/gsch/components/GschFiltersButton'
+import {
+  GschDataTable,
+  GschRowActions,
+  GschTableBody,
+  GschTableCell,
+  GschTableHead,
+  GschTableHeadCell,
+  GschTableRow,
+} from '@/features/gsch/components/GschDataTable'
 import {
   GSCH_CARD,
+  GSCH_LABEL,
   GSCH_MUTED,
   GSCH_SECTION_TITLE,
   GSCH_SELECT,
@@ -25,13 +39,19 @@ export default function MatchingPanel({
 }: {
   initialCityId?: string
 }) {
+  const router = useRouter()
   const { user, loading: authLoading } = useAuth()
   const [cities, setCities] = useState<GschCity[]>([])
-  const [cityId, setCityId] = useState(initialCityId || '')
+  const [filtersOpen, setFiltersOpen] = useState(false)
+  const [filters, setFilters] = useState({ city_id: initialCityId || '' })
+  const [applied, setApplied] = useState(filters)
   const [matches, setMatches] = useState<GschMatchRecommendation[]>([])
   const [canRecompute, setCanRecompute] = useState(false)
   const [loading, setLoading] = useState(true)
   const [recomputing, setRecomputing] = useState(false)
+
+  const activeFilterCount = countActiveFilters(applied)
+  const cityId = applied.city_id
 
   const loadCities = useCallback(async () => {
     try {
@@ -45,7 +65,13 @@ export default function MatchingPanel({
       }
       const list = Array.from(byId.values())
       setCities(list)
-      setCityId((current) => current || list[0]?.id || '')
+      setApplied((current) => {
+        if (current.city_id) return current
+        const next = list[0]?.id || ''
+        if (!next) return current
+        setFilters((f) => ({ ...f, city_id: f.city_id || next }))
+        return { city_id: next }
+      })
     } catch {
       setCities([])
     }
@@ -58,7 +84,11 @@ export default function MatchingPanel({
       const data = await apiClient.get<MatchResponse>(`/api/gsch/matching${qs}`)
       setMatches(data.data || [])
       if (data.city_id) {
-        setCityId((current) => current || data.city_id || '')
+        setApplied((current) => {
+          if (current.city_id) return current
+          setFilters((f) => ({ ...f, city_id: f.city_id || data.city_id || '' }))
+          return { city_id: data.city_id || '' }
+        })
       }
       setCanRecompute(Boolean(data.can_recompute))
     } catch (err) {
@@ -100,13 +130,21 @@ export default function MatchingPanel({
     }
   }
 
+  function applyFilters() {
+    setApplied(filters)
+    setFiltersOpen(false)
+  }
+
+  function resetFilters() {
+    const empty = { city_id: '' }
+    setFilters(empty)
+    setApplied(empty)
+    setFiltersOpen(false)
+  }
+
   if (authLoading || (loading && matches.length === 0 && !cityId)) {
     return (
-      <div className="grid gap-4 sm:grid-cols-2">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className={`${GSCH_CARD} h-40 animate-pulse`} />
-        ))}
-      </div>
+      <div className={`${GSCH_CARD} h-40 animate-pulse`} />
     )
   }
 
@@ -120,7 +158,9 @@ export default function MatchingPanel({
         <h2 className={GSCH_SECTION_TITLE}>Transparent partner matching</h2>
         <p className={`${GSCH_MUTED} mt-2`}>
           Scores use only real profile overlap (weighted_v1). Empty fields contribute
-          zero — nothing is invented.
+          zero — nothing is invented. Advanced AI matching is future work; opportunity
+          affinity is a light secondary insight when city interests share tags with
+          published opportunities.
         </p>
         <div className="mt-3 flex flex-wrap gap-1.5 text-[11px] text-content-tertiary">
           {Object.entries(GSCH_MATCH_WEIGHTS_UI).map(([key, weight]) => (
@@ -132,42 +172,65 @@ export default function MatchingPanel({
             </span>
           ))}
         </div>
-
-        <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end">
-          <label className="block min-w-0 flex-1 text-sm">
-            <span className="mb-1.5 block text-content-secondary">Source city</span>
-            <select
-              className={`${GSCH_SELECT} w-full`}
-              value={cityId}
-              onChange={(e) => setCityId(e.target.value)}
-            >
-              <option value="">Select a published city…</option>
-              {cities.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name} · {c.country}
-                </option>
-              ))}
-            </select>
-          </label>
-          {canRecompute ? (
-            <button
-              type="button"
-              className="btn-primary text-sm"
-              disabled={!cityId || recomputing}
-              onClick={recompute}
-            >
-              {recomputing ? 'Computing…' : 'Recompute matches'}
-            </button>
-          ) : null}
-        </div>
       </section>
 
-      {loading ? (
-        <div className="grid gap-4 sm:grid-cols-2">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className={`${GSCH_CARD} h-40 animate-pulse`} />
-          ))}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        {canRecompute ? (
+          <button
+            type="button"
+            className="btn-primary text-sm"
+            disabled={!cityId || recomputing}
+            onClick={recompute}
+          >
+            {recomputing ? 'Computing…' : 'Recompute matches'}
+          </button>
+        ) : (
+          <span />
+        )}
+        <GschFiltersButton
+          activeCount={activeFilterCount}
+          onClick={() => setFiltersOpen(true)}
+        />
+      </div>
+
+      <GschFilterDrawer
+        open={filtersOpen}
+        title="Filter matches"
+        description="Choose the source city for partner recommendations."
+        onClose={() => setFiltersOpen(false)}
+        footer={
+          <>
+            <button type="button" className="btn-secondary text-sm" onClick={resetFilters}>
+              Reset
+            </button>
+            <button type="button" className="btn-primary text-sm" onClick={applyFilters}>
+              Apply filters
+            </button>
+          </>
+        }
+      >
+        <div>
+          <label className={GSCH_LABEL} htmlFor="gsch-match-city">
+            Source city
+          </label>
+          <select
+            id="gsch-match-city"
+            className={`${GSCH_SELECT} w-full`}
+            value={filters.city_id}
+            onChange={(e) => setFilters((f) => ({ ...f, city_id: e.target.value }))}
+          >
+            <option value="">Select a published city…</option>
+            {cities.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name} · {c.country}
+              </option>
+            ))}
+          </select>
         </div>
+      </GschFilterDrawer>
+
+      {loading ? (
+        <div className={`${GSCH_CARD} h-40 animate-pulse`} />
       ) : matches.length === 0 ? (
         <EmptyState
           title="No cached recommendations yet"
@@ -178,15 +241,72 @@ export default function MatchingPanel({
           }
         />
       ) : (
-        <div className="grid gap-4 lg:grid-cols-2">
-          {matches.map((match) => (
-            <MatchCard
-              key={match.id}
-              match={match}
-              connectHref={`/global-hub/partnerships?target_city=${match.recommended_city_id}`}
-            />
-          ))}
-        </div>
+        <GschDataTable>
+          <GschTableHead>
+            <GschTableHeadCell>Recommended city</GschTableHeadCell>
+            <GschTableHeadCell>Country</GschTableHeadCell>
+            <GschTableHeadCell>Score</GschTableHeadCell>
+            <GschTableHeadCell>Reasons</GschTableHeadCell>
+            <GschTableHeadCell align="right">Actions</GschTableHeadCell>
+          </GschTableHead>
+          <GschTableBody>
+            {matches.map((match) => {
+              const city = match.recommended_city
+              const score = Number(match.compatibility_score)
+              const reasons =
+                match.explanation ||
+                (match.shared_interests?.length
+                  ? match.shared_interests.slice(0, 4).join(', ')
+                  : '—')
+              return (
+                <GschTableRow
+                  key={match.id}
+                  onClick={
+                    city
+                      ? () => router.push(`/global-hub/cities/${city.id}`)
+                      : undefined
+                  }
+                >
+                  <GschTableCell className="min-w-[140px]">
+                    <p className="font-semibold text-content">
+                      {city?.name || 'Recommended city'}
+                    </p>
+                  </GschTableCell>
+                  <GschTableCell>
+                    {[city?.country, city?.continent].filter(Boolean).join(' · ') ||
+                      '—'}
+                  </GschTableCell>
+                  <GschTableCell>
+                    <span className="tabular-nums font-semibold text-primary">
+                      {Number.isFinite(score) ? score.toFixed(1) : '—'}
+                    </span>
+                  </GschTableCell>
+                  <GschTableCell className="max-w-[280px]">
+                    <p className="line-clamp-2 text-sm text-content-secondary">
+                      {reasons}
+                    </p>
+                  </GschTableCell>
+                  <GschTableCell align="right">
+                    <GschRowActions
+                      onView={
+                        city
+                          ? () => router.push(`/global-hub/cities/${city.id}`)
+                          : undefined
+                      }
+                      viewLabel="View city"
+                      onEdit={() =>
+                        router.push(
+                          `/global-hub/partnerships?target_city=${match.recommended_city_id}`
+                        )
+                      }
+                      editLabel="Connect"
+                    />
+                  </GschTableCell>
+                </GschTableRow>
+              )
+            })}
+          </GschTableBody>
+        </GschDataTable>
       )}
     </div>
   )

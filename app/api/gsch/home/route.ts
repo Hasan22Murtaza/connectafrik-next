@@ -14,6 +14,17 @@ export async function GET(request: NextRequest) {
       verifiedRes,
       followsRes,
       opportunitiesRes,
+      projectsRes,
+      businessRes,
+      educationRes,
+      tourismRes,
+      innovationRes,
+      climateRes,
+      eventsRes,
+      analyticsOrgs,
+      analyticsVerifiedOrgs,
+      analyticsPartnerships,
+      analyticsEvents,
     ] = await Promise.all([
       supabase
         .from('gsch_cities')
@@ -64,6 +75,129 @@ export async function GET(request: NextRequest) {
         .eq('is_published', true)
         .order('created_at', { ascending: false })
         .limit(6),
+      supabase
+        .from('gsch_projects')
+        .select(
+          `
+          id, organization_id, city_id, title, description, category,
+          location_label, country, continent, estimated_value_amount,
+          estimated_value_currency, funding_required_amount,
+          funding_required_currency, project_stage, verification_status,
+          is_published, created_at,
+          organization:gsch_organizations!organization_id(
+            id, name, country, logo_url, verification_status
+          )
+        `
+        )
+        .eq('is_published', true)
+        .order('created_at', { ascending: false })
+        .limit(6),
+      supabase
+        .from('gsch_business_profiles')
+        .select(
+          `
+          id, organization_id, display_name, tagline, description, logo_url,
+          country, city, industry_sectors, seeking, offering, is_published,
+          created_at,
+          organization:gsch_organizations!organization_id(
+            id, name, country, logo_url, verification_status, org_type
+          )
+        `
+        )
+        .eq('is_published', true)
+        .order('created_at', { ascending: false })
+        .limit(6),
+      supabase
+        .from('gsch_education_programs')
+        .select(
+          `
+          id, organization_id, city_id, title, summary, program_type,
+          institution_name, country, continent, location_label,
+          application_deadline, is_published, created_at, tags,
+          organization:gsch_organizations!organization_id(
+            id, name, country, logo_url, verification_status
+          )
+        `
+        )
+        .eq('is_published', true)
+        .order('created_at', { ascending: false })
+        .limit(6),
+      supabase
+        .from('gsch_tourism_initiatives')
+        .select(
+          `
+          id, organization_id, city_id, title, summary, tourism_type,
+          country, continent, location_label, season_label, is_published,
+          created_at, tags,
+          organization:gsch_organizations!organization_id(
+            id, name, country, logo_url, verification_status
+          )
+        `
+        )
+        .eq('is_published', true)
+        .order('created_at', { ascending: false })
+        .limit(6),
+      supabase
+        .from('gsch_innovation_challenges')
+        .select(
+          `
+          id, organization_id, city_id, title, summary, focus_area,
+          country, continent, location_label, submission_deadline, status,
+          is_published, created_at, tags,
+          organization:gsch_organizations!organization_id(
+            id, name, country, logo_url, verification_status
+          )
+        `
+        )
+        .eq('is_published', true)
+        .order('created_at', { ascending: false })
+        .limit(6),
+      supabase
+        .from('gsch_climate_projects')
+        .select(
+          `
+          id, organization_id, city_id, title, summary, climate_type,
+          country, continent, location_label, seeking_partners,
+          estimated_impact, is_published, created_at, tags,
+          organization:gsch_organizations!organization_id(
+            id, name, country, logo_url, verification_status
+          )
+        `
+        )
+        .eq('is_published', true)
+        .order('created_at', { ascending: false })
+        .limit(6),
+      supabase
+        .from('gsch_events')
+        .select(
+          `
+          id, organization_id, city_id, title, summary, event_type,
+          country, continent, location_label, starts_at, ends_at,
+          is_published, created_at, tags,
+          organization:gsch_organizations!organization_id(
+            id, name, country, logo_url, verification_status
+          )
+        `
+        )
+        .eq('is_published', true)
+        .gte('starts_at', new Date().toISOString())
+        .order('starts_at', { ascending: true, nullsFirst: false })
+        .limit(6),
+      supabase
+        .from('gsch_organizations')
+        .select('id', { count: 'exact', head: true }),
+      supabase
+        .from('gsch_organizations')
+        .select('id', { count: 'exact', head: true })
+        .eq('verification_status', 'verified'),
+      supabase
+        .from('gsch_partnerships')
+        .select('id', { count: 'exact', head: true })
+        .eq('status', 'active'),
+      supabase
+        .from('gsch_events')
+        .select('id', { count: 'exact', head: true })
+        .eq('is_published', true),
     ])
 
     if (featuredRes.error) return errorResponse(featuredRes.error.message, 400)
@@ -73,6 +207,13 @@ export async function GET(request: NextRequest) {
     if (opportunitiesRes.error) {
       return errorResponse(opportunitiesRes.error.message, 400)
     }
+    if (projectsRes.error) return errorResponse(projectsRes.error.message, 400)
+    if (businessRes.error) return errorResponse(businessRes.error.message, 400)
+    if (educationRes.error) return errorResponse(educationRes.error.message, 400)
+    if (tourismRes.error) return errorResponse(tourismRes.error.message, 400)
+    if (innovationRes.error) return errorResponse(innovationRes.error.message, 400)
+    if (climateRes.error) return errorResponse(climateRes.error.message, 400)
+    if (eventsRes.error) return errorResponse(eventsRes.error.message, 400)
 
     const memberships = membershipsRes.data || []
     const orgIds = memberships.map((m) => m.organization_id)
@@ -212,6 +353,26 @@ export async function GET(request: NextRequest) {
       pending_partnership_requests: pendingInbound,
       trending_opportunities: (opportunitiesRes.data ||
         []) as unknown as GschHomeSummary['trending_opportunities'],
+      featured_projects: (projectsRes.data ||
+        []) as unknown as GschHomeSummary['featured_projects'],
+      recent_business_profiles: (businessRes.data ||
+        []) as unknown as GschHomeSummary['recent_business_profiles'],
+      education_highlights: (educationRes.data ||
+        []) as unknown as GschHomeSummary['education_highlights'],
+      tourism_highlights: (tourismRes.data ||
+        []) as unknown as GschHomeSummary['tourism_highlights'],
+      innovation_highlights: (innovationRes.data ||
+        []) as unknown as GschHomeSummary['innovation_highlights'],
+      climate_highlights: (climateRes.data ||
+        []) as unknown as GschHomeSummary['climate_highlights'],
+      upcoming_events: (eventsRes.data ||
+        []) as unknown as GschHomeSummary['upcoming_events'],
+      analytics_snapshot: {
+        total_organizations: analyticsOrgs.count || 0,
+        verified_organizations: analyticsVerifiedOrgs.count || 0,
+        active_partnerships: analyticsPartnerships.count || 0,
+        events: analyticsEvents.count || 0,
+      },
     }
 
     return jsonResponse(summary)

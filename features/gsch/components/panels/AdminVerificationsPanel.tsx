@@ -5,8 +5,25 @@ import toast from 'react-hot-toast'
 import { apiClient, ApiError } from '@/lib/api-client'
 import { useAuth } from '@/contexts/AuthContext'
 import EmptyState from '@/features/gsch/components/EmptyState'
+import GschFilterDrawer from '@/features/gsch/components/GschFilterDrawer'
+import GschFiltersButton, {
+  countActiveFilters,
+} from '@/features/gsch/components/GschFiltersButton'
+import {
+  GschDataTable,
+  GschTableBody,
+  GschTableCell,
+  GschTableHead,
+  GschTableHeadCell,
+  GschTableRow,
+} from '@/features/gsch/components/GschDataTable'
 import StatusBadge from '@/features/gsch/components/StatusBadge'
-import { GSCH_CARD, GSCH_FIELD, GSCH_SELECT } from '@/features/gsch/constants/styles'
+import {
+  GSCH_CARD,
+  GSCH_FIELD,
+  GSCH_LABEL,
+  GSCH_SELECT,
+} from '@/features/gsch/constants/styles'
 import {
   GSCH_VERIFICATION_BADGES,
   type GschPaginated,
@@ -20,10 +37,14 @@ export default function AdminVerificationsPanel() {
   const [items, setItems] = useState<GschVerification[]>([])
   const [loading, setLoading] = useState(true)
   const [forbidden, setForbidden] = useState(false)
-  const [statusFilter, setStatusFilter] = useState('')
+  const [filtersOpen, setFiltersOpen] = useState(false)
+  const [filters, setFilters] = useState({ status: '' })
+  const [applied, setApplied] = useState(filters)
   const [busyId, setBusyId] = useState<string | null>(null)
   const [badgeById, setBadgeById] = useState<Record<string, GschVerificationBadge>>({})
   const [notesById, setNotesById] = useState<Record<string, string>>({})
+
+  const activeFilterCount = countActiveFilters(applied)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -31,7 +52,7 @@ export default function AdminVerificationsPanel() {
     try {
       const payload = await apiClient.get<GschPaginated<GschVerification>>(
         '/api/gsch/admin/verifications',
-        { status: statusFilter || undefined, limit: 50 }
+        { status: applied.status || undefined, limit: 50 }
       )
       setItems(payload?.data || [])
     } catch (err) {
@@ -44,17 +65,14 @@ export default function AdminVerificationsPanel() {
     } finally {
       setLoading(false)
     }
-  }, [statusFilter])
+  }, [applied])
 
   useEffect(() => {
     if (authLoading || !user) return
     load()
   }, [authLoading, user?.id, load])
 
-  async function review(
-    id: string,
-    status: GschVerificationStatus
-  ) {
+  async function review(id: string, status: GschVerificationStatus) {
     if (status === 'verified' && !badgeById[id]) {
       toast.error('Select a verification badge before approving')
       return
@@ -78,7 +96,19 @@ export default function AdminVerificationsPanel() {
     }
   }
 
-  if (authLoading || loading) {
+  function applyFilters() {
+    setApplied(filters)
+    setFiltersOpen(false)
+  }
+
+  function resetFilters() {
+    const empty = { status: '' }
+    setFilters(empty)
+    setApplied(empty)
+    setFiltersOpen(false)
+  }
+
+  if (authLoading) {
     return <div className={`${GSCH_CARD} h-40 animate-pulse`} />
   }
 
@@ -95,45 +125,84 @@ export default function AdminVerificationsPanel() {
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-wrap items-center gap-3">
-        <label htmlFor="gsch-admin-status" className="text-sm font-medium text-content">
-          Status
-        </label>
-        <select
-          id="gsch-admin-status"
-          className={GSCH_SELECT}
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-        >
-          <option value="">Queue (pending)</option>
-          <option value="submitted">Submitted</option>
-          <option value="under_review">Under review</option>
-          <option value="additional_info_required">Additional info</option>
-          <option value="verified">Verified</option>
-          <option value="rejected">Rejected</option>
-        </select>
+      <div className="flex flex-wrap items-center justify-end gap-3">
+        <GschFiltersButton
+          activeCount={activeFilterCount}
+          onClick={() => setFiltersOpen(true)}
+        />
       </div>
 
-      {items.length === 0 ? (
+      <GschFilterDrawer
+        open={filtersOpen}
+        title="Filter verifications"
+        description="Narrow the admin verification queue by status."
+        onClose={() => setFiltersOpen(false)}
+        footer={
+          <>
+            <button type="button" className="btn-secondary text-sm" onClick={resetFilters}>
+              Reset
+            </button>
+            <button type="button" className="btn-primary text-sm" onClick={applyFilters}>
+              Apply filters
+            </button>
+          </>
+        }
+      >
+        <div>
+          <label className={GSCH_LABEL} htmlFor="gsch-admin-status">
+            Status
+          </label>
+          <select
+            id="gsch-admin-status"
+            className={`${GSCH_SELECT} w-full`}
+            value={filters.status}
+            onChange={(e) => setFilters((f) => ({ ...f, status: e.target.value }))}
+          >
+            <option value="">Queue (pending)</option>
+            <option value="submitted">Submitted</option>
+            <option value="under_review">Under review</option>
+            <option value="additional_info_required">Additional info</option>
+            <option value="verified">Verified</option>
+            <option value="rejected">Rejected</option>
+          </select>
+        </div>
+      </GschFilterDrawer>
+
+      {loading ? (
+        <div className={`${GSCH_CARD} h-40 animate-pulse`} />
+      ) : items.length === 0 ? (
         <EmptyState title="No verification requests in this queue" />
       ) : (
-        <ul className="space-y-3">
-          {items.map((item) => (
-            <li key={item.id} className={`${GSCH_CARD} space-y-3`}>
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
+        <GschDataTable>
+          <GschTableHead>
+            <GschTableHeadCell>Organization</GschTableHeadCell>
+            <GschTableHeadCell>Details</GschTableHeadCell>
+            <GschTableHeadCell>Status</GschTableHeadCell>
+            <GschTableHeadCell>Review</GschTableHeadCell>
+            <GschTableHeadCell align="right">Actions</GschTableHeadCell>
+          </GschTableHead>
+          <GschTableBody>
+            {items.map((item) => (
+              <GschTableRow key={item.id}>
+                <GschTableCell className="min-w-[160px]">
                   <p className="font-semibold text-content">
                     {item.organization?.name || 'Organization'}
                   </p>
                   <p className="mt-0.5 text-xs capitalize text-content-tertiary">
-                    {(item.organization?.org_type || '').replace(/_/g, ' ')} ·{' '}
-                    {item.organization?.country}
+                    {(item.organization?.org_type || '').replace(/_/g, ' ')}
+                    {item.organization?.country
+                      ? ` · ${item.organization.country}`
+                      : ''}
                   </p>
+                </GschTableCell>
+                <GschTableCell className="max-w-[260px]">
                   {item.notes ? (
-                    <p className="mt-2 text-sm text-content-secondary">{item.notes}</p>
+                    <p className="mb-1 line-clamp-2 text-sm text-content-secondary">
+                      {item.notes}
+                    </p>
                   ) : null}
                   {(item.document_urls || []).length > 0 ? (
-                    <ul className="mt-2 space-y-1 text-sm">
+                    <ul className="space-y-1 text-xs">
                       {item.document_urls.map((url) => (
                         <li key={url}>
                           <a
@@ -142,98 +211,91 @@ export default function AdminVerificationsPanel() {
                             rel="noopener noreferrer"
                             className="text-primary hover:underline"
                           >
-                            {url}
+                            Document
                           </a>
                         </li>
                       ))}
                     </ul>
-                  ) : null}
-                </div>
-                <StatusBadge status={item.status} />
-              </div>
-
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div>
-                  <label
-                    htmlFor={`badge-${item.id}`}
-                    className="mb-1 block text-sm font-medium text-content"
-                  >
-                    Verification badge
-                  </label>
-                  <select
-                    id={`badge-${item.id}`}
-                    className={GSCH_FIELD}
-                    value={badgeById[item.id] || ''}
-                    onChange={(e) =>
-                      setBadgeById((m) => ({
-                        ...m,
-                        [item.id]: e.target.value as GschVerificationBadge,
-                      }))
-                    }
-                  >
-                    <option value="">Select badge…</option>
-                    {GSCH_VERIFICATION_BADGES.map((b) => (
-                      <option key={b.value} value={b.value}>
-                        {b.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label
-                    htmlFor={`notes-${item.id}`}
-                    className="mb-1 block text-sm font-medium text-content"
-                  >
-                    Admin notes
-                  </label>
-                  <input
-                    id={`notes-${item.id}`}
-                    className={GSCH_FIELD}
-                    value={notesById[item.id] || ''}
-                    onChange={(e) =>
-                      setNotesById((m) => ({ ...m, [item.id]: e.target.value }))
-                    }
-                  />
-                </div>
-              </div>
-
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  className="btn-secondary text-sm"
-                  disabled={busyId === item.id}
-                  onClick={() => review(item.id, 'under_review')}
-                >
-                  Mark under review
-                </button>
-                <button
-                  type="button"
-                  className="btn-secondary text-sm"
-                  disabled={busyId === item.id}
-                  onClick={() => review(item.id, 'additional_info_required')}
-                >
-                  Request info
-                </button>
-                <button
-                  type="button"
-                  className="btn-primary text-sm"
-                  disabled={busyId === item.id}
-                  onClick={() => review(item.id, 'verified')}
-                >
-                  Verify
-                </button>
-                <button
-                  type="button"
-                  className="btn-secondary text-sm text-red-600"
-                  disabled={busyId === item.id}
-                  onClick={() => review(item.id, 'rejected')}
-                >
-                  Reject
-                </button>
-              </div>
-            </li>
-          ))}
-        </ul>
+                  ) : (
+                    <span className="text-xs text-content-tertiary">No documents</span>
+                  )}
+                </GschTableCell>
+                <GschTableCell>
+                  <StatusBadge status={item.status} />
+                </GschTableCell>
+                <GschTableCell className="min-w-[200px]">
+                  <div className="space-y-2">
+                    <select
+                      id={`badge-${item.id}`}
+                      className={GSCH_FIELD}
+                      value={badgeById[item.id] || ''}
+                      onChange={(e) =>
+                        setBadgeById((m) => ({
+                          ...m,
+                          [item.id]: e.target.value as GschVerificationBadge,
+                        }))
+                      }
+                      aria-label="Verification badge"
+                    >
+                      <option value="">Select badge…</option>
+                      {GSCH_VERIFICATION_BADGES.map((b) => (
+                        <option key={b.value} value={b.value}>
+                          {b.label}
+                        </option>
+                      ))}
+                    </select>
+                    <input
+                      id={`notes-${item.id}`}
+                      className={GSCH_FIELD}
+                      placeholder="Admin notes"
+                      value={notesById[item.id] || ''}
+                      onChange={(e) =>
+                        setNotesById((m) => ({ ...m, [item.id]: e.target.value }))
+                      }
+                      aria-label="Admin notes"
+                    />
+                  </div>
+                </GschTableCell>
+                <GschTableCell align="right">
+                  <div className="flex flex-wrap items-center justify-end gap-1.5">
+                    <button
+                      type="button"
+                      className="rounded-lg px-2.5 py-1.5 text-xs font-medium text-content-secondary transition hover:bg-surface-hover hover:text-content disabled:opacity-50"
+                      disabled={busyId === item.id}
+                      onClick={() => review(item.id, 'under_review')}
+                    >
+                      Under review
+                    </button>
+                    <button
+                      type="button"
+                      className="rounded-lg px-2.5 py-1.5 text-xs font-medium text-content-secondary transition hover:bg-surface-hover hover:text-content disabled:opacity-50"
+                      disabled={busyId === item.id}
+                      onClick={() => review(item.id, 'additional_info_required')}
+                    >
+                      Request info
+                    </button>
+                    <button
+                      type="button"
+                      className="rounded-lg px-2.5 py-1.5 text-xs font-medium text-primary transition hover:bg-primary/10 disabled:opacity-50"
+                      disabled={busyId === item.id}
+                      onClick={() => review(item.id, 'verified')}
+                    >
+                      Verify
+                    </button>
+                    <button
+                      type="button"
+                      className="rounded-lg px-2.5 py-1.5 text-xs font-medium text-red-600 transition hover:bg-red-50 disabled:opacity-50 dark:hover:bg-red-950/30"
+                      disabled={busyId === item.id}
+                      onClick={() => review(item.id, 'rejected')}
+                    >
+                      Reject
+                    </button>
+                  </div>
+                </GschTableCell>
+              </GschTableRow>
+            ))}
+          </GschTableBody>
+        </GschDataTable>
       )}
     </div>
   )

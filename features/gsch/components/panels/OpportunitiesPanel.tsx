@@ -1,15 +1,31 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
 import { apiClient, ApiError } from '@/lib/api-client'
 import { useAuth } from '@/contexts/AuthContext'
 import EmptyState from '@/features/gsch/components/EmptyState'
-import OpportunityCard from '@/features/gsch/components/OpportunityCard'
+import GschFormModal from '@/features/gsch/components/GschFormModal'
+import GschFilterDrawer from '@/features/gsch/components/GschFilterDrawer'
+import GschFiltersButton, {
+  countActiveFilters,
+} from '@/features/gsch/components/GschFiltersButton'
+import {
+  GschDataTable,
+  GschRowActions,
+  GschTableBody,
+  GschTableCell,
+  GschTableHead,
+  GschTableHeadCell,
+  GschTableRow,
+} from '@/features/gsch/components/GschDataTable'
+import StatusBadge from '@/features/gsch/components/StatusBadge'
+import { useConfirmDialog } from '@/shared/components/ui/ConfirmDialog'
 import {
   GSCH_CARD,
   GSCH_FIELD,
-  GSCH_SECTION_TITLE,
+  GSCH_LABEL,
   GSCH_SELECT,
 } from '@/features/gsch/constants/styles'
 import {
@@ -22,15 +38,43 @@ import {
   type GschPaginated,
 } from '@/shared/types/gsch'
 
+const EMPTY_FORM = {
+  organization_id: '',
+  city_id: '',
+  title: '',
+  summary: '',
+  description: '',
+  category: 'grant' as GschOpportunityCategory,
+  country: '',
+  continent: '',
+  location_label: '',
+  application_deadline: '',
+  external_url: '',
+  contact_email: '',
+  tags: '',
+  is_published: false,
+}
+
+function toDateInput(value: string | null | undefined) {
+  if (!value) return ''
+  return value.slice(0, 10)
+}
+
 export default function OpportunitiesPanel() {
+  const router = useRouter()
   const { user, loading: authLoading } = useAuth()
+  const { confirm, dialog } = useConfirmDialog()
   const [items, setItems] = useState<GschOpportunity[]>([])
   const [orgs, setOrgs] = useState<GschOrganization[]>([])
   const [cities, setCities] = useState<GschCity[]>([])
   const [loading, setLoading] = useState(true)
   const [mine, setMine] = useState(false)
-  const [showCreate, setShowCreate] = useState(false)
+  const [filtersOpen, setFiltersOpen] = useState(false)
+  const [showForm, setShowForm] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [publishingId, setPublishingId] = useState<string | null>(null)
   const [filters, setFilters] = useState({
     q: '',
     category: '',
@@ -38,22 +82,9 @@ export default function OpportunitiesPanel() {
     continent: '',
   })
   const [applied, setApplied] = useState(filters)
-  const [form, setForm] = useState({
-    organization_id: '',
-    city_id: '',
-    title: '',
-    summary: '',
-    description: '',
-    category: 'grant' as GschOpportunityCategory,
-    country: '',
-    continent: '',
-    location_label: '',
-    application_deadline: '',
-    external_url: '',
-    contact_email: '',
-    tags: '',
-    is_published: false,
-  })
+  const [form, setForm] = useState(EMPTY_FORM)
+
+  const activeFilterCount = countActiveFilters(applied)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -101,37 +132,123 @@ export default function OpportunitiesPanel() {
     loadMeta()
   }, [authLoading, user?.id, load, loadMeta])
 
-  async function createOpportunity(e: React.FormEvent) {
+  function openCreate() {
+    setEditingId(null)
+    setForm({
+      ...EMPTY_FORM,
+      organization_id: orgs[0]?.id || '',
+    })
+    setShowForm(true)
+  }
+
+  function openEdit(opportunity: GschOpportunity) {
+    setEditingId(opportunity.id)
+    setForm({
+      organization_id: opportunity.organization_id || orgs[0]?.id || '',
+      city_id: opportunity.city_id || '',
+      title: opportunity.title || '',
+      summary: opportunity.summary || '',
+      description: opportunity.description || '',
+      category: opportunity.category,
+      country: opportunity.country || '',
+      continent: opportunity.continent || '',
+      location_label: opportunity.location_label || '',
+      application_deadline: toDateInput(opportunity.application_deadline),
+      external_url: opportunity.external_url || '',
+      contact_email: opportunity.contact_email || '',
+      tags: (opportunity.tags || []).join(', '),
+      is_published: opportunity.is_published,
+    })
+    setShowForm(true)
+  }
+
+  async function saveOpportunity(e: React.FormEvent) {
     e.preventDefault()
     if (!form.organization_id || !form.title.trim()) {
       toast.error('Organization and title are required')
       return
     }
     setSubmitting(true)
+    const payload = {
+      ...form,
+      city_id: form.city_id || null,
+      application_deadline: form.application_deadline || null,
+      tags: form.tags,
+    }
     try {
-      await apiClient.post('/api/gsch/opportunities', {
-        ...form,
-        city_id: form.city_id || null,
-        application_deadline: form.application_deadline || null,
-        tags: form.tags,
+      if (editingId) {
+        await apiClient.patch(`/api/gsch/opportunities/${editingId}`, payload)
+        toast.success('Opportunity updated')
+      } else {
+        await apiClient.post('/api/gsch/opportunities', payload)
+        toast.success('Opportunity created')
+        setMine(true)
+      }
+      setShowForm(false)
+      setEditingId(null)
+      setForm({
+        ...EMPTY_FORM,
+        organization_id: orgs[0]?.id || '',
       })
-      toast.success('Opportunity created')
-      setShowCreate(false)
-      setMine(true)
-      setForm((f) => ({
-        ...f,
-        title: '',
-        summary: '',
-        description: '',
-        tags: '',
-        is_published: false,
-      }))
       await load()
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : 'Create failed')
+      toast.error(err instanceof ApiError ? err.message : 'Save failed')
     } finally {
       setSubmitting(false)
     }
+  }
+
+  async function handleDelete(opportunity: GschOpportunity) {
+    const ok = await confirm({
+      title: 'Delete opportunity?',
+      message: `Delete “${opportunity.title}”? This cannot be undone.`,
+      confirmLabel: 'Delete',
+      variant: 'danger',
+    })
+    if (!ok) return
+    setDeletingId(opportunity.id)
+    try {
+      await apiClient.delete(`/api/gsch/opportunities/${opportunity.id}`)
+      toast.success('Opportunity deleted')
+      await load()
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : 'Delete failed')
+    } finally {
+      setDeletingId(null)
+    }
+  }
+
+  async function togglePublish(opportunity: GschOpportunity) {
+    setPublishingId(opportunity.id)
+    try {
+      const updated = await apiClient.patch<GschOpportunity>(
+        `/api/gsch/opportunities/${opportunity.id}`,
+        { is_published: !opportunity.is_published }
+      )
+      toast.success(updated.is_published ? 'Published' : 'Unpublished')
+      await load()
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : 'Update failed')
+    } finally {
+      setPublishingId(null)
+    }
+  }
+
+  function applyFilters() {
+    setApplied(filters)
+    setFiltersOpen(false)
+  }
+
+  function resetFilters() {
+    const empty = {
+      q: '',
+      category: '',
+      country: '',
+      continent: '',
+    }
+    setFilters(empty)
+    setApplied(empty)
+    setFiltersOpen(false)
   }
 
   if (authLoading) {
@@ -141,16 +258,72 @@ export default function OpportunitiesPanel() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div className="grid flex-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
+      {dialog}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        {orgs.length > 0 ? (
+          <button type="button" className="btn-primary text-sm" onClick={openCreate}>
+            Post opportunity
+          </button>
+        ) : (
+          <span />
+        )}
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            className={!mine ? 'btn-primary text-sm' : 'btn-secondary text-sm'}
+            onClick={() => setMine(false)}
+          >
+            Discover
+          </button>
+          <button
+            type="button"
+            className={mine ? 'btn-primary text-sm' : 'btn-secondary text-sm'}
+            onClick={() => setMine(true)}
+          >
+            My posts
+          </button>
+          <GschFiltersButton
+            activeCount={activeFilterCount}
+            onClick={() => setFiltersOpen(true)}
+          />
+        </div>
+      </div>
+
+      <GschFilterDrawer
+        open={filtersOpen}
+        title="Filter opportunities"
+        description="Narrow opportunities by category and location."
+        onClose={() => setFiltersOpen(false)}
+        footer={
+          <>
+            <button type="button" className="btn-secondary text-sm" onClick={resetFilters}>
+              Reset
+            </button>
+            <button type="button" className="btn-primary text-sm" onClick={applyFilters}>
+              Apply filters
+            </button>
+          </>
+        }
+      >
+        <div>
+          <label className={GSCH_LABEL} htmlFor="gsch-opp-q">
+            Search
+          </label>
           <input
+            id="gsch-opp-q"
             className={GSCH_FIELD}
-            placeholder="Search…"
+            placeholder="Search opportunities…"
             value={filters.q}
             onChange={(e) => setFilters((f) => ({ ...f, q: e.target.value }))}
           />
+        </div>
+        <div>
+          <label className={GSCH_LABEL} htmlFor="gsch-opp-category">
+            Category
+          </label>
           <select
-            className={GSCH_SELECT}
+            id="gsch-opp-category"
+            className={`${GSCH_SELECT} w-full`}
             value={filters.category}
             onChange={(e) => setFilters((f) => ({ ...f, category: e.target.value }))}
           >
@@ -161,14 +334,26 @@ export default function OpportunitiesPanel() {
               </option>
             ))}
           </select>
+        </div>
+        <div>
+          <label className={GSCH_LABEL} htmlFor="gsch-opp-country">
+            Country
+          </label>
           <input
+            id="gsch-opp-country"
             className={GSCH_FIELD}
             placeholder="Country"
             value={filters.country}
             onChange={(e) => setFilters((f) => ({ ...f, country: e.target.value }))}
           />
+        </div>
+        <div>
+          <label className={GSCH_LABEL} htmlFor="gsch-opp-continent">
+            Continent
+          </label>
           <select
-            className={GSCH_SELECT}
+            id="gsch-opp-continent"
+            className={`${GSCH_SELECT} w-full`}
             value={filters.continent}
             onChange={(e) => setFilters((f) => ({ ...f, continent: e.target.value }))}
           >
@@ -180,36 +365,40 @@ export default function OpportunitiesPanel() {
             ))}
           </select>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            className="btn-secondary text-sm"
-            onClick={() => setApplied(filters)}
-          >
-            Apply filters
-          </button>
-          <button
-            type="button"
-            className={mine ? 'btn-primary text-sm' : 'btn-secondary text-sm'}
-            onClick={() => setMine((v) => !v)}
-          >
-            {mine ? 'My org posts' : 'Discover'}
-          </button>
-          {orgs.length > 0 ? (
+      </GschFilterDrawer>
+
+            <GschFormModal
+        open={showForm}
+        title={editingId ? 'Edit opportunity' : 'Create opportunity'}
+        onClose={() => {
+          setShowForm(false)
+          setEditingId(null)
+        }}
+        footer={
+          <>
             <button
               type="button"
-              className="btn-primary text-sm"
-              onClick={() => setShowCreate((v) => !v)}
+              className="btn-secondary text-sm"
+              disabled={submitting}
+              onClick={() => {
+                setShowForm(false)
+                setEditingId(null)
+              }}
             >
-              {showCreate ? 'Close form' : 'Post opportunity'}
+              Cancel
             </button>
-          ) : null}
-        </div>
-      </div>
-
-      {showCreate ? (
-        <form onSubmit={createOpportunity} className={`${GSCH_CARD} space-y-3`}>
-          <h2 className={GSCH_SECTION_TITLE}>Create opportunity</h2>
+            <button
+              type="submit"
+              form="gsch-opportunity-form"
+              className="btn-primary text-sm"
+              disabled={submitting}
+            >
+              {submitting ? 'Saving…' : editingId ? 'Save changes' : 'Create'}
+            </button>
+          </>
+        }
+      >
+        <form id="gsch-opportunity-form" onSubmit={saveOpportunity} className="space-y-3">
           <select
             className={`${GSCH_SELECT} w-full`}
             value={form.organization_id}
@@ -217,6 +406,7 @@ export default function OpportunitiesPanel() {
               setForm((f) => ({ ...f, organization_id: e.target.value }))
             }
             required
+            disabled={Boolean(editingId)}
           >
             {orgs.map((o) => (
               <option key={o.id} value={o.id}>
@@ -340,33 +530,70 @@ export default function OpportunitiesPanel() {
             />
             Publish immediately
           </label>
-          <button type="submit" className="btn-primary text-sm" disabled={submitting}>
-            {submitting ? 'Saving…' : 'Create'}
-          </button>
         </form>
-      ) : null}
+      </GschFormModal>
 
       {loading ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className={`${GSCH_CARD} h-36 animate-pulse`} />
-          ))}
-        </div>
+        <div className={`${GSCH_CARD} h-40 animate-pulse`} />
       ) : items.length === 0 ? (
         <EmptyState
           title={mine ? 'No opportunities from your orgs' : 'No published opportunities'}
           description="Post a grant, conference, trade mission, or sister-city call."
         />
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {items.map((item) => (
-            <OpportunityCard
-              key={item.id}
-              opportunity={item}
-              showPublishState={mine}
-            />
-          ))}
-        </div>
+        <GschDataTable>
+          <GschTableHead>
+            <GschTableHeadCell>Title</GschTableHeadCell>
+            <GschTableHeadCell>Category</GschTableHeadCell>
+            <GschTableHeadCell>Location</GschTableHeadCell>
+            <GschTableHeadCell>Status</GschTableHeadCell>
+            <GschTableHeadCell align="right">Actions</GschTableHeadCell>
+          </GschTableHead>
+          <GschTableBody>
+            {items.map((item) => {
+              const location =
+                [item.country, item.continent].filter(Boolean).join(' · ') || '—'
+              const categoryLabel =
+                GSCH_OPPORTUNITY_CATEGORIES.find((c) => c.value === item.category)
+                  ?.label || item.category.replace(/_/g, ' ')
+              return (
+                <GschTableRow
+                  key={item.id}
+                  onClick={() => router.push(`/global-hub/opportunities/${item.id}`)}
+                >
+                  <GschTableCell className="min-w-[180px]">
+                    <p className="font-semibold text-content">{item.title}</p>
+                    <p className="mt-0.5 text-xs text-content-tertiary">
+                      {item.organization?.name || '—'}
+                    </p>
+                  </GschTableCell>
+                  <GschTableCell className="capitalize">{categoryLabel}</GschTableCell>
+                  <GschTableCell>{location}</GschTableCell>
+                  <GschTableCell>
+                    {mine ? (
+                      <StatusBadge
+                        status={item.is_published ? 'published' : 'draft'}
+                      />
+                    ) : (
+                      <StatusBadge status="published" />
+                    )}
+                  </GschTableCell>
+                  <GschTableCell align="right">
+                    <GschRowActions
+                      onView={() => router.push(`/global-hub/opportunities/${item.id}`)}
+                      onPublish={() => togglePublish(item)}
+                      publishLabel={item.is_published ? 'Unpublish' : 'Publish'}
+                      publishing={publishingId === item.id}
+                      onEdit={() => openEdit(item)}
+                      onDelete={() => handleDelete(item)}
+                      deleting={deletingId === item.id}
+                    />
+                  </GschTableCell>
+                </GschTableRow>
+              )
+            })}
+          </GschTableBody>
+        </GschDataTable>
       )}
     </div>
   )

@@ -6,7 +6,15 @@ import toast from 'react-hot-toast'
 import { apiClient, ApiError } from '@/lib/api-client'
 import { useAuth } from '@/contexts/AuthContext'
 import EmptyState from '@/features/gsch/components/EmptyState'
-import PartnershipRequestCard from '@/features/gsch/components/PartnershipRequestCard'
+import GschFormModal from '@/features/gsch/components/GschFormModal'
+import {
+  GschDataTable,
+  GschTableBody,
+  GschTableCell,
+  GschTableHead,
+  GschTableHeadCell,
+  GschTableRow,
+} from '@/features/gsch/components/GschDataTable'
 import StatusBadge from '@/features/gsch/components/StatusBadge'
 import {
   GSCH_CARD,
@@ -24,7 +32,14 @@ import {
   type GschPartnershipType,
 } from '@/shared/types/gsch'
 
-type Tab = 'requests' | 'active' | 'create'
+type Tab = 'requests' | 'active'
+
+function typeLabel(type: string) {
+  return (
+    GSCH_PARTNERSHIP_TYPES.find((t) => t.value === type)?.label ||
+    type.replace(/_/g, ' ')
+  )
+}
 
 export default function PartnershipsPanel() {
   const { user, loading: authLoading } = useAuth()
@@ -32,8 +47,9 @@ export default function PartnershipsPanel() {
   const targetCityPrefill = searchParams?.get('target_city') || ''
   const targetOrgPrefill = searchParams?.get('target_org') || ''
 
-  const [tab, setTab] = useState<Tab>(
-    targetCityPrefill || targetOrgPrefill ? 'create' : 'requests'
+  const [tab, setTab] = useState<Tab>('requests')
+  const [showCreate, setShowCreate] = useState(
+    Boolean(targetCityPrefill || targetOrgPrefill)
   )
   const [requests, setRequests] = useState<GschPartnershipRequest[]>([])
   const [partnerships, setPartnerships] = useState<GschPartnership[]>([])
@@ -170,6 +186,7 @@ export default function PartnershipsPanel() {
         target_city_id: '',
         target_organization_id: '',
       }))
+      setShowCreate(false)
       setTab('requests')
       await load()
     } catch (err) {
@@ -193,60 +210,151 @@ export default function PartnershipsPanel() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap gap-2">
-        {(
-          [
-            ['requests', 'Requests'],
-            ['active', 'Active partnerships'],
-            ['create', 'New request'],
-          ] as const
-        ).map(([key, label]) => (
-          <button
-            key={key}
-            type="button"
-            className={tab === key ? 'btn-primary text-sm' : 'btn-secondary text-sm'}
-            onClick={() => setTab(key)}
-          >
-            {label}
-          </button>
-        ))}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <button
+          type="button"
+          className="btn-primary text-sm"
+          onClick={() => setShowCreate(true)}
+        >
+          New request
+        </button>
+        <div className="flex flex-wrap gap-2">
+          {(
+            [
+              ['requests', 'Requests'],
+              ['active', 'Active partnerships'],
+            ] as const
+          ).map(([key, label]) => (
+            <button
+              key={key}
+              type="button"
+              className={tab === key ? 'btn-primary text-sm' : 'btn-secondary text-sm'}
+              onClick={() => setTab(key)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {tab === 'requests' ? (
-        <div className="grid gap-6 lg:grid-cols-2">
+        <div className="space-y-8">
           <section>
             <h2 className={`${GSCH_SECTION_TITLE} mb-3`}>Received</h2>
             {received.length === 0 ? (
               <EmptyState title="No inbound requests" />
             ) : (
-              <div className="space-y-3">
-                {received.map((r) => (
-                  <PartnershipRequestCard
-                    key={r.id}
-                    request={r}
-                    busy={busyId === r.id}
-                    onAccept={() => act(r.id, 'accept')}
-                    onDecline={() => act(r.id, 'decline')}
-                  />
-                ))}
-              </div>
+              <GschDataTable>
+                <GschTableHead>
+                  <GschTableHeadCell>Title</GschTableHeadCell>
+                  <GschTableHeadCell>From</GschTableHeadCell>
+                  <GschTableHeadCell>Type</GschTableHeadCell>
+                  <GschTableHeadCell>Status</GschTableHeadCell>
+                  <GschTableHeadCell align="right">Actions</GschTableHeadCell>
+                </GschTableHead>
+                <GschTableBody>
+                  {received.map((r) => {
+                    const from =
+                      r.requesting_organization?.name ||
+                      r.requesting_city?.name ||
+                      '—'
+                    const canRespond = r.status === 'pending'
+                    return (
+                      <GschTableRow key={r.id}>
+                        <GschTableCell className="min-w-[160px]">
+                          <p className="font-semibold text-content">{r.title}</p>
+                        </GschTableCell>
+                        <GschTableCell>{from}</GschTableCell>
+                        <GschTableCell className="capitalize">
+                          {typeLabel(r.partnership_type)}
+                        </GschTableCell>
+                        <GschTableCell>
+                          <StatusBadge status={r.status} />
+                        </GschTableCell>
+                        <GschTableCell align="right">
+                          {canRespond ? (
+                            <div className="flex flex-wrap items-center justify-end gap-1.5">
+                              <button
+                                type="button"
+                                className="btn-primary text-xs"
+                                disabled={busyId === r.id}
+                                onClick={() => act(r.id, 'accept')}
+                              >
+                                Accept
+                              </button>
+                              <button
+                                type="button"
+                                className="btn-secondary text-xs"
+                                disabled={busyId === r.id}
+                                onClick={() => act(r.id, 'decline')}
+                              >
+                                Decline
+                              </button>
+                            </div>
+                          ) : (
+                            <span className="text-xs text-content-tertiary">—</span>
+                          )}
+                        </GschTableCell>
+                      </GschTableRow>
+                    )
+                  })}
+                </GschTableBody>
+              </GschDataTable>
             )}
           </section>
+
           <section>
             <h2 className={`${GSCH_SECTION_TITLE} mb-3`}>Sent</h2>
             {sent.length === 0 ? (
               <EmptyState title="No sent requests" />
             ) : (
-              <div className="space-y-3">
-                {sent.map((r) => (
-                  <PartnershipRequestCard
-                    key={r.id}
-                    request={r}
-                    busy={busyId === r.id}
-                    onWithdraw={() => act(r.id, 'withdraw')}
-                  />
-                ))}
-              </div>
+              <GschDataTable>
+                <GschTableHead>
+                  <GschTableHeadCell>Title</GschTableHeadCell>
+                  <GschTableHeadCell>Target</GschTableHeadCell>
+                  <GschTableHeadCell>Type</GschTableHeadCell>
+                  <GschTableHeadCell>Status</GschTableHeadCell>
+                  <GschTableHeadCell align="right">Actions</GschTableHeadCell>
+                </GschTableHead>
+                <GschTableBody>
+                  {sent.map((r) => {
+                    const target =
+                      r.target_organization?.name ||
+                      r.target_city?.name ||
+                      '—'
+                    const canWithdraw =
+                      r.status === 'pending' || r.status === 'draft'
+                    return (
+                      <GschTableRow key={r.id}>
+                        <GschTableCell className="min-w-[160px]">
+                          <p className="font-semibold text-content">{r.title}</p>
+                        </GschTableCell>
+                        <GschTableCell>{target}</GschTableCell>
+                        <GschTableCell className="capitalize">
+                          {typeLabel(r.partnership_type)}
+                        </GschTableCell>
+                        <GschTableCell>
+                          <StatusBadge status={r.status} />
+                        </GschTableCell>
+                        <GschTableCell align="right">
+                          {canWithdraw ? (
+                            <button
+                              type="button"
+                              className="btn-secondary text-xs"
+                              disabled={busyId === r.id}
+                              onClick={() => act(r.id, 'withdraw')}
+                            >
+                              Withdraw
+                            </button>
+                          ) : (
+                            <span className="text-xs text-content-tertiary">—</span>
+                          )}
+                        </GschTableCell>
+                      </GschTableRow>
+                    )
+                  })}
+                </GschTableBody>
+              </GschDataTable>
             )}
           </section>
         </div>
@@ -261,250 +369,301 @@ export default function PartnershipsPanel() {
               <button
                 type="button"
                 className="btn-primary text-sm"
-                onClick={() => setTab('create')}
+                onClick={() => setShowCreate(true)}
               >
                 Create request
               </button>
             }
           />
         ) : (
-          <ul className="space-y-3">
-            {partnerships.map((p) => (
-              <li key={p.id} className={GSCH_CARD}>
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="font-semibold text-content">{p.title}</p>
-                    <p className="mt-0.5 text-xs capitalize text-content-tertiary">
-                      {p.partnership_type.replace(/_/g, ' ')} ·{' '}
-                      {p.organization_a?.name} ↔ {p.organization_b?.name}
-                    </p>
-                  </div>
-                  <StatusBadge status={p.status} />
-                </div>
-                {p.objectives ? (
-                  <p className="mt-2 text-sm text-content-secondary">{p.objectives}</p>
-                ) : null}
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {p.status === 'active' ? (
-                    <button
-                      type="button"
-                      className="btn-secondary text-xs"
-                      disabled={busyId === p.id}
-                      onClick={() => updatePartnershipStatus(p.id, 'paused')}
-                    >
-                      Pause
-                    </button>
-                  ) : null}
-                  {p.status === 'paused' ? (
-                    <button
-                      type="button"
-                      className="btn-secondary text-xs"
-                      disabled={busyId === p.id}
-                      onClick={() => updatePartnershipStatus(p.id, 'active')}
-                    >
-                      Resume
-                    </button>
-                  ) : null}
-                  {['active', 'paused'].includes(p.status) ? (
-                    <>
-                      <button
-                        type="button"
-                        className="btn-secondary text-xs"
-                        disabled={busyId === p.id}
-                        onClick={() => updatePartnershipStatus(p.id, 'completed')}
-                      >
-                        Complete
-                      </button>
-                      <button
-                        type="button"
-                        className="btn-secondary text-xs"
-                        disabled={busyId === p.id}
-                        onClick={() => updatePartnershipStatus(p.id, 'cancelled')}
-                      >
-                        Cancel
-                      </button>
-                    </>
-                  ) : null}
-                </div>
-              </li>
-            ))}
-          </ul>
+          <GschDataTable>
+            <GschTableHead>
+              <GschTableHeadCell>Title</GschTableHeadCell>
+              <GschTableHeadCell>Partners</GschTableHeadCell>
+              <GschTableHeadCell>Type</GschTableHeadCell>
+              <GschTableHeadCell>Status</GschTableHeadCell>
+              <GschTableHeadCell align="right">Actions</GschTableHeadCell>
+            </GschTableHead>
+            <GschTableBody>
+              {partnerships.map((p) => {
+                const partners =
+                  [p.organization_a?.name, p.organization_b?.name]
+                    .filter(Boolean)
+                    .join(' ↔ ') || '—'
+                return (
+                  <GschTableRow key={p.id}>
+                    <GschTableCell className="min-w-[160px]">
+                      <p className="font-semibold text-content">{p.title}</p>
+                      {p.objectives ? (
+                        <p className="mt-0.5 line-clamp-1 text-xs text-content-tertiary">
+                          {p.objectives}
+                        </p>
+                      ) : null}
+                    </GschTableCell>
+                    <GschTableCell>{partners}</GschTableCell>
+                    <GschTableCell className="capitalize">
+                      {typeLabel(p.partnership_type)}
+                    </GschTableCell>
+                    <GschTableCell>
+                      <StatusBadge status={p.status} />
+                    </GschTableCell>
+                    <GschTableCell align="right">
+                      <div className="flex flex-wrap items-center justify-end gap-1.5">
+                        {p.status === 'active' ? (
+                          <button
+                            type="button"
+                            className="btn-secondary text-xs"
+                            disabled={busyId === p.id}
+                            onClick={() => updatePartnershipStatus(p.id, 'paused')}
+                          >
+                            Pause
+                          </button>
+                        ) : null}
+                        {p.status === 'paused' ? (
+                          <button
+                            type="button"
+                            className="btn-secondary text-xs"
+                            disabled={busyId === p.id}
+                            onClick={() => updatePartnershipStatus(p.id, 'active')}
+                          >
+                            Resume
+                          </button>
+                        ) : null}
+                        {['active', 'paused'].includes(p.status) ? (
+                          <>
+                            <button
+                              type="button"
+                              className="btn-secondary text-xs"
+                              disabled={busyId === p.id}
+                              onClick={() =>
+                                updatePartnershipStatus(p.id, 'completed')
+                              }
+                            >
+                              Complete
+                            </button>
+                            <button
+                              type="button"
+                              className="btn-secondary text-xs"
+                              disabled={busyId === p.id}
+                              onClick={() =>
+                                updatePartnershipStatus(p.id, 'cancelled')
+                              }
+                            >
+                              Cancel
+                            </button>
+                          </>
+                        ) : (
+                          <span className="text-xs text-content-tertiary">—</span>
+                        )}
+                      </div>
+                    </GschTableCell>
+                  </GschTableRow>
+                )
+              })}
+            </GschTableBody>
+          </GschDataTable>
         )
       ) : null}
 
-      {tab === 'create' ? (
-        <form onSubmit={createRequest} className={`${GSCH_CARD} space-y-4`}>
-          <h2 className={GSCH_SECTION_TITLE}>New partnership request</h2>
-
-          {orgs.length === 0 ? (
-            <EmptyState
-              title="Join or create an organization first"
-              description="You need organization representative access to send partnership requests."
-            />
+      <GschFormModal
+        open={showCreate}
+        title="New partnership request"
+        onClose={() => setShowCreate(false)}
+        footer={
+          orgs.length === 0 ? (
+            <button
+              type="button"
+              className="btn-secondary text-sm"
+              onClick={() => setShowCreate(false)}
+            >
+              Close
+            </button>
           ) : (
             <>
-              <label className="block text-sm">
-                <span className="mb-1.5 block text-content-secondary">Your organization</span>
-                <select
-                  className={`${GSCH_SELECT} w-full`}
-                  value={form.requesting_organization_id}
-                  onChange={(e) =>
-                    setForm((f) => ({
-                      ...f,
-                      requesting_organization_id: e.target.value,
-                    }))
-                  }
-                  required
-                >
-                  {orgs.map((o) => (
-                    <option key={o.id} value={o.id}>
-                      {o.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label className="block text-sm">
-                <span className="mb-1.5 block text-content-secondary">
-                  Your city (optional)
-                </span>
-                <select
-                  className={`${GSCH_SELECT} w-full`}
-                  value={form.requesting_city_id}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, requesting_city_id: e.target.value }))
-                  }
-                >
-                  <option value="">None</option>
-                  {cities
-                    .filter((c) => c.organization_id === form.requesting_organization_id)
-                    .map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name}
-                      </option>
-                    ))}
-                </select>
-              </label>
-
-              <label className="block text-sm">
-                <span className="mb-1.5 block text-content-secondary">Target city</span>
-                <select
-                  className={`${GSCH_SELECT} w-full`}
-                  value={form.target_city_id}
-                  onChange={(e) =>
-                    setForm((f) => ({
-                      ...f,
-                      target_city_id: e.target.value,
-                      target_organization_id: e.target.value
-                        ? ''
-                        : f.target_organization_id,
-                    }))
-                  }
-                >
-                  <option value="">Select published city…</option>
-                  {publishedCities.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name} · {c.country}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label className="block text-sm">
-                <span className="mb-1.5 block text-content-secondary">
-                  Or target organization ID
-                </span>
-                <input
-                  className={GSCH_FIELD}
-                  value={form.target_organization_id}
-                  onChange={(e) =>
-                    setForm((f) => ({
-                      ...f,
-                      target_organization_id: e.target.value,
-                      target_city_id: e.target.value ? '' : f.target_city_id,
-                    }))
-                  }
-                  placeholder="Organization UUID (optional if city selected)"
-                />
-              </label>
-
-              <label className="block text-sm">
-                <span className="mb-1.5 block text-content-secondary">Type</span>
-                <select
-                  className={`${GSCH_SELECT} w-full`}
-                  value={form.partnership_type}
-                  onChange={(e) =>
-                    setForm((f) => ({
-                      ...f,
-                      partnership_type: e.target.value as GschPartnershipType,
-                    }))
-                  }
-                >
-                  {GSCH_PARTNERSHIP_TYPES.map((t) => (
-                    <option key={t.value} value={t.value}>
-                      {t.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label className="block text-sm">
-                <span className="mb-1.5 block text-content-secondary">Title</span>
-                <input
-                  className={GSCH_FIELD}
-                  value={form.title}
-                  onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-                  required
-                />
-              </label>
-
-              <label className="block text-sm">
-                <span className="mb-1.5 block text-content-secondary">Message</span>
-                <textarea
-                  className={GSCH_FIELD}
-                  rows={3}
-                  value={form.message}
-                  onChange={(e) => setForm((f) => ({ ...f, message: e.target.value }))}
-                />
-              </label>
-
-              <label className="block text-sm">
-                <span className="mb-1.5 block text-content-secondary">Objectives</span>
-                <textarea
-                  className={GSCH_FIELD}
-                  rows={2}
-                  value={form.objectives}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, objectives: e.target.value }))
-                  }
-                />
-              </label>
-
-              <label className="block text-sm">
-                <span className="mb-1.5 block text-content-secondary">
-                  Proposed duration
-                </span>
-                <input
-                  className={GSCH_FIELD}
-                  value={form.proposed_duration}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, proposed_duration: e.target.value }))
-                  }
-                  placeholder="e.g. 2 years"
-                />
-              </label>
-
+              <button
+                type="button"
+                className="btn-secondary text-sm"
+                disabled={submitting}
+                onClick={() => setShowCreate(false)}
+              >
+                Cancel
+              </button>
               <button
                 type="submit"
+                form="gsch-partnership-create"
                 className="btn-primary text-sm"
                 disabled={submitting}
               >
                 {submitting ? 'Sending…' : 'Send request'}
               </button>
             </>
-          )}
-        </form>
-      ) : null}
+          )
+        }
+      >
+        {orgs.length === 0 ? (
+          <EmptyState
+            title="Join or create an organization first"
+            description="You need organization representative access to send partnership requests."
+          />
+        ) : (
+          <form
+            id="gsch-partnership-create"
+            onSubmit={createRequest}
+            className="space-y-4"
+          >
+            <label className="block text-sm">
+              <span className="mb-1.5 block text-content-secondary">Your organization</span>
+              <select
+                className={`${GSCH_SELECT} w-full`}
+                value={form.requesting_organization_id}
+                onChange={(e) =>
+                  setForm((f) => ({
+                    ...f,
+                    requesting_organization_id: e.target.value,
+                  }))
+                }
+                required
+              >
+                {orgs.map((o) => (
+                  <option key={o.id} value={o.id}>
+                    {o.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="block text-sm">
+              <span className="mb-1.5 block text-content-secondary">
+                Your city (optional)
+              </span>
+              <select
+                className={`${GSCH_SELECT} w-full`}
+                value={form.requesting_city_id}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, requesting_city_id: e.target.value }))
+                }
+              >
+                <option value="">None</option>
+                {cities
+                  .filter((c) => c.organization_id === form.requesting_organization_id)
+                  .map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+              </select>
+            </label>
+
+            <label className="block text-sm">
+              <span className="mb-1.5 block text-content-secondary">Target city</span>
+              <select
+                className={`${GSCH_SELECT} w-full`}
+                value={form.target_city_id}
+                onChange={(e) =>
+                  setForm((f) => ({
+                    ...f,
+                    target_city_id: e.target.value,
+                    target_organization_id: e.target.value
+                      ? ''
+                      : f.target_organization_id,
+                  }))
+                }
+              >
+                <option value="">Select published city…</option>
+                {publishedCities.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name} · {c.country}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="block text-sm">
+              <span className="mb-1.5 block text-content-secondary">
+                Or target organization ID
+              </span>
+              <input
+                className={GSCH_FIELD}
+                value={form.target_organization_id}
+                onChange={(e) =>
+                  setForm((f) => ({
+                    ...f,
+                    target_organization_id: e.target.value,
+                    target_city_id: e.target.value ? '' : f.target_city_id,
+                  }))
+                }
+                placeholder="Organization UUID (optional if city selected)"
+              />
+            </label>
+
+            <label className="block text-sm">
+              <span className="mb-1.5 block text-content-secondary">Type</span>
+              <select
+                className={`${GSCH_SELECT} w-full`}
+                value={form.partnership_type}
+                onChange={(e) =>
+                  setForm((f) => ({
+                    ...f,
+                    partnership_type: e.target.value as GschPartnershipType,
+                  }))
+                }
+              >
+                {GSCH_PARTNERSHIP_TYPES.map((t) => (
+                  <option key={t.value} value={t.value}>
+                    {t.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="block text-sm">
+              <span className="mb-1.5 block text-content-secondary">Title</span>
+              <input
+                className={GSCH_FIELD}
+                value={form.title}
+                onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
+                required
+              />
+            </label>
+
+            <label className="block text-sm">
+              <span className="mb-1.5 block text-content-secondary">Message</span>
+              <textarea
+                className={GSCH_FIELD}
+                rows={3}
+                value={form.message}
+                onChange={(e) => setForm((f) => ({ ...f, message: e.target.value }))}
+              />
+            </label>
+
+            <label className="block text-sm">
+              <span className="mb-1.5 block text-content-secondary">Objectives</span>
+              <textarea
+                className={GSCH_FIELD}
+                rows={2}
+                value={form.objectives}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, objectives: e.target.value }))
+                }
+              />
+            </label>
+
+            <label className="block text-sm">
+              <span className="mb-1.5 block text-content-secondary">
+                Proposed duration
+              </span>
+              <input
+                className={GSCH_FIELD}
+                value={form.proposed_duration}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, proposed_duration: e.target.value }))
+                }
+                placeholder="e.g. 2 years"
+              />
+            </label>
+          </form>
+        )}
+      </GschFormModal>
     </div>
   )
 }

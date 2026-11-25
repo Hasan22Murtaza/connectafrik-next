@@ -1,14 +1,38 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
 import { apiClient, ApiError } from '@/lib/api-client'
 import { useAuth } from '@/contexts/AuthContext'
 import EmptyState from '@/features/gsch/components/EmptyState'
+import GschFormModal from '@/features/gsch/components/GschFormModal'
+import GschFilterDrawer from '@/features/gsch/components/GschFilterDrawer'
+import GschFiltersButton, {
+  countActiveFilters,
+} from '@/features/gsch/components/GschFiltersButton'
+import {
+  GschDataTable,
+  GschRowActions,
+  GschTableBody,
+  GschTableCell,
+  GschTableHead,
+  GschTableHeadCell,
+  GschTableRow,
+} from '@/features/gsch/components/GschDataTable'
 import StatusBadge from '@/features/gsch/components/StatusBadge'
-import { GSCH_CARD, GSCH_FIELD } from '@/features/gsch/constants/styles'
-import { GSCH_CONTINENTS, type GschCity, type GschOrganization, type GschPaginated } from '@/shared/types/gsch'
+import { useConfirmDialog } from '@/shared/components/ui/ConfirmDialog'
+import {
+  GSCH_CARD,
+  GSCH_FIELD,
+  GSCH_LABEL,
+} from '@/features/gsch/constants/styles'
+import {
+  GSCH_CONTINENTS,
+  type GschCity,
+  type GschOrganization,
+  type GschPaginated,
+} from '@/shared/types/gsch'
 
 const EMPTY_FORM = {
   organization_id: '',
@@ -26,27 +50,40 @@ const EMPTY_FORM = {
 }
 
 export default function CitiesManagePanel() {
+  const router = useRouter()
   const { user, loading: authLoading } = useAuth()
+  const { confirm, dialog } = useConfirmDialog()
   const [cities, setCities] = useState<GschCity[]>([])
   const [orgs, setOrgs] = useState<GschOrganization[]>([])
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [publishingId, setPublishingId] = useState<string | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [filtersOpen, setFiltersOpen] = useState(false)
+  const [filters, setFilters] = useState({ q: '', country: '' })
+  const [applied, setApplied] = useState(filters)
   const [form, setForm] = useState(EMPTY_FORM)
 
+  const activeFilterCount = countActiveFilters(applied)
+
   const load = useCallback(async () => {
+    const params: Record<string, string | number> = { mine: '1', limit: 50 }
+    if (applied.q) params.q = applied.q
+    if (applied.country) params.country = applied.country
     const [cityPayload, orgData] = await Promise.all([
-      apiClient.get<GschPaginated<GschCity>>('/api/gsch/cities', { mine: '1', limit: 50 }),
+      apiClient.get<GschPaginated<GschCity>>('/api/gsch/cities', params),
       apiClient.get<GschOrganization[]>('/api/gsch/organizations'),
     ])
     setCities(cityPayload?.data || [])
     const orgList = Array.isArray(orgData) ? orgData : []
     setOrgs(orgList)
-    if (!form.organization_id && orgList[0]?.id) {
-      setForm((f) => ({ ...f, organization_id: orgList[0].id }))
-    }
-  }, [form.organization_id])
+    setForm((f) => ({
+      ...f,
+      organization_id: f.organization_id || orgList[0]?.id || '',
+    }))
+  }, [applied])
 
   useEffect(() => {
     if (authLoading || !user) return
@@ -60,8 +97,7 @@ export default function CitiesManagePanel() {
         setLoading(false)
       }
     })()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [authLoading, user?.id])
+  }, [authLoading, user?.id, load])
 
   function openCreate() {
     setEditingId(null)
@@ -129,6 +165,54 @@ export default function CitiesManagePanel() {
     }
   }
 
+  async function handleDelete(city: GschCity) {
+    const ok = await confirm({
+      title: 'Delete city profile?',
+      message: `Delete “${city.name}”? This cannot be undone.`,
+      confirmLabel: 'Delete',
+      variant: 'danger',
+    })
+    if (!ok) return
+    setDeletingId(city.id)
+    try {
+      await apiClient.delete(`/api/gsch/cities/${city.id}`)
+      toast.success('City profile deleted')
+      await load()
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : 'Delete failed')
+    } finally {
+      setDeletingId(null)
+    }
+  }
+
+  async function togglePublish(city: GschCity) {
+    setPublishingId(city.id)
+    try {
+      const updated = await apiClient.patch<GschCity>(
+        `/api/gsch/cities/${city.id}`,
+        { is_published: !city.is_published }
+      )
+      toast.success(updated.is_published ? 'Published' : 'Unpublished')
+      await load()
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : 'Update failed')
+    } finally {
+      setPublishingId(null)
+    }
+  }
+
+  function applyFilters() {
+    setApplied(filters)
+    setFiltersOpen(false)
+  }
+
+  function resetFilters() {
+    const empty = { q: '', country: '' }
+    setFilters(empty)
+    setApplied(empty)
+    setFiltersOpen(false)
+  }
+
   if (authLoading || loading) {
     return <div className={`${GSCH_CARD} h-40 animate-pulse`} />
   }
@@ -137,179 +221,235 @@ export default function CitiesManagePanel() {
 
   return (
     <div className="space-y-5">
+      {dialog}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-content-secondary">
-          Create and publish city profiles linked to your organizations.
-        </p>
         <button type="button" className="btn-primary text-sm" onClick={openCreate}>
           New city profile
         </button>
+        <GschFiltersButton
+          activeCount={activeFilterCount}
+          onClick={() => setFiltersOpen(true)}
+        />
       </div>
 
-      {showForm ? (
-        <div className={`${GSCH_CARD} space-y-3`}>
-          <h3 className="font-semibold text-content">
-            {editingId ? 'Edit city profile' : 'Create city profile'}
-          </h3>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="sm:col-span-2">
-              <label htmlFor="gsch-city-org" className="mb-1 block text-sm font-medium text-content">
-                Organization
-              </label>
-              <select
-                id="gsch-city-org"
-                className={GSCH_FIELD}
-                value={form.organization_id}
-                onChange={(e) => setForm((f) => ({ ...f, organization_id: e.target.value }))}
-              >
-                <option value="">No organization</option>
-                {orgs.map((org) => (
-                  <option key={org.id} value={org.id}>
-                    {org.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label htmlFor="gsch-city-name" className="mb-1 block text-sm font-medium text-content">
-                City name
-              </label>
-              <input
-                id="gsch-city-name"
-                className={GSCH_FIELD}
-                value={form.name}
-                onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-              />
-            </div>
-            <div>
-              <label htmlFor="gsch-city-country" className="mb-1 block text-sm font-medium text-content">
-                Country
-              </label>
-              <input
-                id="gsch-city-country"
-                className={GSCH_FIELD}
-                value={form.country}
-                onChange={(e) => setForm((f) => ({ ...f, country: e.target.value }))}
-              />
-            </div>
-            <div>
-              <label htmlFor="gsch-city-continent" className="mb-1 block text-sm font-medium text-content">
-                Continent
-              </label>
-              <select
-                id="gsch-city-continent"
-                className={GSCH_FIELD}
-                value={form.continent}
-                onChange={(e) => setForm((f) => ({ ...f, continent: e.target.value }))}
-              >
-                <option value="">Select…</option>
-                {GSCH_CONTINENTS.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label htmlFor="gsch-city-state" className="mb-1 block text-sm font-medium text-content">
-                State / province
-              </label>
-              <input
-                id="gsch-city-state"
-                className={GSCH_FIELD}
-                value={form.state_province}
-                onChange={(e) => setForm((f) => ({ ...f, state_province: e.target.value }))}
-              />
-            </div>
-            <div>
-              <label htmlFor="gsch-city-pop" className="mb-1 block text-sm font-medium text-content">
-                Population
-              </label>
-              <input
-                id="gsch-city-pop"
-                type="number"
-                className={GSCH_FIELD}
-                value={form.population}
-                onChange={(e) => setForm((f) => ({ ...f, population: e.target.value }))}
-              />
-            </div>
-            <div>
-              <label htmlFor="gsch-city-web" className="mb-1 block text-sm font-medium text-content">
-                Official website
-              </label>
-              <input
-                id="gsch-city-web"
-                className={GSCH_FIELD}
-                value={form.official_website}
-                onChange={(e) => setForm((f) => ({ ...f, official_website: e.target.value }))}
-              />
-            </div>
-            <div className="sm:col-span-2">
-              <label htmlFor="gsch-city-desc" className="mb-1 block text-sm font-medium text-content">
-                Description
-              </label>
-              <textarea
-                id="gsch-city-desc"
-                className={`${GSCH_FIELD} min-h-[88px]`}
-                value={form.description}
-                onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-              />
-            </div>
-            <div>
-              <label htmlFor="gsch-city-mayor" className="mb-1 block text-sm font-medium text-content">
-                Mayor / leader name
-              </label>
-              <input
-                id="gsch-city-mayor"
-                className={GSCH_FIELD}
-                value={form.mayor_name}
-                onChange={(e) => setForm((f) => ({ ...f, mayor_name: e.target.value }))}
-              />
-            </div>
-            <div>
-              <label htmlFor="gsch-city-industries" className="mb-1 block text-sm font-medium text-content">
-                Major industries
-              </label>
-              <input
-                id="gsch-city-industries"
-                className={GSCH_FIELD}
-                value={form.major_industries}
-                onChange={(e) => setForm((f) => ({ ...f, major_industries: e.target.value }))}
-                placeholder="tech, tourism, agriculture"
-              />
-            </div>
-            <div className="sm:col-span-2">
-              <label htmlFor="gsch-city-collab" className="mb-1 block text-sm font-medium text-content">
-                Collaboration interests
-              </label>
-              <input
-                id="gsch-city-collab"
-                className={GSCH_FIELD}
-                value={form.collaboration_interests}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, collaboration_interests: e.target.value }))
-                }
-              />
-            </div>
-            <label className="flex items-center gap-2 text-sm text-content sm:col-span-2">
-              <input
-                type="checkbox"
-                checked={form.is_published}
-                onChange={(e) => setForm((f) => ({ ...f, is_published: e.target.checked }))}
-              />
-              Publish city profile
-            </label>
-          </div>
-          <div className="flex gap-2">
-            <button type="button" className="btn-secondary text-sm" onClick={() => setShowForm(false)}>
+      <GschFilterDrawer
+        open={filtersOpen}
+        title="Filter cities"
+        description="Search your city profiles by name or country."
+        onClose={() => setFiltersOpen(false)}
+        footer={
+          <>
+            <button type="button" className="btn-secondary text-sm" onClick={resetFilters}>
+              Reset
+            </button>
+            <button type="button" className="btn-primary text-sm" onClick={applyFilters}>
+              Apply filters
+            </button>
+          </>
+        }
+      >
+        <div>
+          <label className={GSCH_LABEL} htmlFor="gsch-city-manage-q">
+            Search
+          </label>
+          <input
+            id="gsch-city-manage-q"
+            className={GSCH_FIELD}
+            placeholder="Name or description…"
+            value={filters.q}
+            onChange={(e) => setFilters((f) => ({ ...f, q: e.target.value }))}
+          />
+        </div>
+        <div>
+          <label className={GSCH_LABEL} htmlFor="gsch-city-manage-country">
+            Country
+          </label>
+          <input
+            id="gsch-city-manage-country"
+            className={GSCH_FIELD}
+            placeholder="Country"
+            value={filters.country}
+            onChange={(e) => setFilters((f) => ({ ...f, country: e.target.value }))}
+          />
+        </div>
+      </GschFilterDrawer>
+
+            <GschFormModal
+        open={showForm}
+        title={editingId ? 'Edit city profile' : 'Create city profile'}
+        onClose={() => {
+          setShowForm(false)
+          setEditingId(null)
+        }}
+        footer={
+          <>
+            <button
+              type="button"
+              className="btn-secondary text-sm"
+              disabled={busy}
+              onClick={() => {
+                setShowForm(false)
+                setEditingId(null)
+              }}
+            >
               Cancel
             </button>
             <button type="button" className="btn-primary text-sm" disabled={busy} onClick={save}>
               {busy ? 'Saving…' : editingId ? 'Save changes' : 'Create city'}
             </button>
+          </>
+        }
+      >
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="sm:col-span-2">
+            <label htmlFor="gsch-city-org" className="mb-1 block text-sm font-medium text-content">
+              Organization
+            </label>
+            <select
+              id="gsch-city-org"
+              className={GSCH_FIELD}
+              value={form.organization_id}
+              onChange={(e) => setForm((f) => ({ ...f, organization_id: e.target.value }))}
+            >
+              <option value="">No organization</option>
+              {orgs.map((org) => (
+                <option key={org.id} value={org.id}>
+                  {org.name}
+                </option>
+              ))}
+            </select>
           </div>
+          <div>
+            <label htmlFor="gsch-city-name" className="mb-1 block text-sm font-medium text-content">
+              City name
+            </label>
+            <input
+              id="gsch-city-name"
+              className={GSCH_FIELD}
+              value={form.name}
+              onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+            />
+          </div>
+          <div>
+            <label htmlFor="gsch-city-country" className="mb-1 block text-sm font-medium text-content">
+              Country
+            </label>
+            <input
+              id="gsch-city-country"
+              className={GSCH_FIELD}
+              value={form.country}
+              onChange={(e) => setForm((f) => ({ ...f, country: e.target.value }))}
+            />
+          </div>
+          <div>
+            <label htmlFor="gsch-city-continent" className="mb-1 block text-sm font-medium text-content">
+              Continent
+            </label>
+            <select
+              id="gsch-city-continent"
+              className={GSCH_FIELD}
+              value={form.continent}
+              onChange={(e) => setForm((f) => ({ ...f, continent: e.target.value }))}
+            >
+              <option value="">Select…</option>
+              {GSCH_CONTINENTS.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label htmlFor="gsch-city-state" className="mb-1 block text-sm font-medium text-content">
+              State / province
+            </label>
+            <input
+              id="gsch-city-state"
+              className={GSCH_FIELD}
+              value={form.state_province}
+              onChange={(e) => setForm((f) => ({ ...f, state_province: e.target.value }))}
+            />
+          </div>
+          <div>
+            <label htmlFor="gsch-city-pop" className="mb-1 block text-sm font-medium text-content">
+              Population
+            </label>
+            <input
+              id="gsch-city-pop"
+              type="number"
+              className={GSCH_FIELD}
+              value={form.population}
+              onChange={(e) => setForm((f) => ({ ...f, population: e.target.value }))}
+            />
+          </div>
+          <div>
+            <label htmlFor="gsch-city-web" className="mb-1 block text-sm font-medium text-content">
+              Official website
+            </label>
+            <input
+              id="gsch-city-web"
+              className={GSCH_FIELD}
+              value={form.official_website}
+              onChange={(e) => setForm((f) => ({ ...f, official_website: e.target.value }))}
+            />
+          </div>
+          <div className="sm:col-span-2">
+            <label htmlFor="gsch-city-desc" className="mb-1 block text-sm font-medium text-content">
+              Description
+            </label>
+            <textarea
+              id="gsch-city-desc"
+              className={`${GSCH_FIELD} min-h-[88px]`}
+              value={form.description}
+              onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+            />
+          </div>
+          <div>
+            <label htmlFor="gsch-city-mayor" className="mb-1 block text-sm font-medium text-content">
+              Mayor / leader name
+            </label>
+            <input
+              id="gsch-city-mayor"
+              className={GSCH_FIELD}
+              value={form.mayor_name}
+              onChange={(e) => setForm((f) => ({ ...f, mayor_name: e.target.value }))}
+            />
+          </div>
+          <div>
+            <label htmlFor="gsch-city-industries" className="mb-1 block text-sm font-medium text-content">
+              Major industries
+            </label>
+            <input
+              id="gsch-city-industries"
+              className={GSCH_FIELD}
+              value={form.major_industries}
+              onChange={(e) => setForm((f) => ({ ...f, major_industries: e.target.value }))}
+              placeholder="tech, tourism, agriculture"
+            />
+          </div>
+          <div className="sm:col-span-2">
+            <label htmlFor="gsch-city-collab" className="mb-1 block text-sm font-medium text-content">
+              Collaboration interests
+            </label>
+            <input
+              id="gsch-city-collab"
+              className={GSCH_FIELD}
+              value={form.collaboration_interests}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, collaboration_interests: e.target.value }))
+              }
+            />
+          </div>
+          <label className="flex items-center gap-2 text-sm text-content sm:col-span-2">
+            <input
+              type="checkbox"
+              checked={form.is_published}
+              onChange={(e) => setForm((f) => ({ ...f, is_published: e.target.checked }))}
+            />
+            Publish city profile
+          </label>
         </div>
-      ) : null}
+      </GschFormModal>
 
       {cities.length === 0 ? (
         <EmptyState
@@ -322,31 +462,48 @@ export default function CitiesManagePanel() {
           }
         />
       ) : (
-        <ul className="space-y-2">
-          {cities.map((city) => (
-            <li key={city.id} className={`${GSCH_CARD} flex flex-wrap items-center gap-3`}>
-              <div className="min-w-0 flex-1">
-                <Link
-                  href={`/global-hub/cities/${city.id}`}
-                  className="font-semibold text-content hover:text-primary"
-                >
-                  {city.name}
-                </Link>
-                <p className="mt-0.5 text-xs text-content-tertiary">
-                  {[city.state_province, city.country].filter(Boolean).join(', ')}
-                </p>
-              </div>
-              <StatusBadge status={city.is_published ? 'published' : 'draft'} />
-              <button
-                type="button"
-                className="btn-secondary text-sm"
-                onClick={() => openEdit(city)}
+        <GschDataTable>
+          <GschTableHead>
+            <GschTableHeadCell>City</GschTableHeadCell>
+            <GschTableHeadCell>Country</GschTableHeadCell>
+            <GschTableHeadCell>Status</GschTableHeadCell>
+            <GschTableHeadCell align="right">Actions</GschTableHeadCell>
+          </GschTableHead>
+          <GschTableBody>
+            {cities.map((city) => (
+              <GschTableRow
+                key={city.id}
+                onClick={() => router.push(`/global-hub/cities/${city.id}`)}
               >
-                Edit
-              </button>
-            </li>
-          ))}
-        </ul>
+                <GschTableCell className="min-w-[140px]">
+                  <p className="font-semibold text-content">{city.name}</p>
+                  {city.state_province ? (
+                    <p className="mt-0.5 text-xs text-content-tertiary">
+                      {city.state_province}
+                    </p>
+                  ) : null}
+                </GschTableCell>
+                <GschTableCell>
+                  {[city.country, city.continent].filter(Boolean).join(' · ') || '—'}
+                </GschTableCell>
+                <GschTableCell>
+                  <StatusBadge status={city.is_published ? 'published' : 'draft'} />
+                </GschTableCell>
+                <GschTableCell align="right">
+                  <GschRowActions
+                    onView={() => router.push(`/global-hub/cities/${city.id}`)}
+                    onPublish={() => togglePublish(city)}
+                    publishLabel={city.is_published ? 'Unpublish' : 'Publish'}
+                    publishing={publishingId === city.id}
+                    onEdit={() => openEdit(city)}
+                    onDelete={() => handleDelete(city)}
+                    deleting={deletingId === city.id}
+                  />
+                </GschTableCell>
+              </GschTableRow>
+            ))}
+          </GschTableBody>
+        </GschDataTable>
       )}
     </div>
   )

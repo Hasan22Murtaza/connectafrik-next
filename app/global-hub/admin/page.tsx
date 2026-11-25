@@ -1,15 +1,5 @@
-'use client'
+import { redirect } from 'next/navigation'
 
-import GschPageShell from '@/features/gsch/components/GschPageShell'
-import AdminVerificationsPanel from '@/features/gsch/components/panels/AdminVerificationsPanel'
-
-export default function GlobalHubAdminPage() {
-  return (
-    <GschPageShell
-      title="Verification admin"
-      subtitle="Review organization verification requests and assign badges."
-    >
-      <AdminVerificationsPanel />
-    </GschPageShell>
-  )
+export default function GlobalHubAdminRedirectPage() {
+  redirect('/admin/global-hub')
 }

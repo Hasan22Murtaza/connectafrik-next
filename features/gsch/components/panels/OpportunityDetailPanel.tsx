@@ -6,6 +6,7 @@ import toast from 'react-hot-toast'
 import { apiClient, ApiError } from '@/lib/api-client'
 import { useAuth } from '@/contexts/AuthContext'
 import EmptyState from '@/features/gsch/components/EmptyState'
+import GschDetailHeader from '@/features/gsch/components/GschDetailHeader'
 import StatusBadge from '@/features/gsch/components/StatusBadge'
 import {
   GSCH_CARD,
@@ -18,7 +19,6 @@ export default function OpportunityDetailPanel({ id }: { id: string }) {
   const { user, loading: authLoading } = useAuth()
   const [item, setItem] = useState<GschOpportunity | null>(null)
   const [loading, setLoading] = useState(true)
-  const [busy, setBusy] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -38,23 +38,6 @@ export default function OpportunityDetailPanel({ id }: { id: string }) {
     load()
   }, [authLoading, user?.id, load])
 
-  async function togglePublish() {
-    if (!item) return
-    setBusy(true)
-    try {
-      const updated = await apiClient.patch<GschOpportunity>(
-        `/api/gsch/opportunities/${item.id}`,
-        { is_published: !item.is_published }
-      )
-      setItem(updated)
-      toast.success(updated.is_published ? 'Published' : 'Unpublished')
-    } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : 'Update failed')
-    } finally {
-      setBusy(false)
-    }
-  }
-
   if (authLoading || loading) {
     return <div className={`${GSCH_CARD} h-48 animate-pulse`} />
   }
@@ -67,36 +50,19 @@ export default function OpportunityDetailPanel({ id }: { id: string }) {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <h2 className="text-2xl font-semibold tracking-tight text-content">
-              {item.title}
-            </h2>
-            <StatusBadge status={item.is_published ? 'published' : 'draft'} />
-          </div>
-          <p className="mt-1 text-sm capitalize text-content-secondary">
+      <GschDetailHeader
+        backHref="/global-hub/opportunities"
+        backLabel="Back to opportunities"
+        title={item.title}
+        badges={<StatusBadge status={item.is_published ? 'published' : 'draft'} />}
+        subtitle={
+          <span className="capitalize">
             {item.category.replace(/_/g, ' ')}
             {item.organization?.name ? ` · ${item.organization.name}` : ''}
-          </p>
-          {location ? (
-            <p className="mt-1 text-sm text-content-tertiary">{location}</p>
-          ) : null}
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Link href="/global-hub/opportunities" className="btn-secondary text-sm">
-            Back to feed
-          </Link>
-          <button
-            type="button"
-            className="btn-primary text-sm"
-            disabled={busy}
-            onClick={togglePublish}
-          >
-            {item.is_published ? 'Unpublish' : 'Publish'}
-          </button>
-        </div>
-      </div>
+          </span>
+        }
+        meta={location || undefined}
+      />
 
       {item.summary ? (
         <section className={GSCH_CARD}>

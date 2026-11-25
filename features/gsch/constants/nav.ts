@@ -48,52 +48,51 @@ export const GSCH_NAV_ITEMS: GschNavItem[] = [
     match: ['/global-hub/partnerships'],
   },
   {
+    href: '/global-hub/agreements',
+    label: 'Partnership Builder',
+    match: ['/global-hub/agreements'],
+  },
+  {
     href: '/global-hub/opportunities',
     label: 'Opportunities',
     match: ['/global-hub/opportunities'],
   },
-  { href: '/global-hub/admin', label: 'Admin' },
   {
-    href: '/global-hub/coming-soon?m=investment',
+    href: '/global-hub/investment',
     label: 'Investment',
-    comingSoon: true,
+    match: ['/global-hub/investment'],
   },
   {
-    href: '/global-hub/coming-soon?m=business',
+    href: '/global-hub/business',
     label: 'Business',
-    comingSoon: true,
+    match: ['/global-hub/business'],
   },
   {
-    href: '/global-hub/coming-soon?m=education',
+    href: '/global-hub/education',
     label: 'Education',
-    comingSoon: true,
+    match: ['/global-hub/education'],
   },
   {
-    href: '/global-hub/coming-soon?m=tourism',
+    href: '/global-hub/tourism',
     label: 'Tourism',
-    comingSoon: true,
+    match: ['/global-hub/tourism'],
   },
   {
-    href: '/global-hub/coming-soon?m=smart-cities',
+    href: '/global-hub/smart-cities',
     label: 'Smart Cities',
-    comingSoon: true,
+    match: ['/global-hub/smart-cities'],
   },
   {
-    href: '/global-hub/coming-soon?m=climate',
+    href: '/global-hub/climate',
     label: 'Climate',
-    comingSoon: true,
+    match: ['/global-hub/climate'],
   },
   {
-    href: '/global-hub/coming-soon?m=events',
+    href: '/global-hub/events',
     label: 'Events',
-    comingSoon: true,
+    match: ['/global-hub/events'],
   },
-  { href: '/chat', label: 'Messages', external: true },
-  {
-    href: '/global-hub/coming-soon?m=analytics',
-    label: 'Analytics',
-    comingSoon: true,
-  },
+  
 ]
 
 export const GSCH_PHASE1_NAV = GSCH_NAV_ITEMS.filter(

@@ -151,3 +151,29 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     return errorResponse(error?.message || 'Failed to update organization', 500)
   }
 }
+
+export async function DELETE(request: NextRequest, { params }: Params) {
+  try {
+    const { user, supabase } = await getAuthenticatedUser(request)
+    const { id } = await params
+
+    const authz = await requireOrgRole(supabase, id, user.id, 'owner')
+    if (!authz.ok) return forbiddenResponse(authz.message)
+
+    const { error } = await supabase.from('gsch_organizations').delete().eq('id', id)
+    if (error) return errorResponse(error.message, 400)
+
+    await writeGschAuditLog(supabase, {
+      actor_id: user.id,
+      action: 'organization_deleted',
+      entity_type: 'gsch_organization',
+      entity_id: id,
+      metadata: { deleted: true },
+    })
+
+    return jsonResponse({ deleted: true, id })
+  } catch (error: any) {
+    if (error?.message === 'Unauthorized') return unauthorizedResponse()
+    return errorResponse(error?.message || 'Failed to delete organization', 500)
+  }
+}

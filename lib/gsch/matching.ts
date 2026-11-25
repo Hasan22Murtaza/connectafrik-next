@@ -255,6 +255,33 @@ export function scoreCityPair(
   }
 }
 
+/**
+ * Light opportunity affinity helper — secondary insight only.
+ * Scores overlap between a city's interest/industry tokens and opportunity tags.
+ * Returns 0–100; never invents tags.
+ */
+export function scoreOpportunityAffinity(
+  city: GschMatchCityInput,
+  opportunityTagsOrInterests: string[] | null | undefined
+): { score: number; shared: string[] } {
+  const cityTokens = normalizeTokens([
+    ...interestTokens(city),
+    ...(city.major_industries || []),
+    ...(city.infrastructure_priorities || []),
+    ...(city.tourism_assets || []),
+    ...(city.collaboration_interests || []),
+  ])
+  const oppTokens = normalizeTokens(opportunityTagsOrInterests || [])
+  if (cityTokens.length === 0 || oppTokens.length === 0) {
+    return { score: 0, shared: [] }
+  }
+  const oppSet = new Set(oppTokens)
+  const shared = cityTokens.filter((t) => oppSet.has(t))
+  if (shared.length === 0) return { score: 0, shared: [] }
+  const ratio = shared.length / Math.max(new Set([...cityTokens, ...oppTokens]).size, 1)
+  return { score: round2(Math.min(100, ratio * 100)), shared }
+}
+
 export function computeRecommendationsForCity(
   sourceCity: GschMatchCityInput,
   candidates: GschMatchCityInput[],

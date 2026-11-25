@@ -1,12 +1,12 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import Link from 'next/link'
 import toast from 'react-hot-toast'
 import { MapPin, Users } from '@/shared/icons'
 import { apiClient, ApiError } from '@/lib/api-client'
 import { useAuth } from '@/contexts/AuthContext'
 import EmptyState from '@/features/gsch/components/EmptyState'
+import GschDetailHeader from '@/features/gsch/components/GschDetailHeader'
 import StatusBadge from '@/features/gsch/components/StatusBadge'
 import { GSCH_CARD, GSCH_CHIP, GSCH_SECTION_TITLE } from '@/features/gsch/constants/styles'
 import type { GschCity } from '@/shared/types/gsch'
@@ -17,7 +17,6 @@ export default function CityDetailPanel({ cityId }: { cityId: string }) {
   const { user, loading: authLoading } = useAuth()
   const [city, setCity] = useState<CityDetail | null>(null)
   const [loading, setLoading] = useState(true)
-  const [busy, setBusy] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -36,22 +35,6 @@ export default function CityDetailPanel({ cityId }: { cityId: string }) {
     if (authLoading || !user) return
     load()
   }, [authLoading, user?.id, load])
-
-  async function toggleFollow() {
-    if (!city) return
-    setBusy(true)
-    try {
-      const result = await apiClient.post<{ followed: boolean }>(
-        `/api/gsch/cities/${city.id}/follow`
-      )
-      setCity((c) => (c ? { ...c, is_followed: result.followed } : c))
-      toast.success(result.followed ? 'City saved' : 'Removed from saved')
-    } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : 'Failed to update')
-    } finally {
-      setBusy(false)
-    }
-  }
 
   if (authLoading || loading) {
     return <div className={`${GSCH_CARD} h-64 animate-pulse`} />
@@ -79,48 +62,26 @@ export default function CityDetailPanel({ cityId }: { cityId: string }) {
         </div>
       )}
 
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <h2 className="text-2xl font-semibold tracking-tight text-content">{city.name}</h2>
-            <StatusBadge status={city.is_published ? 'published' : 'draft'} />
-          </div>
-          <p className="mt-1.5 flex items-center gap-1 text-sm text-content-secondary">
+      <GschDetailHeader
+        backHref="/global-hub/cities"
+        backLabel="Back to cities"
+        title={city.name}
+        badges={<StatusBadge status={city.is_published ? 'published' : 'draft'} />}
+        subtitle={
+          <span className="inline-flex items-center gap-1">
             <MapPin className="h-4 w-4 shrink-0" aria-hidden />
             {location}
-          </p>
-          {city.population != null ? (
-            <p className="mt-1 flex items-center gap-1 text-sm text-content-tertiary">
+          </span>
+        }
+        meta={
+          city.population != null ? (
+            <span className="inline-flex items-center gap-1">
               <Users className="h-4 w-4" aria-hidden />
               {city.population.toLocaleString()} residents
-            </p>
-          ) : null}
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            className={city.is_followed ? 'btn-secondary text-sm' : 'btn-primary text-sm'}
-            disabled={busy}
-            onClick={toggleFollow}
-          >
-            {city.is_followed ? 'Saved' : 'Follow city'}
-          </button>
-          <Link href="/chat" className="btn-secondary text-sm">
-            Send message
-          </Link>
-          <Link
-            href={`/global-hub/partnerships?target_city=${city.id}`}
-            className="btn-secondary text-sm"
-          >
-            Request partnership
-          </Link>
-          {city.can_manage ? (
-            <Link href="/global-hub/cities" className="btn-secondary text-sm">
-              Manage profiles
-            </Link>
-          ) : null}
-        </div>
-      </div>
+            </span>
+          ) : undefined
+        }
+      />
 
       {city.description ? (
         <section className={GSCH_CARD}>

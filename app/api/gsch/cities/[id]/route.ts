@@ -187,3 +187,30 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     return errorResponse(error?.message || 'Failed to update city', 500)
   }
 }
+
+export async function DELETE(request: NextRequest, { params }: Params) {
+  try {
+    const { user, supabase } = await getAuthenticatedUser(request)
+    const { id } = await params
+
+    if (!(await canManageCity(supabase, id, user.id))) {
+      return forbiddenResponse('Not authorized to delete this city.')
+    }
+
+    const { error } = await supabase.from('gsch_cities').delete().eq('id', id)
+    if (error) return errorResponse(error.message, 400)
+
+    await writeGschAuditLog(supabase, {
+      actor_id: user.id,
+      action: 'city_deleted',
+      entity_type: 'gsch_city',
+      entity_id: id,
+      metadata: { deleted: true },
+    })
+
+    return jsonResponse({ deleted: true, id })
+  } catch (error: any) {
+    if (error?.message === 'Unauthorized') return unauthorizedResponse()
+    return errorResponse(error?.message || 'Failed to delete city', 500)
+  }
+}

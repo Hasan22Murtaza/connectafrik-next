@@ -5,11 +5,18 @@ import Link from 'next/link'
 import toast from 'react-hot-toast'
 import { apiClient, ApiError } from '@/lib/api-client'
 import { useAuth } from '@/contexts/AuthContext'
+import BusinessProfileCard from '@/features/gsch/components/BusinessProfileCard'
 import CityCard from '@/features/gsch/components/CityCard'
+import ClimateProjectCard from '@/features/gsch/components/ClimateProjectCard'
+import EducationProgramCard from '@/features/gsch/components/EducationProgramCard'
 import EmptyState from '@/features/gsch/components/EmptyState'
+import EventCard from '@/features/gsch/components/EventCard'
+import InnovationChallengeCard from '@/features/gsch/components/InnovationChallengeCard'
 import MatchCard from '@/features/gsch/components/MatchCard'
 import OpportunityCard from '@/features/gsch/components/OpportunityCard'
+import ProjectCard from '@/features/gsch/components/ProjectCard'
 import StatusBadge from '@/features/gsch/components/StatusBadge'
+import TourismInitiativeCard from '@/features/gsch/components/TourismInitiativeCard'
 import { GSCH_CARD, GSCH_SECTION_TITLE } from '@/features/gsch/constants/styles'
 import type { GschHomeSummary } from '@/shared/types/gsch'
 
@@ -62,6 +69,14 @@ export default function HomePanel() {
   const cta = summary.verification_cta
   const recommended = summary.recommended_matches || []
   const opportunities = summary.trending_opportunities || []
+  const featuredProjects = summary.featured_projects || []
+  const recentBusiness = summary.recent_business_profiles || []
+  const educationHighlights = summary.education_highlights || []
+  const tourismHighlights = summary.tourism_highlights || []
+  const innovationHighlights = summary.innovation_highlights || []
+  const climateHighlights = summary.climate_highlights || []
+  const upcomingEvents = summary.upcoming_events || []
+  const analytics = summary.analytics_snapshot
   const pendingPartnerships = summary.pending_partnership_requests || 0
 
   return (
@@ -92,6 +107,9 @@ export default function HomePanel() {
           <Link href="/global-hub/matching" className="btn-secondary text-sm">
             Partner matching
           </Link>
+          <Link href="/global-hub/analytics" className="btn-secondary text-sm">
+            Analytics
+          </Link>
         </div>
         {cta.pending_count > 0 ? (
           <p className="mt-3 text-xs text-content-tertiary">
@@ -99,6 +117,26 @@ export default function HomePanel() {
           </p>
         ) : null}
       </section>
+
+      {analytics ? (
+        <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {[
+            { label: 'Organizations', value: analytics.total_organizations },
+            { label: 'Verified orgs', value: analytics.verified_organizations },
+            { label: 'Active partnerships', value: analytics.active_partnerships },
+            { label: 'Published events', value: analytics.events },
+          ].map((m) => (
+            <div key={m.label} className={GSCH_CARD}>
+              <p className="text-xs uppercase tracking-wide text-content-tertiary">
+                {m.label}
+              </p>
+              <p className="mt-1 text-xl font-semibold tabular-nums text-content">
+                {m.value.toLocaleString()}
+              </p>
+            </div>
+          ))}
+        </section>
+      ) : null}
 
       {pendingPartnerships > 0 ? (
         <section className={`${GSCH_CARD} border-amber-500/20 bg-amber-500/5`}>
@@ -147,6 +185,127 @@ export default function HomePanel() {
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {opportunities.map((opp) => (
               <OpportunityCard key={opp.id} opportunity={opp} />
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      {featuredProjects.length > 0 ? (
+        <section>
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <h2 className={GSCH_SECTION_TITLE}>Featured investment projects</h2>
+            <Link
+              href="/global-hub/investment"
+              className="text-sm font-medium text-primary"
+            >
+              View marketplace
+            </Link>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {featuredProjects.map((project) => (
+              <ProjectCard key={project.id} project={project} />
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      {recentBusiness.length > 0 ? (
+        <section>
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <h2 className={GSCH_SECTION_TITLE}>Recent business profiles</h2>
+            <Link
+              href="/global-hub/business"
+              className="text-sm font-medium text-primary"
+            >
+              Open business centre
+            </Link>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {recentBusiness.map((profile) => (
+              <BusinessProfileCard key={profile.id} profile={profile} />
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      {educationHighlights.length > 0 ? (
+        <section>
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <h2 className={GSCH_SECTION_TITLE}>Education exchange</h2>
+            <Link href="/global-hub/education" className="text-sm font-medium text-primary">
+              View all
+            </Link>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {educationHighlights.map((program) => (
+              <EducationProgramCard key={program.id} program={program} />
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      {tourismHighlights.length > 0 ? (
+        <section>
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <h2 className={GSCH_SECTION_TITLE}>Eco-tourism collaboration</h2>
+            <Link href="/global-hub/tourism" className="text-sm font-medium text-primary">
+              View all
+            </Link>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {tourismHighlights.map((initiative) => (
+              <TourismInitiativeCard key={initiative.id} initiative={initiative} />
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      {innovationHighlights.length > 0 ? (
+        <section>
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <h2 className={GSCH_SECTION_TITLE}>Smart cities innovation</h2>
+            <Link
+              href="/global-hub/smart-cities"
+              className="text-sm font-medium text-primary"
+            >
+              View all
+            </Link>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {innovationHighlights.map((challenge) => (
+              <InnovationChallengeCard key={challenge.id} challenge={challenge} />
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      {climateHighlights.length > 0 ? (
+        <section>
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <h2 className={GSCH_SECTION_TITLE}>Climate & sustainability</h2>
+            <Link href="/global-hub/climate" className="text-sm font-medium text-primary">
+              View all
+            </Link>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {climateHighlights.map((project) => (
+              <ClimateProjectCard key={project.id} project={project} />
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      {upcomingEvents.length > 0 ? (
+        <section>
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <h2 className={GSCH_SECTION_TITLE}>Upcoming events</h2>
+            <Link href="/global-hub/events" className="text-sm font-medium text-primary">
+              View all
+            </Link>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {upcomingEvents.map((event) => (
+              <EventCard key={event.id} event={event} />
             ))}
           </div>
         </section>

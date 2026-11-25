@@ -3,16 +3,23 @@
 import Link from 'next/link'
 import { usePathname, useSearchParams } from 'next/navigation'
 import {
+  BookOpen,
   Briefcase,
   Building2,
+  Calendar,
+  Camera,
+  ChartLine,
+  FileText,
   Globe,
+  Landmark,
   LayoutDashboard,
+  Lightbulb,
   Link2,
   MapPin,
   Search,
   ShieldCheck,
-  Sparkles,
   Target,
+  TrendingUp,
 } from '@/shared/icons'
 import {
   GSCH_NAV_ITEMS,
@@ -27,8 +34,16 @@ const ICONS: Record<string, typeof Globe> = {
   '/global-hub/cities': MapPin,
   '/global-hub/matching': Target,
   '/global-hub/partnerships': Link2,
+  '/global-hub/agreements': FileText,
   '/global-hub/opportunities': Briefcase,
-  '/global-hub/admin': Sparkles,
+  '/global-hub/investment': TrendingUp,
+  '/global-hub/business': Landmark,
+  '/global-hub/education': BookOpen,
+  '/global-hub/tourism': Camera,
+  '/global-hub/smart-cities': Lightbulb,
+  '/global-hub/climate': Globe,
+  '/global-hub/events': Calendar,
+  '/global-hub/analytics': ChartLine,
   '/chat': Globe,
 }
 

@@ -20,3 +20,9 @@ export const GSCH_SELECT =
 
 export const GSCH_FIELD =
   'w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-content outline-none transition placeholder:text-content-tertiary focus:border-primary focus:ring-2 focus:ring-primary/20'
+
+export const GSCH_LABEL = 'mb-1.5 block text-sm font-medium text-content'
+
+export const GSCH_TABLE_WRAP = 'overflow-x-auto overflow-y-visible'
+
+export const GSCH_TABLE = 'w-full min-w-[720px] text-left text-sm'

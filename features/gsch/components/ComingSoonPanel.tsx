@@ -9,10 +9,6 @@ const LABELS: Record<string, string> = {
   'partner-matching': 'Partner Matching',
   investment: 'Investment',
   business: 'Business',
-  education: 'Education',
-  tourism: 'Tourism',
-  'smart-cities': 'Smart Cities',
-  climate: 'Climate',
   'partnership-builder': 'Partnership Builder',
   events: 'Events',
   analytics: 'Analytics',
@@ -31,18 +27,21 @@ export default function ComingSoonPanel({ module }: { module?: string | null }) 
       </div>
       <h2 className="text-lg font-semibold text-content">{label} is coming soon</h2>
       <p className="mt-2 text-sm leading-relaxed text-content-secondary">
-        This module unlocks in a later Global Hub release. Matching, partnerships, and
-        opportunities are live now.
+        All Phase 1–5 Global Hub modules are live. Try Agreements, Events, or Analytics
+        from the sidebar.
       </p>
       <div className="mt-6 flex flex-wrap justify-center gap-2">
         <Link href="/global-hub" className="btn-primary text-sm">
           Back to Home
         </Link>
-        <Link href="/global-hub/matching" className="btn-secondary text-sm">
-          Partner matching
+        <Link href="/global-hub/agreements" className="btn-secondary text-sm">
+          Agreements
         </Link>
-        <Link href="/global-hub/opportunities" className="btn-secondary text-sm">
-          Opportunities
+        <Link href="/global-hub/events" className="btn-secondary text-sm">
+          Events
+        </Link>
+        <Link href="/global-hub/analytics" className="btn-secondary text-sm">
+          Analytics
         </Link>
       </div>
     </div>

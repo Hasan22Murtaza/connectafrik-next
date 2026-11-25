@@ -146,3 +146,26 @@ export async function PATCH(
     return errorResponse(error?.message || 'Failed to update opportunity', 500)
   }
 }
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { user, supabase } = await getAuthenticatedUser(request)
+    const { id } = await params
+    const { deleteGschOrgEntity } = await import('@/lib/gsch/delete-entity')
+    return deleteGschOrgEntity({
+      supabase,
+      userId: user.id,
+      id,
+      table: 'gsch_opportunities',
+      entityType: 'gsch_opportunity',
+      action: 'opportunity_deleted',
+      notFoundMessage: 'Opportunity not found',
+    })
+  } catch (error: any) {
+    if (error?.message === 'Unauthorized') return unauthorizedResponse()
+    return errorResponse(error?.message || 'Failed to delete opportunity', 500)
+  }
+}

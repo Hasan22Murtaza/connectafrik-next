@@ -1,46 +1,62 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
-import { LayoutGrid, List, Search } from '@/shared/icons'
 import { apiClient, ApiError } from '@/lib/api-client'
 import { useAuth } from '@/contexts/AuthContext'
-import CityCard from '@/features/gsch/components/CityCard'
 import EmptyState from '@/features/gsch/components/EmptyState'
+import GschFilterDrawer from '@/features/gsch/components/GschFilterDrawer'
+import GschFiltersButton, {
+  countActiveFilters,
+} from '@/features/gsch/components/GschFiltersButton'
+import {
+  GschDataTable,
+  GschRowActions,
+  GschTableBody,
+  GschTableCell,
+  GschTableHead,
+  GschTableHeadCell,
+  GschTableRow,
+} from '@/features/gsch/components/GschDataTable'
 import {
   GSCH_CARD,
-  GSCH_CHIP,
   GSCH_FIELD,
+  GSCH_LABEL,
   GSCH_SELECT,
 } from '@/features/gsch/constants/styles'
 import { GSCH_CONTINENTS } from '@/shared/types/gsch'
 import type { GschCity, GschPaginated } from '@/shared/types/gsch'
 
 export default function DiscoverCitiesPanel() {
+  const router = useRouter()
   const { user, loading: authLoading } = useAuth()
   const [cities, setCities] = useState<GschCity[]>([])
   const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(0)
   const [hasMore, setHasMore] = useState(false)
-  const [view, setView] = useState<'grid' | 'list'>('grid')
-  const [searchInput, setSearchInput] = useState('')
-  const [q, setQ] = useState('')
-  const [country, setCountry] = useState('')
-  const [continent, setContinent] = useState('')
-  const [industry, setIndustry] = useState('')
-  const [savedOnly, setSavedOnly] = useState(false)
+  const [filtersOpen, setFiltersOpen] = useState(false)
+  const [filters, setFilters] = useState({
+    q: '',
+    country: '',
+    continent: '',
+    industry: '',
+    savedOnly: false,
+  })
+  const [applied, setApplied] = useState(filters)
   const [followBusyId, setFollowBusyId] = useState<string | null>(null)
+
+  const activeFilterCount = countActiveFilters(applied)
 
   const load = useCallback(async () => {
     setLoading(true)
     try {
       const payload = await apiClient.get<GschPaginated<GschCity>>('/api/gsch/cities', {
-        q: q || undefined,
-        country: country || undefined,
-        continent: continent || undefined,
-        industry: industry || undefined,
-        saved: savedOnly ? '1' : undefined,
+        q: applied.q || undefined,
+        country: applied.country || undefined,
+        continent: applied.continent || undefined,
+        industry: applied.industry || undefined,
+        saved: applied.savedOnly ? '1' : undefined,
         page,
         limit: 12,
       })
@@ -52,7 +68,7 @@ export default function DiscoverCitiesPanel() {
     } finally {
       setLoading(false)
     }
-  }, [q, country, continent, industry, savedOnly, page])
+  }, [applied, page])
 
   useEffect(() => {
     if (authLoading || !user) return
@@ -78,6 +94,26 @@ export default function DiscoverCitiesPanel() {
     }
   }
 
+  function applyFilters() {
+    setPage(0)
+    setApplied(filters)
+    setFiltersOpen(false)
+  }
+
+  function resetFilters() {
+    const empty = {
+      q: '',
+      country: '',
+      continent: '',
+      industry: '',
+      savedOnly: false,
+    }
+    setFilters(empty)
+    setApplied(empty)
+    setPage(0)
+    setFiltersOpen(false)
+  }
+
   if (authLoading) {
     return <div className={`${GSCH_CARD} h-40 animate-pulse`} />
   }
@@ -93,45 +129,62 @@ export default function DiscoverCitiesPanel() {
 
   return (
     <div className="space-y-5">
-      <form
-        className="flex flex-col gap-3"
-        onSubmit={(e) => {
-          e.preventDefault()
-          setPage(0)
-          setQ(searchInput.trim())
-        }}
-      >
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          <label className="relative min-w-0 flex-1">
-            <span className="sr-only">Search cities</span>
-            <Search
-              className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-content-tertiary"
-              aria-hidden
-            />
-            <input
-              className={`${GSCH_FIELD} h-11 pl-10`}
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              placeholder="Search cities, countries, or descriptions…"
-            />
-          </label>
-          <button type="submit" className="btn-primary h-11 shrink-0 px-5">
-            Search
-          </button>
-        </div>
+      <div className="flex flex-wrap items-center justify-end gap-3">
+        <GschFiltersButton
+          activeCount={activeFilterCount}
+          onClick={() => setFiltersOpen(true)}
+        />
+      </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <label className="sr-only" htmlFor="gsch-continent">
+      <GschFilterDrawer
+        open={filtersOpen}
+        title="Filter cities"
+        description="Narrow discover results by location, industry, or saved status."
+        onClose={() => setFiltersOpen(false)}
+        footer={
+          <>
+            <button type="button" className="btn-secondary text-sm" onClick={resetFilters}>
+              Reset
+            </button>
+            <button type="button" className="btn-primary text-sm" onClick={applyFilters}>
+              Apply filters
+            </button>
+          </>
+        }
+      >
+        <div>
+          <label className={GSCH_LABEL} htmlFor="gsch-discover-q">
+            Search
+          </label>
+          <input
+            id="gsch-discover-q"
+            className={GSCH_FIELD}
+            placeholder="Cities, countries, or descriptions…"
+            value={filters.q}
+            onChange={(e) => setFilters((f) => ({ ...f, q: e.target.value }))}
+          />
+        </div>
+        <div>
+          <label className={GSCH_LABEL} htmlFor="gsch-discover-country">
+            Country
+          </label>
+          <input
+            id="gsch-discover-country"
+            className={GSCH_FIELD}
+            placeholder="Country"
+            value={filters.country}
+            onChange={(e) => setFilters((f) => ({ ...f, country: e.target.value }))}
+          />
+        </div>
+        <div>
+          <label className={GSCH_LABEL} htmlFor="gsch-discover-continent">
             Continent
           </label>
           <select
-            id="gsch-continent"
-            className={GSCH_SELECT}
-            value={continent}
-            onChange={(e) => {
-              setPage(0)
-              setContinent(e.target.value)
-            }}
+            id="gsch-discover-continent"
+            className={`${GSCH_SELECT} w-full`}
+            value={filters.continent}
+            onChange={(e) => setFilters((f) => ({ ...f, continent: e.target.value }))}
           >
             <option value="">All continents</option>
             {GSCH_CONTINENTS.map((c) => (
@@ -140,122 +193,82 @@ export default function DiscoverCitiesPanel() {
               </option>
             ))}
           </select>
-
-          <label className="sr-only" htmlFor="gsch-country">
-            Country
-          </label>
-          <input
-            id="gsch-country"
-            className={`${GSCH_FIELD} max-w-[10rem]`}
-            placeholder="Country"
-            value={country}
-            onChange={(e) => {
-              setPage(0)
-              setCountry(e.target.value)
-            }}
-          />
-
-          <label className="sr-only" htmlFor="gsch-industry">
+        </div>
+        <div>
+          <label className={GSCH_LABEL} htmlFor="gsch-discover-industry">
             Industry
           </label>
           <input
-            id="gsch-industry"
-            className={`${GSCH_FIELD} max-w-[10rem]`}
+            id="gsch-discover-industry"
+            className={GSCH_FIELD}
             placeholder="Industry"
-            value={industry}
-            onChange={(e) => {
-              setPage(0)
-              setIndustry(e.target.value)
-            }}
+            value={filters.industry}
+            onChange={(e) => setFilters((f) => ({ ...f, industry: e.target.value }))}
           />
-
-          <button
-            type="button"
-            className={savedOnly ? 'btn-primary text-sm' : 'btn-secondary text-sm'}
-            onClick={() => {
-              setPage(0)
-              setSavedOnly((v) => !v)
-            }}
-          >
-            Saved only
-          </button>
-
-          <div className="ml-auto flex items-center gap-1 rounded-lg border border-border p-1">
-            <button
-              type="button"
-              aria-label="Grid view"
-              className={`rounded-md p-1.5 ${view === 'grid' ? 'bg-surface-secondary text-content' : 'text-content-secondary'}`}
-              onClick={() => setView('grid')}
-            >
-              <LayoutGrid className="h-4 w-4" />
-            </button>
-            <button
-              type="button"
-              aria-label="List view"
-              className={`rounded-md p-1.5 ${view === 'list' ? 'bg-surface-secondary text-content' : 'text-content-secondary'}`}
-              onClick={() => setView('list')}
-            >
-              <List className="h-4 w-4" />
-            </button>
-          </div>
         </div>
-      </form>
+        <label className="flex items-center gap-2 text-sm text-content-secondary">
+          <input
+            type="checkbox"
+            checked={filters.savedOnly}
+            onChange={(e) =>
+              setFilters((f) => ({ ...f, savedOnly: e.target.checked }))
+            }
+          />
+          Saved only
+        </label>
+      </GschFilterDrawer>
 
-      {loading ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className={`${GSCH_CARD} h-56 animate-pulse`} />
-          ))}
-        </div>
+            {loading ? (
+        <div className={`${GSCH_CARD} h-40 animate-pulse`} />
       ) : cities.length === 0 ? (
         <EmptyState
           title="No cities found"
           description="Try adjusting filters, or create and publish a city profile for your organization."
         />
-      ) : view === 'grid' ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {cities.map((city) => (
-            <CityCard
-              key={city.id}
-              city={city}
-              onToggleFollow={toggleFollow}
-              followBusy={followBusyId === city.id}
-            />
-          ))}
-        </div>
       ) : (
-        <ul className="space-y-2">
-          {cities.map((city) => (
-            <li key={city.id} className={`${GSCH_CARD} flex flex-wrap items-center gap-3`}>
-              <div className="min-w-0 flex-1">
-                <Link
-                  href={`/global-hub/cities/${city.id}`}
-                  className="font-semibold text-content hover:text-primary"
+        <GschDataTable>
+          <GschTableHead>
+            <GschTableHeadCell>City</GschTableHeadCell>
+            <GschTableHeadCell>Country / Continent</GschTableHeadCell>
+            <GschTableHeadCell>Industries</GschTableHeadCell>
+            <GschTableHeadCell>Saved</GschTableHeadCell>
+            <GschTableHeadCell align="right">Actions</GschTableHeadCell>
+          </GschTableHead>
+          <GschTableBody>
+            {cities.map((city) => {
+              const industries = (city.major_industries || []).slice(0, 3).join(', ')
+              const followBusy = followBusyId === city.id
+              return (
+                <GschTableRow
+                  key={city.id}
+                  onClick={() => router.push(`/global-hub/cities/${city.id}`)}
                 >
-                  {city.name}
-                </Link>
-                <p className="mt-0.5 text-xs text-content-tertiary">
-                  {[city.state_province, city.country].filter(Boolean).join(', ')}
-                </p>
-                <div className="mt-2 flex flex-wrap gap-1.5">
-                  {(city.major_industries || []).slice(0, 3).map((ind) => (
-                    <span key={ind} className={GSCH_CHIP}>
-                      {ind}
-                    </span>
-                  ))}
-                </div>
-              </div>
-              <button
-                type="button"
-                className={city.is_followed ? 'btn-secondary text-sm' : 'btn-primary text-sm'}
-                disabled={followBusyId === city.id}
-                onClick={() => toggleFollow(city)}
-              >
-                {city.is_followed ? 'Saved' : 'Save'}
-              </button>
-            </li>
-          ))}
-        </ul>
+                  <GschTableCell className="min-w-[140px]">
+                    <p className="font-semibold text-content">{city.name}</p>
+                    {city.state_province ? (
+                      <p className="mt-0.5 text-xs text-content-tertiary">
+                        {city.state_province}
+                      </p>
+                    ) : null}
+                  </GschTableCell>
+                  <GschTableCell>
+                    {[city.country, city.continent].filter(Boolean).join(' · ') || '—'}
+                  </GschTableCell>
+                  <GschTableCell>{industries || '—'}</GschTableCell>
+                  <GschTableCell>{city.is_followed ? 'Yes' : '—'}</GschTableCell>
+                  <GschTableCell align="right">
+                    <GschRowActions
+                      onView={() => router.push(`/global-hub/cities/${city.id}`)}
+                      onSave={() => toggleFollow(city)}
+                      saveLabel={city.is_followed ? 'Unsave' : 'Save'}
+                      saving={followBusy}
+                    />
+                  </GschTableCell>
+                </GschTableRow>
+              )
+            })}
+          </GschTableBody>
+        </GschDataTable>
       )}
 
       {(page > 0 || hasMore) && !loading ? (
