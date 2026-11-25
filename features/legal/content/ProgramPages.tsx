@@ -108,16 +108,19 @@ export function SisterCitiesPage() {
       </p>
       <ul>
         <li>
-          <Link href="/sister-cities/register">Register a city</Link>
+          <Link href="/global-hub">Open the Global Hub</Link>
         </li>
         <li>
-          <Link href="/sister-cities/apply">Apply for a partnership</Link>
+          <Link href="/global-hub/organization">Register an organization</Link>
         </li>
         <li>
-          <Link href="/sister-cities/partnerships">Partnership requests</Link>
+          <Link href="/global-hub/discover">Discover cities</Link>
         </li>
         <li>
-          <Link href="/sister-cities/economic-development">Economic collaboration</Link>
+          <Link href="/sister-cities/register">Register a city (legacy stub)</Link>
+        </li>
+        <li>
+          <Link href="/sister-cities/apply">Apply for a partnership (legacy stub)</Link>
         </li>
       </ul>
       <p>
@@ -131,9 +134,16 @@ export function RegisterCityPage() {
   return (
     <Page title="Register a city">
       <p>
-        Email <a href="mailto:sistercities@cribstalk.com">sistercities@cribstalk.com</a> with the
-        city or community name, country, a short description, and the name and role of the person
-        submitting it. We use this to confirm the listing before it is shown as a sister-city profile.
+        Create and publish a city profile in the{' '}
+        <Link href="/global-hub/organization">Global Hub</Link> after registering your organization.
+        You can also email{' '}
+        <a href="mailto:sistercities@cribstalk.com">sistercities@cribstalk.com</a> with the city or
+        community name, country, a short description, and the name and role of the person submitting
+        it.
+      </p>
+      <p>
+        <Link href="/global-hub/cities">Manage city profiles</Link> ·{' '}
+        <Link href="/global-hub/discover">Discover cities</Link>
       </p>
     </Page>
   )
@@ -143,7 +153,9 @@ export function SisterCityApplyPage() {
   return (
     <Page title="Apply for a partnership">
       <p>
-        Email <a href="mailto:sistercities@cribstalk.com">sistercities@cribstalk.com</a> with both
+        Start in the <Link href="/global-hub">Global Hub</Link> by verifying your organization, then
+        explore cities on <Link href="/global-hub/discover">Discover</Link>. You can also email{' '}
+        <a href="mailto:sistercities@cribstalk.com">sistercities@cribstalk.com</a> with both
         communities, the kind of exchange you want (education, culture, environment, or another
         area), and who will be the contact. Public posts about a partnership follow the{' '}
         <Link href="/community-standards">Community Standards</Link>.
@@ -156,10 +168,15 @@ export function PartnershipsPage() {
   return (
     <Page title="Partnership requests">
       <p>
-        Organizations and cities can propose a collaboration by emailing{' '}
+        Organizations and cities can propose a collaboration in the{' '}
+        <Link href="/global-hub">Global Hub</Link> or by emailing{' '}
         <a href="mailto:partnerships@cribstalk.com">partnerships@cribstalk.com</a> or{' '}
         <a href="mailto:sistercities@cribstalk.com">sistercities@cribstalk.com</a>. Include who you
         represent and what you want to do together.
+      </p>
+      <p>
+        <Link href="/global-hub/organization">Register your organization</Link> ·{' '}
+        <Link href="/global-hub/discover">Discover cities</Link>
       </p>
     </Page>
   )
@@ -170,7 +187,9 @@ export function EconomicDevelopmentPage() {
     <Page title="Economic collaboration">
       <p>
         The sister-cities area can be used to share economic development initiatives, trade
-        interests, and innovation projects. Listings and offers must be honest and must follow the{' '}
+        interests, and innovation projects. Use the{' '}
+        <Link href="/global-hub">Global Hub</Link> to publish city profiles and connect with
+        partners. Listings and offers must be honest and must follow the{' '}
         <Link href="/tradehub-policy">TradeHub Policy</Link> and{' '}
         <Link href="/marketplace-policy">Marketplace Policy</Link> when something is offered for sale.
       </p>

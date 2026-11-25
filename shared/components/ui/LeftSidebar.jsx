@@ -7,6 +7,7 @@ import {
   Award,
   Bookmark,
   Check,
+  Globe,
   Handbag,
   Home,
   Megaphone,
@@ -38,6 +39,7 @@ const shortcuts = [
   { name: "Calls", to: "/calls", icon: Phone, badgeKey: "calls" },
   { name: "TradeHub", to: "/marketplace", icon: Handbag },
   { name: "Youth Leadership", to: "/youth-leadership", icon: Award },
+  { name: "Global Hub", to: "/global-hub", icon: Globe },
   { name: "Saved", to: "/saved", icon: Bookmark },
 ];
 

@@ -30,6 +30,7 @@ const APP_CHROME_PREFIXES = [
   "/culture",
   "/politics",
   "/youth-leadership",
+  "/global-hub",
   "/user/",
   "/marketplace/selling",
   "/marketplace/buying",

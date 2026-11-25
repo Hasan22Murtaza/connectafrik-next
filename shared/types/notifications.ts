@@ -84,6 +84,11 @@ export type NotificationType =
   | 'youth_achievement_verified'
   | 'youth_certificate_issued'
   | 'youth_guardian_approval'
+  // Global Sister Cities Hub
+  | 'gsch_verification_submitted'
+  | 'gsch_verification_status'
+  | 'gsch_org_invite'
+  | 'gsch_city_follow'
 
 /**
  * Canonical types you requested for persisted notifications.
@@ -136,6 +141,10 @@ export const CANONICAL_NOTIFICATION_TYPES = [
   'youth_achievement_verified',
   'youth_certificate_issued',
   'youth_guardian_approval',
+  'gsch_verification_submitted',
+  'gsch_verification_status',
+  'gsch_org_invite',
+  'gsch_city_follow',
 ] as const satisfies readonly NotificationType[]
 
 export type CanonicalNotificationType = (typeof CANONICAL_NOTIFICATION_TYPES)[number]

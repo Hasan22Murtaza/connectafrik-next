@@ -216,6 +216,7 @@ export async function middleware(request: NextRequest) {
     '/culture',
     '/politics',
     '/youth-leadership',
+    '/global-hub',
   ]
   const publicRoutes = [
     '/',
