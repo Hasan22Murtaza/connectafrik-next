@@ -23,6 +23,9 @@ export const ALLOWED_UPLOAD_FOLDERS = [
   'memories',
   'groups',
   'comments',
+  'gsch-logos',
+  'gsch-covers',
+  'gsch-docs',
 ] as const
 
 export type AllowedUploadFolder = (typeof ALLOWED_UPLOAD_FOLDERS)[number]

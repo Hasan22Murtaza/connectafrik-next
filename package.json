@@ -34,6 +34,7 @@
     "apn": "^2.2.0",
     "buffer": "^6.0.3",
     "date-fns": "^4.1.0",
+    "driver.js": "^1.14.0",
     "emoji-picker-react": "^4.22.3",
     "firebase": "^10.7.1",
     "firebase-admin": "^12.0.0",

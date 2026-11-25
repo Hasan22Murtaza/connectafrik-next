@@ -22,8 +22,8 @@ export default function YouthShell({
   onTabChange?: (id: string) => void
 }) {
   return (
-    <div className={YOUTH_PAGE_SHELL}>
-      <div className="mb-6 space-y-4">
+    <div className={YOUTH_PAGE_SHELL} data-tour="youth-page">
+      <div className="mb-6 space-y-4" data-tour="youth-page-header">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2.5">
@@ -41,16 +41,23 @@ export default function YouthShell({
           </div>
 
           {actions ? (
-            <div className="flex flex-wrap items-center gap-2 sm:shrink-0">{actions}</div>
+            <div
+              className="flex flex-wrap items-center gap-2 sm:shrink-0"
+              data-tour="youth-primary-cta"
+            >
+              {actions}
+            </div>
           ) : null}
         </div>
 
         {tabs && activeTab && onTabChange ? (
-          <YouthHubTabs tabs={tabs} activeId={activeTab} onChange={onTabChange} />
+          <div data-tour="youth-tabs">
+            <YouthHubTabs tabs={tabs} activeId={activeTab} onChange={onTabChange} />
+          </div>
         ) : null}
       </div>
 
-      {children}
+      <div data-tour="youth-results">{children}</div>
     </div>
   )
 }

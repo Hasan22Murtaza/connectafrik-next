@@ -84,6 +84,26 @@ export type NotificationType =
   | 'youth_achievement_verified'
   | 'youth_certificate_issued'
   | 'youth_guardian_approval'
+  // Global Sister Cities Hub
+  | 'gsch_verification_submitted'
+  | 'gsch_verification_status'
+  | 'gsch_org_invite'
+  | 'gsch_city_follow'
+  | 'gsch_partnership_request'
+  | 'gsch_partnership_response'
+  | 'gsch_opportunity_published'
+  | 'gsch_match_ready'
+  | 'gsch_project_interest'
+  | 'gsch_project_info_request'
+  | 'gsch_trade_enquiry'
+  | 'gsch_trade_enquiry_response'
+  | 'gsch_education_application'
+  | 'gsch_tourism_partnership'
+  | 'gsch_innovation_submission'
+  | 'gsch_climate_interest'
+  | 'gsch_agreement_update'
+  | 'gsch_event_published'
+  | 'gsch_event_registration'
 
 /**
  * Canonical types you requested for persisted notifications.
@@ -136,6 +156,25 @@ export const CANONICAL_NOTIFICATION_TYPES = [
   'youth_achievement_verified',
   'youth_certificate_issued',
   'youth_guardian_approval',
+  'gsch_verification_submitted',
+  'gsch_verification_status',
+  'gsch_org_invite',
+  'gsch_city_follow',
+  'gsch_partnership_request',
+  'gsch_partnership_response',
+  'gsch_opportunity_published',
+  'gsch_match_ready',
+  'gsch_project_interest',
+  'gsch_project_info_request',
+  'gsch_trade_enquiry',
+  'gsch_trade_enquiry_response',
+  'gsch_education_application',
+  'gsch_tourism_partnership',
+  'gsch_innovation_submission',
+  'gsch_climate_interest',
+  'gsch_agreement_update',
+  'gsch_event_published',
+  'gsch_event_registration',
 ] as const satisfies readonly NotificationType[]
 
 export type CanonicalNotificationType = (typeof CANONICAL_NOTIFICATION_TYPES)[number]

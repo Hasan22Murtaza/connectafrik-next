@@ -159,7 +159,10 @@ export default function DiscoverProgramsPanel() {
             />
           </label>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 sm:ml-auto">
+            <button type="submit" className="btn-primary h-11 shrink-0 px-5">
+              Explore
+            </button>
             <button
               type="button"
               onClick={() => setFiltersOpen(true)}
@@ -174,10 +177,6 @@ export default function DiscoverProgramsPanel() {
                   {activeFilterCount}
                 </span>
               ) : null}
-            </button>
-
-            <button type="submit" className="btn-primary h-11 shrink-0 px-5">
-              Explore
             </button>
           </div>
         </form>

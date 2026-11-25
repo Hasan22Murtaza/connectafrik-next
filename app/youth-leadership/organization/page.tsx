@@ -206,7 +206,12 @@ export default function YouthOrganizationListPage() {
           title="No organization yet"
           description="Create an organization to publish programs and review applications."
           action={
-            <button type="button" className="btn-primary" onClick={openCreateModal}>
+            <button
+              type="button"
+              className="btn-primary"
+              data-tour="youth-primary-cta"
+              onClick={openCreateModal}
+            >
               Create organization
             </button>
           }
