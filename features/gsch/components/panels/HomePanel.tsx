@@ -7,6 +7,8 @@ import { apiClient, ApiError } from '@/lib/api-client'
 import { useAuth } from '@/contexts/AuthContext'
 import CityCard from '@/features/gsch/components/CityCard'
 import EmptyState from '@/features/gsch/components/EmptyState'
+import MatchCard from '@/features/gsch/components/MatchCard'
+import OpportunityCard from '@/features/gsch/components/OpportunityCard'
 import StatusBadge from '@/features/gsch/components/StatusBadge'
 import { GSCH_CARD, GSCH_SECTION_TITLE } from '@/features/gsch/constants/styles'
 import type { GschHomeSummary } from '@/shared/types/gsch'
@@ -58,6 +60,9 @@ export default function HomePanel() {
   }
 
   const cta = summary.verification_cta
+  const recommended = summary.recommended_matches || []
+  const opportunities = summary.trending_opportunities || []
+  const pendingPartnerships = summary.pending_partnership_requests || 0
 
   return (
     <div className="space-y-8">
@@ -84,6 +89,9 @@ export default function HomePanel() {
           <Link href="/global-hub/discover" className="btn-secondary text-sm">
             Discover cities
           </Link>
+          <Link href="/global-hub/matching" className="btn-secondary text-sm">
+            Partner matching
+          </Link>
         </div>
         {cta.pending_count > 0 ? (
           <p className="mt-3 text-xs text-content-tertiary">
@@ -91,6 +99,58 @@ export default function HomePanel() {
           </p>
         ) : null}
       </section>
+
+      {pendingPartnerships > 0 ? (
+        <section className={`${GSCH_CARD} border-amber-500/20 bg-amber-500/5`}>
+          <h2 className={GSCH_SECTION_TITLE}>Partnership requests awaiting you</h2>
+          <p className="mt-2 text-sm text-content-secondary">
+            You have {pendingPartnerships} pending inbound partnership request
+            {pendingPartnerships === 1 ? '' : 's'}.
+          </p>
+          <Link href="/global-hub/partnerships" className="btn-primary mt-4 inline-flex text-sm">
+            Review requests
+          </Link>
+        </section>
+      ) : null}
+
+      {recommended.length > 0 ? (
+        <section>
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <h2 className={GSCH_SECTION_TITLE}>Recommended matches</h2>
+            <Link href="/global-hub/matching" className="text-sm font-medium text-primary">
+              Open matching
+            </Link>
+          </div>
+          <div className="grid gap-4 lg:grid-cols-2">
+            {recommended.slice(0, 4).map((match) => (
+              <MatchCard
+                key={match.id}
+                match={match}
+                connectHref={`/global-hub/partnerships?target_city=${match.recommended_city_id}`}
+              />
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      {opportunities.length > 0 ? (
+        <section>
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <h2 className={GSCH_SECTION_TITLE}>Trending opportunities</h2>
+            <Link
+              href="/global-hub/opportunities"
+              className="text-sm font-medium text-primary"
+            >
+              View all
+            </Link>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {opportunities.map((opp) => (
+              <OpportunityCard key={opp.id} opportunity={opp} />
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       <section>
         <div className="mb-3 flex items-center justify-between gap-3">

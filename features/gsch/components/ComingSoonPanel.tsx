@@ -31,15 +31,18 @@ export default function ComingSoonPanel({ module }: { module?: string | null }) 
       </div>
       <h2 className="text-lg font-semibold text-content">{label} is coming soon</h2>
       <p className="mt-2 text-sm leading-relaxed text-content-secondary">
-        Phase 1 of the Global Sister Cities Partnership Hub focuses on organizations,
-        verification, and city profiles. This section will unlock in a later release.
+        This module unlocks in a later Global Hub release. Matching, partnerships, and
+        opportunities are live now.
       </p>
       <div className="mt-6 flex flex-wrap justify-center gap-2">
         <Link href="/global-hub" className="btn-primary text-sm">
           Back to Home
         </Link>
-        <Link href="/global-hub/discover" className="btn-secondary text-sm">
-          Discover cities
+        <Link href="/global-hub/matching" className="btn-secondary text-sm">
+          Partner matching
+        </Link>
+        <Link href="/global-hub/opportunities" className="btn-secondary text-sm">
+          Opportunities
         </Link>
       </div>
     </div>

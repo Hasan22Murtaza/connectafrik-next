@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
 import { getAuthenticatedUser } from '@/lib/supabase-server'
 import { errorResponse, jsonResponse, unauthorizedResponse } from '@/lib/api-utils'
+import { GSCH_MATCH_ALGORITHM_VERSION } from '@/lib/gsch/matching'
 import type { GschHomeSummary } from '@/shared/types/gsch'
 
 export async function GET(request: NextRequest) {
@@ -12,6 +13,7 @@ export async function GET(request: NextRequest) {
       membershipsRes,
       verifiedRes,
       followsRes,
+      opportunitiesRes,
     ] = await Promise.all([
       supabase
         .from('gsch_cities')
@@ -47,12 +49,30 @@ export async function GET(request: NextRequest) {
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
         .limit(12),
+      supabase
+        .from('gsch_opportunities')
+        .select(
+          `
+          id, organization_id, city_id, title, summary, category, country,
+          continent, location_label, starts_at, application_deadline,
+          is_published, created_at, tags,
+          organization:gsch_organizations!organization_id(
+            id, name, country, logo_url, verification_status
+          )
+        `
+        )
+        .eq('is_published', true)
+        .order('created_at', { ascending: false })
+        .limit(6),
     ])
 
     if (featuredRes.error) return errorResponse(featuredRes.error.message, 400)
     if (membershipsRes.error) return errorResponse(membershipsRes.error.message, 400)
     if (verifiedRes.error) return errorResponse(verifiedRes.error.message, 400)
     if (followsRes.error) return errorResponse(followsRes.error.message, 400)
+    if (opportunitiesRes.error) {
+      return errorResponse(opportunitiesRes.error.message, 400)
+    }
 
     const memberships = membershipsRes.data || []
     const orgIds = memberships.map((m) => m.organization_id)
@@ -90,6 +110,79 @@ export async function GET(request: NextRequest) {
       myFollows = (cities || []).map((c) => ({ ...c, is_followed: true }))
     }
 
+    // Recommended matches from managed or followed cities
+    let matchSourceIds: string[] = []
+    {
+      const managedFilter =
+        orgIds.length > 0
+          ? `created_by.eq.${user.id},organization_id.in.(${orgIds.join(',')})`
+          : `created_by.eq.${user.id}`
+      const { data: managedCities } = await supabase
+        .from('gsch_cities')
+        .select('id')
+        .eq('is_published', true)
+        .or(managedFilter)
+        .limit(5)
+      matchSourceIds = (managedCities || []).map((c) => c.id)
+    }
+    if (matchSourceIds.length === 0 && followIds.length > 0) {
+      matchSourceIds = followIds.slice(0, 3)
+    }
+
+    let recommendedMatches: GschHomeSummary['recommended_matches'] = []
+    if (matchSourceIds.length > 0) {
+      const { data: matches } = await supabase
+        .from('gsch_match_recommendations')
+        .select(
+          `
+          id, source_city_id, recommended_city_id, compatibility_score,
+          shared_interests, collaboration_areas, score_breakdown, explanation,
+          algorithm_version, computed_at, created_at,
+          source_city:gsch_cities!source_city_id(
+            id, name, country, continent, logo_url, population
+          ),
+          recommended_city:gsch_cities!recommended_city_id(
+            id, name, country, continent, logo_url, population,
+            major_industries, collaboration_interests
+          )
+        `
+        )
+        .in('source_city_id', matchSourceIds)
+        .eq('algorithm_version', GSCH_MATCH_ALGORITHM_VERSION)
+        .order('compatibility_score', { ascending: false })
+        .limit(6)
+      recommendedMatches = (matches ||
+        []) as unknown as GschHomeSummary['recommended_matches']
+    }
+
+    // Pending inbound partnership requests
+    let pendingInbound = 0
+    const inboundFilters: string[] = []
+    if (orgIds.length > 0) {
+      inboundFilters.push(`target_organization_id.in.(${orgIds.join(',')})`)
+    }
+    const { data: managedForInbound } = await supabase
+      .from('gsch_cities')
+      .select('id')
+      .or(
+        orgIds.length > 0
+          ? `created_by.eq.${user.id},organization_id.in.(${orgIds.join(',')})`
+          : `created_by.eq.${user.id}`
+      )
+      .limit(50)
+    const managedCityIds = (managedForInbound || []).map((c) => c.id)
+    if (managedCityIds.length > 0) {
+      inboundFilters.push(`target_city_id.in.(${managedCityIds.join(',')})`)
+    }
+    if (inboundFilters.length > 0) {
+      const { count } = await supabase
+        .from('gsch_partnership_requests')
+        .select('id', { count: 'exact', head: true })
+        .eq('status', 'pending')
+        .or(inboundFilters.join(','))
+      pendingInbound = count || 0
+    }
+
     const draftOrg =
       myOrganizations.find((o) =>
         ['draft', 'additional_info_required', 'rejected'].includes(o.verification_status)
@@ -115,6 +208,10 @@ export async function GET(request: NextRequest) {
         pending_count: pendingCount,
         draft_org_id: draftOrg?.id || null,
       },
+      recommended_matches: recommendedMatches,
+      pending_partnership_requests: pendingInbound,
+      trending_opportunities: (opportunitiesRes.data ||
+        []) as unknown as GschHomeSummary['trending_opportunities'],
     }
 
     return jsonResponse(summary)

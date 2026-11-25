@@ -197,6 +197,199 @@ export interface GschPaginated<T> {
   hasMore: boolean
 }
 
+export type GschPartnershipType =
+  | 'sister_city'
+  | 'economic'
+  | 'tourism'
+  | 'education'
+  | 'climate'
+  | 'infrastructure'
+  | 'innovation'
+  | 'cultural'
+  | 'other'
+
+export type GschPartnershipRequestStatus =
+  | 'draft'
+  | 'pending'
+  | 'accepted'
+  | 'declined'
+  | 'withdrawn'
+  | 'cancelled'
+
+export type GschPartnershipStatus = 'active' | 'paused' | 'completed' | 'cancelled'
+
+export type GschOpportunityCategory =
+  | 'investment'
+  | 'grant'
+  | 'conference'
+  | 'trade_mission'
+  | 'development_funding'
+  | 'innovation_challenge'
+  | 'sister_city'
+  | 'education_program'
+  | 'other'
+
+export const GSCH_PARTNERSHIP_TYPES: { value: GschPartnershipType; label: string }[] = [
+  { value: 'sister_city', label: 'Sister city' },
+  { value: 'economic', label: 'Economic' },
+  { value: 'tourism', label: 'Tourism' },
+  { value: 'education', label: 'Education' },
+  { value: 'climate', label: 'Climate' },
+  { value: 'infrastructure', label: 'Infrastructure' },
+  { value: 'innovation', label: 'Innovation' },
+  { value: 'cultural', label: 'Cultural' },
+  { value: 'other', label: 'Other' },
+]
+
+export const GSCH_OPPORTUNITY_CATEGORIES: {
+  value: GschOpportunityCategory
+  label: string
+}[] = [
+  { value: 'investment', label: 'Investment' },
+  { value: 'grant', label: 'Grant' },
+  { value: 'conference', label: 'Conference' },
+  { value: 'trade_mission', label: 'Trade mission' },
+  { value: 'development_funding', label: 'Development funding' },
+  { value: 'innovation_challenge', label: 'Innovation challenge' },
+  { value: 'sister_city', label: 'Sister city' },
+  { value: 'education_program', label: 'Education program' },
+  { value: 'other', label: 'Other' },
+]
+
+/** Transparent match weights (sum 100) — for UI disclosure. */
+export const GSCH_MATCH_WEIGHTS_UI = {
+  collaboration_interests: 25,
+  major_industries: 20,
+  infrastructure_priorities: 15,
+  tourism_assets: 10,
+  education_institutions: 10,
+  climate_renewable: 10,
+  export_products: 5,
+  different_country: 5,
+} as const
+
+export type GschMatchScoreBreakdown = Record<
+  string,
+  { weight: number; overlap: number; score: number }
+>
+
+export interface GschPartnershipRequest {
+  id: string
+  requesting_organization_id: string
+  target_organization_id: string | null
+  requesting_city_id: string | null
+  target_city_id: string | null
+  title: string
+  partnership_type: GschPartnershipType
+  objectives: string | null
+  proposed_duration: string | null
+  message: string | null
+  status: GschPartnershipRequestStatus
+  created_by: string
+  responded_by: string | null
+  responded_at: string | null
+  response_notes: string | null
+  partnership_id: string | null
+  created_at: string
+  updated_at: string
+  direction?: 'sent' | 'received'
+  requesting_organization?: Pick<
+    GschOrganization,
+    'id' | 'name' | 'country' | 'logo_url' | 'verification_status'
+  > | null
+  target_organization?: Pick<
+    GschOrganization,
+    'id' | 'name' | 'country' | 'logo_url' | 'verification_status'
+  > | null
+  requesting_city?: Pick<GschCity, 'id' | 'name' | 'country' | 'logo_url'> | null
+  target_city?: Pick<GschCity, 'id' | 'name' | 'country' | 'logo_url'> | null
+}
+
+export interface GschPartnership {
+  id: string
+  request_id: string | null
+  title: string
+  partnership_type: GschPartnershipType
+  organization_a_id: string
+  organization_b_id: string
+  city_a_id: string | null
+  city_b_id: string | null
+  objectives: string | null
+  status: GschPartnershipStatus
+  started_at: string
+  ends_at: string | null
+  created_by: string
+  created_at: string
+  updated_at: string
+  organization_a?: Pick<
+    GschOrganization,
+    'id' | 'name' | 'country' | 'logo_url' | 'verification_status'
+  > | null
+  organization_b?: Pick<
+    GschOrganization,
+    'id' | 'name' | 'country' | 'logo_url' | 'verification_status'
+  > | null
+  city_a?: Pick<GschCity, 'id' | 'name' | 'country' | 'logo_url'> | null
+  city_b?: Pick<GschCity, 'id' | 'name' | 'country' | 'logo_url'> | null
+}
+
+export interface GschMatchRecommendation {
+  id: string
+  source_city_id: string
+  recommended_city_id: string
+  compatibility_score: number
+  shared_interests: string[]
+  collaboration_areas: string[]
+  score_breakdown: GschMatchScoreBreakdown
+  explanation: string
+  algorithm_version: string
+  computed_at: string
+  created_at: string
+  source_city?: Pick<
+    GschCity,
+    'id' | 'name' | 'country' | 'continent' | 'logo_url' | 'population'
+  > | null
+  recommended_city?: Pick<
+    GschCity,
+    | 'id'
+    | 'name'
+    | 'country'
+    | 'continent'
+    | 'logo_url'
+    | 'population'
+    | 'major_industries'
+    | 'collaboration_interests'
+  > | null
+}
+
+export interface GschOpportunity {
+  id: string
+  organization_id: string
+  city_id: string | null
+  title: string
+  summary: string | null
+  description: string | null
+  category: GschOpportunityCategory
+  country: string | null
+  continent: string | null
+  location_label: string | null
+  starts_at: string | null
+  ends_at: string | null
+  application_deadline: string | null
+  external_url: string | null
+  contact_email: string | null
+  tags: string[]
+  is_published: boolean
+  created_by: string
+  created_at: string
+  updated_at: string
+  organization?: Pick<
+    GschOrganization,
+    'id' | 'name' | 'country' | 'logo_url' | 'verification_status'
+  > | null
+  city?: Pick<GschCity, 'id' | 'name' | 'country' | 'logo_url'> | null
+}
+
 export interface GschHomeSummary {
   featured_cities: GschCity[]
   my_organizations: GschOrganization[]
@@ -208,4 +401,7 @@ export interface GschHomeSummary {
     pending_count: number
     draft_org_id: string | null
   }
+  recommended_matches: GschMatchRecommendation[]
+  pending_partnership_requests: number
+  trending_opportunities: GschOpportunity[]
 }

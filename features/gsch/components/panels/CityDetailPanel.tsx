@@ -109,7 +109,7 @@ export default function CityDetailPanel({ cityId }: { cityId: string }) {
             Send message
           </Link>
           <Link
-            href="/global-hub/coming-soon?m=partner-matching"
+            href={`/global-hub/partnerships?target_city=${city.id}`}
             className="btn-secondary text-sm"
           >
             Request partnership

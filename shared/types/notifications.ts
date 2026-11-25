@@ -89,6 +89,10 @@ export type NotificationType =
   | 'gsch_verification_status'
   | 'gsch_org_invite'
   | 'gsch_city_follow'
+  | 'gsch_partnership_request'
+  | 'gsch_partnership_response'
+  | 'gsch_opportunity_published'
+  | 'gsch_match_ready'
 
 /**
  * Canonical types you requested for persisted notifications.
@@ -145,6 +149,10 @@ export const CANONICAL_NOTIFICATION_TYPES = [
   'gsch_verification_status',
   'gsch_org_invite',
   'gsch_city_follow',
+  'gsch_partnership_request',
+  'gsch_partnership_response',
+  'gsch_opportunity_published',
+  'gsch_match_ready',
 ] as const satisfies readonly NotificationType[]
 
 export type CanonicalNotificationType = (typeof CANONICAL_NOTIFICATION_TYPES)[number]

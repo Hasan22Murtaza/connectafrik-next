@@ -37,17 +37,22 @@ export const GSCH_NAV_ITEMS: GschNavItem[] = [
     label: 'City Profiles',
     match: ['/global-hub/cities'],
   },
-  { href: '/global-hub/admin', label: 'Admin' },
   {
-    href: '/global-hub/coming-soon?m=opportunity-map',
-    label: 'Opportunity Map',
-    comingSoon: true,
-  },
-  {
-    href: '/global-hub/coming-soon?m=partner-matching',
+    href: '/global-hub/matching',
     label: 'Partner Matching',
-    comingSoon: true,
+    match: ['/global-hub/matching'],
   },
+  {
+    href: '/global-hub/partnerships',
+    label: 'Partnerships',
+    match: ['/global-hub/partnerships'],
+  },
+  {
+    href: '/global-hub/opportunities',
+    label: 'Opportunities',
+    match: ['/global-hub/opportunities'],
+  },
+  { href: '/global-hub/admin', label: 'Admin' },
   {
     href: '/global-hub/coming-soon?m=investment',
     label: 'Investment',
@@ -79,11 +84,6 @@ export const GSCH_NAV_ITEMS: GschNavItem[] = [
     comingSoon: true,
   },
   {
-    href: '/global-hub/coming-soon?m=partnership-builder',
-    label: 'Partnership Builder',
-    comingSoon: true,
-  },
-  {
     href: '/global-hub/coming-soon?m=events',
     label: 'Events',
     comingSoon: true,
@@ -99,3 +99,5 @@ export const GSCH_NAV_ITEMS: GschNavItem[] = [
 export const GSCH_PHASE1_NAV = GSCH_NAV_ITEMS.filter(
   (item) => !item.comingSoon || item.external
 )
+
+export const GSCH_LIVE_NAV = GSCH_NAV_ITEMS.filter((item) => !item.comingSoon)
