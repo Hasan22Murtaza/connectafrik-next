@@ -16,9 +16,9 @@ export default function GschPageShell({
   const hasHeader = Boolean(title || subtitle || actions)
 
   return (
-    <div className={GSCH_PAGE_SHELL}>
+    <div className={GSCH_PAGE_SHELL} data-tour="gsch-page">
       {hasHeader ? (
-        <div className="mb-6 space-y-4">
+        <div className="mb-6 space-y-4" data-tour="gsch-page-header">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div className="min-w-0 flex-1">
               {title ? (
@@ -33,14 +33,17 @@ export default function GschPageShell({
               ) : null}
             </div>
             {actions ? (
-              <div className="flex flex-wrap items-center gap-2 sm:shrink-0">
+              <div
+                className="flex flex-wrap items-center gap-2 sm:shrink-0"
+                data-tour="gsch-page-actions"
+              >
                 {actions}
               </div>
             ) : null}
           </div>
         </div>
       ) : null}
-      {children}
+      <div data-tour="gsch-results">{children}</div>
     </div>
   )
 }

@@ -472,7 +472,12 @@ export default function BusinessCentrePanel() {
         ) : (
           <div className="space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <button type="button" className="btn-primary text-sm" onClick={openCreate}>
+              <button
+                type="button"
+                className="btn-primary text-sm"
+                data-tour="gsch-primary-cta"
+                onClick={openCreate}
+              >
                 {myProfiles.length > 0 ? 'New profile' : 'Create business profile'}
               </button>
             </div>

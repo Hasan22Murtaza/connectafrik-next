@@ -4,7 +4,19 @@ import Link from 'next/link'
 import { Suspense } from 'react'
 import { usePathname, useSearchParams } from 'next/navigation'
 import { GSCH_NAV_ITEMS, type GschNavItem } from '@/features/gsch/constants/nav'
+import { GSCH_TOURS } from '@/features/gsch/onboarding/tours'
+import {
+  OnboardingProvider,
+  ScreenOnboarding,
+} from '@/shared/onboarding'
+import 'driver.js/dist/driver.css'
+import '@/shared/onboarding/styles.css'
 import { GschSidebar } from './GschSidebar'
+
+function gschNavTourKey(href: string) {
+  if (href === '/global-hub') return 'home'
+  return href.replace('/global-hub/', '').split('/')[0] || 'home'
+}
 
 function isActive(pathname: string, search: string, item: GschNavItem) {
   if (item.external) return false
@@ -37,6 +49,7 @@ function GschMobileNav() {
           <Link
             key={item.href}
             href={item.href}
+            data-tour={`gsch-nav-${gschNavTourKey(item.href.split('?')[0])}`}
             aria-current={active ? 'page' : undefined}
             className={
               active
@@ -54,19 +67,22 @@ function GschMobileNav() {
 
 export function GschShell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="relative flex min-h-0 min-w-0 w-full lg:min-h-[calc(100dvh-4.5rem)]">
-      <aside className="fixed top-[73px] z-20 hidden h-[calc(100dvh-73px)] w-52 shrink-0 self-start overflow-y-auto bg-background md:block">
-        <Suspense fallback={null}>
-          <GschSidebar />
-        </Suspense>
-      </aside>
+    <OnboardingProvider module="gsch" tours={GSCH_TOURS}>
+      <div className="relative flex min-h-0 min-w-0 w-full lg:min-h-[calc(100dvh-4.5rem)]">
+        <aside className="fixed top-[73px] z-20 hidden h-[calc(100dvh-73px)] w-52 shrink-0 self-start overflow-y-auto bg-background md:block">
+          <Suspense fallback={null}>
+            <GschSidebar />
+          </Suspense>
+        </aside>
 
-      <main className="min-w-0 flex-1 md:ml-52">
-        <Suspense fallback={null}>
-          <GschMobileNav />
-        </Suspense>
-        {children}
-      </main>
-    </div>
+        <main className="min-w-0 flex-1 md:ml-52">
+          <Suspense fallback={null}>
+            <GschMobileNav />
+          </Suspense>
+          {children}
+        </main>
+      </div>
+      <ScreenOnboarding />
+    </OnboardingProvider>
   )
 }

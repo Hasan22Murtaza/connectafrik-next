@@ -26,6 +26,11 @@ import {
   type GschNavItem,
 } from '@/features/gsch/constants/nav'
 
+function gschNavTourKey(href: string) {
+  if (href === '/global-hub') return 'home'
+  return href.replace('/global-hub/', '').split('/')[0] || 'home'
+}
+
 const ICONS: Record<string, typeof Globe> = {
   '/global-hub': LayoutDashboard,
   '/global-hub/discover': Search,
@@ -81,6 +86,7 @@ export function GschSidebar() {
             <Link
               key={`${item.href}-${item.label}`}
               href={item.href}
+              data-tour={`gsch-nav-${gschNavTourKey(item.href.split('?')[0])}`}
               aria-current={active ? 'page' : undefined}
               className={`group flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-sm transition-colors duration-200 ${
                 active

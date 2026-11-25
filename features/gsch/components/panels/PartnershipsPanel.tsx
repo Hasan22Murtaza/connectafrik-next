@@ -214,11 +214,12 @@ export default function PartnershipsPanel() {
         <button
           type="button"
           className="btn-primary text-sm"
+          data-tour="gsch-primary-cta"
           onClick={() => setShowCreate(true)}
         >
           New request
         </button>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2" data-tour="gsch-tabs">
           {(
             [
               ['requests', 'Requests'],

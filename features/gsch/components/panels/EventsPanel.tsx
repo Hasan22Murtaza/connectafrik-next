@@ -277,10 +277,15 @@ export default function EventsPanel() {
       {dialog}
 
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <button type="button" className="btn-primary text-sm" onClick={openCreate}>
+        <button
+          type="button"
+          className="btn-primary text-sm"
+          data-tour="gsch-primary-cta"
+          onClick={openCreate}
+        >
           Publish event
         </button>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2" data-tour="gsch-tabs">
           <button
             type="button"
             className={!mine ? 'btn-primary text-sm' : 'btn-secondary text-sm'}

@@ -128,6 +128,7 @@ export default function VerificationPanel() {
             <button
               type="button"
               className="btn-primary text-sm"
+              data-tour="gsch-primary-cta"
               onClick={() => setShowForm(true)}
             >
               Submit verification

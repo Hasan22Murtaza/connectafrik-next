@@ -7,7 +7,19 @@ import {
   YOUTH_NAV_ITEMS,
   isYouthNavActive,
 } from '@/features/youth-leadership/constants/nav'
+import { YOUTH_TOURS } from '@/features/youth-leadership/onboarding/tours'
+import {
+  OnboardingProvider,
+  ScreenOnboarding,
+} from '@/shared/onboarding'
+import 'driver.js/dist/driver.css'
+import '@/shared/onboarding/styles.css'
 import { YouthLeadershipSidebar } from './YouthLeadershipSidebar'
+
+function youthNavTourKey(href: string) {
+  if (href === '/youth-leadership') return 'programs'
+  return href.replace('/youth-leadership/', '').split('/')[0] || 'programs'
+}
 
 function YouthMobileNav() {
   const pathname = usePathname() || ''
@@ -23,6 +35,7 @@ function YouthMobileNav() {
           <Link
             key={item.href}
             href={item.href}
+            data-tour={`youth-nav-${youthNavTourKey(item.href)}`}
             aria-current={active ? 'page' : undefined}
             className={
               active
@@ -40,20 +53,23 @@ function YouthMobileNav() {
 
 export function YouthLeadershipShell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="relative flex min-h-0 min-w-0 w-full lg:min-h-[calc(100dvh-4.5rem)]">
-      <aside className="fixed top-[73px] z-20 hidden h-[calc(100dvh-73px)] w-48 shrink-0 self-start overflow-y-auto bg-background md:block">
-        <Suspense fallback={null}>
-          <YouthLeadershipSidebar />
-        </Suspense>
-      </aside>
+    <OnboardingProvider module="youth_leadership" tours={YOUTH_TOURS}>
+      <div className="relative flex min-h-0 min-w-0 w-full lg:min-h-[calc(100dvh-4.5rem)]">
+        <aside className="fixed top-[73px] z-20 hidden h-[calc(100dvh-73px)] w-48 shrink-0 self-start overflow-y-auto bg-background md:block">
+          <Suspense fallback={null}>
+            <YouthLeadershipSidebar />
+          </Suspense>
+        </aside>
 
-      <main className="min-w-0 flex-1 md:ml-48">
-        <Suspense fallback={null}>
-          <YouthMobileNav />
-        </Suspense>
+        <main className="min-w-0 flex-1 md:ml-48">
+          <Suspense fallback={null}>
+            <YouthMobileNav />
+          </Suspense>
 
-        {children}
-      </main>
-    </div>
+          {children}
+        </main>
+      </div>
+      <ScreenOnboarding />
+    </OnboardingProvider>
   )
 }

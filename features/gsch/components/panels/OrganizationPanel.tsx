@@ -197,7 +197,10 @@ export default function OrganizationPanel() {
   return (
     <div className="space-y-5">
       {dialog}
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div
+        className="flex flex-wrap items-center justify-between gap-3"
+        data-tour="gsch-primary-cta"
+      >
         <button type="button" className="btn-primary text-sm" onClick={openCreate}>
           New organization
         </button>

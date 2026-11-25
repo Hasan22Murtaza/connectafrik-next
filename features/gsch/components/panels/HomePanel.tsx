@@ -80,7 +80,7 @@ export default function HomePanel() {
   const pendingPartnerships = summary.pending_partnership_requests || 0
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8" data-tour="gsch-home-welcome">
       <section className={`${GSCH_CARD} border-primary/20 bg-primary/5`}>
         <h2 className={GSCH_SECTION_TITLE}>Welcome to the Global Hub</h2>
         <p className="mt-2 text-sm text-content-secondary">

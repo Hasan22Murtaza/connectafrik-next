@@ -179,13 +179,14 @@ export default function MatchingPanel({
           <button
             type="button"
             className="btn-primary text-sm"
+            data-tour="gsch-primary-cta"
             disabled={!cityId || recomputing}
             onClick={recompute}
           >
             {recomputing ? 'Computing…' : 'Recompute matches'}
           </button>
         ) : (
-          <span />
+          <span data-tour="gsch-primary-cta" />
         )}
         <GschFiltersButton
           activeCount={activeFilterCount}

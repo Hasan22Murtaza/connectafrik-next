@@ -267,7 +267,12 @@ export default function EducationExchangePanel() {
       {dialog}
       <div className="flex flex-wrap items-center justify-between gap-3">
         {orgs.length > 0 ? (
-          <button type="button" className="btn-primary text-sm" onClick={openCreate}>
+          <button
+            type="button"
+            className="btn-primary text-sm"
+            data-tour="gsch-primary-cta"
+            onClick={openCreate}
+          >
             Post program
           </button>
         ) : (

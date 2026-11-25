@@ -129,7 +129,10 @@ export default function DiscoverCitiesPanel() {
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-wrap items-center justify-end gap-3">
+      <div
+        className="flex flex-wrap items-center justify-end gap-3"
+        data-tour="gsch-filters"
+      >
         <GschFiltersButton
           activeCount={activeFilterCount}
           onClick={() => setFiltersOpen(true)}

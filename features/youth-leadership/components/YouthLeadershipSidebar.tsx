@@ -15,6 +15,11 @@ import {
   isYouthNavActive,
 } from '@/features/youth-leadership/constants/nav'
 
+function youthNavTourKey(href: string) {
+  if (href === '/youth-leadership') return 'programs'
+  return href.replace('/youth-leadership/', '').split('/')[0] || 'programs'
+}
+
 const ICONS: Record<string, typeof Award> = {
   '/youth-leadership': Award,
   '/youth-leadership/community': Users,
@@ -42,6 +47,7 @@ export function YouthLeadershipSidebar() {
             <Link
               key={item.href}
               href={item.href}
+              data-tour={`youth-nav-${youthNavTourKey(item.href)}`}
               aria-current={active ? 'page' : undefined}
               className={`group flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-sm transition-colors duration-200 ${
                 active
