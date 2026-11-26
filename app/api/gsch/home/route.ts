@@ -23,8 +23,12 @@ export async function GET(request: NextRequest) {
       eventsRes,
       analyticsOrgs,
       analyticsVerifiedOrgs,
+      analyticsCities,
       analyticsPartnerships,
       analyticsEvents,
+      analyticsProjects,
+      analyticsOpportunities,
+      analyticsPendingAgreements,
     ] = await Promise.all([
       supabase
         .from('gsch_cities')
@@ -32,7 +36,7 @@ export async function GET(request: NextRequest) {
           `
           id, organization_id, name, country, continent, state_province,
           logo_url, cover_image_url, description, population, major_industries,
-          collaboration_interests, is_published, created_at,
+          collaboration_interests, latitude, longitude, is_published, created_at,
           organization:gsch_organizations!organization_id(
             id, name, verification_status, verification_badge, logo_url
           )
@@ -191,6 +195,10 @@ export async function GET(request: NextRequest) {
         .select('id', { count: 'exact', head: true })
         .eq('verification_status', 'verified'),
       supabase
+        .from('gsch_cities')
+        .select('id', { count: 'exact', head: true })
+        .eq('is_published', true),
+      supabase
         .from('gsch_partnerships')
         .select('id', { count: 'exact', head: true })
         .eq('status', 'active'),
@@ -198,6 +206,18 @@ export async function GET(request: NextRequest) {
         .from('gsch_events')
         .select('id', { count: 'exact', head: true })
         .eq('is_published', true),
+      supabase
+        .from('gsch_projects')
+        .select('id', { count: 'exact', head: true })
+        .eq('is_published', true),
+      supabase
+        .from('gsch_opportunities')
+        .select('id', { count: 'exact', head: true })
+        .eq('is_published', true),
+      supabase
+        .from('gsch_agreements')
+        .select('id', { count: 'exact', head: true })
+        .in('status', ['draft', 'submitted', 'discussion']),
     ])
 
     if (featuredRes.error) return errorResponse(featuredRes.error.message, 400)
@@ -239,8 +259,8 @@ export async function GET(request: NextRequest) {
         .from('gsch_cities')
         .select(
           `
-          id, name, country, continent, logo_url, cover_image_url, description,
-          population, is_published, major_industries,
+          id, name, country, continent, state_province, logo_url, cover_image_url,
+          description, population, latitude, longitude, is_published, major_industries,
           organization:gsch_organizations!organization_id(
             id, name, verification_status, verification_badge, logo_url
           )
@@ -334,6 +354,72 @@ export async function GET(request: NextRequest) {
       )
     ).length
 
+    // Active partnerships + recommended matches → map connection arcs
+    const mapConnections: GschHomeSummary['map_connections'] = []
+    const connectionCityIds = new Set<string>()
+
+    const { data: activePartnerships } = await supabase
+      .from('gsch_partnerships')
+      .select('id, city_a_id, city_b_id, title, partnership_type')
+      .eq('status', 'active')
+      .not('city_a_id', 'is', null)
+      .not('city_b_id', 'is', null)
+      .limit(40)
+
+    for (const p of activePartnerships || []) {
+      if (!p.city_a_id || !p.city_b_id || p.city_a_id === p.city_b_id) continue
+      mapConnections.push({
+        id: `partnership-${p.id}`,
+        from_city_id: p.city_a_id,
+        to_city_id: p.city_b_id,
+        kind: 'partnership',
+        label: p.title || p.partnership_type || 'Partnership',
+      })
+      connectionCityIds.add(p.city_a_id)
+      connectionCityIds.add(p.city_b_id)
+    }
+
+    for (const match of recommendedMatches) {
+      if (!match.source_city_id || !match.recommended_city_id) continue
+      mapConnections.push({
+        id: `match-${match.id}`,
+        from_city_id: match.source_city_id,
+        to_city_id: match.recommended_city_id,
+        kind: 'match',
+        label: 'Recommended match',
+      })
+      connectionCityIds.add(match.source_city_id)
+      connectionCityIds.add(match.recommended_city_id)
+    }
+
+    const knownCityIds = new Set([
+      ...(featuredRes.data || []).map((c: { id: string }) => c.id),
+      ...myFollows.map((c: { id: string }) => c.id),
+    ])
+    const missingCityIds = Array.from(connectionCityIds).filter(
+      (id) => !knownCityIds.has(id)
+    )
+
+    let mapCitiesExtra: GschHomeSummary['map_cities'] = []
+    if (missingCityIds.length > 0) {
+      const { data: extraCities } = await supabase
+        .from('gsch_cities')
+        .select(
+          `
+          id, organization_id, name, country, continent, state_province,
+          logo_url, cover_image_url, description, population, major_industries,
+          collaboration_interests, latitude, longitude, is_published, created_at,
+          organization:gsch_organizations!organization_id(
+            id, name, verification_status, verification_badge, logo_url
+          )
+        `
+        )
+        .in('id', missingCityIds)
+        .eq('is_published', true)
+      mapCitiesExtra = (extraCities ||
+        []) as unknown as GschHomeSummary['map_cities']
+    }
+
     const summary: GschHomeSummary = {
       featured_cities: (featuredRes.data || []) as unknown as GschHomeSummary['featured_cities'],
       my_organizations: myOrganizations as unknown as GschHomeSummary['my_organizations'],
@@ -367,11 +453,17 @@ export async function GET(request: NextRequest) {
         []) as unknown as GschHomeSummary['climate_highlights'],
       upcoming_events: (eventsRes.data ||
         []) as unknown as GschHomeSummary['upcoming_events'],
+      map_connections: mapConnections,
+      map_cities: mapCitiesExtra,
       analytics_snapshot: {
         total_organizations: analyticsOrgs.count || 0,
         verified_organizations: analyticsVerifiedOrgs.count || 0,
+        verified_cities: analyticsCities.count || 0,
         active_partnerships: analyticsPartnerships.count || 0,
+        investment_projects_published: analyticsProjects.count || 0,
+        opportunities: analyticsOpportunities.count || 0,
         events: analyticsEvents.count || 0,
+        pending_agreements: analyticsPendingAgreements.count || 0,
       },
     }
 

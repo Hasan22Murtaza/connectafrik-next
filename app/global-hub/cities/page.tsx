@@ -6,8 +6,8 @@ import CitiesManagePanel from '@/features/gsch/components/panels/CitiesManagePan
 export default function GlobalHubCitiesPage() {
   return (
     <GschPageShell
-      title="City profiles"
-      subtitle="Create and manage city profiles linked to your organizations."
+      title="Your cities"
+      subtitle="Create, publish, and manage city profiles linked to your organizations."
     >
       <CitiesManagePanel />
     </GschPageShell>

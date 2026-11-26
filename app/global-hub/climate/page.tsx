@@ -7,7 +7,7 @@ export default function GlobalHubClimatePage() {
   return (
     <GschPageShell
       title="Climate & Sustainability Marketplace"
-      subtitle="Connect on renewable energy, carbon reduction, waste, water, and climate adaptation projects."
+      subtitle="Projects in energy, carbon, water, waste, and climate adaptation seeking partners."
     >
       <ClimateMarketplacePanel />
     </GschPageShell>

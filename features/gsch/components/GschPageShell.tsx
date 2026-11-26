@@ -6,19 +6,24 @@ export default function GschPageShell({
   children,
   title,
   subtitle,
+  breadcrumbs,
   actions,
 }: {
   children: React.ReactNode
   title?: React.ReactNode
   subtitle?: React.ReactNode
+  breadcrumbs?: React.ReactNode
   actions?: React.ReactNode
 }) {
-  const hasHeader = Boolean(title || subtitle || actions)
+  const hasHeader = Boolean(title || subtitle || actions || breadcrumbs)
 
   return (
     <div className={GSCH_PAGE_SHELL} data-tour="gsch-page">
       {hasHeader ? (
-        <div className="mb-6 space-y-4" data-tour="gsch-page-header">
+        <div className="mb-6 space-y-3" data-tour="gsch-page-header">
+          {breadcrumbs ? (
+            <div className="text-xs text-content-tertiary">{breadcrumbs}</div>
+          ) : null}
           <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div className="min-w-0 flex-1">
               {title ? (

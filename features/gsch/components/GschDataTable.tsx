@@ -13,7 +13,11 @@ import {
   Trash2,
 } from '@/shared/icons'
 import Portal from '@/shared/components/ui/Portal'
-import { GSCH_TABLE, GSCH_TABLE_WRAP } from '@/features/gsch/constants/styles'
+import {
+  GSCH_TABLE,
+  GSCH_TABLE_CARD,
+  GSCH_TABLE_WRAP,
+} from '@/features/gsch/constants/styles'
 
 const MENU_WIDTH = 188
 const MENU_GAP = 4
@@ -21,15 +25,22 @@ const MENU_GAP = 4
 export function GschDataTable({
   children,
   className = '',
+  framed = true,
 }: {
   children: React.ReactNode
   className?: string
+  /** Wrap table in the shared card chrome (default true). */
+  framed?: boolean
 }) {
-  return (
-    <div className={`${GSCH_TABLE_WRAP} ${className}`}>
+  const table = (
+    <div className={`${GSCH_TABLE_WRAP} ${framed ? '' : className}`}>
       <table className={GSCH_TABLE}>{children}</table>
     </div>
   )
+
+  if (!framed) return table
+
+  return <div className={`${GSCH_TABLE_CARD} ${className}`.trim()}>{table}</div>
 }
 
 export function GschTableHead({ children }: { children: React.ReactNode }) {

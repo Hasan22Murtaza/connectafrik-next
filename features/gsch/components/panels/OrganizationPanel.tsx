@@ -11,6 +11,9 @@ import GschFilterDrawer from '@/features/gsch/components/GschFilterDrawer'
 import GschFiltersButton, {
   countActiveFilters,
 } from '@/features/gsch/components/GschFiltersButton'
+import GschSearchBar from '@/features/gsch/components/GschSearchBar'
+import GschSectionHeader from '@/features/gsch/components/GschSectionHeader'
+import GschSkeleton from '@/features/gsch/components/GschSkeleton'
 import {
   GschDataTable,
   GschRowActions,
@@ -23,9 +26,10 @@ import {
 import StatusBadge from '@/features/gsch/components/StatusBadge'
 import { useConfirmDialog } from '@/shared/components/ui/ConfirmDialog'
 import {
-  GSCH_CARD,
+  GSCH_COUNT_BADGE,
   GSCH_FIELD,
   GSCH_LABEL,
+  GSCH_TOOLBAR,
 } from '@/features/gsch/constants/styles'
 import {
   GSCH_ORG_TYPES,
@@ -189,25 +193,38 @@ export default function OrganizationPanel() {
   }
 
   if (authLoading || loading) {
-    return <div className={`${GSCH_CARD} h-40 animate-pulse`} />
+    return <GschSkeleton variant="table" />
   }
 
-  if (!user) return <EmptyState title="Sign in required" />
+  if (!user) {
+    return (
+      <EmptyState
+        title="Sign in required"
+        description="Sign in to register and manage organizations on the Global Hub."
+      />
+    )
+  }
 
   return (
     <div className="space-y-5">
       {dialog}
-      <div
-        className="flex flex-wrap items-center justify-between gap-3"
-        data-tour="gsch-primary-cta"
-      >
-        <button type="button" className="btn-primary text-sm" onClick={openCreate}>
-          New organization
-        </button>
-        <GschFiltersButton
-          activeCount={activeFilterCount}
-          onClick={() => setFiltersOpen(true)}
+      <div className={GSCH_TOOLBAR} data-tour="gsch-primary-cta">
+        <GschSearchBar
+          value={filters.q}
+          onChange={(q) => setFilters({ q })}
+          onSubmit={applyFilters}
+          placeholder="Search organizations by name…"
+          className="w-full sm:max-w-md"
         />
+        <div className="flex flex-wrap items-center gap-2">
+          <button type="button" className="btn-primary text-sm" onClick={openCreate}>
+            New organization
+          </button>
+          <GschFiltersButton
+            activeCount={activeFilterCount}
+            onClick={() => setFiltersOpen(true)}
+          />
+        </div>
       </div>
 
       <GschFilterDrawer
@@ -403,10 +420,15 @@ export default function OrganizationPanel() {
       ) : filteredOrgs.length === 0 ? (
         <EmptyState
           title="No matching organizations"
-          description="Try a different search term."
+          description="Try a shorter or different search term, or clear filters to see all organizations."
         />
       ) : (
-        <GschDataTable>
+        <>
+          <GschSectionHeader
+            title="Your organizations"
+            badge={<span className={GSCH_COUNT_BADGE}>{filteredOrgs.length}</span>}
+          />
+          <GschDataTable>
           <GschTableHead>
             <GschTableHeadCell>Organization</GschTableHeadCell>
             <GschTableHeadCell>Type</GschTableHeadCell>
@@ -445,7 +467,8 @@ export default function OrganizationPanel() {
               </GschTableRow>
             ))}
           </GschTableBody>
-        </GschDataTable>
+          </GschDataTable>
+        </>
       )}
 
       <p className="text-sm text-content-secondary">

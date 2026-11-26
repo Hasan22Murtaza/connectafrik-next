@@ -3,7 +3,10 @@
 import Link from 'next/link'
 import { Suspense } from 'react'
 import { usePathname, useSearchParams } from 'next/navigation'
-import { GSCH_NAV_ITEMS, type GschNavItem } from '@/features/gsch/constants/nav'
+import {
+  GSCH_NAV_ITEMS,
+  isGschNavActive,
+} from '@/features/gsch/constants/nav'
 import { GSCH_TOURS } from '@/features/gsch/onboarding/tours'
 import {
   OnboardingProvider,
@@ -18,20 +21,6 @@ function gschNavTourKey(href: string) {
   return href.replace('/global-hub/', '').split('/')[0] || 'home'
 }
 
-function isActive(pathname: string, search: string, item: GschNavItem) {
-  if (item.external) return false
-  if (item.comingSoon) {
-    if (!pathname.startsWith('/global-hub/coming-soon')) return false
-    const module = new URL(item.href, 'http://local').searchParams.get('m')
-    return new URLSearchParams(search).get('m') === module
-  }
-  if (item.href === '/global-hub') return pathname === item.href
-  if (item.match?.some((p) => pathname === p || pathname.startsWith(`${p}/`))) {
-    return true
-  }
-  return pathname === item.href || pathname.startsWith(`${item.href}/`)
-}
-
 function GschMobileNav() {
   const pathname = usePathname() || ''
   const searchParams = useSearchParams()
@@ -40,11 +29,11 @@ function GschMobileNav() {
 
   return (
     <nav
-      className="flex gap-1 overflow-x-auto border-b border-border/70 px-4 pb-px pt-3 [scrollbar-width:none] md:hidden [&::-webkit-scrollbar]:hidden"
+      className="flex gap-1 overflow-x-auto border-b border-border/70 bg-background/95 px-3 pb-px pt-2.5 backdrop-blur [scrollbar-width:none] md:hidden [&::-webkit-scrollbar]:hidden"
       aria-label="Global Sister Cities sections"
     >
       {primary.map((item) => {
-        const active = isActive(pathname, search, item)
+        const active = isGschNavActive(pathname, item, search)
         return (
           <Link
             key={item.href}
@@ -53,8 +42,8 @@ function GschMobileNav() {
             aria-current={active ? 'page' : undefined}
             className={
               active
-                ? '-mb-px whitespace-nowrap border-b-2 border-content px-3.5 py-2.5 text-sm font-semibold text-content'
-                : '-mb-px whitespace-nowrap border-b-2 border-transparent px-3.5 py-2.5 text-sm font-medium text-content-secondary transition hover:border-border hover:text-content'
+                ? '-mb-px whitespace-nowrap rounded-t-lg border-b-2 border-content px-3 py-2.5 text-sm font-semibold text-content'
+                : '-mb-px whitespace-nowrap border-b-2 border-transparent px-3 py-2.5 text-sm font-medium text-content-secondary transition hover:border-border hover:text-content'
             }
           >
             {item.label}
@@ -69,13 +58,13 @@ export function GschShell({ children }: { children: React.ReactNode }) {
   return (
     <OnboardingProvider module="gsch" tours={GSCH_TOURS}>
       <div className="relative flex min-h-0 min-w-0 w-full lg:min-h-[calc(100dvh-4.5rem)]">
-        <aside className="fixed top-[73px] z-20 hidden h-[calc(100dvh-73px)] w-52 shrink-0 self-start overflow-y-auto bg-background md:block">
+        <aside className="fixed top-[73px] z-20 hidden h-[calc(100dvh-73px)] w-56 shrink-0 self-start overflow-y-auto bg-background md:block">
           <Suspense fallback={null}>
             <GschSidebar />
           </Suspense>
         </aside>
 
-        <main className="min-w-0 flex-1 md:ml-52">
+        <main className="min-w-0 flex-1 md:ml-56">
           <Suspense fallback={null}>
             <GschMobileNav />
           </Suspense>

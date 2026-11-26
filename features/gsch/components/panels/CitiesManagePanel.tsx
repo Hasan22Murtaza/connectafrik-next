@@ -11,6 +11,11 @@ import GschFilterDrawer from '@/features/gsch/components/GschFilterDrawer'
 import GschFiltersButton, {
   countActiveFilters,
 } from '@/features/gsch/components/GschFiltersButton'
+import GschHubTabs from '@/features/gsch/components/GschHubTabs'
+import GschSearchBar from '@/features/gsch/components/GschSearchBar'
+import GschSectionHeader from '@/features/gsch/components/GschSectionHeader'
+import GschSkeleton from '@/features/gsch/components/GschSkeleton'
+import GschWorldMap from '@/features/gsch/components/GschWorldMap'
 import {
   GschDataTable,
   GschRowActions,
@@ -23,9 +28,10 @@ import {
 import StatusBadge from '@/features/gsch/components/StatusBadge'
 import { useConfirmDialog } from '@/shared/components/ui/ConfirmDialog'
 import {
-  GSCH_CARD,
+  GSCH_COUNT_BADGE,
   GSCH_FIELD,
   GSCH_LABEL,
+  GSCH_TOOLBAR,
 } from '@/features/gsch/constants/styles'
 import {
   GSCH_CONTINENTS,
@@ -62,6 +68,7 @@ export default function CitiesManagePanel() {
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [filtersOpen, setFiltersOpen] = useState(false)
+  const [view, setView] = useState<'list' | 'map'>('list')
   const [filters, setFilters] = useState({ q: '', country: '' })
   const [applied, setApplied] = useState(filters)
   const [form, setForm] = useState(EMPTY_FORM)
@@ -214,27 +221,54 @@ export default function CitiesManagePanel() {
   }
 
   if (authLoading || loading) {
-    return <div className={`${GSCH_CARD} h-40 animate-pulse`} />
+    return <GschSkeleton variant="table" />
   }
 
-  if (!user) return <EmptyState title="Sign in required" />
+  if (!user) {
+    return (
+      <EmptyState
+        title="Sign in required"
+        description="Sign in to create and manage city profiles for your organizations."
+      />
+    )
+  }
 
   return (
     <div className="space-y-5">
       {dialog}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <button
-          type="button"
-          className="btn-primary text-sm"
-          data-tour="gsch-primary-cta"
-          onClick={openCreate}
-        >
-          New city profile
-        </button>
-        <GschFiltersButton
-          activeCount={activeFilterCount}
-          onClick={() => setFiltersOpen(true)}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <GschHubTabs
+          tabs={[
+            { id: 'list', label: 'Directory' },
+            { id: 'map', label: 'Map' },
+          ]}
+          activeId={view}
+          onChange={(id) => setView(id as 'list' | 'map')}
+          aria-label="City views"
         />
+      </div>
+      <div className={GSCH_TOOLBAR}>
+        <GschSearchBar
+          value={filters.q}
+          onChange={(q) => setFilters((f) => ({ ...f, q }))}
+          onSubmit={applyFilters}
+          placeholder="Search city profiles by name…"
+          className="w-full sm:max-w-md"
+        />
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            className="btn-primary text-sm"
+            data-tour="gsch-primary-cta"
+            onClick={openCreate}
+          >
+            New city profile
+          </button>
+          <GschFiltersButton
+            activeCount={activeFilterCount}
+            onClick={() => setFiltersOpen(true)}
+          />
+        </div>
       </div>
 
       <GschFilterDrawer
@@ -467,48 +501,58 @@ export default function CitiesManagePanel() {
           }
         />
       ) : (
-        <GschDataTable>
-          <GschTableHead>
-            <GschTableHeadCell>City</GschTableHeadCell>
-            <GschTableHeadCell>Country</GschTableHeadCell>
-            <GschTableHeadCell>Status</GschTableHeadCell>
-            <GschTableHeadCell align="right">Actions</GschTableHeadCell>
-          </GschTableHead>
-          <GschTableBody>
-            {cities.map((city) => (
-              <GschTableRow
-                key={city.id}
-                onClick={() => router.push(`/global-hub/cities/${city.id}`)}
-              >
-                <GschTableCell className="min-w-[140px]">
-                  <p className="font-semibold text-content">{city.name}</p>
-                  {city.state_province ? (
-                    <p className="mt-0.5 text-xs text-content-tertiary">
-                      {city.state_province}
-                    </p>
-                  ) : null}
-                </GschTableCell>
-                <GschTableCell>
-                  {[city.country, city.continent].filter(Boolean).join(' · ') || '—'}
-                </GschTableCell>
-                <GschTableCell>
-                  <StatusBadge status={city.is_published ? 'published' : 'draft'} />
-                </GschTableCell>
-                <GschTableCell align="right">
-                  <GschRowActions
-                    onView={() => router.push(`/global-hub/cities/${city.id}`)}
-                    onPublish={() => togglePublish(city)}
-                    publishLabel={city.is_published ? 'Unpublish' : 'Publish'}
-                    publishing={publishingId === city.id}
-                    onEdit={() => openEdit(city)}
-                    onDelete={() => handleDelete(city)}
-                    deleting={deletingId === city.id}
-                  />
-                </GschTableCell>
-              </GschTableRow>
-            ))}
-          </GschTableBody>
-        </GschDataTable>
+        <>
+          <GschSectionHeader
+            title="City profiles"
+            badge={<span className={GSCH_COUNT_BADGE}>{cities.length}</span>}
+          />
+          {view === 'map' ? (
+            <GschWorldMap cities={cities} autoLoadConnections />
+          ) : (
+            <GschDataTable>
+              <GschTableHead>
+                <GschTableHeadCell>City</GschTableHeadCell>
+                <GschTableHeadCell>Country</GschTableHeadCell>
+                <GschTableHeadCell>Status</GschTableHeadCell>
+                <GschTableHeadCell align="right">Actions</GschTableHeadCell>
+              </GschTableHead>
+              <GschTableBody>
+                {cities.map((city) => (
+                  <GschTableRow
+                    key={city.id}
+                    onClick={() => router.push(`/global-hub/cities/${city.id}`)}
+                  >
+                    <GschTableCell className="min-w-[140px]">
+                      <p className="font-semibold text-content">{city.name}</p>
+                      {city.state_province ? (
+                        <p className="mt-0.5 text-xs text-content-tertiary">
+                          {city.state_province}
+                        </p>
+                      ) : null}
+                    </GschTableCell>
+                    <GschTableCell>
+                      {[city.country, city.continent].filter(Boolean).join(' · ') || '—'}
+                    </GschTableCell>
+                    <GschTableCell>
+                      <StatusBadge status={city.is_published ? 'published' : 'draft'} />
+                    </GschTableCell>
+                    <GschTableCell align="right">
+                      <GschRowActions
+                        onView={() => router.push(`/global-hub/cities/${city.id}`)}
+                        onPublish={() => togglePublish(city)}
+                        publishLabel={city.is_published ? 'Unpublish' : 'Publish'}
+                        publishing={publishingId === city.id}
+                        onEdit={() => openEdit(city)}
+                        onDelete={() => handleDelete(city)}
+                        deleting={deletingId === city.id}
+                      />
+                    </GschTableCell>
+                  </GschTableRow>
+                ))}
+              </GschTableBody>
+            </GschDataTable>
+          )}
+        </>
       )}
     </div>
   )

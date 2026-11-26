@@ -7,7 +7,7 @@ export default function GlobalHubInvestmentPage() {
   return (
     <GschPageShell
       title="Investment marketplace"
-      subtitle="Discover partnership and investment projects across sister cities. No payments are processed on this platform."
+      subtitle="Browse partnership and funding opportunities across sister cities. Express interest and connect off-platform."
     >
       <InvestmentMarketplacePanel />
     </GschPageShell>

@@ -7,7 +7,7 @@ export default function GlobalHubEventsPage() {
   return (
     <GschPageShell
       title="Global Events"
-      subtitle="Publish and discover conferences, trade missions, workshops, and networking events."
+      subtitle="Conferences, trade missions, workshops, and networking across the Global Sister Cities Hub."
     >
       <EventsPanel />
     </GschPageShell>

@@ -99,7 +99,7 @@ export default function GschDetailHeader({
       <div className="flex items-center justify-between gap-3">
         <Link
           href={backHref}
-          className="inline-flex items-center gap-1.5 text-sm text-content-secondary transition hover:text-content"
+          className="inline-flex items-center gap-1.5 rounded-lg px-1 py-0.5 text-sm text-content-secondary transition hover:bg-surface-secondary hover:text-content"
         >
           <ArrowLeft className="h-4 w-4 shrink-0" aria-hidden />
           {backLabel}
@@ -109,7 +109,7 @@ export default function GschDetailHeader({
           <div className="relative shrink-0" ref={menuRef}>
             <button
               type="button"
-              className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-content-secondary transition hover:bg-surface-secondary hover:text-content"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border/80 text-content-secondary transition hover:bg-surface-secondary hover:text-content"
               aria-label="Actions"
               aria-expanded={menuOpen}
               aria-haspopup="menu"
@@ -122,7 +122,7 @@ export default function GschDetailHeader({
               <div
                 id={menuId}
                 role="menu"
-                className="absolute right-0 top-full z-30 mt-1 min-w-[12rem] rounded-lg border border-border bg-surface py-1 shadow-lg"
+                className="absolute right-0 top-full z-30 mt-1 min-w-[12rem] rounded-xl border border-border bg-surface py-1 shadow-lg"
               >
                 {visibleItems.map((item) => {
                   const Icon = menuIconFor(item)
@@ -187,13 +187,15 @@ export default function GschDetailHeader({
         ) : null}
       </div>
 
-      <div className="min-w-0 space-y-2">
+      <div className="min-w-0 space-y-2 rounded-2xl border border-border/80 bg-surface p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
         <div className="flex flex-wrap items-center gap-2">
-          <h2 className="text-2xl font-semibold tracking-tight text-content">{title}</h2>
+          <h2 className="text-xl font-semibold tracking-tight text-content sm:text-2xl">
+            {title}
+          </h2>
           {badges}
         </div>
         {subtitle ? (
-          <div className="text-sm text-content-secondary">{subtitle}</div>
+          <div className="text-sm leading-relaxed text-content-secondary">{subtitle}</div>
         ) : null}
         {meta ? <div className="text-sm text-content-tertiary">{meta}</div> : null}
       </div>

@@ -7,7 +7,7 @@ export default function GlobalHubVerificationPage() {
   return (
     <GschPageShell
       title="Verification"
-      subtitle="Submit documents for human review. Organizations are never auto-verified."
+      subtitle="Upload supporting documents for admin review—organizations are verified by people, not automation."
     >
       <VerificationPanel />
     </GschPageShell>

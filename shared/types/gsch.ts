@@ -1156,6 +1156,15 @@ export interface GschAnalyticsSnapshot {
   } | null
 }
 
+/** City-to-city link drawn on the Global Hub map. */
+export interface GschMapConnection {
+  id: string
+  from_city_id: string
+  to_city_id: string
+  kind: 'partnership' | 'match'
+  label?: string | null
+}
+
 export interface GschHomeSummary {
   featured_cities: GschCity[]
   my_organizations: GschOrganization[]
@@ -1177,11 +1186,20 @@ export interface GschHomeSummary {
   innovation_highlights: GschInnovationChallenge[]
   climate_highlights: GschClimateProject[]
   upcoming_events?: GschEvent[]
+  /** Partnership / match edges for the dashboard map. */
+  map_connections?: GschMapConnection[]
+  /** Extra cities needed to render map connection endpoints. */
+  map_cities?: GschCity[]
   analytics_snapshot?: Pick<
     GschAnalyticsSnapshot,
     | 'total_organizations'
     | 'verified_organizations'
+    | 'verified_cities'
     | 'active_partnerships'
+    | 'investment_projects_published'
+    | 'opportunities'
     | 'events'
-  > | null
+  > & {
+    pending_agreements?: number
+  } | null
 }

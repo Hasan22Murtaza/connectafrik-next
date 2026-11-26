@@ -7,7 +7,7 @@ export default function GlobalHubSmartCitiesPage() {
   return (
     <GschPageShell
       title="Smart Cities Innovation Lab"
-      subtitle="Open innovation challenges across AI transportation, digital twins, public safety, and urban infrastructure."
+      subtitle="Open challenges for mobility, digital twins, public safety, and urban innovation."
     >
       <SmartCitiesLabPanel />
     </GschPageShell>

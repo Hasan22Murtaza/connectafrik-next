@@ -7,7 +7,7 @@ export default function GlobalHubTourismPage() {
   return (
     <GschPageShell
       title="Eco-Tourism Collaboration"
-      subtitle="Discover and partner on eco, cultural, indigenous, and adventure tourism initiatives."
+      subtitle="Partner on eco, cultural, indigenous, and adventure tourism across the hub."
     >
       <TourismCollaborationPanel />
     </GschPageShell>

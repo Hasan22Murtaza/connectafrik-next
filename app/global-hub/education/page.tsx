@@ -7,7 +7,7 @@ export default function GlobalHubEducationPage() {
   return (
     <GschPageShell
       title="Education Exchange"
-      subtitle="University and school exchanges, research collaborations, scholarships, and international programs."
+      subtitle="Programs, scholarships, and research partnerships between cities and institutions."
     >
       <EducationExchangePanel />
     </GschPageShell>

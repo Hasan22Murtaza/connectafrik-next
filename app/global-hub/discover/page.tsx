@@ -6,8 +6,8 @@ import DiscoverCitiesPanel from '@/features/gsch/components/panels/DiscoverCitie
 export default function GlobalHubDiscoverPage() {
   return (
     <GschPageShell
-      title="Discover cities"
-      subtitle="Search published city profiles by region, industry, and collaboration interests."
+      title="Discover"
+      subtitle="Browse published sister city profiles and save communities you want to follow."
     >
       <DiscoverCitiesPanel />
     </GschPageShell>

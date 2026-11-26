@@ -7,7 +7,7 @@ export default function GlobalHubBusinessPage() {
   return (
     <GschPageShell
       title="Business Connection Centre"
-      subtitle="Publish your trade profile and send enquiries to buyers, suppliers, and partners."
+      subtitle="Discover trade profiles, publish what you seek and offer, and manage inbound enquiries."
     >
       <BusinessCentrePanel />
     </GschPageShell>

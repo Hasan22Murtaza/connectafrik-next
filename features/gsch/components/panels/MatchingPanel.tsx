@@ -10,6 +10,8 @@ import GschFilterDrawer from '@/features/gsch/components/GschFilterDrawer'
 import GschFiltersButton, {
   countActiveFilters,
 } from '@/features/gsch/components/GschFiltersButton'
+import GschSectionHeader from '@/features/gsch/components/GschSectionHeader'
+import GschSkeleton from '@/features/gsch/components/GschSkeleton'
 import {
   GschDataTable,
   GschRowActions,
@@ -21,6 +23,7 @@ import {
 } from '@/features/gsch/components/GschDataTable'
 import {
   GSCH_CARD,
+  GSCH_COUNT_BADGE,
   GSCH_LABEL,
   GSCH_MUTED,
   GSCH_SECTION_TITLE,
@@ -143,9 +146,7 @@ export default function MatchingPanel({
   }
 
   if (authLoading || (loading && matches.length === 0 && !cityId)) {
-    return (
-      <div className={`${GSCH_CARD} h-40 animate-pulse`} />
-    )
+    return <GschSkeleton variant="table" />
   }
 
   if (!user) {
@@ -174,7 +175,15 @@ export default function MatchingPanel({
         </div>
       </section>
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <GschSectionHeader
+        title="Recommendations"
+        badge={
+          <span className={GSCH_COUNT_BADGE}>
+            {loading ? '…' : matches.length}
+          </span>
+        }
+        description="Partner cities ranked by weighted overlap with your source city profile."
+      >
         {canRecompute ? (
           <button
             type="button"
@@ -192,7 +201,7 @@ export default function MatchingPanel({
           activeCount={activeFilterCount}
           onClick={() => setFiltersOpen(true)}
         />
-      </div>
+      </GschSectionHeader>
 
       <GschFilterDrawer
         open={filtersOpen}
@@ -231,14 +240,14 @@ export default function MatchingPanel({
       </GschFilterDrawer>
 
       {loading ? (
-        <div className={`${GSCH_CARD} h-40 animate-pulse`} />
+        <GschSkeleton variant="table" count={4} />
       ) : matches.length === 0 ? (
         <EmptyState
           title="No cached recommendations yet"
           description={
             canRecompute
-              ? 'Publish city profile fields, then recompute to score real overlaps with other published cities.'
-              : 'Follow or manage a published city, or ask a city manager to recompute matches.'
+              ? 'Fill out collaboration interests, industries, and location on your published city, then recompute to refresh overlap scores.'
+              : 'Follow a published city you manage, or switch the source city filter to one you can recompute.'
           }
         />
       ) : (

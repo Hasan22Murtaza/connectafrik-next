@@ -6,6 +6,10 @@ import toast from 'react-hot-toast'
 import { apiClient, ApiError } from '@/lib/api-client'
 import { useAuth } from '@/contexts/AuthContext'
 import EmptyState from '@/features/gsch/components/EmptyState'
+import GschHubTabs from '@/features/gsch/components/GschHubTabs'
+import GschSearchBar from '@/features/gsch/components/GschSearchBar'
+import GschSectionHeader from '@/features/gsch/components/GschSectionHeader'
+import GschSkeleton from '@/features/gsch/components/GschSkeleton'
 import GschFormModal from '@/features/gsch/components/GschFormModal'
 import GschFilterDrawer from '@/features/gsch/components/GschFilterDrawer'
 import GschFiltersButton, {
@@ -23,10 +27,11 @@ import {
 import StatusBadge from '@/features/gsch/components/StatusBadge'
 import { useConfirmDialog } from '@/shared/components/ui/ConfirmDialog'
 import {
-  GSCH_CARD,
+  GSCH_COUNT_BADGE,
   GSCH_FIELD,
   GSCH_LABEL,
   GSCH_SELECT,
+  GSCH_TOOLBAR,
 } from '@/features/gsch/constants/styles'
 import {
   GSCH_CLIMATE_TYPES,
@@ -248,15 +253,38 @@ export default function ClimateMarketplacePanel() {
     setFiltersOpen(false)
   }
 
+  function applySearch() {
+    setApplied((a) => ({ ...a, q: filters.q }))
+  }
+
   if (authLoading) {
-    return <div className={`${GSCH_CARD} h-40 animate-pulse`} />
+    return <GschSkeleton variant="table" />
   }
   if (!user) return <EmptyState title="Sign in required" />
 
   return (
     <div className="space-y-6">
       {dialog}
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div data-tour="gsch-tabs">
+        <GschHubTabs
+          aria-label="Climate projects"
+          tabs={[
+            { id: 'discover', label: 'Discover' },
+            { id: 'mine', label: 'My posts' },
+          ]}
+          activeId={mine ? 'mine' : 'discover'}
+          onChange={(id) => setMine(id === 'mine')}
+        />
+      </div>
+
+      <GschSectionHeader
+        title={mine ? 'Your climate projects' : 'Climate projects'}
+        badge={
+          !loading && items.length > 0 ? (
+            <span className={GSCH_COUNT_BADGE}>{items.length}</span>
+          ) : null
+        }
+      >
         {orgs.length > 0 ? (
           <button
             type="button"
@@ -269,26 +297,20 @@ export default function ClimateMarketplacePanel() {
         ) : (
           <span data-tour="gsch-primary-cta" />
         )}
-        <div className="flex flex-wrap gap-2" data-tour="gsch-tabs">
-          <button
-            type="button"
-            className={!mine ? 'btn-primary text-sm' : 'btn-secondary text-sm'}
-            onClick={() => setMine(false)}
-          >
-            Discover
-          </button>
-          <button
-            type="button"
-            className={mine ? 'btn-primary text-sm' : 'btn-secondary text-sm'}
-            onClick={() => setMine(true)}
-          >
-            My posts
-          </button>
-          <GschFiltersButton
-            activeCount={activeFilterCount}
-            onClick={() => setFiltersOpen(true)}
-          />
-        </div>
+        <GschFiltersButton
+          activeCount={activeFilterCount}
+          onClick={() => setFiltersOpen(true)}
+        />
+      </GschSectionHeader>
+
+      <div className={GSCH_TOOLBAR}>
+        <GschSearchBar
+          value={filters.q}
+          onChange={(q) => setFilters((f) => ({ ...f, q }))}
+          onSubmit={applySearch}
+          placeholder="Search projects…"
+          className="sm:max-w-md"
+        />
       </div>
 
       <GschFilterDrawer
@@ -544,11 +566,15 @@ export default function ClimateMarketplacePanel() {
       </GschFormModal>
 
       {loading ? (
-        <div className={`${GSCH_CARD} h-40 animate-pulse`} />
+        <GschSkeleton variant="table" />
       ) : items.length === 0 ? (
         <EmptyState
-          title={mine ? 'No projects from your orgs' : 'No published projects'}
-          description="Share climate and sustainability projects seeking partners."
+          title={mine ? 'No projects from your organizations' : 'No matching projects'}
+          description={
+            mine
+              ? 'Post renewable energy, adaptation, or sustainability work seeking sister-city partners.'
+              : 'Refine search or filters — or share a project from My posts.'
+          }
         />
       ) : (
         <GschDataTable>

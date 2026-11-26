@@ -6,6 +6,10 @@ import toast from 'react-hot-toast'
 import { apiClient, ApiError } from '@/lib/api-client'
 import { useAuth } from '@/contexts/AuthContext'
 import EmptyState from '@/features/gsch/components/EmptyState'
+import GschHubTabs from '@/features/gsch/components/GschHubTabs'
+import GschSearchBar from '@/features/gsch/components/GschSearchBar'
+import GschSectionHeader from '@/features/gsch/components/GschSectionHeader'
+import GschSkeleton from '@/features/gsch/components/GschSkeleton'
 import GschFormModal from '@/features/gsch/components/GschFormModal'
 import GschFilterDrawer from '@/features/gsch/components/GschFilterDrawer'
 import GschFiltersButton, {
@@ -24,10 +28,11 @@ import StatusBadge from '@/features/gsch/components/StatusBadge'
 import TradeEnquiriesPanel from '@/features/gsch/components/panels/TradeEnquiriesPanel'
 import { useConfirmDialog } from '@/shared/components/ui/ConfirmDialog'
 import {
-  GSCH_CARD,
+  GSCH_COUNT_BADGE,
   GSCH_FIELD,
   GSCH_LABEL,
   GSCH_SELECT,
+  GSCH_TOOLBAR,
 } from '@/features/gsch/constants/styles'
 import {
   GSCH_BUSINESS_OFFERING_OPTIONS,
@@ -279,6 +284,10 @@ export default function BusinessCentrePanel() {
     setFiltersOpen(false)
   }
 
+  function applySearch() {
+    setApplied((a) => ({ ...a, q: filters.q }))
+  }
+
   function renderProfileTable(items: GschBusinessProfile[]) {
     return (
       <GschDataTable>
@@ -335,38 +344,49 @@ export default function BusinessCentrePanel() {
   }
 
   if (authLoading) {
-    return <div className={`${GSCH_CARD} h-40 animate-pulse`} />
+    return <GschSkeleton variant="table" />
   }
   if (!user) return <EmptyState title="Sign in required" />
 
   return (
     <div className="space-y-6">
       {dialog}
-      <div className="flex flex-wrap gap-2">
-        {(
-          [
-            ['discover', 'Discover'],
-            ['profile', 'My profile'],
-            ['enquiries', 'Enquiries'],
-          ] as const
-        ).map(([key, label]) => (
-          <button
-            key={key}
-            type="button"
-            className={tab === key ? 'btn-primary text-sm' : 'btn-secondary text-sm'}
-            onClick={() => setTab(key)}
-          >
-            {label}
-          </button>
-        ))}
+      <div data-tour="gsch-tabs">
+        <GschHubTabs
+          aria-label="Business centre"
+          tabs={[
+            { id: 'discover', label: 'Discover' },
+            { id: 'profile', label: 'My profile' },
+            { id: 'enquiries', label: 'Enquiries' },
+          ]}
+          activeId={tab}
+          onChange={(id) => setTab(id as Tab)}
+        />
       </div>
 
       {tab === 'discover' ? (
         <>
-          <div className="flex flex-wrap items-center justify-end gap-3">
+          <GschSectionHeader
+            title="Business profiles"
+            badge={
+              !loading && profiles.length > 0 ? (
+                <span className={GSCH_COUNT_BADGE}>{profiles.length}</span>
+              ) : null
+            }
+          >
             <GschFiltersButton
               activeCount={activeFilterCount}
               onClick={() => setFiltersOpen(true)}
+            />
+          </GschSectionHeader>
+
+          <div className={GSCH_TOOLBAR}>
+            <GschSearchBar
+              value={filters.q}
+              onChange={(q) => setFilters((f) => ({ ...f, q }))}
+              onSubmit={applySearch}
+              placeholder="Search profiles…"
+              className="sm:max-w-md"
             />
           </div>
 
@@ -449,11 +469,11 @@ export default function BusinessCentrePanel() {
           </GschFilterDrawer>
 
           {loading ? (
-            <div className={`${GSCH_CARD} h-40 animate-pulse`} />
+            <GschSkeleton variant="table" />
           ) : profiles.length === 0 ? (
             <EmptyState
-              title="No business profiles yet"
-              description="Create and publish your org’s business profile to appear here."
+              title="No matching profiles"
+              description="Broaden search or filters — or create your organization’s profile under My profile."
             />
           ) : (
             renderProfileTable(profiles)
@@ -463,15 +483,22 @@ export default function BusinessCentrePanel() {
 
       {tab === 'profile' ? (
         loading ? (
-          <div className={`${GSCH_CARD} h-40 animate-pulse`} />
+          <GschSkeleton variant="table" />
         ) : orgs.length === 0 ? (
           <EmptyState
             title="Create an organization first"
-            description="Business profiles are linked one-to-one with a GSCH organization."
+            description="Set up a GSCH organization, then link a trade profile for buyers and partners to find you."
           />
         ) : (
           <div className="space-y-4">
-            <div className="flex flex-wrap items-center justify-between gap-3">
+            <GschSectionHeader
+              title="Your business profiles"
+              badge={
+                myProfiles.length > 0 ? (
+                  <span className={GSCH_COUNT_BADGE}>{myProfiles.length}</span>
+                ) : null
+              }
+            >
               <button
                 type="button"
                 className="btn-primary text-sm"
@@ -480,11 +507,11 @@ export default function BusinessCentrePanel() {
               >
                 {myProfiles.length > 0 ? 'New profile' : 'Create business profile'}
               </button>
-            </div>
+            </GschSectionHeader>
             {myProfiles.length === 0 ? (
               <EmptyState
                 title="No business profile yet"
-                description="Create and publish your org’s business profile to appear in Discover."
+                description="Publish what you seek and offer so sister-city partners can send trade enquiries."
                 action={
                   <button type="button" className="btn-primary text-sm" onClick={openCreate}>
                     Create business profile

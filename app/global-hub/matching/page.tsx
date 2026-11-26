@@ -12,7 +12,7 @@ function MatchingPageInner() {
   return (
     <GschPageShell
       title="Partner matching"
-      subtitle="Transparent weighted scores from real city profile overlap — no invented compatibility."
+      subtitle="Rank partner cities with transparent weighted scores from real profile overlap — no invented compatibility."
     >
       <MatchingPanel initialCityId={cityId} />
     </GschPageShell>

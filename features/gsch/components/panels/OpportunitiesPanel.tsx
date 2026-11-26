@@ -11,6 +11,10 @@ import GschFilterDrawer from '@/features/gsch/components/GschFilterDrawer'
 import GschFiltersButton, {
   countActiveFilters,
 } from '@/features/gsch/components/GschFiltersButton'
+import GschHubTabs from '@/features/gsch/components/GschHubTabs'
+import GschSearchBar from '@/features/gsch/components/GschSearchBar'
+import GschSectionHeader from '@/features/gsch/components/GschSectionHeader'
+import GschSkeleton from '@/features/gsch/components/GschSkeleton'
 import {
   GschDataTable,
   GschRowActions,
@@ -23,10 +27,11 @@ import {
 import StatusBadge from '@/features/gsch/components/StatusBadge'
 import { useConfirmDialog } from '@/shared/components/ui/ConfirmDialog'
 import {
-  GSCH_CARD,
+  GSCH_COUNT_BADGE,
   GSCH_FIELD,
   GSCH_LABEL,
   GSCH_SELECT,
+  GSCH_TOOLBAR,
 } from '@/features/gsch/constants/styles'
 import {
   GSCH_CONTINENTS,
@@ -251,15 +256,31 @@ export default function OpportunitiesPanel() {
     setFiltersOpen(false)
   }
 
+  function submitSearch() {
+    setApplied((current) => ({ ...current, q: filters.q.trim() }))
+  }
+
   if (authLoading) {
-    return <div className={`${GSCH_CARD} h-40 animate-pulse`} />
+    return <GschSkeleton variant="table" />
   }
   if (!user) return <EmptyState title="Sign in required" />
 
   return (
     <div className="space-y-6">
       {dialog}
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <GschSectionHeader
+        title={mine ? 'Your posts' : 'Discover opportunities'}
+        badge={
+          <span className={GSCH_COUNT_BADGE}>
+            {loading ? '…' : items.length}
+          </span>
+        }
+        description={
+          mine
+            ? 'Manage draft and published listings from your organizations.'
+            : 'Grants, conferences, trade missions, and programs from verified partners.'
+        }
+      >
         {orgs.length > 0 ? (
           <button
             type="button"
@@ -270,23 +291,30 @@ export default function OpportunitiesPanel() {
             Post opportunity
           </button>
         ) : (
-          <span />
+          <span data-tour="gsch-primary-cta" />
         )}
-        <div className="flex flex-wrap gap-2" data-tour="gsch-filters">
-          <button
-            type="button"
-            className={!mine ? 'btn-primary text-sm' : 'btn-secondary text-sm'}
-            onClick={() => setMine(false)}
-          >
-            Discover
-          </button>
-          <button
-            type="button"
-            className={mine ? 'btn-primary text-sm' : 'btn-secondary text-sm'}
-            onClick={() => setMine(true)}
-          >
-            My posts
-          </button>
+      </GschSectionHeader>
+
+      <div className={GSCH_TOOLBAR} data-tour="gsch-filters">
+        <GschSearchBar
+          className="w-full sm:max-w-md"
+          value={filters.q}
+          onChange={(q) => setFilters((f) => ({ ...f, q }))}
+          onSubmit={submitSearch}
+          placeholder="Search opportunities…"
+        />
+        <div className="flex flex-wrap items-center gap-2 sm:shrink-0">
+          <div data-tour="gsch-tabs">
+            <GschHubTabs
+              tabs={[
+                { id: 'discover', label: 'Discover' },
+                { id: 'mine', label: 'My posts' },
+              ]}
+              activeId={mine ? 'mine' : 'discover'}
+              onChange={(id) => setMine(id === 'mine')}
+              aria-label="Opportunity views"
+            />
+          </div>
           <GschFiltersButton
             activeCount={activeFilterCount}
             onClick={() => setFiltersOpen(true)}
@@ -539,11 +567,15 @@ export default function OpportunitiesPanel() {
       </GschFormModal>
 
       {loading ? (
-        <div className={`${GSCH_CARD} h-40 animate-pulse`} />
+        <GschSkeleton variant="table" count={4} />
       ) : items.length === 0 ? (
         <EmptyState
           title={mine ? 'No opportunities from your orgs' : 'No published opportunities'}
-          description="Post a grant, conference, trade mission, or sister-city call."
+          description={
+            mine
+              ? 'Post a grant, conference, trade mission, or sister-city call — drafts stay private until you publish.'
+              : 'Try different search terms or filters, or ask a partner organization to publish a listing.'
+          }
         />
       ) : (
         <GschDataTable>

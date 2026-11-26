@@ -8,7 +8,7 @@ export default function GlobalHubPartnershipsPage() {
   return (
     <GschPageShell
       title="Partnerships"
-      subtitle="Send and respond to partnership requests, and manage active sister-city collaborations."
+      subtitle="Review inbound requests, track outbound proposals, and manage active sister-city collaborations."
     >
       <Suspense fallback={null}>
         <PartnershipsPanel />

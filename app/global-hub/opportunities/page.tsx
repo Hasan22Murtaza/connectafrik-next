@@ -7,7 +7,7 @@ export default function GlobalHubOpportunitiesPage() {
   return (
     <GschPageShell
       title="Opportunities"
-      subtitle="Discover grants, conferences, trade missions, and sister-city programs from verified partners."
+      subtitle="Discover grants, conferences, and trade programs — post listings from your verified organization."
     >
       <OpportunitiesPanel />
     </GschPageShell>

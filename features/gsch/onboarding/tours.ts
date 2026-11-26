@@ -12,16 +12,24 @@ export const GSCH_TOURS: ScreenTourConfig[] = [
     pathPrefixes: [],
     steps: [
       {
-        title: 'Welcome to Global Sister Cities Partnership Hub!',
+        title: 'Welcome to the Global Hub!',
         description:
           'Connect cities worldwide, create partnerships, explore collaboration opportunities, and build international relationships — all from this hub.',
       },
       {
         element: page('home-welcome'),
-        title: 'Your hub overview',
+        title: 'Your hub dashboard',
         description:
-          'This home screen summarizes verification status, recommended matches, opportunities, projects, and upcoming events tailored to your organizations.',
+          'See key statistics, the interactive city map, recommended matches, opportunities, and upcoming events tailored to your organizations.',
         side: 'bottom',
+      },
+      {
+        element: page('home-map'),
+        title: 'Interactive global map',
+        description:
+          'Explore participating cities worldwide. Filter by continent or country, zoom in, and open a city profile from any marker.',
+        side: 'top',
+        optional: true,
       },
       {
         element: nav('discover'),

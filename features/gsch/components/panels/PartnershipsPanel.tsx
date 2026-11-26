@@ -7,6 +7,9 @@ import { apiClient, ApiError } from '@/lib/api-client'
 import { useAuth } from '@/contexts/AuthContext'
 import EmptyState from '@/features/gsch/components/EmptyState'
 import GschFormModal from '@/features/gsch/components/GschFormModal'
+import GschHubTabs from '@/features/gsch/components/GschHubTabs'
+import GschSectionHeader from '@/features/gsch/components/GschSectionHeader'
+import GschSkeleton from '@/features/gsch/components/GschSkeleton'
 import {
   GschDataTable,
   GschTableBody,
@@ -17,10 +20,10 @@ import {
 } from '@/features/gsch/components/GschDataTable'
 import StatusBadge from '@/features/gsch/components/StatusBadge'
 import {
-  GSCH_CARD,
+  GSCH_COUNT_BADGE,
   GSCH_FIELD,
-  GSCH_SECTION_TITLE,
   GSCH_SELECT,
+  GSCH_TOOLBAR,
 } from '@/features/gsch/constants/styles'
 import {
   GSCH_PARTNERSHIP_TYPES,
@@ -197,20 +200,25 @@ export default function PartnershipsPanel() {
   }
 
   if (authLoading || loading) {
-    return (
-      <div className="space-y-3">
-        {Array.from({ length: 3 }).map((_, i) => (
-          <div key={i} className={`${GSCH_CARD} h-28 animate-pulse`} />
-        ))}
-      </div>
-    )
+    return <GschSkeleton variant="table" />
   }
 
   if (!user) return <EmptyState title="Sign in required" />
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-2">
+      <div className={GSCH_TOOLBAR}>
+        <div data-tour="gsch-tabs">
+          <GschHubTabs
+            tabs={[
+              { id: 'requests', label: 'Requests' },
+              { id: 'active', label: 'Active partnerships' },
+            ]}
+            activeId={tab}
+            onChange={(id) => setTab(id as Tab)}
+            aria-label="Partnership views"
+          />
+        </div>
         <button
           type="button"
           className="btn-primary text-sm"
@@ -219,31 +227,21 @@ export default function PartnershipsPanel() {
         >
           New request
         </button>
-        <div className="flex flex-wrap gap-2" data-tour="gsch-tabs">
-          {(
-            [
-              ['requests', 'Requests'],
-              ['active', 'Active partnerships'],
-            ] as const
-          ).map(([key, label]) => (
-            <button
-              key={key}
-              type="button"
-              className={tab === key ? 'btn-primary text-sm' : 'btn-secondary text-sm'}
-              onClick={() => setTab(key)}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
       </div>
 
       {tab === 'requests' ? (
         <div className="space-y-8">
           <section>
-            <h2 className={`${GSCH_SECTION_TITLE} mb-3`}>Received</h2>
+            <GschSectionHeader
+              title="Received"
+              badge={<span className={GSCH_COUNT_BADGE}>{received.length}</span>}
+              description="Inbound proposals from other cities and organizations."
+            />
             {received.length === 0 ? (
-              <EmptyState title="No inbound requests" />
+              <EmptyState
+                title="No inbound requests"
+                description="When a partner targets your city or organization, their proposal will appear here for review."
+              />
             ) : (
               <GschDataTable>
                 <GschTableHead>
@@ -305,9 +303,16 @@ export default function PartnershipsPanel() {
           </section>
 
           <section>
-            <h2 className={`${GSCH_SECTION_TITLE} mb-3`}>Sent</h2>
+            <GschSectionHeader
+              title="Sent"
+              badge={<span className={GSCH_COUNT_BADGE}>{sent.length}</span>}
+              description="Outbound requests awaiting a response."
+            />
             {sent.length === 0 ? (
-              <EmptyState title="No sent requests" />
+              <EmptyState
+                title="No sent requests"
+                description="Start a new request to propose a sister-city, trade, or cultural partnership with a published city."
+              />
             ) : (
               <GschDataTable>
                 <GschTableHead>
@@ -362,10 +367,16 @@ export default function PartnershipsPanel() {
       ) : null}
 
       {tab === 'active' ? (
-        partnerships.length === 0 ? (
+        <>
+          <GschSectionHeader
+            title="Active partnerships"
+            badge={<span className={GSCH_COUNT_BADGE}>{partnerships.length}</span>}
+            description="Collaborations you can pause, resume, complete, or cancel."
+          />
+          {partnerships.length === 0 ? (
           <EmptyState
             title="No active partnerships yet"
-            description="Accept an inbound request or send a new partnership proposal."
+            description="Accept an inbound request or send a new proposal — accepted links show up here with lifecycle controls."
             action={
               <button
                 type="button"
@@ -463,7 +474,8 @@ export default function PartnershipsPanel() {
               })}
             </GschTableBody>
           </GschDataTable>
-        )
+          )}
+        </>
       ) : null}
 
       <GschFormModal

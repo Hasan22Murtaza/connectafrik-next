@@ -6,8 +6,8 @@ import OrganizationPanel from '@/features/gsch/components/panels/OrganizationPan
 export default function GlobalHubOrganizationPage() {
   return (
     <GschPageShell
-      title="Organization"
-      subtitle="Register your municipality, agency, business, or institution on the Global Hub."
+      title="Organizations"
+      subtitle="Register and manage the municipalities, agencies, or institutions you represent."
     >
       <OrganizationPanel />
     </GschPageShell>

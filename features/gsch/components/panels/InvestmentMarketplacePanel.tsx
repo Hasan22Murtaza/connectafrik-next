@@ -6,6 +6,10 @@ import toast from 'react-hot-toast'
 import { apiClient, ApiError } from '@/lib/api-client'
 import { useAuth } from '@/contexts/AuthContext'
 import EmptyState from '@/features/gsch/components/EmptyState'
+import GschHubTabs from '@/features/gsch/components/GschHubTabs'
+import GschSearchBar from '@/features/gsch/components/GschSearchBar'
+import GschSectionHeader from '@/features/gsch/components/GschSectionHeader'
+import GschSkeleton from '@/features/gsch/components/GschSkeleton'
 import GschFormModal from '@/features/gsch/components/GschFormModal'
 import GschFilterDrawer from '@/features/gsch/components/GschFilterDrawer'
 import GschFiltersButton, {
@@ -23,12 +27,11 @@ import {
 import StatusBadge from '@/features/gsch/components/StatusBadge'
 import { useConfirmDialog } from '@/shared/components/ui/ConfirmDialog'
 import {
-  GSCH_CARD,
+  GSCH_COUNT_BADGE,
   GSCH_FIELD,
   GSCH_LABEL,
-  GSCH_MUTED,
-  GSCH_SECTION_TITLE,
   GSCH_SELECT,
+  GSCH_TOOLBAR,
 } from '@/features/gsch/constants/styles'
 import {
   GSCH_CONTINENTS,
@@ -303,20 +306,53 @@ export default function InvestmentMarketplacePanel() {
     setFiltersOpen(false)
   }
 
+  function applySearch() {
+    setApplied((a) => ({ ...a, q: filters.q }))
+  }
+
+  const listTitle =
+    mode === 'saved'
+      ? 'Saved projects'
+      : mode === 'mine'
+        ? 'Your projects'
+        : 'Investment projects'
+
   if (authLoading) {
-    return <div className={`${GSCH_CARD} h-40 animate-pulse`} />
+    return <GschSkeleton variant="table" />
   }
   if (!user) return <EmptyState title="Sign in required" />
 
   return (
     <div className="space-y-6">
       {dialog}
-      <section className={`${GSCH_CARD} border-amber-500/20 bg-amber-500/5`}>
-        <h2 className={GSCH_SECTION_TITLE}>Investment marketplace</h2>
-        <p className={`${GSCH_MUTED} mt-2`}>{GSCH_INVESTMENT_DISCLAIMER}</p>
+      <section className="rounded-xl border border-amber-500/25 bg-amber-500/[0.06] px-4 py-3">
+        <p className="text-sm leading-relaxed text-content-secondary">
+          <span className="font-medium text-content">Notice:</span>{' '}
+          {GSCH_INVESTMENT_DISCLAIMER}
+        </p>
       </section>
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div data-tour="gsch-tabs">
+        <GschHubTabs
+          aria-label="Investment views"
+          tabs={[
+            { id: 'discover', label: 'Discover' },
+            { id: 'mine', label: 'My projects' },
+            { id: 'saved', label: 'Saved' },
+          ]}
+          activeId={mode}
+          onChange={(id) => setMode(id as 'discover' | 'mine' | 'saved')}
+        />
+      </div>
+
+      <GschSectionHeader
+        title={listTitle}
+        badge={
+          !loading && items.length > 0 ? (
+            <span className={GSCH_COUNT_BADGE}>{items.length}</span>
+          ) : null
+        }
+      >
         {orgs.length > 0 ? (
           <button
             type="button"
@@ -329,33 +365,20 @@ export default function InvestmentMarketplacePanel() {
         ) : (
           <span data-tour="gsch-primary-cta" />
         )}
-        <div className="flex flex-wrap gap-2" data-tour="gsch-tabs">
-          <button
-            type="button"
-            className={mode === 'discover' ? 'btn-primary text-sm' : 'btn-secondary text-sm'}
-            onClick={() => setMode('discover')}
-          >
-            Discover
-          </button>
-          <button
-            type="button"
-            className={mode === 'mine' ? 'btn-primary text-sm' : 'btn-secondary text-sm'}
-            onClick={() => setMode('mine')}
-          >
-            My projects
-          </button>
-          <button
-            type="button"
-            className={mode === 'saved' ? 'btn-primary text-sm' : 'btn-secondary text-sm'}
-            onClick={() => setMode('saved')}
-          >
-            Saved
-          </button>
-          <GschFiltersButton
-            activeCount={activeFilterCount}
-            onClick={() => setFiltersOpen(true)}
-          />
-        </div>
+        <GschFiltersButton
+          activeCount={activeFilterCount}
+          onClick={() => setFiltersOpen(true)}
+        />
+      </GschSectionHeader>
+
+      <div className={GSCH_TOOLBAR}>
+        <GschSearchBar
+          value={filters.q}
+          onChange={(q) => setFilters((f) => ({ ...f, q }))}
+          onSubmit={applySearch}
+          placeholder="Search projects…"
+          className="sm:max-w-md"
+        />
       </div>
 
       <GschFilterDrawer
@@ -669,17 +692,23 @@ export default function InvestmentMarketplacePanel() {
       </GschFormModal>
 
       {loading ? (
-        <div className={`${GSCH_CARD} h-40 animate-pulse`} />
+        <GschSkeleton variant="table" />
       ) : items.length === 0 ? (
         <EmptyState
           title={
             mode === 'saved'
               ? 'No saved projects'
               : mode === 'mine'
-                ? 'No projects from your orgs'
-                : 'No published projects'
+                ? 'No projects from your organizations'
+                : 'No matching projects'
           }
-          description="List a project for discovery — no payments are processed here."
+          description={
+            mode === 'mine'
+              ? 'List a project to share funding needs and partnership opportunities with other cities.'
+              : mode === 'saved'
+                ? 'Save projects from Discover to compare and follow up later.'
+                : 'Try adjusting filters or search — or list your own project when your organization is ready.'
+          }
         />
       ) : (
         <GschDataTable>

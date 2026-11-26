@@ -6,6 +6,10 @@ import toast from 'react-hot-toast'
 import { apiClient, ApiError } from '@/lib/api-client'
 import { useAuth } from '@/contexts/AuthContext'
 import EmptyState from '@/features/gsch/components/EmptyState'
+import GschHubTabs from '@/features/gsch/components/GschHubTabs'
+import GschSearchBar from '@/features/gsch/components/GschSearchBar'
+import GschSectionHeader from '@/features/gsch/components/GschSectionHeader'
+import GschSkeleton from '@/features/gsch/components/GschSkeleton'
 import GschFormModal from '@/features/gsch/components/GschFormModal'
 import GschFilterDrawer from '@/features/gsch/components/GschFilterDrawer'
 import GschFiltersButton, {
@@ -23,10 +27,11 @@ import {
 import StatusBadge from '@/features/gsch/components/StatusBadge'
 import { useConfirmDialog } from '@/shared/components/ui/ConfirmDialog'
 import {
-  GSCH_CARD,
+  GSCH_COUNT_BADGE,
   GSCH_FIELD,
   GSCH_LABEL,
   GSCH_SELECT,
+  GSCH_TOOLBAR,
 } from '@/features/gsch/constants/styles'
 import {
   GSCH_CONTINENTS,
@@ -243,8 +248,12 @@ export default function TourismCollaborationPanel() {
     setFiltersOpen(false)
   }
 
+  function applySearch() {
+    setApplied((a) => ({ ...a, q: filters.q }))
+  }
+
   if (authLoading) {
-    return <div className={`${GSCH_CARD} h-40 animate-pulse`} />
+    return <GschSkeleton variant="table" />
   }
   if (!user) return <EmptyState title="Sign in required" />
 
@@ -252,7 +261,26 @@ export default function TourismCollaborationPanel() {
     <div className="space-y-6">
       {dialog}
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div data-tour="gsch-tabs">
+        <GschHubTabs
+          aria-label="Tourism initiatives"
+          tabs={[
+            { id: 'discover', label: 'Discover' },
+            { id: 'mine', label: 'My initiatives' },
+          ]}
+          activeId={mine ? 'mine' : 'discover'}
+          onChange={(id) => setMine(id === 'mine')}
+        />
+      </div>
+
+      <GschSectionHeader
+        title={mine ? 'Your initiatives' : 'Tourism initiatives'}
+        badge={
+          !loading && items.length > 0 ? (
+            <span className={GSCH_COUNT_BADGE}>{items.length}</span>
+          ) : null
+        }
+      >
         {orgs.length > 0 ? (
           <button
             type="button"
@@ -263,28 +291,22 @@ export default function TourismCollaborationPanel() {
             Post initiative
           </button>
         ) : (
-          <span />
+          <span data-tour="gsch-primary-cta" />
         )}
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            className={!mine ? 'btn-primary text-sm' : 'btn-secondary text-sm'}
-            onClick={() => setMine(false)}
-          >
-            Discover
-          </button>
-          <button
-            type="button"
-            className={mine ? 'btn-primary text-sm' : 'btn-secondary text-sm'}
-            onClick={() => setMine(true)}
-          >
-            My initiatives
-          </button>
-          <GschFiltersButton
-            activeCount={activeFilterCount}
-            onClick={() => setFiltersOpen(true)}
-          />
-        </div>
+        <GschFiltersButton
+          activeCount={activeFilterCount}
+          onClick={() => setFiltersOpen(true)}
+        />
+      </GschSectionHeader>
+
+      <div className={GSCH_TOOLBAR}>
+        <GschSearchBar
+          value={filters.q}
+          onChange={(q) => setFilters((f) => ({ ...f, q }))}
+          onSubmit={applySearch}
+          placeholder="Search initiatives…"
+          className="sm:max-w-md"
+        />
       </div>
 
       <GschFilterDrawer
@@ -538,11 +560,15 @@ export default function TourismCollaborationPanel() {
       </GschFormModal>
 
       {loading ? (
-        <div className={`${GSCH_CARD} h-40 animate-pulse`} />
+        <GschSkeleton variant="table" />
       ) : items.length === 0 ? (
         <EmptyState
-          title={mine ? 'No initiatives from your orgs' : 'No published initiatives'}
-          description="Share eco-tourism, cultural routes, or destination campaigns."
+          title={mine ? 'No initiatives from your organizations' : 'No matching initiatives'}
+          description={
+            mine
+              ? 'Share eco-tourism, cultural routes, or destination campaigns with partner cities.'
+              : 'Adjust search or filters — or post an initiative from My initiatives.'
+          }
         />
       ) : (
         <GschDataTable>

@@ -23,6 +23,19 @@ export const GSCH_FIELD =
 
 export const GSCH_LABEL = 'mb-1.5 block text-sm font-medium text-content'
 
+/** Card chrome around data tables for consistent list surfaces. */
+export const GSCH_TABLE_CARD =
+  'overflow-hidden rounded-2xl border border-border/80 bg-surface shadow-[0_1px_2px_rgba(15,23,42,0.04)]'
+
 export const GSCH_TABLE_WRAP = 'overflow-x-auto overflow-y-visible'
 
 export const GSCH_TABLE = 'w-full min-w-[720px] text-left text-sm'
+
+export const GSCH_TOOLBAR =
+  'mb-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between'
+
+export const GSCH_LINK_MUTED =
+  'text-sm font-medium text-primary transition hover:text-primary/80'
+
+export const GSCH_COUNT_BADGE =
+  'inline-flex items-center rounded-full bg-surface-secondary px-2 py-0.5 text-xs font-medium tabular-nums text-content-secondary'

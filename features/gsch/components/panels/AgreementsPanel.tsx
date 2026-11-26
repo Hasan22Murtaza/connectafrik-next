@@ -11,6 +11,8 @@ import GschFilterDrawer from '@/features/gsch/components/GschFilterDrawer'
 import GschFiltersButton, {
   countActiveFilters,
 } from '@/features/gsch/components/GschFiltersButton'
+import GschSectionHeader from '@/features/gsch/components/GschSectionHeader'
+import GschSkeleton from '@/features/gsch/components/GschSkeleton'
 import {
   GschDataTable,
   GschRowActions,
@@ -24,6 +26,7 @@ import StatusBadge from '@/features/gsch/components/StatusBadge'
 import { useConfirmDialog } from '@/shared/components/ui/ConfirmDialog'
 import {
   GSCH_CARD,
+  GSCH_COUNT_BADGE,
   GSCH_FIELD,
   GSCH_LABEL,
   GSCH_MUTED,
@@ -219,7 +222,7 @@ export default function AgreementsPanel() {
   }
 
   if (authLoading) {
-    return <div className={`${GSCH_CARD} h-40 animate-pulse`} />
+    return <GschSkeleton variant="table" />
   }
 
   if (!user) return <EmptyState title="Sign in required" />
@@ -232,7 +235,15 @@ export default function AgreementsPanel() {
         <p className={`${GSCH_MUTED} mt-2`}>{GSCH_AGREEMENT_DISCLAIMER}</p>
       </section>
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <GschSectionHeader
+        title="Your agreements"
+        badge={
+          <span className={GSCH_COUNT_BADGE}>
+            {loading ? '…' : items.length}
+          </span>
+        }
+        description="Drafts and active records between your organization and partners."
+      >
         <button
           type="button"
           className="btn-primary text-sm"
@@ -245,7 +256,7 @@ export default function AgreementsPanel() {
           activeCount={activeFilterCount}
           onClick={() => setFiltersOpen(true)}
         />
-      </div>
+      </GschSectionHeader>
 
       <GschFilterDrawer
         open={filtersOpen}
@@ -455,11 +466,11 @@ export default function AgreementsPanel() {
       </GschFormModal>
 
       {loading ? (
-        <div className={`${GSCH_CARD} h-40 animate-pulse`} />
+        <GschSkeleton variant="table" count={4} />
       ) : items.length === 0 ? (
         <EmptyState
           title="No agreements yet"
-          description="Draft a structured partnership agreement between two organizations."
+          description="Create a structured draft with objectives, responsibilities, and duration — then share it for partner review."
           action={
             <button type="button" className="btn-primary text-sm" onClick={openCreate}>
               New agreement
