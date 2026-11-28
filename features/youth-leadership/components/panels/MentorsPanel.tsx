@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
-import { Search } from '@/shared/icons'
+import { Loader2, Search } from '@/shared/icons'
 import { apiClient, ApiError } from '@/lib/api-client'
 import { useAuth } from '@/contexts/AuthContext'
 import StatusBadge from '@/features/youth-leadership/components/StatusBadge'
@@ -41,6 +41,7 @@ export default function MentorsPanel() {
   const [myMentor, setMyMentor] = useState<YouthMentor | null>(null)
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
+  const [requestingMentorId, setRequestingMentorId] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [searchInput, setSearchInput] = useState('')
   const [showMentorForm, setShowMentorForm] = useState(false)
@@ -91,6 +92,7 @@ export default function MentorsPanel() {
 
   async function requestMentorship(mentorId: string) {
     setBusy(true)
+    setRequestingMentorId(mentorId)
     try {
       await apiClient.post('/api/youth-leadership/mentorship', { mentor_id: mentorId })
       toast.success('Mentorship requested')
@@ -98,6 +100,7 @@ export default function MentorsPanel() {
       toast.error(err instanceof ApiError ? err.message : 'Request failed')
     } finally {
       setBusy(false)
+      setRequestingMentorId(null)
     }
   }
 
@@ -242,11 +245,18 @@ export default function MentorsPanel() {
                 {mentor.user_id !== user.id ? (
                   <button
                     type="button"
-                    className="btn-primary mt-4 w-full"
+                    className="btn-primary mt-4 flex w-full items-center justify-center gap-2"
                     disabled={busy}
                     onClick={() => requestMentorship(mentor.id)}
                   >
-                    Request mentorship
+                    {requestingMentorId === mentor.id ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                        Requesting mentorship…
+                      </>
+                    ) : (
+                      'Request mentorship'
+                    )}
                   </button>
                 ) : (
                   <p className="mt-4 text-xs text-content-tertiary">This is your profile.</p>
